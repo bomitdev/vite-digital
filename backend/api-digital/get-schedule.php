@@ -16,9 +16,6 @@ if ($year === false || $month === false || $month < 1 || $month > 12) {
 }
 
 try {
-    // Create a new PDO instance and set error mode to exception
-    $pdo2 = new PDO("mysql:host={$db2['host']};dbname={$db2['name']};charset=utf8", $db2['user'], $db2['pass']);
-    $pdo2->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
     // Prepare the SQL statement
     $stmt1 = $pdo2->prepare("
@@ -59,8 +56,8 @@ try {
             MAX(IF(DAY(d.date)=31, 'IT', '')) AS d31
         FROM employees e 
         LEFT JOIN duties d ON e.id = d.employee_id 
-        WHERE  YEAR(d.date) = :year 
-            AND MONTH(d.date) = :month
+        WHERE YEAR(d.date) = :year 
+          AND MONTH(d.date) = :month
         GROUP BY e.id
     ");
 
@@ -72,9 +69,9 @@ try {
     $stmt1->execute();
 
     // Fetch all results
-    $data = $stmt1->fetchAll(PDO::FETCH_ASSOC);
+    $data = $stmt1->fetchAll(PDO::FETCH_ASSOC);  // ใช้ fetchAll เพื่อให้รองรับหลายคน
 
-    // Output the data in JSON format
+    // Output JSON
     echo json_encode([
         "year" => $year,
         "month" => $month,
@@ -83,10 +80,7 @@ try {
     ]);
 
 } catch (PDOException $e) {
-    // Log the error to a file (เฉพาะตอน debug เท่านั้น)
-    error_log($e->getMessage(), 3, __DIR__ . '/error.log');
-
-    // Return a 500 Internal Server Error status code
     http_response_code(500);
     echo json_encode(["error" => "An internal server error occurred."]);
+    error_log("Database error: " . $e->getMessage());
 }

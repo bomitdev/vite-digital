@@ -2,7 +2,7 @@
   <footer class="footer">
     <div>
       <a href="#">Chanuman Hospital </a>
-      <span>&copy;  2024 Digital Health.</span>
+      <span>&copy;  2025 Digital Health.</span>
     </div>
     <div>
       <span>Powered by</span>

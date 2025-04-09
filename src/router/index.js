@@ -16,6 +16,7 @@ const routes = [
 //Dashboard Report 
   { path: "/dm-report", component: () => import("../views/reports/dm/DmReport.vue") },
   { path: "/er-report", component: () => import("../views/reports/er/ErReport.vue") },
+  { path: "/dental-report", component: () => import("../views/reports/dental/DentalReport.vue") },
 
 ];
 

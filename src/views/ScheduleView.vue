@@ -3,7 +3,7 @@
     <div class="row">
       <div>
         <div class="header-container">
-          <img src="../components/img/logo-cnmh.png" alt="Image" class="logo" />
+          <img src="../components/img/logo-cnmh.png" alt="Logo" class="logo" />
           <h1>โรงพยาบาลชานุมาน</h1>
         </div>
         <h2>
@@ -13,8 +13,8 @@
 
         <!-- Dropdown เลือกเดือน -->
         <div class="month-selector">
-          <label for="month"> </label>
-          <select v-model="selectedMonth" @change="updateDays">
+          <label for="month">เลือกเดือน: </label>
+          <select v-model="selectedMonth" @change="fetchSchedule">
             <option v-for="(month, index) in months" :key="index" :value="index + 1">
               {{ month }}
             </option>
@@ -84,38 +84,47 @@ export default {
         "พฤศจิกายน",
         "ธันวาคม",
       ],
-      schedule: [
-        {
-          name: "น.ส.ลัดดา จันนวล",
-          duties: { 16: "IT", 18: "IT", 19: "IT", 20: "IT", 24: "IT", 30: "IT" },
-        },
-        {
-          name: "นายศราวุฒิ แสนโท",
-          duties: { 2: "IT", 7: "IT", 11: "IT", 12: "IT", 21: "IT" },
-        },
-        {
-          name: "นายสุริยา จันทรา",
-          duties: { 3: "IT", 15: "IT", 22: "IT", 25: "IT", 26: "IT", 27: "IT" },
-        },
-        {
-          name: "นายธีระพงษ์ บุญหอม",
-          duties: { 4: "IT", 5: "IT", 9: "IT", 14: "IT", 23: "IT", 28: "IT" },
-        },
-        {
-          name: "นายยุทธชัย ภูมิลา",
-          duties: { 1: "IT", 6: "IT",8: "IT", 10: "IT", 13: "IT", 17: "IT", 29: "IT" },
-        },
-      ],
-      contacts: [
-        { name: "นายศราวุฒิ แสนโท", phone: "086-8583828" },
-        { name: "นางสาวลัดดา จันนวล", phone: "089-2869191" },
-        { name: "นายธีรพงษ์ บุญหอม", phone: "087-3446570" },
-        { name: "นายสุริยา จันทรา", phone: "097-3348861" },
-        { name: "นายยุทธชัย ภูมิลา", phone: "091-2033764" },
-      ],
+      schedule: [],
+      contacts: [],
     };
   },
   methods: {
+    async fetchSchedule() {
+      try {
+        let year = new Date().getFullYear();
+        const response = await fetch(`http://192.168.7.12/vue-app/vite-digital/backend/api-digital/get-schedule.php?year=${year}&month=${this.selectedMonth}`);
+        const data = await response.json();
+
+        if (data && data.data) {
+          this.schedule = data.data.map(person => ({
+            name: person.name,
+            duties: this.formatDuties(person),
+          }));
+          this.contacts = this.extractContacts(data.data);
+          this.updateDays();
+        } else {
+          console.error("No data received");
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    },
+
+    formatDuties(person) {
+      let duties = {};
+      for (let i = 1; i <= 31; i++) {
+        duties[i] = person[`d${i}`] || "";
+      }
+      return duties;
+    },
+
+    extractContacts(data) {
+      return data.map(person => ({
+        name: person.name,
+        phone: person.phone,
+      }));
+    },
+
     updateDays() {
       let year = new Date().getFullYear();
       let days = new Date(year, this.selectedMonth, 0).getDate();
@@ -123,7 +132,7 @@ export default {
     },
   },
   mounted() {
-    this.updateDays();
+    this.fetchSchedule();
   },
 };
 </script>

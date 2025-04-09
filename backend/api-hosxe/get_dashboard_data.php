@@ -21,22 +21,22 @@ try {
             COUNT(DISTINCT vn.vn) as opd_all,
             SUM(CASE WHEN c1.clinic = '001' THEN 1 ELSE 0 END) as dm,
             SUM(CASE WHEN c2.clinic = '002' THEN 1 ELSE 0 END) as ht,
-            SUM(CASE WHEN p1.vn IS NOT NULL THEN 1 ELSE 0 END) as physic,
-            (SELECT COUNT(*) FROM physic_main_ipd ps WHERE ps.vstdate BETWEEN :start_date AND :end_date) as physic_ipd,
             SUM(CASE WHEN h.spclty = '27' AND h.vstdate BETWEEN :start_date AND :end_date THEN 1 ELSE 0 END) as health_med,
+            SUM(CASE WHEN p.spclty = '16' AND p.vstdate BETWEEN :start_date AND :end_date THEN 1 ELSE 0 END) as physic,
+            SUM(CASE WHEN pcu.spclty = '18' AND pcu.vstdate BETWEEN :start_date AND :end_date THEN 1 ELSE 0 END) as pcu,
             SUM(CASE WHEN d.vn IS NOT NULL THEN 1 ELSE 0 END) as dent,
             SUM(CASE WHEN sm.vn IS NOT NULL THEN 1 ELSE 0 END) as surveil,
-            SUM(CASE WHEN e2.vn IS NOT NULL THEN 1 ELSE 0 END) as er,
-            SUM(CASE WHEN pcu.spclty = 18 THEN 1 ELSE 0 END) as pcu
+            SUM(CASE WHEN e2.vn IS NOT NULL THEN 1 ELSE 0 END) as er
         FROM vn_stat vn
         LEFT JOIN clinic_visit c1 ON vn.vn = c1.vn AND c1.clinic = '001'
         LEFT JOIN clinic_visit c2 ON vn.vn = c2.vn AND c2.clinic = '002'
         LEFT JOIN physic_main p1 ON vn.vn = p1.vn
         LEFT JOIN vn_stat h ON vn.vn = h.vn AND h.spclty = '27' AND h.vstdate BETWEEN :start_date AND :end_date
+        LEFT JOIN vn_stat p ON vn.vn = p.vn AND p.spclty = '16' AND p.vstdate BETWEEN :start_date AND :end_date
+        LEFT JOIN vn_stat pcu ON vn.vn = pcu.vn AND pcu.spclty = '18' AND pcu.vstdate BETWEEN :start_date AND :end_date
         LEFT JOIN dtmain d ON vn.vn = d.vn
         LEFT JOIN surveil_member sm ON vn.vn = sm.vn
         LEFT JOIN er_regist e2 ON vn.vn = e2.vn
-        LEFT JOIN vn_stat pcu ON vn.vn = pcu.vn AND pcu.spclty = 18
         WHERE vn.vstdate BETWEEN :start_date AND :end_date;
     ");
 

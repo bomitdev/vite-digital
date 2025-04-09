@@ -10,7 +10,7 @@
       <!-- Date Range Selector -->
       <div class="date-range-card card shadow-sm mb-4">
         <div class="card-body">
-          <h5 class="card-title">เลือกช่วงวันที่</h5>
+          <h5 class="card-title">เลือกช่วงวันที่ ที่ต้องการดูข้อมูล</h5>
           <div class="row g-3">
             <div class="col-md-5">
               <label class="form-label">จากวันที่:</label>
@@ -82,6 +82,83 @@
           </div>
         </div>
 
+        
+
+        <!-- Dent Card -->
+        <div class="col-md-4">
+          <div
+            class="card text-white bg-info mb-3 h-100 hover-effect"
+            @click="goToDentalReport()"
+            style="cursor: pointer"
+          >
+            <div class="card-body d-flex flex-column">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h5 class="card-title mb-0">ทันตกรรม</h5>
+                <i class="bi bi-tooth fs-4"></i>
+              </div>
+              <h2 class="card-value">{{ formatNumber(data.dent) }}</h2>
+              <div class="mt-auto pt-2">
+                <small class="text-white-50">คลิกเพื่อดูรายงาน</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PCU Card -->
+        <div class="col-md-4">
+          <div class="card text-white bg-purple mb-3 h-100 hover-effect">
+            <div class="card-body d-flex flex-column">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h5 class="card-title mb-0">ปฐมภูมิและองค์รวม</h5>
+                <i class="bi bi-heart fs-4"></i>
+              </div>
+              <h2 class="card-value">{{ formatNumber(data.pcu) }}</h2>
+              <div class="mt-auto pt-2">
+                <small class="text-white-50">บริการปฐมภูมิ</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- TTM Card -->
+        <div class="col-md-4">
+          <div class="card text-white bg-green mb-3 h-100 hover-effect">
+            <div class="card-body d-flex flex-column">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h5 class="card-title mb-0">แพทย์แผนไทยฯ</h5>
+                <i class="bi bi-heart fs-4"></i>
+              </div>
+              <h2 class="card-value">{{ formatNumber(data.health_med) }}</h2>
+              <div class="mt-auto pt-2">
+                <small class="text-white-50">แพทย์แผนไทยฯ</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- กายภาพ Card -->
+        <div class="col-md-4">
+          <div class="card text-white bg-queen mb-3 h-100 hover-effect">
+            <div class="card-body d-flex flex-column">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h5 class="card-title mb-0">กายภาพ</h5>
+                <i class="bi bi-heart fs-4"></i>
+              </div>
+              <h2 class="card-value">{{ formatNumber(data.physic) }}</h2>
+              <div class="mt-auto pt-2">
+                <small class="text-white-50">กายภาพ</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <hr>
         <!-- DM Card -->
         <div class="col-md-4">
           <div class="card text-white bg-success mb-3 h-100 hover-effect">
@@ -94,7 +171,7 @@
               </div>
               <h2 class="card-value">{{ formatNumber(data.dm) }}</h2>
               <div class="mt-auto pt-2">
-                <small class="text-white-50">คลิกเพื่อดูรายงาน</small>
+                <small class="text-white-50">DM (เบาหวาน)</small>
               </div>
             </div>
           </div>
@@ -117,38 +194,19 @@
             </div>
           </div>
         </div>
-
-        <!-- Dent Card -->
+        <!-- survail Card -->
         <div class="col-md-4">
-          <div class="card text-white bg-info mb-3 h-100 hover-effect">
+          <div class="card text-white bg-max-red mb-3 h-100 hover-effect">
             <div class="card-body d-flex flex-column">
               <div
                 class="d-flex justify-content-between align-items-center mb-3"
               >
-                <h5 class="card-title mb-0">ทันตกรรม</h5>
-                <i class="bi bi-tooth fs-4"></i>
+                <h5 class="card-title mb-0">ระบาดวิทยา</h5>
+                <i class="bi bi-heart-pulse fs-4"></i>
               </div>
-              <h2 class="card-value">{{ formatNumber(data.dent) }}</h2>
+              <h2 class="card-value">{{ formatNumber(data.surveil) }}</h2>
               <div class="mt-auto pt-2">
-                <small class="text-white-50">บริการทันตกรรม</small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- PCU Card -->
-        <div class="col-md-4">
-          <div class="card text-white bg-purple mb-3 h-100 hover-effect">
-            <div class="card-body d-flex flex-column">
-              <div
-                class="d-flex justify-content-between align-items-center mb-3"
-              >
-                <h5 class="card-title mb-0">ปฐมภูมิและองค์รวม</h5>
-                <i class="bi bi-heart fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.pcu) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">บริการปฐมภูมิ</small>
+                <small class="text-white-50">ระบาดวิทยา</small>
               </div>
             </div>
           </div>
@@ -212,6 +270,11 @@ export default {
     goToERReport() {
       this.$router.push({
         path: "/er-report",
+      });
+    },
+    goToDentalReport() {
+      this.$router.push({
+        path: "/dental-report",
       });
     },
     formatNumber(num) {
@@ -280,6 +343,15 @@ export default {
 
 .bg-purple {
   background-color: #6f42c1 !important;
+}
+.bg-green {
+  background-color: #32ca24 !important;
+}
+.bg-queen {
+  background-color: #436b95 !important;
+}
+.bg-max-red  {
+  background-color: #d92121 !important;
 }
 
 /* Responsive adjustments */
