@@ -1,8 +1,18 @@
 # vite-digital
 web app v1
 
-# Vue 3 + Vite
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+# Frontend
+# Vue 3 + Vite 
+ขั้นตอนการติดตั้ง
+1. npm create vite@latest vite-digital --template vue
+2. cd vite-digital
+3. npm install
+4. npm run dev
+5. ทดสอบ http://localhost:5173
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+
+# Backend
+# PHP 
+ติดตั้ง php
+ติดตั้ง composer

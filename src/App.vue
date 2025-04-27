@@ -1,6 +1,6 @@
 <template>
   <nav class="navbar navbar-expand-lg navbar-dark">
-    <div class="container">
+    <div class="container-fluid">
       <RouterLink class="navbar-brand d-flex align-items-center" to="/">
         <img src="./assets/logo-digital.jpg" alt="Logo" class="logo-img me-2" />
       </RouterLink>
@@ -52,6 +52,16 @@
           <li class="nav-item">
             <RouterLink class="nav-link" to="/sla">
               <i class="fas fa-handshake me-1"></i> SLA
+            </RouterLink>
+          </li>
+          <li class="nav-item">
+            <RouterLink class="nav-link" to="/certificate">
+              <i class="fas fa-certificate me-1"></i> Certificate
+            </RouterLink>
+          </li>
+          <li class="nav-item">
+            <RouterLink class="nav-link" to="/handbook">
+              <i class="fas fa-book me-1"></i> คู่มือการใช้งาน
             </RouterLink>
           </li>
 
@@ -108,7 +118,16 @@
                   href="https://phr1.moph.go.th/dashboard/"
                   target="_blank"
                 >
-                  <i class="fas fa-notes-medical fa-fw me-2"></i> Moph PHR
+                  <i class="fas fa-notes-medical fa-fw me-2"></i> Moph PHR-Dashboard
+                </a>
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  href="https://phr1.moph.go.th/phr/"
+                  target="_blank"
+                >
+                  <i class="fas fa-notes-medical fa-fw me-2"></i> Moph PHR-Viwer
                 </a>
               </li>
 
@@ -144,7 +163,7 @@
                   href="https://phr1.moph.go.th/idpadmin/"
                   target="_blank"
                 >
-                  <i class="fas fa-file-invoice-dollar fa-fw me-2"></i> MOPH IDP
+                  <i class="fas fa-id-card fa-fw me-2"></i> MOPH IDP
                   Center (ekyc)
                 </a>
               </li>
@@ -213,11 +232,20 @@
                   class="dropdown-item"
                   href="https://hs4.hss.moph.go.th/hs4_67/"
                   target="_blank"
-                  ><i class="fas fa-procedures fa-fw me-2"></i> ระบบประเมินมาตรฐานระบบบริการสุขภาพ HS4
+                  ><i class="fas fa-procedures fa-fw me-2"></i>
+                  ระบบประเมินมาตรฐานระบบบริการสุขภาพ HS4
                 </a>
               </li>
               <li><hr class="dropdown-divider" /></li>
               <li><h6 class="dropdown-header">ระบบอื่นๆ</h6></li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  href="https://hdc.moph.go.th/acr/public/login"
+                  target="_blank"
+                  ><i class="fas fa-procedures fa-fw me-2"></i>HDC อำนาจเจริญ</a
+                >
+              </li>
               <li>
                 <a
                   class="dropdown-item"
@@ -267,6 +295,15 @@
                   ><i class="fas fa-procedures fa-fw me-2"></i>MOOC</a
                 >
               </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  href="https://hscs.ha.or.th/68/login.php"
+                  target="_blank"
+                  ><i class="fas fa-procedures fa-fw me-2"></i
+                  >ระบบสำรวจวัฒนธรรมความปลอดภัยของโรงพยาบาล</a 
+                >
+              </li>
             </ul>
           </li>
         </ul>
@@ -294,9 +331,10 @@ export default {
   mounted() {
     // Load Font Awesome if not already loaded
     if (!document.querySelector('link[href*="font-awesome"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href =
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css";
       document.head.appendChild(link);
     }
   },

@@ -1,23 +1,21 @@
 <template>
   <div class="dashboard-container">
     <div class="container mt-4">
-      <!-- Header Section -->
-      <div class="dashboard-header mb-4">
-        <h2 class="dashboard-title">Dashboard ข้อมูลผู้มารับบริการ</h2>
-        <p class="dashboard-subtitle">ข้อมูลสถิติการให้บริการตามประเภท</p>
-      </div>
-
       <!-- Date Range Selector -->
       <div class="date-range-card card shadow-sm mb-4">
+        <!-- Header Section -->
+        <div class="dashboard-header mt-4">
+          <h1 class="dashboard-title">Dashboard ข้อมูลผู้มารับบริการ</h1>
+        </div>
         <div class="card-body">
           <h5 class="card-title">เลือกช่วงวันที่ ที่ต้องการดูข้อมูล</h5>
           <div class="row g-3">
             <div class="col-md-5">
-              <label class="form-label">จากวันที่:</label>
+              <label class="form-label">วันที่เริ่มต้น:</label>
               <input type="date" v-model="startDate" class="form-control" />
             </div>
             <div class="col-md-5">
-              <label class="form-label">ถึงวันที่:</label>
+              <label class="form-label">วันที่สิ้นสุด:</label>
               <input type="date" v-model="endDate" class="form-control" />
             </div>
             <div class="col-md-2 d-flex align-items-end">
@@ -45,23 +43,69 @@
       <div class="row g-4" v-if="!loading">
         <!-- OPD Card -->
         <div class="col-md-4">
-          <div class="card text-white bg-primary mb-3 h-100 hover-effect">
+          <div
+            class="card text-white bg-primary mb-3 h-100 hover-effect"
+            @click="goToOPDReport"
+            style="cursor: pointer"
+          >
             <div class="card-body d-flex flex-column">
               <div
                 class="d-flex justify-content-between align-items-center mb-3"
               >
-                <h5 class="card-title mb-0">ผู้รับบริการทั้งหมด (OPD)</h5>
+                <h5 class="card-title mb-0">ผู้รับบริการผู้ป่วยนอก (OPD)</h5>
                 <i class="bi bi-people-fill fs-4"></i>
               </div>
               <h2 class="card-value">{{ formatNumber(data.opd_all) }}</h2>
               <div class="mt-auto pt-2">
-                <small class="text-white-50">ทั้งหมด</small>
+                <small class="text-white-50">คลิกเพื่อดูรายงาน</small>
               </div>
             </div>
           </div>
         </div>
+
+        <!-- IPD Card -->
+        <div class="col-12 col-sm-6 col-md-4">
+          <div
+            class="card text-white bg-red-300 mb-3 h-100 hover-effect"
+            @click="goToIPDReport()"
+            style="cursor: pointer"
+          >
+            <div class="card-body d-flex flex-column">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h5 class="card-title mb-0">ผู้รับบริการผู้ป่วยใน (IPD)</h5>
+                <i class="bi bi-people-fill fs-4"></i>
+              </div>
+              <h2 class="card-value">{{ formatNumber(data.ipd_all) }}</h2>
+              <div class="mt-auto pt-2">
+                <small class="text-white-50">คลิกเพื่อดูรายงาน</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- income Card -->
+        <div class="col-12 col-sm-6 col-md-4">
+          <div class="card text-white bg-red-300 mb-3 h-100 hover-effect">
+            <div class="card-body d-flex flex-column">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h5 class="card-title mb-0">ค่าใช้จ่ายทั้งหมด (OPD)</h5>
+                <i class="bi bi-people-fill fs-4"></i>
+              </div>
+              <h2 class="card-value">{{ formatNumber(data.sum_income) }}</h2>
+              <div class="mt-auto pt-2">
+                <small class="text-white-50">ผู้ป่วยนอก</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <hr />
+
         <!-- ER Card -->
-        <div class="col-md-4">
+        <h2 class="dashboard-title">ข้อมูลผู้มารับบริการแยกตามแผนก</h2>
+        <div class="col-12 col-sm-6 col-md-4">
           <div
             class="card text-white bg-danger mb-3 h-100 hover-effect"
             @click="goToERReport"
@@ -82,12 +126,10 @@
           </div>
         </div>
 
-        
-
         <!-- Dent Card -->
-        <div class="col-md-4">
+        <div class="col-12 col-sm-6 col-md-4">
           <div
-            class="card text-white bg-info mb-3 h-100 hover-effect"
+            class="card text-white bg-pink mb-3 h-100 hover-effect"
             @click="goToDentalReport()"
             style="cursor: pointer"
           >
@@ -107,7 +149,7 @@
         </div>
 
         <!-- PCU Card -->
-        <div class="col-md-4">
+        <div class="col-12 col-sm-6 col-md-4">
           <div class="card text-white bg-purple mb-3 h-100 hover-effect">
             <div class="card-body d-flex flex-column">
               <div
@@ -123,9 +165,14 @@
             </div>
           </div>
         </div>
+
         <!-- TTM Card -->
-        <div class="col-md-4">
-          <div class="card text-white bg-green mb-3 h-100 hover-effect">
+        <div class="col-12 col-sm-6 col-md-4">
+          <div
+            class="card text-white bg-green mb-3 h-100 hover-effect"
+            @click="goToTTMReport()"
+            style="cursor: pointer"
+          >
             <div class="card-body d-flex flex-column">
               <div
                 class="d-flex justify-content-between align-items-center mb-3"
@@ -135,15 +182,19 @@
               </div>
               <h2 class="card-value">{{ formatNumber(data.health_med) }}</h2>
               <div class="mt-auto pt-2">
-                <small class="text-white-50">แพทย์แผนไทยฯ</small>
+                <small class="text-white-50">คลิกเพื่อดูรายงาน</small>
               </div>
             </div>
           </div>
         </div>
 
         <!-- กายภาพ Card -->
-        <div class="col-md-4">
-          <div class="card text-white bg-queen mb-3 h-100 hover-effect">
+        <div class="col-12 col-sm-6 col-md-4">
+          <div
+            class="card text-white bg-queen mb-3 h-100 hover-effect"
+            @click="goToPhysicReport()"
+            style="cursor: pointer"
+          >
             <div class="card-body d-flex flex-column">
               <div
                 class="d-flex justify-content-between align-items-center mb-3"
@@ -153,56 +204,190 @@
               </div>
               <h2 class="card-value">{{ formatNumber(data.physic) }}</h2>
               <div class="mt-auto pt-2">
-                <small class="text-white-50">กายภาพ</small>
+                <small class="text-white-50">คลิกเพื่อดูรายงาน</small>
               </div>
             </div>
           </div>
         </div>
-        <hr>
+
+        <!-- จิตเวช Card -->
+        <div class="col-12 col-sm-6 col-md-4">
+          <div class="card text-white bg-grayscale mb-3 h-100 hover-effect">
+            <div class="card-body d-flex flex-column">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h5 class="card-title mb-0">จิตเวชและยาเสพติด</h5>
+                <i class="bi bi-heart fs-4"></i>
+              </div>
+              <h2 class="card-value">{{ formatNumber(data.pd) }}</h2>
+              <div class="mt-auto pt-2">
+                <small class="text-white-50">จิตเวชและยาเสพติด</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <hr />
+
         <!-- DM Card -->
-        <div class="col-md-4">
+        <h2 class="dashboard-title">คลินิกพิเศษ</h2>
+        <div class="col-12 col-sm-6 col-md-4">
           <div class="card text-white bg-success mb-3 h-100 hover-effect">
             <div class="card-body d-flex flex-column">
               <div
                 class="d-flex justify-content-between align-items-center mb-3"
               >
-                <h5 class="card-title mb-0">DM (เบาหวาน)</h5>
+                <h5 class="card-title mb-0">DM (โรคเบาหวาน)</h5>
                 <i class="bi bi-droplet-half fs-4"></i>
               </div>
               <h2 class="card-value">{{ formatNumber(data.dm) }}</h2>
               <div class="mt-auto pt-2">
-                <small class="text-white-50">DM (เบาหวาน)</small>
+                <small class="text-white-50">ผู้ป่วยโรคเบาหวาน</small>
               </div>
             </div>
           </div>
         </div>
 
         <!-- HT Card -->
-        <div class="col-md-4">
+        <div class="col-12 col-sm-6 col-md-4">
           <div class="card text-white bg-warning mb-3 h-100 hover-effect">
             <div class="card-body d-flex flex-column">
               <div
                 class="d-flex justify-content-between align-items-center mb-3"
               >
-                <h5 class="card-title mb-0">HT (ความดันโลหิตสูง)</h5>
+                <h5 class="card-title mb-0">HT (โรคความดันโลหิตสูง)</h5>
                 <i class="bi bi-heart-pulse fs-4"></i>
               </div>
               <h2 class="card-value">{{ formatNumber(data.ht) }}</h2>
               <div class="mt-auto pt-2">
-                <small class="text-white-50">ผู้ป่วยความดัน</small>
+                <small class="text-white-50">ผู้ป่วยโรคความดัน</small>
               </div>
             </div>
           </div>
         </div>
+
+        <!-- CKD Card -->
+        <div class="col-12 col-sm-6 col-md-4">
+          <div class="card text-white bg-teal mb-3 h-100 hover-effect">
+            <div class="card-body d-flex flex-column">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h5 class="card-title mb-0">CKD (โรคไต)</h5>
+                <i class="bi bi-heart-pulse fs-4"></i>
+              </div>
+              <h2 class="card-value">{{ formatNumber(data.ckd) }}</h2>
+              <div class="mt-auto pt-2">
+                <small class="text-white-50">ผู้ป่วยโรคไต</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TB Card -->
+        <div class="col-12 col-sm-6 col-md-4">
+          <div class="card text-white bg-burlywood mb-3 h-100 hover-effect">
+            <div class="card-body d-flex flex-column">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h5 class="card-title mb-0">TB (โรควัณโรค)</h5>
+                <i class="bi bi-heart-pulse fs-4"></i>
+              </div>
+              <h2 class="card-value">{{ formatNumber(data.tb) }}</h2>
+              <div class="mt-auto pt-2">
+                <small class="text-white-50">ผู้ป่วยโรคไต</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- COPD Card -->
+        <div class="col-12 col-sm-6 col-md-4">
+          <div class="card text-white bg-dark-orchid mb-3 h-100 hover-effect">
+            <div class="card-body d-flex flex-column">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h5 class="card-title mb-0">COPD (โรคปอดอุดกั้นเรื้อรัง)</h5>
+                <i class="bi bi-heart-pulse fs-4"></i>
+              </div>
+              <h2 class="card-value">{{ formatNumber(data.copd) }}</h2>
+              <div class="mt-auto pt-2">
+                <small class="text-white-50"
+                  >ผู้ป่วยโรคปอดอุดกั้นเรื้อรัง</small
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Thyroid Card -->
+        <div class="col-12 col-sm-6 col-md-4">
+          <div class="card text-white bg-dark-orange mb-3 h-100 hover-effect">
+            <div class="card-body d-flex flex-column">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h5 class="card-title mb-0">Thyroid (โรคไทรอยด์)</h5>
+                <i class="bi bi-heart-pulse fs-4"></i>
+              </div>
+              <h2 class="card-value">{{ formatNumber(data.thyroid) }}</h2>
+              <div class="mt-auto pt-2">
+                <small class="text-white-50">ผู้ป่วยโรคไทรอยด์</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <hr />
+
+        <!-- Refer Out Card -->
+        <h2 class="dashboard-title">Refer</h2>
+        <div class="col-12 col-sm-6 col-md-4">
+          <div class="card text-white bg-teal mb-3 h-100 hover-effect">
+            <div class="card-body d-flex flex-column">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h5 class="card-title mb-0">Refer Out</h5>
+                <i class="bi bi-heart-pulse fs-4"></i>
+              </div>
+              <h2 class="card-value">{{ formatNumber(data.refer_out) }}</h2>
+              <div class="mt-auto pt-2">
+                <small class="text-white-50">Refer Out</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Refer In Card -->
+        <div class="col-12 col-sm-6 col-md-4">
+          <div class="card text-white bg-cyan mb-3 h-100 hover-effect">
+            <div class="card-body d-flex flex-column">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h5 class="card-title mb-0">Refer In</h5>
+                <i class="bi bi-heart-pulse fs-4"></i>
+              </div>
+              <h2 class="card-value">{{ formatNumber(data.refer_in) }}</h2>
+              <div class="mt-auto pt-2">
+                <small class="text-white-50">Refer In</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <hr />
+
         <!-- survail Card -->
-        <div class="col-md-4">
+        <h2 class="dashboard-title">โรคระบาดวิทยา</h2>
+        <div class="col-12 col-sm-6 col-md-4">
           <div class="card text-white bg-max-red mb-3 h-100 hover-effect">
             <div class="card-body d-flex flex-column">
               <div
                 class="d-flex justify-content-between align-items-center mb-3"
               >
-                <h5 class="card-title mb-0">ระบาดวิทยา</h5>
-                <i class="bi bi-heart-pulse fs-4"></i>
+                <h5 class="card-title mb-0">โรคระบาดวิทยา</h5>
+                <i class="bi bi-virus2 fs-4"></i>
               </div>
               <h2 class="card-value">{{ formatNumber(data.surveil) }}</h2>
               <div class="mt-auto pt-2">
@@ -226,8 +411,13 @@ export default {
       endDate: "",
       data: {
         opd_all: 0,
+        ipd_all: 0,
         dm: 0,
         ht: 0,
+        ckd: 0,
+        tb: 0,
+        copd: 0,
+        thyroid: 0,
         physic: 0,
         physic_ipd: 0,
         health_med: 0,
@@ -235,6 +425,10 @@ export default {
         surveil: 0,
         er: 0,
         pcu: 0,
+        pd: 0,
+        refer_out: 0,
+        refer_in: 0,
+        sum_income: 0,
       },
       loading: false,
     };
@@ -254,7 +448,7 @@ export default {
       this.loading = true;
       try {
         const response = await axios.get(
-          `http://192.168.7.12/vue-app/vite-digital/backend/api-hosxe/get_dashboard_data.php`,
+          `http://192.168.7.12/vue-app/vite-digital/backend/api-hosxe/get_dashboard.php`,
           {
             params: { start_date: this.startDate, end_date: this.endDate },
           }
@@ -267,6 +461,16 @@ export default {
         this.loading = false;
       }
     },
+    goToOPDReport() {
+      this.$router.push({
+        path: "/opddashboardchart",
+      });
+    },
+    goToIPDReport() {
+      this.$router.push({
+        path: "/ipd-report",
+      });
+    },
     goToERReport() {
       this.$router.push({
         path: "/er-report",
@@ -275,6 +479,16 @@ export default {
     goToDentalReport() {
       this.$router.push({
         path: "/dental-report",
+      });
+    },
+    goToTTMReport() {
+      this.$router.push({
+        path: "/ttm-report",
+      });
+    },
+    goToPhysicReport() {
+      this.$router.push({
+        path: "/physic-report",
       });
     },
     formatNumber(num) {
@@ -303,7 +517,7 @@ export default {
 }
 
 .dashboard-title {
-  color: #2c3e50;
+  color: purple;
   font-weight: 700;
   margin-bottom: 0.5rem;
 }
@@ -341,17 +555,50 @@ export default {
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
 }
 
+.bg-pink {
+  background-color: #d63384 !important;
+}
 .bg-purple {
   background-color: #6f42c1 !important;
 }
 .bg-green {
-  background-color: #32ca24 !important;
+  background-color: #198754 !important;
 }
 .bg-queen {
   background-color: #436b95 !important;
 }
-.bg-max-red  {
+.bg-max-red {
   background-color: #d92121 !important;
+}
+.bg-grayscale {
+  background-color: #7a7a7a !important;
+}
+.bg-teal {
+  background-color: #20c997 !important;
+}
+.bg-cyan {
+  background-color: #0dcaf0 !important;
+}
+.bg-red-100 {
+  background-color: #f8bbd0 !important;
+}
+.bg-red-300 {
+  background-color: #f36c60 !important;
+}
+.bg-burlywood {
+  background-color: #deb887 !important;
+}
+.bg-dark-cyan {
+  background-color: #008b8b !important;
+}
+.bg-dark-magenta {
+  background-color: #8b008b !important;
+}
+.bg-dark-orchid {
+  background-color: #9932cc !important;
+}
+.bg-dark-orange {
+  background-color: #ff8c00 !important;
 }
 
 /* Responsive adjustments */

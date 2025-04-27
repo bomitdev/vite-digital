@@ -6,7 +6,7 @@
           <div class="d-flex justify-content-between align-items-center">
             <div>
               <h1 class="report-title mb-1">Dental Report</h1>
-              <p class="report-subtitle">ดูรายงานทันตกรรม กรุณาเลือกวันที่</p>
+              <p class="report-subtitle">ดูรายงานการทำหัตถการทันตกรรม กรุณาเลือกวันที่</p>
             </div>
             <i class="fas fa-tooth report-icon"></i>
           </div>
@@ -25,7 +25,7 @@
                     class="form-control form-control-lg"
                     @change="validateDates"
                   />
-                  <label for="startDate" class="fw-semibold">Start Date</label>
+                  <label for="startDate" class="fw-semibold">วันที่เริ่มต้น:</label>
                 </div>
               </div>
               <div class="col-md-6">
@@ -37,7 +37,7 @@
                     class="form-control form-control-lg"
                     @change="validateDates"
                   />
-                  <label for="endDate" class="fw-semibold">End Date</label>
+                  <label for="endDate" class="fw-semibold">วันที่สิ้นสุด:</label>
                 </div>
               </div>
             </div>
@@ -51,7 +51,7 @@
               :disabled="loading || !datesValid"
             >
               <span v-if="!loading">
-                <i class="fas fa-file-medical me-2"></i>Generate Report
+                <i class="fas fa-file-medical me-2"></i>ดูรายงาน
               </span>
               <span v-else>
                 <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -159,78 +159,100 @@
   
   <script>
   export default {
-    data() {
-      return {
-        startDate: '2024-10-01',
-        endDate: '2025-03-25',
-        data: [],
-        loading: false,
-        error: null,
-        currentTime: null
-      };
+  data() {
+    return {
+      startDate: '',
+      endDate: '',
+      data: [],
+      loading: false,
+      error: null,
+      currentTime: null
+    };
+  },
+  computed: {
+    formattedStartDate() {
+      return this.formatDate(this.startDate);
     },
-    computed: {
-      formattedStartDate() {
-        return this.formatDate(this.startDate);
-      },
-      formattedEndDate() {
-        return this.formatDate(this.endDate);
-      },
-      datesValid() {
-        if (!this.startDate || !this.endDate) return false;
-        return new Date(this.endDate) >= new Date(this.startDate);
-      }
+    formattedEndDate() {
+      return this.formatDate(this.endDate);
     },
-    methods: {
-      async fetchData() {
-        if (!this.datesValid) return;
-  
-        this.loading = true;
-        this.error = null;
-        try {
-          const response = await fetch(
-            `http://192.168.7.12/vue-app/vite-digital/backend/api-hosxe/dental/get_dental.php?start_date=${this.startDate}&end_date=${this.endDate}`
-          );
-          const result = await response.json();
-  
-          if (response.ok) {
-            this.data = result.data || [];
-            this.updateCurrentTime();
-          } else {
-            this.error = result.error || 'An error occurred while fetching data.';
-          }
-        } catch (err) {
-          this.error = 'Failed to fetch data. Please check your connection and try again.';
-          console.error(err);
-        } finally {
-          this.loading = false;
-        }
-      },
-      validateDates() {
-        if (new Date(this.endDate) < new Date(this.startDate)) {
-          this.error = 'วันที่ End Date น้อยกว่าวัน Start Date';
-        } else {
-          this.error = null;
-        }
-      },
-      formatDate(dateString) {
-        if (!dateString) return '';
-        const options = { year: 'numeric', month: 'short', day: 'numeric' };
-        return new Date(dateString).toLocaleDateString(undefined);
-      },
-      formatNumber(num) {
-        return parseInt(num || 0).toLocaleString();
-      },
-      updateCurrentTime() {
-        const now = new Date();
-        this.currentTime = now.toLocaleString();
-      }
-    },
-    mounted() {
-      this.updateCurrentTime();
-      
+    datesValid() {
+      if (!this.startDate || !this.endDate) return false;
+      return new Date(this.endDate) >= new Date(this.startDate);
     }
-  };
+  },
+  methods: {
+    async fetchData() {
+      if (!this.datesValid) return;
+
+      this.loading = true;
+      this.error = null;
+      try {
+        const response = await fetch(
+          `http://192.168.7.12/vue-app/vite-digital/backend/api-hosxe/dental/get_dental.php?start_date=${this.startDate}&end_date=${this.endDate}`
+        );
+        const result = await response.json();
+
+        if (response.ok) {
+          this.data = result.data || [];
+          this.updateCurrentTime();
+        } else {
+          this.error = result.error || 'An error occurred while fetching data.';
+        }
+      } catch (err) {
+        this.error = 'Failed to fetch data. Please check your connection and try again.';
+        console.error(err);
+      } finally {
+        this.loading = false;
+      }
+    },
+    validateDates() {
+      if (new Date(this.endDate) < new Date(this.startDate)) {
+        this.error = 'วันที่ End Date น้อยกว่าวัน Start Date';
+      } else {
+        this.error = null;
+      }
+    },
+    formatDate(dateString) {
+      if (!dateString) return '';
+      const options = { year: 'numeric', month: 'short', day: 'numeric' };
+      return new Date(dateString).toLocaleDateString(undefined);
+    },
+    formatNumber(num) {
+      return parseInt(num || 0).toLocaleString();
+    },
+    updateCurrentTime() {
+      const now = new Date();
+      this.currentTime = now.toLocaleString();
+    },
+    getCurrentFiscalYearRange() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = today.getMonth(); // 0-based (0 = Jan, 9 = Oct)
+
+      let startFiscalYear, endFiscalYear;
+      if (month >= 9) {
+        // ต.ค. ถึง ธ.ค.
+        startFiscalYear = `${year}-10-01`;
+        endFiscalYear = `${year + 1}-09-30`;
+      } else {
+        // ม.ค. ถึง ก.ย.
+        startFiscalYear = `${year - 1}-10-01`;
+        endFiscalYear = `${year}-09-30`;
+      }
+
+      return { start: startFiscalYear, end: endFiscalYear };
+    }
+  },
+  mounted() {
+    const { start, end } = this.getCurrentFiscalYearRange();
+    this.startDate = start;
+    this.endDate = end;
+    this.updateCurrentTime();
+    this.fetchData();
+  }
+};
+
   </script>
   
   <style scoped>

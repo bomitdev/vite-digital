@@ -2,7 +2,7 @@
   <div class="container-fluid">
     <div class="row">
       <div>
-        <div class="header-container">
+        <div class="header-container mt-2">
           <img src="../components/img/logo-cnmh.png" alt="Logo" class="logo" />
           <h1>โรงพยาบาลชานุมาน</h1>
         </div>
@@ -13,7 +13,7 @@
 
         <!-- Dropdown เลือกเดือน -->
         <div class="month-selector">
-          <label for="month">เลือกเดือน: </label>
+          <label for="month"> </label>
           <select v-model="selectedMonth" @change="fetchSchedule">
             <option v-for="(month, index) in months" :key="index" :value="index + 1">
               {{ month }}

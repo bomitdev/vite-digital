@@ -26,13 +26,13 @@
           </div>
         </div>
 
-        <div class="full-width-image">
+        <!-- <div class="full-width-image">
           <img
             src="/src/components/img/sla.png"
             class="sla-details-image"
             alt="Detailed SLA terms and conditions"
           />
-        </div>
+        </div> -->
       </div>
     </div>
   </div>

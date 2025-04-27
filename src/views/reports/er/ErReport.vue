@@ -71,26 +71,29 @@
           </div>
           <div class="card-body">
             <div class="row">
-              <!-- Emergency Level Cards -->
-              <div class="col-md-6 mb-3" v-for="(value, key) in data" :key="key">
-                <div
-                  class="stat-card card h-100"
-                  :class="getCardClass(key)"
-                >
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                      <h6 class="card-title mb-0">{{ translateKey(key) }}</h6>
-                      <i :class="getIconClass(key)"></i>
+              <div class="col-12">
+                <div class="list-group">
+                  <div
+                    class="list-group-item p-3 mb-2"
+                    v-for="(value, key) in data"
+                    :key="key"
+                    :class="getCardClass(key)"
+                  >
+                    <div
+                      class="d-flex justify-content-between align-items-center"
+                    >
+                      <div>
+                        <h6 class="mb-1">{{ translateKey(key) }}</h6>
+                        <h2 class="mb-0">{{ value }}</h2>
+                      </div>
+                      <i :class="getIconClass(key) + ' fs-3'"></i>
                     </div>
-                    <h2 class="card-value mt-3">{{ value }}</h2>
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
-        
       </div>
 
       <!-- Error/No Data State -->
@@ -112,8 +115,8 @@
 export default {
   data() {
     return {
-      startDate: '2024-10-01',
-      endDate: '2025-03-25',
+      startDate: "2024-10-01",
+      endDate: "2025-03-25",
       data: null,
       loading: false,
     };
@@ -129,7 +132,7 @@ export default {
         const result = await response.json();
         this.data = result;
       } catch (error) {
-        console.error('เกิดข้อผิดพลาด:', error);
+        console.error("เกิดข้อผิดพลาด:", error);
         this.data = null;
       } finally {
         this.loading = false;
@@ -137,33 +140,33 @@ export default {
     },
     translateKey(key) {
       const translations = {
-        Resuscitate: 'ผู้ป่วยวิกฤต (Resuscitate)',
-        Emergency: 'ผู้ป่วยฉุกเฉิน (Emergency)',
-        Urgency: 'ผู้ป่วยเร่งด่วน (Urgency)',
-        Semi_Urgency: 'ผู้ป่วยกึ่งเร่งด่วน (Semi Urgency)',
-        Non_Urgency: 'ผู้ป่วยไม่เร่งด่วน (Non Urgency)',
+        Resuscitate: "ผู้ป่วยวิกฤต (Resuscitate)",
+        Emergency: "ผู้ป่วยฉุกเฉิน (Emergency)",
+        Urgency: "ผู้ป่วยเร่งด่วน (Urgency)",
+        Semi_Urgency: "ผู้ป่วยกึ่งเร่งด่วน (Semi Urgency)",
+        Non_Urgency: "ผู้ป่วยไม่เร่งด่วน (Non Urgency)",
       };
       return translations[key] || key;
     },
     getCardClass(key) {
       const classes = {
-        Resuscitate: 'bg-danger text-white',
-        Emergency: 'bg-warning text-dark',
-        Urgency: 'bg-orange text-white',
-        Semi_Urgency: 'bg-info text-white',
-        Non_Urgency: 'bg-secondary text-white',
+        Resuscitate: "bg-red text-dark box-shadow",
+        Emergency: "bg-pink text-dark box-shadow",
+        Urgency: "bg-yellow text-dark box-shadow",
+        Semi_Urgency: "bg-green text-dark box-shadow",
+        Non_Urgency: "bg-whtie text-dark box-shadow",
       };
-      return classes[key] || 'bg-light text-dark';
+      return classes[key] || "bg-light text-dark ";
     },
     getIconClass(key) {
       const icons = {
-        Resuscitate: 'bi bi-heart-pulse-fill',
-        Emergency: 'bi bi-exclamation-triangle-fill',
-        Urgency: 'bi bi-clock-fill',
-        Semi_Urgency: 'bi bi-hourglass-split',
-        Non_Urgency: 'bi bi-check-circle-fill',
+        Resuscitate: "bi bi-heart-pulse-fill",
+        Emergency: "bi bi-exclamation-triangle-fill",
+        Urgency: "bi bi-clock-fill",
+        Semi_Urgency: "bi bi-hourglass-split",
+        Non_Urgency: "bi bi-check-circle-fill",
       };
-      return icons[key] || 'bi bi-question-circle-fill';
+      return icons[key] || "bi bi-question-circle-fill";
     },
   },
   mounted() {
@@ -173,6 +176,30 @@ export default {
 </script>
 
 <style scoped>
+/* เพิ่มสไตล์สำหรับ list group ที่ปรับแต่ง */
+.list-group-item {
+  border-radius: 8px !important;
+  border: none;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.list-group-item:hover {
+  transform: translateX(5px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* ปรับขนาดฟอนต์สำหรับ mobile */
+@media (max-width: 768px) {
+  .list-group-item h2 {
+    font-size: 1.5rem;
+  }
+
+  .list-group-item h6 {
+    font-size: 0.9rem;
+  }
+}
 .emergency-dashboard {
   background-color: #f8f9fa;
   min-height: 100vh;
@@ -215,9 +242,24 @@ export default {
   font-size: 1.8rem;
   margin: 0.5rem 0;
 }
+.box-shadow {
+  box-shadow: 4px 4px 4px 6px rgba(0, 0, 0, 0.1);
+}
 
-.bg-orange {
-  background-color: #fd7e14 !important;
+.bg-red {
+  background-color: red !important;
+}
+.bg-pink {
+  background-color: pink !important;
+}
+.bg-yellow {
+  background-color: yellow !important;
+}
+.bg-green {
+  background-color: green !important;
+}
+.bg-white {
+  background-color: white !important;
 }
 
 .data-table-card {
@@ -233,11 +275,11 @@ export default {
   .dashboard-title {
     font-size: 1.5rem;
   }
-  
+
   .date-range-card .col-md-4 {
     margin-bottom: 1rem;
   }
-  
+
   .card-value {
     font-size: 1.5rem;
   }

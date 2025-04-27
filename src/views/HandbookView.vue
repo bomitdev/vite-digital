@@ -1,140 +1,216 @@
 <template>
-  <div class="container mt-5">
-    <h3>📂 อัปโหลดคู่มือ PDF</h3>
+  <div class="container my-4">
+    <h3 class="mb-4">รายการไฟล์ PDF</h3>
 
-    <!-- Input เลือกไฟล์ -->
-    <div class="mb-3">
-      <input type="file" @change="handleFileUpload" class="form-control" />
-      <small v-if="selectedFile">📄 ไฟล์ที่เลือก: {{ selectedFile.name }}</small>
-    </div>
-
-    <!-- ปุ่มอัปโหลด -->
-    <button class="btn btn-primary" @click="uploadFile" :disabled="isUploading">
-      <span v-if="isUploading">🚀 กำลังอัปโหลด...</span>
-      <span v-else>📤 อัปโหลด</span>
-    </button>
-
-    <!-- แสดงความคืบหน้า -->
-    <div v-if="uploadProgress > 0" class="progress mt-2">
-      <div class="progress-bar" :style="{ width: uploadProgress + '%' }">
-        {{ uploadProgress }}%
+    <!-- Upload Form with Drag and Drop -->
+    <form @submit.prevent="handleUpload" class="mb-4">
+      <div
+        class="row g-2 align-items-center"
+        @dragover.prevent
+        @drop="handleDrop"
+        :class="{'drag-over': isDragging}"
+      >
+        <div class="col-md-6">
+          <input
+            type="file"
+            class="form-control"
+            accept="application/pdf"
+            @change="handleFileChange"
+          />
+        </div>
+        <div class="col-md-2">
+          <button
+            type="submit"
+            class="btn btn-success w-100"
+            :disabled="!selectedFile || uploading"
+          >
+            {{ uploading ? "กำลังอัปโหลด..." : "อัปโหลด PDF" }}
+          </button>
+        </div>
       </div>
+    </form>
+
+    <div v-if="loading" class="text-center">
+      <div class="spinner-border text-primary" role="status"></div>
     </div>
 
-    <!-- แสดงข้อความแจ้งเตือน -->
-    <div v-if="message" class="alert mt-3" :class="alertClass">
-      {{ message }}
+    <!-- PDF Table -->
+    <div v-else>
+      <div v-if="files.length > 0">
+        <table class="table table-bordered table-hover">
+          <thead class="table-light">
+            <tr>
+              <th>ชื่อไฟล์</th>
+              <th>วันที่อัปโหลด</th>
+              <th>ดูไฟล์</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="file in files" :key="file.id">
+              <td>{{ file.file_name }}</td>
+              <td>{{ formatDate(file.uploaded_at) }}</td>
+              <td>
+                <a
+                  :href="getFileUrl(file.file_path)"
+                  target="_blank"
+                  class="btn btn-sm btn-outline-primary"
+                >
+                  เปิดไฟล์
+                </a>
+              </td>
+              <td>
+                <button
+                  class="btn btn-sm btn-danger"
+                  @click="confirmDelete(file)"
+                >
+                  ลบ
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-else class="alert alert-warning">ไม่พบไฟล์ PDF</div>
     </div>
-
-    <hr />
-
-    <!-- รายการไฟล์ PDF -->
-    <h4>📄 รายการคู่มือ</h4>
-    <ul v-if="files.length > 0" class="list-group">
-      <li v-for="file in files" :key="file.id" class="list-group-item d-flex justify-content-between align-items-center">
-        <span>📑 {{ file.filename }}</span>
-        <a :href="file.path" target="_blank"  class="btn btn-success btn-sm">🔗 เปิดไฟล์</a> 
-        
-      </li>
-    </ul>
-    <p v-else>⏳ กำลังโหลดข้อมูล...</p>
   </div>
 </template>
 
 <script>
-import axios from "axios";
-
 export default {
+  name: "PdfFileList",
   data() {
     return {
-      selectedFile: null,
-      uploadProgress: 0,
-      message: "",
-      alertClass: "",
-      isUploading: false,
       files: [],
+      loading: true,
+      selectedFile: null,
+      uploading: false,
+      isDragging: false, // สำหรับตรวจสอบว่าไฟล์กำลังถูกลากเข้ามาหรือไม่
     };
   },
+  mounted() {
+    this.fetchPdfFiles();
+  },
   methods: {
-    // เมื่อเลือกไฟล์
-    handleFileUpload(event) {
+    async fetchPdfFiles() {
+      this.loading = true;
+      try {
+        const response = await fetch(
+          "http://192.168.7.12/vue-app/vite-digital/backend/api-digital/get_files_pdf.php"
+        );
+        if (!response.ok) throw new Error("Network response was not ok");
+        const data = await response.json();
+        this.files = data;
+      } catch (error) {
+        console.error("Error fetching PDF files:", error);
+      } finally {
+        this.loading = false;
+      }
+    },
+    handleFileChange(event) {
       this.selectedFile = event.target.files[0];
     },
-
-    // อัปโหลดไฟล์
-    async uploadFile() {
-      if (!this.selectedFile) {
-        this.showMessage("⚠️ กรุณาเลือกไฟล์ก่อน", "alert-warning");
-        return;
+    handleDrop(event) {
+      event.preventDefault();
+      const file = event.dataTransfer.files[0];
+      if (file && file.type === "application/pdf") {
+        this.selectedFile = file;
+      } else {
+        alert("โปรดลากไฟล์ PDF เท่านั้น");
       }
+      this.isDragging = false;
+    },
+    handleDragOver(event) {
+      event.preventDefault();
+      this.isDragging = true;
+    },
+    handleDragLeave() {
+      this.isDragging = false;
+    },
+    async handleUpload() {
+      if (!this.selectedFile) return;
 
-      const fileExtension = this.selectedFile.name.split('.').pop().toLowerCase();
-      if (fileExtension !== 'pdf') {
-        this.showMessage("⚠️ อนุญาตเฉพาะไฟล์ PDF เท่านั้น", "alert-danger");
-        return;
-      }
-
-      let formData = new FormData();
-      formData.append("file", this.selectedFile);
-
-      this.isUploading = true;
-      this.uploadProgress = 0;
+      this.uploading = true;
+      const formData = new FormData();
+      formData.append("pdf_file", this.selectedFile);
 
       try {
-        const response = await axios.post("http://192.168.7.12/vue-app/vite-digital/backend/api-digital/upload.php", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-          onUploadProgress: (progressEvent) => {
-            this.uploadProgress = Math.round((progressEvent.loaded / progressEvent.total) * 100);
-          },
-        });
+        const response = await fetch(
+          "http://192.168.7.12/vue-app/vite-digital/backend/api-digital/upload_pdf.php",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
 
-        this.showMessage("✅ " + response.data.message, "alert-success");
-        this.fetchFiles(); // โหลดไฟล์ใหม่
+        const result = await response.json();
+
+        if (result.success) {
+          alert("อัปโหลดสำเร็จ!");
+          this.selectedFile = null;
+          this.fetchPdfFiles(); // refresh list
+        } else {
+          alert(result.error || "เกิดข้อผิดพลาดในการอัปโหลด");
+        }
       } catch (error) {
-        this.showMessage("❌ อัปโหลดล้มเหลว: " + (error.response?.data?.message || error.message), "alert-danger");
+        console.error("Upload error:", error);
+        alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
       } finally {
-        this.isUploading = false;
-        this.uploadProgress = 0;
+        this.uploading = false;
       }
     },
+    getFileUrl(filePath) {
+      return `http://192.168.7.12/vue-app/vite-digital/backend/api-digital/uploads/${filePath}`;
+    },
+    formatDate(dateString) {
+      const options = {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      };
+      return new Date(dateString).toLocaleDateString("th-TH", options);
+    },
+    async confirmDelete(file) {
+      if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบไฟล์ "${file.file_name}" ?`))
+        return;
 
-    // ดึงข้อมูลไฟล์จากเซิร์ฟเวอร์
-    async fetchFiles() {
       try {
-        const response = await axios.get("http://192.168.7.12/vue-app/vite-digital/backend/api-digital/get_files.php");
-        this.files = response.data;
+        const response = await fetch(
+          "http://192.168.7.12/vue-app/vite-digital/backend/api-digital/delete_pdf.php",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: file.id, file_path: file.file_path }),
+          }
+        );
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert("ลบไฟล์สำเร็จ");
+          this.fetchPdfFiles(); // รีเฟรชรายการ
+        } else {
+          alert(result.error || "ลบไฟล์ไม่สำเร็จ");
+        }
       } catch (error) {
-        console.error("⛔ เกิดข้อผิดพลาดในการโหลดไฟล์", error);
+        console.error("Delete error:", error);
+        alert("เกิดข้อผิดพลาดในการลบไฟล์");
       }
     },
-
-    // แสดงข้อความแจ้งเตือน
-    showMessage(text, type) {
-      this.message = text;
-      this.alertClass = type;
-      setTimeout(() => {
-        this.message = "";
-      }, 5000);
-    },
-  },
-
-  mounted() {
-    this.fetchFiles();
   },
 };
 </script>
 
 <style scoped>
-.container {
-  max-width: 600px;
+.table th,
+.table td {
+  vertical-align: middle;
 }
-.progress {
-  height: 20px;
-}
-.progress-bar {
-  background-color: #28a745;
-}
-.list-group {
-  margin-top: 20px;
+
+.drag-over {
+  border: 2px dashed #007bff;
+  background-color: #f1f1f1;
 }
 </style>
