@@ -87,6 +87,12 @@ const routes = [
     component: () => import('../views/backoffice/AdminDocumentCenter.vue'),
     meta: { requiresAuth: true } // ต้องล็อกอิน
   },
+  // Git Sync
+  {
+    path: '/git-sync',
+    component: () => import('../views/backoffice/GitSync.vue'),
+    meta: { requiresAuth: true }
+  },
   // Computer Repair
   {
     path: '/computer-repair',
