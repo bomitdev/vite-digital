@@ -1,0 +1,7 @@
+{
+    "name": "vue-app/vite-digital-backend",
+    "description": "Backend for vite digital project",
+    "require": {
+        "vlucas/phpdotenv": "^5.0"
+    }
+}
