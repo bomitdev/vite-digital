@@ -95,7 +95,7 @@ if ($action === 'push') {
 } else if ($action === 'pull') {
     $logOutput = "--- Starting Git Pull ---\n";
     
-    $pullCommand = "git pull origin main";
+    $pullCommand = "git pull origin main --allow-unrelated-histories";
     $logOutput .= "> " . $pullCommand . "\n";
     
     $pullResult = runGitCommand($pullCommand, $projectRoot);
