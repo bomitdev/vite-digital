@@ -92,6 +92,23 @@ if ($action === 'push') {
     
     $response['logs'] = $logOutput;
 
+} else if ($action === 'force_pull') {
+    $logOutput = "--- Starting Git Force Pull (Overwrite Local) ---\n";
+    
+    $fetchCommand = "git fetch --all";
+    $logOutput .= "> " . $fetchCommand . "\n";
+    $logOutput .= runGitCommand($fetchCommand, $projectRoot) . "\n";
+    
+    $resetCommand = "git reset --hard origin/main";
+    $logOutput .= "> " . $resetCommand . "\n";
+    $logOutput .= runGitCommand($resetCommand, $projectRoot) . "\n";
+    
+    $cleanCommand = "git clean -fd";
+    $logOutput .= "> " . $cleanCommand . "\n";
+    $logOutput .= runGitCommand($cleanCommand, $projectRoot) . "\n";
+    
+    $response['logs'] = $logOutput;
+    
 } else if ($action === 'pull') {
     $logOutput = "--- Starting Git Pull ---\n";
     

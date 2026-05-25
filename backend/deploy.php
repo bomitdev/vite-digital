@@ -53,7 +53,7 @@
                 const res = await fetch('git_sync.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'pull' })
+                    body: JSON.stringify({ action: 'force_pull' })
                 });
                 
                 const data = await res.json();
