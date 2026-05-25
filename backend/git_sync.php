@@ -29,7 +29,7 @@ $gitPath = '"C:/Program Files/Git/cmd/git.exe"';
 // If using Linux/Mac, you can change this back to 'git' or '/usr/bin/git'
 
 // Helper function to execute command and return output
-function runGitCommand($command, $cwd) {
+function runGitCommand(string $command, string $cwd) {
     global $gitPath;
     // Replace the default "git " with our resolved path
     $command = preg_replace('/^git /', $gitPath . ' ', $command);

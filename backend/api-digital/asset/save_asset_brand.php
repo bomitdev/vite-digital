@@ -14,14 +14,20 @@ try {
     $data = json_decode(file_get_contents("php://input"), true);
 
     if (empty($data['name'])) {
-        throw new Exception("Name is required.");
+        echo json_encode(['status' => 'error', 'message' => 'Name is required.']);
+        exit();
     }
 
     $stmt = $pdo2->prepare("INSERT INTO asset_brands (brand_name) VALUES (:name)");
     $stmt->execute([':name' => $data['name']]);
 
     echo json_encode(['status' => 'success', 'message' => 'Brand added successfully']);
+} catch (PDOException $e) {
+    if ($e->getCode() == 23000) {
+        echo json_encode(['status' => 'error', 'message' => 'Brand already exists.']);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $e->getMessage()]);
+    }
 } catch (Exception $e) {
-    http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }

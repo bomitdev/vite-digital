@@ -14,14 +14,16 @@ try {
     $data = json_decode(file_get_contents("php://input"), true);
 
     if (empty($data['name'])) {
-        throw new Exception("Name is required.");
+        echo json_encode(['status' => 'error', 'message' => 'Name is required.']);
+        exit();
     }
 
     // Check duplicate
     $stmt = $pdo2->prepare("SELECT COUNT(*) FROM asset_units WHERE name = ?");
     $stmt->execute([$data['name']]);
     if ($stmt->fetchColumn() > 0) {
-        throw new Exception("Unit already exists.");
+        echo json_encode(['status' => 'error', 'message' => 'Unit already exists.']);
+        exit();
     }
 
     $stmt = $pdo2->prepare("INSERT INTO asset_units (name) VALUES (:name)");
@@ -29,6 +31,5 @@ try {
 
     echo json_encode(['status' => 'success', 'message' => 'Unit added successfully']);
 } catch (Exception $e) {
-    http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }

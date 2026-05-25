@@ -738,10 +738,12 @@ export default {
             showConfirmButton: false,
             timer: 1500
           });
+        } else {
+          Swal.fire('Error', res.data.message || 'Failed', 'error');
         }
       } catch (e) {
         console.error(e);
-        Swal.fire('Error', 'Failed', 'error');
+        Swal.fire('Error', e.response?.data?.message || 'Failed', 'error');
       }
     },
     async fetchSources() {
@@ -777,10 +779,12 @@ export default {
             showConfirmButton: false,
             timer: 1500
           });
+        } else {
+          Swal.fire('Error', res.data.message || 'Failed', 'error');
         }
       } catch (e) {
         console.error(e);
-        Swal.fire('Error', 'Failed', 'error');
+        Swal.fire('Error', e.response?.data?.message || 'Failed', 'error');
       }
     },
     async fetchHRPeople() {
@@ -932,10 +936,12 @@ export default {
             showConfirmButton: false,
             timer: 1500
           });
+        } else {
+          Swal.fire('Error', res.data.message || 'Failed', 'error');
         }
       } catch (e) {
         console.error(e);
-        Swal.fire('Error', 'Failed', 'error');
+        Swal.fire('Error', e.response?.data?.message || 'Failed', 'error');
       }
     },
     async fetchUnits() {
@@ -971,10 +977,12 @@ export default {
             showConfirmButton: false,
             timer: 1500
           });
+        } else {
+          Swal.fire('Error', res.data.message || 'Failed', 'error');
         }
       } catch (e) {
         console.error(e);
-        Swal.fire('Error', 'Failed', 'error');
+        Swal.fire('Error', e.response?.data?.message || 'Failed', 'error');
       }
     },
     async fetchBrands() {
