@@ -130,9 +130,7 @@ export default {
     return {
       availableFolders: [
         { name: 'Frontend (src)', path: 'src' },
-        { name: 'Frontend Public', path: 'public' },
-        { name: 'Backend API', path: 'backend' },
-        { name: 'Root Configs (package.json, etc.)', path: '.' }
+        { name: 'Backend API', path: 'backend' }
       ],
       selectedFolders: ['src', 'backend'], // Default selected
       loading: false,
