@@ -152,7 +152,7 @@
               class="dropdown-menu dropdown-menu-end mega-dropdown animate slideIn"
               :class="{ show: activeDropdown === 'link' }"
               aria-labelledby="linkCenter"
-              style="overflow-y: auto; max-height: 80vh;"
+              style="overflow-y: auto; max-height: 80vh"
             >
               <li><h6 class="dropdown-header">MOPH Systems</h6></li>
               <li>
@@ -175,7 +175,10 @@
                 >
               </li>
               <li>
-                <a class="dropdown-item" href="https://moph-appointment-cms.moph.go.th/login" target="_blank"
+                <a
+                  class="dropdown-item"
+                  href="https://moph-appointment-cms.moph.go.th/login"
+                  target="_blank"
                   ><i class="bi bi-calendar-event"></i> Moph Appointment CMS</a
                 >
               </li>
@@ -318,14 +321,6 @@
               <li>
                 <a
                   class="dropdown-item"
-                  href="https://bdh-service.moph.go.th/smarthosp-quest/"
-                  target="_blank"
-                  ><i class="bi bi-clipboard-check fa-fw me-2"></i> ระบบประเมิน รพ.อัจฉริยะ 2568
-                </a>
-              </li>
-              <li>
-                <a
-                  class="dropdown-item"
                   href="https://bdh-service.moph.go.th/smarthosp2569/"
                   target="_blank"
                   ><i class="bi bi-clipboard-check fa-fw me-2"></i> ระบบประเมิน รพ.อัจฉริยะ 2569
@@ -398,10 +393,7 @@
                 >
               </li>
               <li>
-                <a
-                  class="dropdown-item"
-                  href="https://hosbox.id.th/"
-                  target="_blank"
+                <a class="dropdown-item" href="https://hosbox.id.th/" target="_blank"
                   ><i class="bi bi-mortarboard fa-fw me-2"></i>ONE-BOX</a
                 >
               </li>
@@ -417,7 +409,10 @@
                 >
               </li>
               <li>
-                <a class="dropdown-item" href="https://eoffice-chanuman.moph.go.th/api/auth/login" target="_blank"
+                <a
+                  class="dropdown-item"
+                  href="https://eoffice-chanuman.moph.go.th/api/auth/login"
+                  target="_blank"
                   ><i class="bi bi-grid-3x3-gap fa-fw me-2"></i>ระบบสารบรรณ Eoffice Moph</a
                 >
               </li>
