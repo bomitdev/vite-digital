@@ -15,10 +15,10 @@
           </button>
         </div>
 
-        <div class="row g-4">
+        <div class="row g-4 justify-content-center">
           <!-- Push Card -->
-          <div class="col-md-6">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
+          <div class="col-md-8">
+            <div class="card border-0 shadow-sm rounded-4">
               <div class="card-body p-4">
                 <div class="d-flex align-items-center mb-3">
                   <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3">
@@ -42,55 +42,27 @@
                   </div>
                 </div>
 
-                <button 
-                  class="btn btn-primary w-100 rounded-pill py-2 fw-bold shadow-sm" 
-                  @click="confirmAction('push')"
-                  :disabled="loading || selectedFolders.length === 0"
-                >
-                  <span v-if="loadingAction === 'push'" class="spinner-border spinner-border-sm me-2"></span>
-                  <i v-else class="bi bi-upload me-2"></i> เริ่มการอัพโหลด
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Pull Card -->
-          <div class="col-md-6">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-              <div class="card-body p-4">
-                <div class="d-flex align-items-center mb-3">
-                  <div class="bg-success bg-opacity-10 p-3 rounded-circle me-3">
-                    <i class="bi bi-cloud-arrow-down text-success fs-4"></i>
+                <div class="row g-3">
+                  <div class="col-sm-8">
+                    <button 
+                      class="btn btn-primary w-100 rounded-pill py-2 fw-bold shadow-sm" 
+                      @click="confirmAction('push')"
+                      :disabled="loading || selectedFolders.length === 0"
+                    >
+                      <span v-if="loadingAction === 'push'" class="spinner-border spinner-border-sm me-2"></span>
+                      <i v-else class="bi bi-upload me-2"></i> เริ่มการอัพโหลด
+                    </button>
                   </div>
-                  <div>
-                    <h5 class="fw-bold mb-0">ดึงข้อมูลล่าสุด (Pull)</h5>
-                    <small class="text-muted">อัพเดทไฟล์ในเครื่องเซิร์ฟเวอร์จาก GitHub</small>
+                  <div class="col-sm-4">
+                    <button 
+                      class="btn btn-outline-secondary w-100 rounded-pill py-2 fw-bold" 
+                      @click="performAction('status')"
+                      :disabled="loading"
+                    >
+                      <span v-if="loadingAction === 'status'" class="spinner-border spinner-border-sm me-2"></span>
+                      <i v-else class="bi bi-info-circle me-2"></i> สถานะ (Status)
+                    </button>
                   </div>
-                </div>
-
-                <div class="alert alert-warning border-0 rounded-4 my-4">
-                  <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                  <strong>คำเตือน:</strong> การดึงข้อมูลจะนำโค้ดล่าสุดจาก GitHub มาทับโค้ดปัจจุบันในเซิร์ฟเวอร์ โปรดตรวจสอบให้แน่ใจว่าไม่มีการแก้ไขโค้ดที่ยังไม่ได้อัพโหลด
-                </div>
-
-                <div class="mt-auto pt-3">
-                  <button 
-                    class="btn btn-success w-100 rounded-pill py-2 fw-bold shadow-sm mt-3" 
-                    @click="confirmAction('pull')"
-                    :disabled="loading"
-                  >
-                    <span v-if="loadingAction === 'pull'" class="spinner-border spinner-border-sm me-2"></span>
-                    <i v-else class="bi bi-download me-2"></i> ดึงข้อมูลอัพเดท
-                  </button>
-                  
-                  <button 
-                    class="btn btn-outline-secondary w-100 rounded-pill py-2 fw-bold mt-2" 
-                    @click="performAction('status')"
-                    :disabled="loading"
-                  >
-                    <span v-if="loadingAction === 'status'" class="spinner-border spinner-border-sm me-2"></span>
-                    <i v-else class="bi bi-info-circle me-2"></i> ตรวจสอบสถานะ (Status)
-                  </button>
                 </div>
               </div>
             </div>
@@ -140,21 +112,16 @@ export default {
   },
   methods: {
     async confirmAction(action) {
-      let title = action === 'push' ? 'ยืนยันการอัพโหลด?' : 'ยืนยันการดึงข้อมูล?';
-      let text = action === 'push' 
-        ? `คุณกำลังจะอัพโหลดโฟลเดอร์ที่เลือกไปยัง GitHub`
-        : `คุณกำลังจะดึงข้อมูลล่าสุดจาก GitHub มาทับไฟล์ในเซิร์ฟเวอร์`;
-      let confirmBtn = action === 'push' ? 'อัพโหลด' : 'ดึงข้อมูล';
-      let confirmColor = action === 'push' ? '#0d6efd' : '#198754';
-
+      if (action !== 'push') return;
+      
       const result = await Swal.fire({
-        title: title,
-        text: text,
+        title: 'ยืนยันการอัพโหลด?',
+        text: 'คุณกำลังจะอัพโหลดโฟลเดอร์ที่เลือกไปยัง GitHub',
         icon: 'question',
         showCancelButton: true,
-        confirmButtonColor: confirmColor,
+        confirmButtonColor: '#0d6efd',
         cancelButtonColor: '#6c757d',
-        confirmButtonText: confirmBtn,
+        confirmButtonText: 'อัพโหลด',
         cancelButtonText: 'ยกเลิก'
       });
 
