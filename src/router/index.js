@@ -300,6 +300,13 @@ const routes = [
     component: () => import('../views/backoffice/ReportCenter/ReportAdmin.vue'),
     meta: { requiresAuth: true }
   },
+  
+  // Procurement
+  {
+    path: '/procurement',
+    component: () => import('../views/procurement/ProcurementDashboard.vue'),
+    meta: { requiresAuth: true }
+  },
 
   { path: '/:pathMatch(.*)*', component: () => import('../views/errors/Page404.vue') } // แก้ไขจาก pathMathch เป็น pathMatch
 ];

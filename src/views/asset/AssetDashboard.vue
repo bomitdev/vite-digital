@@ -108,7 +108,7 @@
                       <div class="fw-bold">{{ asset.name }}</div>
                       <div class="small text-muted">{{ asset.brand }} {{ asset.model }}</div>
                     </td>
-                    <td>{{ asset.type }}</td>
+                    <td>{{ asset.category_name || asset.type }}</td>
                     <td>
                       <span class="badge bg-light text-dark border">{{ asset.os || '-' }}</span>
                     </td>

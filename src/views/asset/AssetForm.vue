@@ -1020,17 +1020,20 @@ export default {
     onTypeChange() {
       if (this.genCode.typeCode) {
         const t = this.types.find((x) => x.code == this.genCode.typeCode);
-        if (t) this.form.type = t.name;
+        if (t) {
+          this.form.type = t.name;
+          this.form.name = t.name;
+        }
       }
     },
     updateCode() {},
     applyCode() {
       if (this.generatedCode) {
         this.form.asset_code = this.generatedCode;
-        // Auto-fill name from category when applying code
-        const cat = this.categories.find((c) => c.code == this.genCode.categoryId);
-        if (cat) {
-          this.form.name = cat.name;
+        // Auto-fill name from type (คุณลักษณะ) when applying code
+        const t = this.types.find((x) => x.code == this.genCode.typeCode);
+        if (t) {
+          this.form.name = t.name;
         }
       }
     },
