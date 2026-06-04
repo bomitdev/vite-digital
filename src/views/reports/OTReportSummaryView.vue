@@ -138,7 +138,7 @@
           <!-- Signatures Section -->
           <div class="memo-signatures">
             <!-- Signature 1: Requester -->
-            <div class="signature-block ms-auto text-center" style="width: 50%">
+            <div class="signature-block ms-auto text-center" style="width: 55%">
              <br>
               <div class="mb-1">(นายศราวุฒิ แสนโท)</div>
               <div>นักวิชาการคอมพิวเตอร์ปฏิบัติการ</div>
@@ -150,9 +150,9 @@
               <div class="mb-1">เรียน ผู้อำนวยการโรงพยาบาลชานุมาน</div>
               <div class="ps-5">- ได้ตรวจสอบถูกต้องแล้ว</div>
               <div class="ps-5 mb-2">- เห็นควรอนุมัติ</div>
-              <div class="signature-block ms-auto text-center" style="width: 50%">
+               <div class="signature-block text-center mt-2 text-nowrap" style="width: 30%">
                 <br>
-                <div class="mb-1">(นายธนากร คนเพียร)</div>
+                <div class="mb-1 mt-2">(นายธนากร คนเพียร)</div>
                 <div>นายแพทย์ชำนาญการ รักษาการในตำแหน่ง</div>
                 <div>หัวหน้ากลุ่มงานบริหารทั่วไป</div>
               </div>
@@ -160,7 +160,7 @@
 
             <!-- Signature 3: Approval -->
             <div class="signature-block mt-5">
-              <div class="signature-block ms-auto text-center" style="width: 50%">
+              <div class="signature-block ms-auto text-center" style="width: 55%">
                 <div class="mb-3">อนุมัติ</div>
                 <br>
                 <div class="mb-1">(นายธนากร คนเพียร)</div>

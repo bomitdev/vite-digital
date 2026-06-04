@@ -489,13 +489,48 @@
                   </div>
                   <div class="col-md-6">
                     <label class="form-label">วิธีการได้รับ</label>
-                    <select v-model="form.acquisition_method" class="form-select">
-                      <option value="">-- เลือก --</option>
-                      <option value="ซื้อ">ซื้อ</option>
-                      <option value="เช่า">เช่า</option>
-                      <option value="บริจาค">บริจาค</option>
-                      <option value="ยืม">ยืม</option>
-                    </select>
+                    <div class="input-group">
+                      <select v-model="form.acquisition_method" class="form-select" v-if="!isAddingAcquisitionMethod">
+                        <option value="">-- เลือก --</option>
+                        <option v-for="am in acquisitionMethods" :key="am.id" :value="am.name">
+                          {{ am.name }}
+                        </option>
+                      </select>
+                      <button
+                        class="btn btn-outline-secondary"
+                        type="button"
+                        @click="enableAddAcquisitionMethod"
+                        v-if="!isAddingAcquisitionMethod"
+                      >
+                        +
+                      </button>
+
+                      <input
+                        type="text"
+                        v-model="newAcquisitionMethodInput"
+                        class="form-control"
+                        placeholder="ระบุวิธีการได้รับ"
+                        v-if="isAddingAcquisitionMethod"
+                        ref="newAcquisitionMethodRef"
+                        @keyup.enter="saveNewAcquisitionMethod"
+                      />
+                      <button
+                        class="btn btn-success"
+                        type="button"
+                        @click="saveNewAcquisitionMethod"
+                        v-if="isAddingAcquisitionMethod"
+                      >
+                        <i class="bi bi-check"></i>
+                      </button>
+                      <button
+                        class="btn btn-outline-danger"
+                        type="button"
+                        @click="isAddingAcquisitionMethod = false"
+                        v-if="isAddingAcquisitionMethod"
+                      >
+                        <i class="bi bi-x"></i>
+                      </button>
+                    </div>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label">แหล่งที่มา/บริษัท</label>
@@ -675,7 +710,10 @@ export default {
       hrDepartments: [],
       sources: [],
       isAddingSource: false,
-      newSourceInput: ''
+      newSourceInput: '',
+      acquisitionMethods: [],
+      isAddingAcquisitionMethod: false,
+      newAcquisitionMethodInput: ''
     };
   },
   computed: {
@@ -703,6 +741,7 @@ export default {
     this.fetchHRPeople();
     this.fetchHRDepartments();
     this.fetchSources();
+    this.fetchAcquisitionMethods();
   },
   methods: {
     async fetchOSList() {
@@ -752,6 +791,47 @@ export default {
         if (res.data.status === 'success') this.sources = res.data.data;
       } catch (e) {
         console.error(e);
+      }
+    },
+    async fetchAcquisitionMethods() {
+      try {
+        const res = await axios.get('/api-digital/asset/get_asset_acquisition_methods.php');
+        if (res.data.status === 'success') this.acquisitionMethods = res.data.data;
+      } catch (e) {
+        console.error(e);
+      }
+    },
+    enableAddAcquisitionMethod() {
+      this.isAddingAcquisitionMethod = true;
+      this.newAcquisitionMethodInput = '';
+      this.$nextTick(() => {
+        if (this.$refs.newAcquisitionMethodRef) this.$refs.newAcquisitionMethodRef.focus();
+      });
+    },
+    async saveNewAcquisitionMethod() {
+      if (!this.newAcquisitionMethodInput.trim()) return;
+      try {
+        const res = await axios.post('/api-digital/asset/save_asset_acquisition_method.php', {
+          name: this.newAcquisitionMethodInput
+        });
+        if (res.data.status === 'success') {
+          await this.fetchAcquisitionMethods();
+          this.form.acquisition_method = this.newAcquisitionMethodInput;
+          this.isAddingAcquisitionMethod = false;
+          Swal.fire({
+            icon: 'success',
+            title: 'Saved',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 1500
+          });
+        } else {
+          Swal.fire('Error', res.data.message || 'Failed', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        Swal.fire('Error', e.response?.data?.message || 'Failed', 'error');
       }
     },
     enableAddSource() {

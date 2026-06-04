@@ -65,7 +65,7 @@
       <div class="col">
         <div class="card shadow-sm border-0 border-start border-4 border-success h-100">
           <div class="card-body">
-            <h6 class="text-muted text-uppercase fw-bold mb-2">จัดเก็บได้จริง (บาท)</h6>
+            <h6 class="text-muted text-uppercase fw-bold mb-2">เรียกเก็บได้ (บาท)</h6>
             <h3 class="text-success fw-bold mb-0">{{ formatCurrency(totalCollected) }}</h3>
           </div>
         </div>
@@ -73,7 +73,7 @@
       <div class="col">
         <div class="card shadow-sm border-0 border-start border-4 border-purple h-100">
           <div class="card-body">
-            <h6 class="text-muted text-uppercase fw-bold mb-2">Statement รวม (บาท)</h6>
+            <h6 class="text-muted text-uppercase fw-bold mb-2">จัดเก็บได้จริง(Statement) รวม (บาท)</h6>
             <h3 class="text-purple fw-bold mb-0" style="color: #6f42c1">
               {{ formatCurrency(totalStatement) }}
             </h3>
@@ -170,8 +170,8 @@
               <tr>
                 <th class="py-3 ps-3">รายการรายได้</th>
                 <th class="py-3 text-end">เป้าหมาย (บาท)</th>
-                <th class="py-3 text-end">เก็บได้จริง (บาท)</th>
-                <th class="py-3 text-end">ยอด Statement</th>
+                <th class="py-3 text-end">เรียกเก็บได้ (บาท)</th>
+                <th class="py-3 text-end">ยอดเรียกเก็บได้จริง(Statement)</th>
                 <th class="py-3 text-end">% ความสำเร็จ</th>
                 <th class="py-3">ผู้รับผิดชอบ</th>
                 <th class="py-3 pe-3">อัปเดตล่าสุด</th>
@@ -312,7 +312,7 @@
                   <tr>
                     <th class="py-3">เดือนที่รายงาน</th>
                     <th class="py-3">จำนวนผลงาน</th>
-                    <th class="py-3">ยอดจัดเก็บได้จริง</th>
+                    <th class="py-3">ยอดจัดเก็บ</th>
                     <th class="py-3">หมายเหตุ</th>
                     <th class="py-3">จัดการ</th>
                   </tr>
@@ -387,7 +387,7 @@
                   <tr>
                     <th class="py-3">งวดเดือน</th>
                     <th class="py-3">วันที่ได้รับ</th>
-                    <th class="py-3">ยอด Statement (บาท)</th>
+                    <th class="py-3">ยอดเรียกเก็บได้จริง(Statement) (บาท)</th>
                     <th class="py-3">หมายเหตุ</th>
                     <th class="py-3">จัดการ</th>
                   </tr>
@@ -718,7 +718,7 @@ export default {
         title: 'แก้ไขผลงาน',
         html:
           `<div class="text-start mb-3"><label class="form-label">จำนวนผลงาน</label><input id="swal-achieved" type="number" step="0.01" class="form-control" value="${r.achieved_items !== null ? r.achieved_items : ''}"></div>` +
-          `<div class="text-start mb-3"><label class="form-label">ยอดจัดเก็บได้จริง (บาท)</label><input id="swal-collected" type="number" step="0.01" class="form-control" value="${r.collected_amount}"></div>` +
+          `<div class="text-start mb-3"><label class="form-label">ยอดเรียกเก็บได้(บาท)</label><input id="swal-collected" type="number" step="0.01" class="form-control" value="${r.collected_amount}"></div>` +
           `<div class="text-start mb-3"><label class="form-label">หมายเหตุ</label><textarea id="swal-remark" class="form-control">${r.remark || ''}</textarea></div>`,
         focusConfirm: false,
         showCancelButton: true,
@@ -869,7 +869,7 @@ export default {
         html:
           `<div class="text-start mb-3"><label class="form-label">งวดเดือน</label><select id="stmt-month" class="form-select">${optionsHtml}</select></div>` +
           `<div class="text-start mb-3"><label class="form-label">วันที่ได้รับ</label><input id="stmt-date" type="date" class="form-control" value="${defaultDate}"></div>` +
-          `<div class="text-start mb-3"><label class="form-label">ยอด Statement (บาท)</label><input id="stmt-amount" type="number" step="0.01" class="form-control" value="${st ? st.statement_amount : ''}"></div>` +
+          `<div class="text-start mb-3"><label class="form-label">ยอดจัดเก็บได้จริง(Statement) (บาท)</label><input id="stmt-amount" type="number" step="0.01" class="form-control" value="${st ? st.statement_amount : ''}"></div>` +
           `<div class="text-start mb-3"><label class="form-label">หมายเหตุ (ถ้ามี)</label><textarea id="stmt-remark" class="form-control">${st ? st.remark || '' : ''}</textarea></div>`,
         focusConfirm: false,
         showCancelButton: true,
@@ -1022,7 +1022,7 @@ export default {
             labels: labels,
             datasets: [
               {
-                label: 'ยอดจัดเก็บได้จริง (บาท)',
+                label: 'ยอดเรียกเก็บได้ (บาท)',
                 data: plotCollected,
                 backgroundColor: 'rgba(40, 167, 69, 0.7)',
                 borderColor: '#28a745',
@@ -1030,7 +1030,7 @@ export default {
                 borderRadius: 4
               },
               {
-                label: 'ยอด Statement (บาท)',
+                label: 'ยอดจัดเก็บได้จริง(Statement) (บาท)',
                 data: plotStatement,
                 backgroundColor: 'rgba(111, 66, 193, 0.7)',
                 borderColor: '#6f42c1',

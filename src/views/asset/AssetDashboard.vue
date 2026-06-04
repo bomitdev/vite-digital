@@ -20,6 +20,12 @@
               >
                 <i class="bi bi-clock-history me-1"></i> ประวัติยืม-คืน
               </button>
+              <button
+                class="btn btn-success text-white rounded-pill px-3"
+                @click="exportExcel"
+              >
+                <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
+              </button>
               <button class="btn btn-primary rounded-pill px-4" @click="openForm()">
                 <i class="bi bi-plus-lg me-2"></i>เพิ่มรายการ
               </button>
@@ -90,41 +96,33 @@
                 <thead class="bg-light">
                   <tr>
                     <th class="text-center" width="5%">#</th>
-                    <th width="10%">รหัสครุภัณฑ์</th>
+                    <th width="10%">วันที่จัดซื้อ</th>
+                    <th width="15%">รหัสครุภัณฑ์</th>
                     <th width="20%">ชื่อครุภัณฑ์</th>
-                    <th width="10%">หมวดหมู่</th>
-                    <th width="10%">OS</th>
-                    <th width="15%">ผู้รับผิดชอบ / สถานที่</th>
-                    <th width="10%" class="text-center">สถานะ</th>
-                    <th width="15%">จัดการ</th>
+                    <th width="10%">ราคา</th>
+                    <th width="10%">วิธีการได้รับ</th>
+                    <th width="10%">สถานที่ติดตั้ง</th>
+                    <th width="10%">บริษัท</th>
+                    <th width="10%" class="text-center">จัดการ</th>
                   </tr>
                 </thead>
-                <tbody></tbody>
                 <tbody>
                   <tr v-for="(asset, index) in paginatedAssets" :key="asset.id">
                     <td class="text-center">{{ (currentPage - 1) * itemsPerPage + index + 1 }}</td>
+                    <td>{{ formatDate(asset.purchase_date) }}</td>
                     <td class="fw-bold text-primary">{{ asset.asset_code }}</td>
                     <td>
                       <div class="fw-bold">{{ asset.name }}</div>
                       <div class="small text-muted">{{ asset.brand }} {{ asset.model }}</div>
                     </td>
-                    <td>{{ asset.category_name || asset.type }}</td>
+                    <td>{{ formatPrice(asset.price) }}</td>
+                    <td>{{ asset.acquisition_method || '-' }}</td>
                     <td>
-                      <span class="badge bg-light text-dark border">{{ asset.os || '-' }}</span>
+                      <div class="small"><i class="bi bi-geo-alt me-1"></i>{{ asset.location || '-' }}</div>
                     </td>
+                    <td>{{ asset.source || '-' }}</td>
                     <td>
-                      <div class="fw-bold">{{ asset.responsible_person || '-' }}</div>
-                      <div class="small text-muted">
-                        <i class="bi bi-geo-alt me-1"></i>{{ asset.location || '-' }}
-                      </div>
-                    </td>
-                    <td class="text-center">
-                      <span :class="['badge rounded-pill', getStatusClass(asset.status)]">
-                        {{ asset.status }}
-                      </span>
-                    </td>
-                    <td>
-                      <div class="d-flex gap-2">
+                      <div class="d-flex justify-content-center gap-2">
                         <button
                           class="btn btn-sm btn-outline-info"
                           @click="viewDetail(asset)"
@@ -160,7 +158,7 @@
                     </td>
                   </tr>
                   <tr v-if="assets.length === 0">
-                    <td colspan="8" class="text-center py-5 text-muted">ไม่พบข้อมูล</td>
+                    <td colspan="9" class="text-center py-5 text-muted">ไม่พบข้อมูล</td>
                   </tr>
                 </tbody>
               </table>
@@ -214,6 +212,7 @@
 <script>
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
 import AssetForm from './AssetForm.vue';
 import AssetDetail from './AssetDetail.vue';
 import AssetQrPrint from './AssetQrPrint.vue';
@@ -337,6 +336,56 @@ export default {
       if (page >= 1 && page <= this.totalPages) {
         this.currentPage = page;
       }
+    },
+    formatDate(dateStr) {
+      if (!dateStr || dateStr === '0000-00-00') return '-';
+      const [year, month, day] = dateStr.split('-');
+      if (!year || !month || !day) return dateStr;
+      return `${day}/${month}/${parseInt(year) + 543}`;
+    },
+    formatPrice(price) {
+      if (!price || isNaN(price)) return '-';
+      return Number(price).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    },
+    exportExcel() {
+      if (this.assets.length === 0) {
+        Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลสำหรับ Export', 'warning');
+        return;
+      }
+
+      // Create worksheet data based on current filtered assets
+      const exportData = this.assets.map((asset, index) => ({
+        '#': index + 1,
+        'วันที่จัดซื้อ': this.formatDate(asset.purchase_date),
+        'รหัสครุภัณฑ์': asset.asset_code,
+        'ชื่อครุภัณฑ์': `${asset.name} ${asset.brand || ''} ${asset.model || ''}`.trim(),
+        'ราคา': asset.price ? Number(asset.price) : 0,
+        'วิธีการได้รับ': asset.acquisition_method || '-',
+        'สถานที่ติดตั้ง': asset.location || '-',
+        'บริษัท': asset.source || '-'
+      }));
+
+      // Create a new workbook and add the worksheet
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      
+      // Auto-size columns
+      const wscols = [
+        {wch: 5}, // #
+        {wch: 15}, // วันที่จัดซื้อ
+        {wch: 20}, // รหัสครุภัณฑ์
+        {wch: 35}, // ชื่อครุภัณฑ์
+        {wch: 15}, // ราคา
+        {wch: 15}, // วิธีการได้รับ
+        {wch: 20}, // สถานที่ติดตั้ง
+        {wch: 20}  // บริษัท
+      ];
+      ws['!cols'] = wscols;
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Assets");
+
+      // Download the file
+      XLSX.writeFile(wb, "Computer_Assets.xlsx");
     }
   },
   computed: {
