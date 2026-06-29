@@ -1104,9 +1104,33 @@ export default {
           this.form.type = t.name;
           this.form.name = t.name;
         }
+        this.fetchNextSequence();
       }
     },
-    updateCode() {},
+    updateCode() {
+      if (this.genCode.year && this.genCode.year.length >= 2) {
+        this.fetchNextSequence();
+      }
+    },
+    async fetchNextSequence() {
+      if (
+        this.genCode.categoryId &&
+        this.genCode.classCode &&
+        this.genCode.typeCode &&
+        this.genCode.year &&
+        this.genCode.year.length >= 2
+      ) {
+        const prefix = `${this.genCode.categoryId}-${this.genCode.classCode}-${this.genCode.typeCode}/${this.genCode.year}`;
+        try {
+          const res = await axios.get(`/api-digital/asset/get_next_asset_sequence.php?prefix=${prefix}`);
+          if (res.data.status === 'success') {
+            this.genCode.number = res.data.data;
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    },
     applyCode() {
       if (this.generatedCode) {
         this.form.asset_code = this.generatedCode;

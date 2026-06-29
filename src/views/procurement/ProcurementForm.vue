@@ -16,7 +16,34 @@
               
               <div class="col-12">
                 <label class="form-label">ชื่อร้านค้า / บริษัท <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" v-model="form.vendor_name" required placeholder="เช่น บจก. เอบีซี คอมพิวเตอร์" />
+                <div class="position-relative">
+                  <input
+                    type="text"
+                    class="form-control"
+                    v-model="vendorSearch"
+                    @input="onVendorInput"
+                    @focus="showVendorDropdown = true"
+                    @blur="hideVendorDropdown"
+                    required
+                    placeholder="พิมพ์เพื่อค้นหาหรือเพิ่มชื่อใหม่"
+                    autocomplete="off"
+                  />
+                  <ul
+                    v-if="showVendorDropdown && filteredVendors.length"
+                    class="list-group position-absolute w-100 shadow-sm"
+                    style="z-index: 9999; top: 100%; max-height: 200px; overflow-y: auto;"
+                  >
+                    <li
+                      v-for="v in filteredVendors"
+                      :key="v.source_id"
+                      class="list-group-item list-group-item-action py-2 px-3"
+                      style="cursor: pointer;"
+                      @mousedown.prevent="selectVendor(v.name)"
+                    >
+                      {{ v.name }}
+                    </li>
+                  </ul>
+                </div>
               </div>
               
               <div class="col-md-6">
@@ -86,6 +113,9 @@ export default {
       selectedApprovalFile: null,
       selectedPoFile: null,
       selectedInvoiceFile: null,
+      vendors: [],
+      vendorSearch: '',
+      showVendorDropdown: false,
       form: {
         id: null,
         bill_number: '',
@@ -99,14 +129,45 @@ export default {
       }
     };
   },
+  computed: {
+    filteredVendors() {
+      if (!this.vendorSearch.trim()) return this.vendors;
+      const q = this.vendorSearch.toLowerCase();
+      return this.vendors.filter(v => v.name.toLowerCase().includes(q));
+    }
+  },
   mounted() {
     this.bsModal = new Modal(this.$refs.modal);
+    this.fetchVendors();
   },
   methods: {
+    async fetchVendors() {
+      try {
+        const res = await axios.get('/api-digital/procurement/get_vendors.php');
+        if (res.data.status === 'success') {
+          this.vendors = res.data.data;
+        }
+      } catch (e) {
+        console.error('Cannot load vendors', e);
+      }
+    },
+    onVendorInput() {
+      this.form.vendor_name = this.vendorSearch;
+      this.showVendorDropdown = true;
+    },
+    selectVendor(name) {
+      this.vendorSearch = name;
+      this.form.vendor_name = name;
+      this.showVendorDropdown = false;
+    },
+    hideVendorDropdown() {
+      setTimeout(() => { this.showVendorDropdown = false; }, 150);
+    },
     open(bill = null) {
       this.resetForm();
       if (bill) {
         this.form = { ...bill };
+        this.vendorSearch = bill.vendor_name || '';
       }
       this.bsModal.show();
     },
@@ -122,6 +183,7 @@ export default {
         approval_file_path: '',
         po_file_path: ''
       };
+      this.vendorSearch = '';
       this.selectedApprovalFile = null;
       this.selectedPoFile = null;
       this.selectedInvoiceFile = null;
@@ -141,6 +203,9 @@ export default {
     getFileUrl(path) {
       if (!path) return '';
       if (path.startsWith('http')) return path;
+      if (import.meta.env.DEV) {
+        return path.startsWith('/') ? path : `/${path}`;
+      }
       const baseUrl = window.location.origin;
       return `${baseUrl}/vue-app/vite-digital/${path}`;
     },

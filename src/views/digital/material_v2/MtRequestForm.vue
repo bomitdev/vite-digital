@@ -179,6 +179,58 @@
             </form>
           </div>
         </div>
+
+        <!-- History Section -->
+        <div class="card border-0 shadow-lg rounded-4 overflow-hidden glass-card mb-5 fade-in" style="animation-delay: 0.2s;">
+          <div class="card-body p-4 p-md-5">
+            <div class="d-flex align-items-center gap-2 mb-4">
+              <span class="badge bg-info text-white rounded-pill px-2 py-1 shadow-sm"><i class="bi bi-clock-history fs-6"></i></span>
+              <h5 class="fw-bold text-dark m-0">ประวัติการขอเบิกวัสดุ</h5>
+            </div>
+            
+            <div class="mb-3">
+              <input type="text" v-model="searchQuery" class="form-control" placeholder="ค้นหาชื่อผู้เบิก, หน่วยงาน, หรือรายการวัสดุ...">
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>วันที่ขอเบิก</th>
+                    <th>ผู้เบิก</th>
+                    <th>หน่วยงาน</th>
+                    <th>รายการวัสดุ</th>
+                    <th class="text-center">จำนวน</th>
+                    <th class="text-center">สถานะ</th>
+                    <th>หมายเหตุ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="filteredRequests.length === 0">
+                    <td colspan="7" class="text-center py-4 text-muted">
+                      <span v-if="!isAdmin && !form.requester_name">กรุณาระบุชื่อผู้เบิกด้านบนเพื่อดูประวัติของท่าน</span>
+                      <span v-else>ไม่พบประวัติการขอเบิก</span>
+                    </td>
+                  </tr>
+                  <tr v-for="req in filteredRequests" :key="req.id">
+                    <td>{{ req.request_date }}</td>
+                    <td>{{ req.requester_name }}</td>
+                    <td>{{ req.department }}</td>
+                    <td>{{ req.material_name }}</td>
+                    <td class="text-center fw-bold">{{ req.quantity }}</td>
+                    <td class="text-center">
+                      <span class="badge rounded-pill px-3 py-2 fw-normal" :class="getStatusBadge(req.status)">
+                        <i :class="getStatusIcon(req.status)" class="me-1"></i>
+                        {{ getStatusText(req.status) }}
+                      </span>
+                    </td>
+                    <td>{{ req.admin_note || '-' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -196,17 +248,44 @@ export default {
       pastRequesters: [],
       pastDepartments: [],
       form: {
-        requester_name: '',
-        department: '',
+        requester_name: localStorage.getItem('last_requester_name') || '',
+        department: localStorage.getItem('last_department') || '',
         material_id: '',
         quantity: 1
       },
-      loading: false
+      loading: false,
+      requests: [],
+      searchQuery: ''
     };
   },
   mounted() {
     this.fetchMaterials();
     this.fetchRequestersAndDepts();
+    this.fetchRequests();
+  },
+  computed: {
+    isAdmin() {
+      return !!localStorage.getItem('user_token');
+    },
+    filteredRequests() {
+      let reqs = this.requests;
+
+      if (!this.isAdmin) {
+        if (!this.form.requester_name) {
+          return [];
+        }
+        const requester = this.form.requester_name.toLowerCase().trim();
+        reqs = reqs.filter(req => req.requester_name && req.requester_name.toLowerCase().trim() === requester);
+      }
+
+      if (!this.searchQuery) return reqs;
+      const q = this.searchQuery.toLowerCase();
+      return reqs.filter(req => 
+        (req.requester_name && req.requester_name.toLowerCase().includes(q)) ||
+        (req.department && req.department.toLowerCase().includes(q)) ||
+        (req.material_name && req.material_name.toLowerCase().includes(q))
+      );
+    }
   },
   methods: {
     async fetchMaterials() {
@@ -219,6 +298,40 @@ export default {
       } catch (error) {
         console.error('Error fetching materials:', error);
       }
+    },
+    async fetchRequests() {
+      try {
+        const res = await axios.get('/api-digital/material_v2/get_requests.php?status=all');
+        if (res.data.success) {
+          this.requests = res.data.data;
+        }
+      } catch (error) {
+        console.error('Error fetching requests', error);
+      }
+    },
+    getStatusBadge(status) {
+      const map = {
+        pending: 'bg-warning text-dark bg-opacity-75',
+        approved: 'bg-success bg-opacity-75',
+        rejected: 'bg-danger bg-opacity-75'
+      };
+      return map[status] || 'bg-secondary';
+    },
+    getStatusIcon(status) {
+      const map = {
+        pending: 'bi bi-hourglass-split',
+        approved: 'bi bi-check2-circle',
+        rejected: 'bi bi-x-circle'
+      };
+      return map[status] || 'bi-info-circle';
+    },
+    getStatusText(status) {
+      const map = {
+        pending: 'รออนุมัติ',
+        approved: 'จ่ายของแล้ว',
+        rejected: 'ปฏิเสธ'
+      };
+      return map[status] || status;
     },
     async fetchRequestersAndDepts() {
       try {
@@ -247,19 +360,24 @@ export default {
       try {
         const res = await axios.post('/api-digital/material_v2/request_material.php', this.form);
         if (res.data.success) {
+          // Save last requester name and dept
+          localStorage.setItem('last_requester_name', this.form.requester_name);
+          localStorage.setItem('last_department', this.form.department);
+
           Swal.fire({
             icon: 'success',
             title: 'ส่งคำขอสำเร็จ',
             text: 'กรุณารอเจ้าหน้าที่ไอทีอนุมัติและจ่ายของ',
             confirmButtonText: 'ตกลง'
           });
-          // Reset form
+          // Reset form but keep name and department
           this.form = {
-            requester_name: '',
-            department: '',
+            requester_name: localStorage.getItem('last_requester_name') || '',
+            department: localStorage.getItem('last_department') || '',
             material_id: '',
             quantity: 1
           };
+          this.fetchRequests(); // Refresh the history list
         } else {
           throw new Error(res.data.message);
         }

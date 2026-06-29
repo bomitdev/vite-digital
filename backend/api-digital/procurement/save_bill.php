@@ -24,11 +24,18 @@ try {
             
             $wsRoot = realpath(__DIR__ . '/../../');
             $uploadDir = $wsRoot . '/uploads/procurement/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+            if (!is_dir($uploadDir)) {
+                if (!mkdir($uploadDir, 0777, true)) {
+                    throw new Exception("Cannot create upload directory: " . $uploadDir);
+                }
+            }
             
             $newFilename = uniqid($fileKey . '_') . '.' . $ext;
-            if (move_uploaded_file($_FILES[$fileKey]['tmp_name'], $uploadDir . $newFilename)) {
+            $destPath = $uploadDir . $newFilename;
+            if (move_uploaded_file($_FILES[$fileKey]['tmp_name'], $destPath)) {
                 return 'backend/uploads/procurement/' . $newFilename;
+            } else {
+                throw new Exception("Failed to save file '$newFilename'. Upload dir: $uploadDir | Is writable: " . (is_writable($uploadDir) ? 'yes' : 'no'));
             }
         }
         return null;
