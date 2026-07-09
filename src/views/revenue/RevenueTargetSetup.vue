@@ -12,7 +12,7 @@
           <i class="bi bi-house-fill me-1"></i> กลับหน้าจัดเก็บรายได้
         </button>
       </div>
-      <div class="card-body p-4 bg-white">
+      <div class="card-body p-4 bg-white" v-if="isAdmin || isEdit">
         <form @submit.prevent="submitForm">
           <div class="row g-3 mb-3">
             <div class="col-md-3">
@@ -209,7 +209,7 @@
                   <button class="btn btn-sm btn-light border me-1" @click="editTarget(target)">
                     <i class="bi bi-pencil text-warning"></i>
                   </button>
-                  <button class="btn btn-sm btn-light border" @click="deleteTarget(target.id)">
+                  <button class="btn btn-sm btn-light border" @click="deleteTarget(target.id)" v-if="isAdmin">
                     <i class="bi bi-trash text-danger"></i>
                   </button>
                 </td>
@@ -378,14 +378,28 @@ export default {
         achieved_items: '',
         collected_amount: '',
         remark: ''
-      }
+      },
+      userDepartment: '',
+      userFullname: ''
     };
   },
   computed: {
+    isAdmin() {
+      return (
+        this.userDepartment.includes('กลุ่มงานสุขภาพดิจิทัล') ||
+        this.userDepartment.includes('บริหาร') ||
+        this.userDepartment.includes('ประกัน') ||
+        this.userDepartment === 'admin'
+      );
+    },
     filteredTargets() {
-      if (!this.searchQuery) return this.targets;
+      let baseList = this.isAdmin 
+        ? this.targets 
+        : (this.userFullname ? this.targets.filter(t => t.responsible_person && t.responsible_person.includes(this.userFullname)) : []);
+      
+      if (!this.searchQuery) return baseList;
       const q = this.searchQuery.toLowerCase();
-      return this.targets.filter((target) => {
+      return baseList.filter((target) => {
         return (
           (target.revenue_name && target.revenue_name.toLowerCase().includes(q)) ||
           (target.responsible_person && target.responsible_person.toLowerCase().includes(q)) ||
@@ -396,6 +410,20 @@ export default {
     }
   },
   methods: {
+    async fetchUserProfile() {
+      try {
+        const token = localStorage.getItem('user_token');
+        if (!token) return;
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        const response = await axios.get('/api-hosoffice/get_user_profile.php', config);
+        if (response.data.status === 'success') {
+          this.userDepartment = response.data.department || '';
+          this.userFullname = response.data.fullname || '';
+        }
+      } catch (e) {
+        console.error('Failed to load user profile', e);
+      }
+    },
     async fetchHrPersons() {
       try {
         const res = await axios.get('/api-digital/asset/get_hr_person.php');
@@ -684,6 +712,7 @@ export default {
     }
   },
   mounted() {
+    this.fetchUserProfile();
     this.fetchTargets();
     this.fetchHrPersons();
     this.fetchClaimPrograms();

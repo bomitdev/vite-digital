@@ -1,37 +1,10 @@
 <template>
   <div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h2 class="mb-0 text-primary">
-          <i class="bi bi-speedometer2 me-2"></i>Hospital KPI Dashboard
-        </h2>
-        <p class="text-muted mb-0">ติดตามตัวชี้วัดประสิทธิภาพโรงพยาบาล (5 Dimensions)</p>
-      </div>
-      <div class="d-flex align-items-center flex-wrap gap-2">
-        <div class="input-group" style="width: 250px">
-          <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-          <input
-            type="text"
-            class="form-control"
-            placeholder="ค้นหา KPI หรือ ผู้รับผิดชอบ..."
-            v-model="searchQuery"
-          />
-        </div>
-        <select class="form-select w-auto" v-model="selectedLevel" v-if="availableLevels.length > 0">
-          <option value="">ทุกระดับ (All Levels)</option>
-          <option v-for="level in availableLevels" :key="level" :value="level">{{ level }}</option>
-        </select>
-        <select class="form-select w-auto" v-model="selectedYear" @change="fetchData">
-          <option v-for="y in yearList" :key="y" :value="y">ปีงบประมาณ {{ y }}</option>
-        </select>
-        <button class="btn btn-outline-primary" @click="fetchData">
-          <i class="bi bi-arrow-clockwise me-1"></i> Refresh
-        </button>
-        <button class="btn btn-primary"><i class="bi bi-file-earmark-pdf me-1"></i> Export</button>
-        <router-link to="/kpi-setup" class="btn btn-dark" v-if="isAdmin">
-          <i class="bi bi-gear-fill me-1"></i> ตั้งค่า KPI
-        </router-link>
-      </div>
+    <div class="mb-4">
+      <h2 class="mb-0 text-primary">
+        <i class="bi bi-speedometer2 me-2"></i>Hospital KPI Dashboard
+      </h2>
+      <p class="text-muted mb-0">ติดตามตัวชี้วัดประสิทธิภาพโรงพยาบาล (5 Dimensions)</p>
     </div>
 
     <!-- Summary Widgets & Donut Chart -->
@@ -39,7 +12,10 @@
       <div class="col-md-8">
         <div class="row h-100">
           <div class="col-md-6 mb-3">
-            <div class="card bg-success text-white h-100 shadow-sm border-0">
+            <div class="card bg-success text-white h-100 shadow-sm border-0"
+                 style="cursor: pointer"
+                 :class="{'ring-active': statusFilter === 'pass'}"
+                 @click="setStatusFilter('pass')">
               <div class="card-body">
                 <h5 class="card-title"><i class="bi bi-check-circle me-2"></i>KPIs Passed</h5>
                 <h2 class="display-4 fw-bold">{{ summary.passed }}</h2>
@@ -48,7 +24,10 @@
             </div>
           </div>
           <div class="col-md-6 mb-3">
-            <div class="card bg-danger text-white h-100 shadow-sm border-0">
+            <div class="card bg-danger text-white h-100 shadow-sm border-0"
+                 style="cursor: pointer"
+                 :class="{'ring-active': statusFilter === 'fail'}"
+                 @click="setStatusFilter('fail')">
               <div class="card-body">
                 <h5 class="card-title"><i class="bi bi-x-circle me-2"></i>KPIs Failed</h5>
                 <h2 class="display-4 fw-bold">{{ summary.failed }}</h2>
@@ -57,7 +36,10 @@
             </div>
           </div>
           <div class="col-md-6 mb-3 mb-md-0">
-            <div class="card bg-warning text-dark h-100 shadow-sm border-0">
+            <div class="card bg-warning text-dark h-100 shadow-sm border-0"
+                 style="cursor: pointer"
+                 :class="{'ring-active': statusFilter === 'warning'}"
+                 @click="setStatusFilter('warning')">
               <div class="card-body">
                 <h5 class="card-title"><i class="bi bi-exclamation-triangle me-2"></i>Warning</h5>
                 <h2 class="display-4 fw-bold">{{ summary.warning }}</h2>
@@ -66,7 +48,10 @@
             </div>
           </div>
           <div class="col-md-6">
-            <div class="card bg-info text-white h-100 shadow-sm border-0">
+            <div class="card bg-info text-white h-100 shadow-sm border-0"
+                 style="cursor: pointer"
+                 :class="{'ring-active': statusFilter === 'all'}"
+                 @click="setStatusFilter('all')">
               <div class="card-body">
                 <h5 class="card-title"><i class="bi bi-list-task me-2"></i>Total KPIs</h5>
                 <h2 class="display-4 fw-bold">{{ summary.total }}</h2>
@@ -94,6 +79,33 @@
       </div>
     </div>
 
+    <!-- Filters Section -->
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-4">
+      <div class="input-group shadow-sm" style="width: 280px">
+        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+        <input
+          type="text"
+          class="form-control border-start-0 ps-0"
+          placeholder="ค้นหา KPI หรือ ผู้รับผิดชอบ..."
+          v-model="searchQuery"
+        />
+      </div>
+      <select class="form-select w-auto shadow-sm" v-model="selectedLevel" v-if="availableLevels.length > 0">
+        <option value="">ทุกระดับ (All Levels)</option>
+        <option v-for="level in availableLevels" :key="level" :value="level">{{ level }}</option>
+      </select>
+      <select class="form-select w-auto shadow-sm" v-model="selectedYear" @change="fetchData">
+        <option v-for="y in yearList" :key="y" :value="y">ปีงบประมาณ {{ y }}</option>
+      </select>
+      <button class="btn btn-outline-primary shadow-sm fw-bold" @click="fetchData">
+        <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+      </button>
+      <button class="btn btn-primary shadow-sm fw-bold"><i class="bi bi-file-earmark-pdf me-1"></i> Export</button>
+      <router-link to="/kpi-setup" class="btn btn-dark shadow-sm fw-bold" v-if="isAdmin || hasResponsibleKpi">
+        <i class="bi bi-gear-fill me-1"></i> ตั้งค่า KPI
+      </router-link>
+    </div>
+
     <!-- Dimension Sections -->
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border text-primary" role="status">
@@ -113,107 +125,71 @@
             <span class="text-muted fs-6 fw-normal">({{ category.description }})</span>
           </h4>
         </div>
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-hover align-middle">
-              <thead class="table-light">
-                <tr>
-                  <th style="width: 30%">KPI Name</th>
-                  <th class="text-center">Frequency</th>
-                  <th class="text-center">Target</th>
-                  <th class="text-center">Actual</th>
-                  <th class="text-center">Status</th>
-                  <th class="text-center">Trend</th>
-                  <th class="text-end">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="kpi in category.kpis" :key="kpi.id">
-                  <td>
-                    <div class="fw-bold text-dark">{{ kpi.name }}</div>
-                    <small class="text-muted">{{ kpi.description }}</small>
-                    <div class="mt-2 d-flex flex-wrap gap-2">
-                      <span class="badge bg-primary text-white" v-if="kpi.kpi_level">
-                        <i class="bi bi-diagram-3-fill me-1"></i>{{ kpi.kpi_level }}
-                      </span>
-                      <span class="badge bg-info text-dark">
-                        <i class="bi bi-person-fill me-1"></i>{{ kpi.responsible_person || 'ไม่ระบุ' }}
-                      </span>
-                    </div>
-                  </td>
-                  <td class="text-center">
-                    <span class="badge bg-light text-secondary border">
-                      {{ getFrequencyLabel(kpi.kpi_periodicity) }}
-                    </span>
-                  </td>
-                  <td class="text-center">
-                    <span class="badge bg-light text-dark border">
-                      {{ kpi.target_operator }} {{ kpi.target_value }} {{ kpi.unit }}
-                    </span>
-                  </td>
-                  <td class="text-center fw-bold fs-5">
-                    {{ kpi.actual_value !== null ? kpi.actual_value : '-' }}
-                  </td>
-                  <td class="text-center">
-                    <span v-if="kpi.actual_value === null" class="badge bg-secondary">No Data</span>
-                    <span
-                      v-else-if="checkStatus(kpi) === 'pass'"
-                      class="badge bg-success rounded-pill px-3"
-                      >Pass</span
-                    >
-                    <span v-else class="badge bg-danger rounded-pill px-3">Fail</span>
-                    
-                    <div v-if="getMissingPeriods(kpi).length > 0" class="mt-2">
-                      <span class="badge bg-warning text-dark border border-warning" 
-                            style="cursor: pointer; transition: 0.2s;"
-                            @mouseover="$event.target.classList.add('shadow-sm')"
-                            @mouseleave="$event.target.classList.remove('shadow-sm')"
-                            @click="showMissingPeriodsDetails(kpi)"
-                            title="คลิกเพื่อดูรายละเอียด">
+        <div class="card-body bg-light p-4">
+          <div v-for="kpi in category.kpis" :key="kpi.id" class="card border rounded-3 shadow-sm mb-4">
+            <div class="card-body p-4">
+              <div class="row mb-3">
+                <div class="col-md-7">
+                  <span class="badge bg-primary bg-opacity-10 text-primary mb-2 px-3 py-2" v-if="kpi.code">{{ kpi.code }}</span>
+                  <span class="badge bg-secondary text-white mb-2 px-3 py-2 ms-2" v-if="kpi.kpi_level">
+                    <i class="bi bi-diagram-3-fill me-1"></i>{{ kpi.kpi_level }}
+                  </span>
+                  <h5 class="fw-bold mb-3 lh-base">{{ kpi.name }}</h5>
+                  <span class="badge bg-light text-secondary border px-3 py-2">
+                    <i class="bi bi-person-fill me-1"></i> {{ kpi.responsible_person || 'ยังไม่ระบุ' }}
+                  </span>
+                </div>
+                <div class="col-md-5 d-flex justify-content-md-end align-items-start mt-3 mt-md-0 flex-wrap gap-2">
+                  <div class="bg-light p-3 rounded-3 text-center border" style="min-width: 140px">
+                    <div class="small text-muted mb-1">เป้าหมาย</div>
+                    <div class="fw-bold text-dark">{{ kpi.target_operator }} {{ kpi.target_value }} <span class="small">{{ kpi.unit }}</span></div>
+                  </div>
+                  <div class="bg-light p-3 rounded-3 text-center border" style="min-width: 140px">
+                    <div class="small text-muted mb-1">ผลงานล่าสุด</div>
+                    <div class="fw-bold" :class="kpi.actual_value !== null ? 'text-primary' : 'text-muted'">{{ kpi.actual_value !== null ? kpi.actual_value : 'รอการบันทึก' }}</div>
+                  </div>
+                  <div class="d-flex flex-column align-items-end justify-content-center ms-2" style="height: 100%">
+                     <span v-if="kpi.actual_value === null" class="badge bg-secondary rounded-pill py-2 px-4 mb-2">No Data</span>
+                     <span v-else-if="checkStatus(kpi) === 'pass'" class="badge bg-success rounded-pill py-2 px-4 mb-2">Pass</span>
+                     <span v-else class="badge bg-danger rounded-pill py-2 px-4 mb-2">Fail</span>
+                     
+                     <span v-if="getMissingPeriods(kpi).length > 0" 
+                           class="badge bg-warning text-dark border border-warning" 
+                           style="cursor: pointer; transition: 0.2s;"
+                           @click="showMissingPeriodsDetails(kpi)">
                         <i class="bi bi-exclamation-triangle-fill me-1"></i>ค้างรายงาน {{ getMissingPeriods(kpi).length }} รอบ
-                      </span>
-                    </div>
-                  </td>
-                  <td class="text-center">
-                    <button
-                      type="button"
-                      class="btn btn-link p-0 text-decoration-none"
-                      @click.stop="openTrendModal(kpi)"
-                      title="View Trend"
-                    >
-                      <i
-                        v-if="checkStatus(kpi) === 'pass'"
-                        class="bi bi-graph-up-arrow text-success fs-5"
-                      ></i>
-                      <i v-else class="bi bi-graph-down-arrow text-danger fs-5"></i>
-                    </button>
-                  </td>
-                  <td class="text-end">
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-light border me-1"
-                      @click.stop="openEntryModal(kpi)"
-                      title="รายงานผล"
-                    >
-                      <i class="bi bi-pencil-square text-primary"></i>
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-light border"
-                      @click.stop="openHistoryModal(kpi)"
-                      title="ประวัติ"
-                    >
-                      <i class="bi bi-clock-history text-secondary"></i>
-                    </button>
-                  </td>
-                </tr>
-                <tr v-if="!category.kpis || category.kpis.length === 0">
-                  <td colspan="7" class="text-center text-muted py-3">
-                    No KPIs defined for this dimension.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                     </span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="d-flex align-items-center mb-4">
+                <button class="btn btn-sm btn-outline-primary rounded-pill px-4 me-2 fw-bold" @click.stop="openEntryModal(kpi)">
+                  <i class="bi bi-pencil-square me-1"></i> รายงานผล
+                </button>
+                <button class="btn btn-sm btn-light border rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 35px; height: 35px;" @click.stop="openTrendModal(kpi)" title="กราฟแนวโน้ม">
+                  <i class="bi bi-bar-chart-fill text-info"></i>
+                </button>
+                <button class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center" style="width: 35px; height: 35px;" @click.stop="openHistoryModal(kpi)" title="ประวัติ">
+                  <i class="bi bi-clock-history text-secondary"></i>
+                </button>
+              </div>
+              
+              <hr class="text-muted opacity-25 mb-4">
+              
+              <div class="row text-center g-2 row-cols-2 row-cols-md-4 row-cols-lg-auto" style="justify-content: flex-start;">
+                <div class="col" v-for="(block, idx) in getFrequencyBlocks(kpi)" :key="idx" style="flex: 1; min-width: 100px; max-width: 150px;">
+                  <div class="bg-warning bg-opacity-10 p-2 rounded-3 border border-warning border-opacity-25 h-100 d-flex flex-column justify-content-center">
+                    <div class="small fw-bold text-dark mb-1" style="font-size: 0.8rem;">{{ block.label }}</div>
+                    <div class="fw-bold" :class="block.value !== '-' ? 'text-primary' : 'text-muted'">{{ block.value }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div v-if="!category.kpis || category.kpis.length === 0" class="text-center text-muted py-3">
+             No KPIs defined for this dimension.
           </div>
         </div>
       </div>
@@ -344,8 +320,10 @@ export default {
       selectedYear: null,
       selectedLevel: '',
       userDepartment: '',
+      userFullname: '',
       yearList: [],
       searchQuery: '',
+      statusFilter: 'all',
       chartData: {},
       chartOptions: {
         responsive: true,
@@ -371,8 +349,32 @@ export default {
         this.userDepartment === 'admin'
       );
     },
-    filteredCategories() {
+    hasResponsibleKpi() {
+      if (!this.userFullname) return false;
+      for (const cat of this.categories) {
+        if (cat.kpis) {
+          for (const kpi of cat.kpis) {
+            if (kpi.responsible_person && kpi.responsible_person.includes(this.userFullname)) {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    },
+    baseCategories() {
       let result = this.categories;
+      if (!this.isAdmin && this.userFullname) {
+        result = result.map(cat => {
+          if (!cat.kpis) return cat;
+          return { ...cat, kpis: cat.kpis.filter(kpi => kpi.responsible_person && kpi.responsible_person.includes(this.userFullname)) };
+        });
+        result = result.filter(cat => cat.kpis && cat.kpis.length > 0);
+      }
+      return result;
+    },
+    filteredCategories() {
+      let result = this.baseCategories;
 
       // Filter by selected level
       if (this.selectedLevel) {
@@ -398,11 +400,19 @@ export default {
         });
       }
 
+      // Filter by status filter
+      if (this.statusFilter !== 'all') {
+        result = result.map(cat => {
+          if (!cat.kpis) return cat;
+          return { ...cat, kpis: cat.kpis.filter(kpi => this.checkStatus(kpi) === this.statusFilter) };
+        });
+      }
+
       return result.filter(cat => cat.kpis && cat.kpis.length > 0);
     },
     availableLevels() {
       const levels = new Set();
-      this.categories.forEach(cat => {
+      this.baseCategories.forEach(cat => {
         if (cat.kpis) {
           cat.kpis.forEach(kpi => {
             if (kpi.kpi_level) {
@@ -456,8 +466,8 @@ export default {
       };
     }
   },
-  mounted() {
-    this.fetchUserProfile();
+  async mounted() {
+    await this.fetchUserProfile();
     this.generateYearList();
     // Fiscal Year Logic: Oct (9) onwards is next year
     const d = new Date();
@@ -469,6 +479,67 @@ export default {
     this.fetchData();
   },
   methods: {
+    getFrequencyBlocks(kpi) {
+      const freq = kpi.kpi_periodicity;
+      let blocks = [];
+      const dataMap = {};
+      
+      if (kpi.period_data) {
+        kpi.period_data.split(',').forEach(item => {
+          const parts = item.split('|');
+          if (parts.length === 2) {
+            dataMap[parts[0]] = parts[1];
+          }
+        });
+      }
+
+      if (freq === 'month') {
+        const months = ['ต.ค.', 'พ.ย.', 'ธ.ค.', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.'];
+        months.forEach((m, idx) => {
+          let monthNum = idx < 3 ? idx + 10 : idx - 2;
+          let val = '-';
+          for (let date in dataMap) {
+            if (parseInt(date.split('-')[1]) === monthNum) {
+              val = dataMap[date];
+              break;
+            }
+          }
+          blocks.push({ label: m, value: val });
+        });
+      } else if (freq === 'quarter') {
+        blocks = [
+          { label: 'ไตรมาส 1', value: '-' },
+          { label: 'ไตรมาส 2', value: '-' },
+          { label: 'ไตรมาส 3', value: '-' },
+          { label: 'ไตรมาส 4', value: '-' }
+        ];
+        for (let date in dataMap) {
+          let m = parseInt(date.split('-')[1]);
+          if (m >= 10 && m <= 12) blocks[0].value = dataMap[date];
+          else if (m >= 1 && m <= 3) blocks[1].value = dataMap[date];
+          else if (m >= 4 && m <= 6) blocks[2].value = dataMap[date];
+          else if (m >= 7 && m <= 9) blocks[3].value = dataMap[date];
+        }
+      } else if (freq === '6month' || freq === 'halfyear' || freq === 'half_year') {
+        blocks = [
+          { label: 'ครึ่งปีแรก', value: '-' },
+          { label: 'ครึ่งปีหลัง', value: '-' }
+        ];
+        for (let date in dataMap) {
+          let m = parseInt(date.split('-')[1]);
+          if (m >= 10 || (m >= 1 && m <= 3)) blocks[0].value = dataMap[date];
+          else blocks[1].value = dataMap[date];
+        }
+      } else if (freq === 'year') {
+        blocks = [{ label: 'ผลงานทั้งปี', value: '-' }];
+        for (let date in dataMap) {
+           blocks[0].value = dataMap[date];
+        }
+      } else {
+         blocks = [{ label: 'ผลงาน', value: '-' }];
+      }
+      return blocks;
+    },
     async fetchUserProfile() {
       try {
         const token = localStorage.getItem('user_token');
@@ -477,10 +548,14 @@ export default {
         const response = await axios.get('/api-hosoffice/get_user_profile.php', config);
         if (response.data.status === 'success') {
           this.userDepartment = response.data.department || '';
+          this.userFullname = response.data.fullname || '';
         }
       } catch (e) {
         console.error('Failed to load user profile', e);
       }
+    },
+    setStatusFilter(status) {
+      this.statusFilter = status;
     },
     getFrequencyLabel(type) {
       if (type === 'quarter') return 'รายไตรมาส';
@@ -664,6 +739,8 @@ export default {
     checkStatus(kpi) {
       if (kpi.actual_value === null) return 'nodata';
 
+      if (kpi.failed_periods_count && parseInt(kpi.failed_periods_count) > 0) return 'fail';
+
       const actual = parseFloat(kpi.actual_value);
       const target = parseFloat(kpi.target_value);
       const op = kpi.target_operator;
@@ -783,7 +860,7 @@ export default {
       let passed = 0;
       let failed = 0;
 
-      this.categories.forEach((cat) => {
+      this.baseCategories.forEach((cat) => {
         if (cat.kpis) {
           cat.kpis.forEach((kpi) => {
             total++;
@@ -815,8 +892,12 @@ export default {
 </script>
 
 <style scoped>
+.ring-active {
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.15) !important;
+  transform: scale(1.02);
+}
 .card {
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 .card-header {
   background-color: transparent;

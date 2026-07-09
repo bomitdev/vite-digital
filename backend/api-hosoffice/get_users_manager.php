@@ -67,6 +67,8 @@ try {
                 p.HR_USERNAME,
                 p.HR_EMAIL,
                 p.HR_PHONE,
+                p.NICKNAME,
+                p.HR_STARTWORK_DATE,
                 CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) as FULLNAME,
                 p.access_user,
                 CONCAT(COALESCE(pos.HR_POSITION_NAME, '-'), COALESCE(hl.HR_LEVEL_NAME, '')) as POSITION_NAME,

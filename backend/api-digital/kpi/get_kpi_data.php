@@ -33,7 +33,17 @@ try {
                     k.id, k.code, k.name, k.description, k.target_value, k.target_operator, k.unit, k.category_id,
                     k.kpi_periodicity, k.numerator_label, k.denominator_label, k.calculation_type, k.multiplier, k.responsible_person, k.kpi_level,
                     e.actual_value, e.period_date, e.target_value_snapshot,
-                    (SELECT GROUP_CONCAT(period_date) FROM kpi_entries WHERE kpi_id = k.id $yearFilter) as reported_periods
+                    (SELECT GROUP_CONCAT(period_date) FROM kpi_entries WHERE kpi_id = k.id $yearFilter) as reported_periods,
+                    (SELECT GROUP_CONCAT(CONCAT(period_date, '|', actual_value)) FROM kpi_entries WHERE kpi_id = k.id $yearFilter) as period_data,
+                    (SELECT COUNT(*) FROM kpi_entries e2 WHERE e2.kpi_id = k.id $yearFilter AND 
+                        (
+                            (k.target_operator = '>=' AND CAST(e2.actual_value AS DECIMAL(10,2)) < CAST(e2.target_value_snapshot AS DECIMAL(10,2))) OR
+                            (k.target_operator = '<=' AND CAST(e2.actual_value AS DECIMAL(10,2)) > CAST(e2.target_value_snapshot AS DECIMAL(10,2))) OR
+                            (k.target_operator = '>' AND CAST(e2.actual_value AS DECIMAL(10,2)) <= CAST(e2.target_value_snapshot AS DECIMAL(10,2))) OR
+                            (k.target_operator = '<' AND CAST(e2.actual_value AS DECIMAL(10,2)) >= CAST(e2.target_value_snapshot AS DECIMAL(10,2))) OR
+                            (k.target_operator = '=' AND CAST(e2.actual_value AS DECIMAL(10,2)) != CAST(e2.target_value_snapshot AS DECIMAL(10,2)))
+                        )
+                    ) as failed_periods_count
                 FROM kpi_definitions k
                 LEFT JOIN kpi_entries e ON k.id = e.kpi_id 
                 AND e.period_date = ($subQuery)

@@ -27,7 +27,7 @@
           </option>
         </select>
         <button
-          v-if="isAdmin"
+          v-if="isAdmin || hasResponsibleTarget"
           class="btn btn-outline-primary ms-3 rounded-pill px-3 fw-bold"
           @click="$router.push('/revenue-setup')"
         >
@@ -468,6 +468,7 @@ export default {
       userDepartment: '',
       statementData: [],
       statementModalInstance: null,
+      userFullname: '',
       fiscalMonths: [
         { value: 10, label: 'ตุลาคม' },
         { value: 11, label: 'พฤศจิกายน' },
@@ -516,6 +517,10 @@ export default {
     percentage() {
       if (this.totalTarget === 0) return 0;
       return (this.totalCollected / this.totalTarget) * 100;
+    },
+    hasResponsibleTarget() {
+      if (!this.userFullname) return false;
+      return this.summaryData.some(item => item.responsible_person && item.responsible_person.includes(this.userFullname));
     }
   },
   methods: {
@@ -626,6 +631,7 @@ export default {
         const response = await axios.get('/api-hosoffice/get_user_profile.php', config);
         if (response.data.status === 'success') {
           this.userDepartment = response.data.department || '';
+          this.userFullname = response.data.fullname || '';
         }
       } catch (e) {
         console.error('Failed to load user profile', e);

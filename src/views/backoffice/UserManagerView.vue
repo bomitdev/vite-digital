@@ -98,8 +98,8 @@
                 <th class="py-3 px-4 text-secondary small fw-bold text-center">ลำดับ</th>
                 <th class="py-3 px-4 text-secondary small fw-bold">person_id</th>
                 <th class="py-3 px-4 text-secondary small fw-bold">finger_id</th>
-                <th class="py-3 px-4 text-secondary small fw-bold">ชื่อ-นามสกุล</th>
-                <th class="py-3 text-secondary small fw-bold">ตำแหน่ง / แผนก</th>
+                <th class="py-3 px-4 text-secondary small fw-bold">ชื่อ-นามสกุล (ชื่อเล่น)</th>
+                <th class="py-3 text-secondary small fw-bold">ตำแหน่ง / แผนก / เริ่มงาน</th>
                 <th class="py-3 text-secondary small fw-bold">สิทธิ์การใช้งาน</th>
                 <th class="py-3 text-secondary small fw-bold text-center" style="width: 100px">
                   จัดการ
@@ -118,7 +118,10 @@
                   <div class="fw-bold text-dark">{{ user.FINGLE_ID }}</div>
                 </td>
                 <td class="py-3 px-4">
-                  <div class="fw-bold text-dark">{{ user.FULLNAME }}</div>
+                  <div class="fw-bold text-dark">
+                    {{ user.FULLNAME }}
+                    <span v-if="user.NICKNAME" class="text-primary ms-1">({{ user.NICKNAME }})</span>
+                  </div>
                   <div class="small text-muted">
                     <i class="bi bi-person me-1"></i>{{ user.HR_USERNAME }}
                   </div>
@@ -132,8 +135,11 @@
                   </div>
                 </td>
                 <td class="py-3">
-                  <div class="small text-dark">{{ user.POSITION_NAME }}</div>
+                  <div class="small text-dark fw-bold">{{ user.POSITION_NAME }}</div>
                   <div class="small text-muted">{{ user.DEPARTMENT_NAME }}</div>
+                  <div class="small text-success mt-1" v-if="user.HR_STARTWORK_DATE && user.HR_STARTWORK_DATE !== '0000-00-00'">
+                    <i class="bi bi-calendar-check me-1"></i>เริ่มงาน: {{ formatDate(user.HR_STARTWORK_DATE) }}
+                  </div>
                 </td>
                 <td class="py-3">
                   <div class="d-flex flex-wrap gap-1">
@@ -295,6 +301,16 @@ export default {
       if (!accessString) return [];
       // Return array of IDs
       return accessString.split(':').filter((a) => a);
+    },
+    formatDate(dateString) {
+      if (!dateString || dateString === '0000-00-00') return '-';
+      const date = new Date(dateString);
+      if (isNaN(date)) return dateString;
+      return date.toLocaleDateString('th-TH', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
     },
     getAccessName(id) {
       return this.accessMap[id] || id; // Fallback to ID if not found

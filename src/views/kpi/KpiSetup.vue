@@ -4,11 +4,19 @@
       <div
         class="card-header bg-purple text-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2"
       >
-        <h4 class="mb-0 fw-bold">กำหนดตัวชี้วัด KPI (Admin)</h4>
+        <h4 class="mb-0 fw-bold">กำหนดตัวชี้วัด KPI</h4>
         <div>
+          <button
+            class="btn btn-success rounded-pill px-3 fw-bold me-2"
+            @click="openAddModal"
+            v-if="isAdmin || userFullname"
+          >
+            <i class="bi bi-plus-circle-fill me-1"></i> เพิ่มตัวชี้วัดใหม่
+          </button>
           <button
             class="btn btn-warning text-dark rounded-pill px-3 fw-bold me-2"
             @click="$refs.fileInput.click()"
+            v-if="isAdmin"
           >
             <i class="bi bi-file-earmark-excel-fill me-1"></i> นำเข้าไฟล์ KPI
           </button>
@@ -27,8 +35,21 @@
           </button>
         </div>
       </div>
-      <div class="card-body p-4 bg-white">
-        <form @submit.prevent="submitForm">
+    </div>
+
+    <!-- Setup Modal -->
+    <div class="modal fade" id="kpiSetupModal" tabindex="-1" ref="kpiSetupModal" aria-hidden="true" data-bs-backdrop="static">
+      <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+          <div class="modal-header bg-purple text-white py-3">
+            <h5 class="modal-title fw-bold">
+              <i class="bi" :class="isEdit ? 'bi-pencil-square' : 'bi-plus-circle'"></i> 
+              {{ isEdit ? 'แก้ไขตัวชี้วัด KPI' : 'เพิ่มตัวชี้วัด KPI ใหม่' }}
+            </h5>
+            <button type="button" class="btn-close btn-close-white" @click="closeSetupModal"></button>
+          </div>
+          <div class="modal-body p-4 bg-light">
+            <form @submit.prevent="submitForm">
           <!-- Row: KPI Code & Name -->
           <div class="row g-3 mb-3">
             <div class="col-md-3">
@@ -218,23 +239,28 @@
             >
               {{ isEdit ? 'อัพเดทข้อมูล' : 'บันทึกตัวชี้วัด' }}
             </button>
-            <button
-              type="button"
-              v-if="isEdit"
-              @click="resetForm"
-              class="btn btn-outline-secondary px-4 py-2 rounded-1"
-            >
-              ยกเลิก
-            </button>
-          </div>
-        </form>
+              <button
+                type="button"
+                @click="closeSetupModal"
+                class="btn btn-outline-secondary px-4 py-2 rounded-1 fw-bold"
+              >
+                ยกเลิก
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
+  </div>
 
     <!-- ตารางข้อมูล KPI -->
     <div class="card shadow-sm rounded-0 border-0" v-if="kpis.length > 0">
-      <div class="card-header bg-white py-3 border-bottom">
+      <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h5 class="mb-0 fw-bold text-dark">รายการ KPI ทั้งหมด</h5>
+        <div class="input-group" style="max-width: 350px;">
+          <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+          <input type="text" class="form-control border-start-0 ps-0 bg-light" placeholder="ค้นหา KPI, รหัส, ผู้รับผิดชอบ..." v-model="searchQuery">
+        </div>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
@@ -249,7 +275,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="kpi in kpis" :key="kpi.id">
+              <tr v-for="kpi in filteredKpis" :key="kpi.id">
                 <td class="ps-3">
                   <span class="badge bg-light text-dark border">{{
                     kpi.category_name || 'Uncategorized'
@@ -390,7 +416,11 @@ export default {
       historyData: [],
       trendModalInstance: null,
       historyModalInstance: null,
+      kpiSetupModalInstance: null,
       chartInstance: null,
+      userDepartment: '',
+      userFullname: '',
+      searchQuery: '',
       form: {
         id: null,
         kpi_code: '',
@@ -426,9 +456,47 @@ export default {
       if (!this.staffInput) return [];
       const query = this.staffInput.toLowerCase();
       return this.staffList.filter((staff) => staff.FULLNAME.toLowerCase().includes(query));
+    },
+    isAdmin() {
+      return (
+        this.userDepartment.includes('กลุ่มงานสุขภาพดิจิทัล') ||
+        this.userDepartment.includes('ประกัน') ||
+        this.userDepartment === 'admin'
+      );
+    },
+    filteredKpis() {
+      let baseList = this.isAdmin 
+        ? this.kpis 
+        : (this.userFullname ? this.kpis.filter(kpi => kpi.responsible_person && kpi.responsible_person.includes(this.userFullname)) : []);
+      
+      if (this.searchQuery) {
+        const query = this.searchQuery.toLowerCase();
+        return baseList.filter(kpi => {
+          const name = kpi.name ? kpi.name.toLowerCase() : '';
+          const code = kpi.code ? kpi.code.toLowerCase() : '';
+          const person = kpi.responsible_person ? kpi.responsible_person.toLowerCase() : '';
+          return name.includes(query) || code.includes(query) || person.includes(query);
+        });
+      }
+      return baseList;
     }
   },
   methods: {
+
+    async fetchUserProfile() {
+      try {
+        const token = localStorage.getItem('user_token');
+        if (!token) return;
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        const response = await axios.get('/api-hosoffice/get_user_profile.php', config);
+        if (response.data.status === 'success') {
+          this.userDepartment = response.data.department || '';
+          this.userFullname = response.data.fullname || '';
+        }
+      } catch (e) {
+        console.error('Failed to load user profile', e);
+      }
+    },
     async handleFileUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -704,14 +772,23 @@ export default {
         if (res.data.status === 'success') {
           Swal.fire('Saved!', 'บันทึกข้อมูลสำเร็จ', 'success');
           this.resetForm();
-          this.fetchKPIs();
+          this.closeSetupModal();
         } else {
-          Swal.fire('Error', res.data.message, 'error');
+          Swal.fire('Error', res.data.message || 'บันทึกไม่สำเร็จ', 'error');
         }
       } catch (err) {
         console.error('Save error:', err);
-        Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+        Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
       }
+    },
+    openAddModal() {
+      this.resetForm();
+      this.isEdit = false;
+      this.kpiSetupModalInstance.show();
+    },
+    closeSetupModal() {
+      this.kpiSetupModalInstance.hide();
+      this.resetForm();
     },
     editKpi(kpi) {
       this.isEdit = true;
@@ -743,7 +820,7 @@ export default {
       }
       this.staffInput = '';
 
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      this.kpiSetupModalInstance.show();
     },
     async deleteKpi(id) {
       const result = await Swal.fire({
@@ -794,6 +871,8 @@ export default {
     }
   },
   mounted() {
+    this.kpiSetupModalInstance = new Modal(document.getElementById('kpiSetupModal'));
+    this.fetchUserProfile();
     this.generateFiscalYears();
     this.fetchMasterData();
     this.fetchKPIs();

@@ -12,7 +12,7 @@ const routes = [
   { path: '/handbook', component: () => import('../views/public/HandbookView.vue') },
   { path: '/dashboard', component: () => import('../views/public/DashboardView.vue') },
   { path: '/schedule', component: () => import('../views/public/ScheduleView.vue') },
-  { path: '/kpi', component: () => import('../views/public/KpiDashboardView.vue') },
+  { path: '/kpi', component: () => import('../views/public/KpiDashboardView.vue'), meta: { requiresAuth: true } },
   { path: '/asset-scan/:code(.*)', name: 'AssetScan', component: () => import('../views/asset/AssetScanView.vue') },
 
   // { path: "/communication", component: () => import("../views/communicationView.vue") },
@@ -50,8 +50,8 @@ const routes = [
   { path: '/ot-report-summary', component: () => import('../views/reports/OTReportSummaryView.vue'), meta: { requiresAuth: true } },
 
   //KPI
-  { path: '/kpi-setup', component: () => import('../views/kpi/KpiSetup.vue') },
-  { path: '/kpi-result', component: () => import('../views/kpi/KpiResult.vue') },
+  { path: '/kpi-setup', component: () => import('../views/kpi/KpiSetup.vue'), meta: { requiresAuth: true } },
+  { path: '/kpi-result', component: () => import('../views/kpi/KpiResult.vue'), meta: { requiresAuth: true } },
 
   { path: '/login', component: () => import('../views/auth/LoginView.vue'), meta: { hideNavbar: true } },
 

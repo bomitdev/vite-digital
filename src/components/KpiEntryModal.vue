@@ -1,143 +1,139 @@
 <template>
   <div class="modal fade" id="kpiEntryModal" tabindex="-1" aria-hidden="true" ref="modal">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-      <div class="modal-content border-0 shadow-lg rounded-0 overflow-hidden">
+      <div class="modal-content border-0 shadow-lg rounded-3 overflow-hidden">
         <!-- Header -->
-        <div class="modal-header bg-purple text-white border-0 py-3">
-          <h5 class="modal-title fw-bold">บันทึกผล KPI</h5>
+        <div class="modal-header bg-white border-bottom py-3">
+          <h5 class="modal-title fw-bold text-primary">
+            <i class="bi bi-pencil-fill me-2"></i>บันทึกผลตัวชี้วัด
+          </h5>
           <button
             type="button"
-            class="btn-close btn-close-white"
+            class="btn-close"
             data-bs-dismiss="modal"
             aria-label="Close"
           ></button>
         </div>
 
-        <div class="modal-body p-4 bg-light-gray" style="min-height: 500px">
+        <div class="modal-body p-4 bg-white" style="min-height: 500px">
           <form @submit.prevent="submitResults">
             <!-- KPI Detail Box -->
-            <div class="card border border-dark rounded-0 mb-4 shadow-sm">
-              <div class="card-body">
-                <h5 class="fw-bold mb-1">{{ selectedKpi?.name || 'ชื่อตัวชี้วัด' }}</h5>
-                <p class="text-muted mb-1">
-                  {{ selectedKpi?.description || 'รายละเอียดตัวชี้วัด' }}
-                </p>
-                <div class="text-dark">
-                  <span class="fw-bold">เป้าหมาย:</span> {{ selectedKpi?.target_operator }}
-                  {{ selectedKpi?.target_value }} {{ selectedKpi?.unit }}
+            <div class="bg-light p-4 rounded-3 mb-4 border">
+              <div class="small text-muted mb-1 fw-bold">ชื่อตัวชี้วัด</div>
+              <h6 class="fw-bold lh-base">{{ selectedKpi?.name || 'ชื่อตัวชี้วัด' }}</h6>
+              <div class="small text-muted mt-3 fw-bold">เป้าหมาย</div>
+              <div class="text-primary fw-bold">{{ selectedKpi?.target_operator }} {{ selectedKpi?.target_value }} {{ selectedKpi?.unit }}</div>
+            </div>
+
+            <!-- Row 1: Year, Frequency, Period -->
+            <div class="row g-3 mb-3">
+              <div class="col-md-3">
+                <label class="form-label fw-bold text-muted small">ปีงบประมาณ</label>
+                <input type="number" v-model="form.year_thai" class="form-control border rounded-2" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-bold text-muted small">การรายงานผล (Frequency)</label>
+                <select class="form-select border rounded-2 bg-light" disabled>
+                  <option>{{ periodLabel }}</option>
+                </select>
+              </div>
+              <div class="col-md-5">
+                <label class="form-label fw-bold text-muted small">เลือก</label>
+                <select v-model="form.period_number" class="form-select border rounded-2" required>
+                  <option value="" disabled>-- เลือก --</option>
+                  <option v-for="p in periodOptions" :key="p.id" :value="p.id">{{ p.name }}</option>
+                </select>
+                <div v-if="form.period_number && !getPeriodStatus().open" class="text-danger small mt-1 fw-bold">
+                  <i class="bi bi-exclamation-circle me-1"></i>{{ getPeriodStatus().message }}
                 </div>
               </div>
             </div>
 
-            <!-- Period Selection (Visual only, controls logic partially) -->
-            <div class="row g-3 mb-4">
-              <div class="col-6">
-                <!-- Year -->
-                <div
-                  class="bg-white border border-dark p-2 text-center h-100 d-flex flex-column justify-content-center"
-                >
-                  <div class="fw-bold fs-5">ปีงบประมาณ {{ form.year_thai }}</div>
-                  <input
-                    type="number"
-                    v-model="form.year_thai"
-                    class="form-control text-center mt-1 border-0 p-0"
-                    style="display: none"
-                  />
-                  <!-- Hidden logic, shown text -->
-                </div>
+            <!-- Row 2: Responsible Person -->
+            <div class="mb-4">
+              <label class="form-label fw-bold text-muted small">ผู้รับผิดชอบ</label>
+              <input type="text" class="form-control bg-light border rounded-2" :value="selectedKpi?.responsible_person || 'ไม่ระบุ'" readonly />
+            </div>
+
+            <!-- Row 3: Inputs (Table style) -->
+            <div class="row g-0 mb-4 border rounded-2 overflow-hidden shadow-sm" v-if="!isCriteria">
+              <div class="col-4 border-end">
+                <div class="p-2 text-center bg-white text-muted small fw-bold">{{ numeratorLabel }}</div>
+                <div class="p-2 bg-white"><input type="number" step="any" v-model.number="form.numerator" class="form-control border-0 text-center fw-bold fs-5" placeholder="-" /></div>
               </div>
-              <div class="col-6">
-                <!-- Period (Month/Quarter) -->
-                <div class="bg-white border border-dark p-2 h-100">
-                  <div class="text-center fw-bold fs-5 mb-1">{{ periodLabel }}</div>
-                  <select
-                    v-model="form.period_number"
-                    class="form-select border-0 text-center fw-bold py-0"
-                    style="font-size: 1.1rem; cursor: pointer"
-                    required
-                  >
-                    <option value="" disabled>-- เลือก --</option>
-                    <option v-for="p in periodOptions" :key="p.id" :value="p.id">
-                      {{ p.name }}
-                    </option>
-                  </select>
-                  <div
-                    v-if="form.period_number && !getPeriodStatus().open"
-                    class="text-danger small mt-1 fw-bold"
-                  >
-                    <i class="bi bi-exclamation-circle me-1"></i>
-                    {{ getPeriodStatus().message }}
+              <div class="col-4 border-end">
+                <div class="p-2 text-center bg-white text-muted small fw-bold">{{ denominatorLabel }}</div>
+                <div class="p-2 bg-white"><input type="number" step="any" v-model.number="form.denominator" class="form-control border-0 text-center fw-bold fs-5" placeholder="-" /></div>
+              </div>
+              <div class="col-4">
+                <div class="p-2 text-center bg-white text-muted small fw-bold">ตัวคูณ</div>
+                <div class="p-2 bg-white"><input type="number" step="any" v-model.number="form.multiplier" class="form-control border-0 text-center fw-bold fs-5" placeholder="-" /></div>
+              </div>
+            </div>
+
+            <!-- Criteria Input (Pass/Fail) -->
+            <div class="row g-3 mb-4" v-else>
+              <div class="col-12">
+                <label class="form-label fw-bold text-muted small">ผลการประเมิน (เกณฑ์ประเมิน)</label>
+                <div class="d-flex gap-3">
+                  <div class="form-check form-check-inline form-control d-flex align-items-center justify-content-center p-3 m-0 rounded-2 border shadow-sm" :class="{'border-success bg-success bg-opacity-10': form.actual_value === 1 || form.actual_value === '1'}" @click="form.actual_value = 1" style="cursor: pointer;">
+                    <input class="form-check-input d-none" type="radio" :value="1" v-model="form.actual_value">
+                    <label class="form-check-label fw-bold fs-5 text-success mb-0" style="cursor: pointer;"><i class="bi bi-check-circle-fill me-2"></i>ผ่าน</label>
+                  </div>
+                  <div class="form-check form-check-inline form-control d-flex align-items-center justify-content-center p-3 m-0 rounded-2 border shadow-sm" :class="{'border-danger bg-danger bg-opacity-10': form.actual_value === 0 || form.actual_value === '0'}" @click="form.actual_value = 0" style="cursor: pointer;">
+                    <input class="form-check-input d-none" type="radio" :value="0" v-model="form.actual_value">
+                    <label class="form-check-label fw-bold fs-5 text-danger mb-0" style="cursor: pointer;"><i class="bi bi-x-circle-fill me-2"></i>ไม่ผ่าน</label>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- 3 Columns Inputs -->
-            <div class="row g-3 mb-5">
-              <!-- Numerator -->
-              <div class="col-md-4">
-                <div class="text-center">
-                  <label class="fw-bold fs-5 mb-2 d-block">{{ numeratorLabel }}</label>
-                  <input
-                    type="number"
-                    step="any"
-                    v-model.number="form.numerator"
-                    class="form-control border-dark rounded-0 text-center py-2"
-                    placeholder="ระบุตัวเลข"
-                  />
+            <!-- Result Box -->
+            <div class="bg-primary bg-opacity-10 p-4 rounded-3 mb-4 d-flex align-items-center justify-content-between border border-primary border-opacity-25 shadow-sm">
+              <span class="fw-bold text-primary fs-5">ผลลัพธ์คำนวณ (Actual Value)</span>
+              <div class="d-flex align-items-center">
+                <div class="bg-white border border-primary border-opacity-25 rounded-2 d-flex align-items-center px-3 py-2 me-3 shadow-sm" style="min-width: 150px">
+                  <input type="text" class="form-control border-0 p-0 text-center fw-bold text-dark fs-5 bg-transparent" :value="displayActualValue" readonly />
                 </div>
-              </div>
-
-              <!-- Denominator -->
-              <div class="col-md-4">
-                <div class="text-center">
-                  <label class="fw-bold fs-5 mb-2 d-block">{{ denominatorLabel }}</label>
-                  <input
-                    type="number"
-                    step="any"
-                    v-model.number="form.denominator"
-                    class="form-control border-dark rounded-0 text-center py-2"
-                    placeholder="ระบุตัวเลข"
-                  />
-                </div>
-              </div>
-
-              <!-- Multiplier (Input) -->
-              <div class="col-md-4">
-                <div class="text-center">
-                  <label class="fw-bold fs-5 mb-2 d-block">ตัวคูณ</label>
-                  <input
-                    type="number"
-                    step="any"
-                    v-model.number="form.multiplier"
-                    class="form-control border-dark rounded-0 text-center py-2"
-                    placeholder="ระบุตัวเลข"
-                  />
-                </div>
+                <span class="text-primary fw-bold" v-if="!isCriteria">{{ selectedKpi?.unit }}</span>
               </div>
             </div>
 
-            <!-- Result Preview (Optional, for user feedback) -->
-            <div class="text-center mb-4" v-if="form.actual_value !== ''">
-              <span class="text-muted me-2">ผลลัพธ์ที่คำนวณได้:</span>
-              <span class="fw-bold fs-4 text-primary">{{ form.actual_value }}</span>
-              <span class="small ms-1">{{ selectedKpi?.unit }}</span>
+            <!-- History Table -->
+            <div class="border rounded-3 p-0 mb-4 bg-white shadow-sm" v-if="historyList.length > 0">
+              <div class="p-3 border-bottom bg-light d-flex align-items-center rounded-top-3">
+                <i class="bi bi-clock-history me-2 text-muted"></i><span class="fw-bold text-muted small">ประวัติการรายงานผลย้อนหลัง</span>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-hover text-center mb-0 align-middle">
+                  <thead class="text-muted small">
+                    <tr>
+                      <th class="py-3">รอบการรายงาน</th>
+                      <th class="py-3">ตัวตั้ง</th>
+                      <th class="py-3">ตัวหาร</th>
+                      <th class="py-3">ตัวคูณ</th>
+                      <th class="py-3">ผลลัพธ์</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="h in historyList" :key="h.id">
+                      <td class="text-start ps-4">{{ formatDate(h.period_date) }}</td>
+                      <td>{{ h.numerator || '-' }}</td>
+                      <td>{{ h.denominator || '-' }}</td>
+                      <td>{{ h.multiplier || '-' }}</td>
+                      <td class="fw-bold text-dark" :class="getDisplayValueClass(h.actual_value)">{{ getDisplayValue(h.actual_value) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
-            <!-- Submit Button -->
-            <div class="d-grid w-50 mx-auto">
-              <button
-                type="submit"
-                class="btn btn-primary-custom text-white py-3 fs-5 fw-bold rounded-1 shadow-sm"
-                :disabled="submitting || !getPeriodStatus().open"
-              >
-                <span
-                  v-if="submitting"
-                  class="spinner-border spinner-border-sm me-2"
-                  role="status"
-                  aria-hidden="true"
-                ></span>
-                บันทึกผลการดำเนินงาน
+            <!-- Buttons -->
+            <div class="d-flex justify-content-end gap-2 mt-4">
+              <button type="button" class="btn btn-outline-secondary px-4 py-2 bg-white fw-bold shadow-sm" data-bs-dismiss="modal">ยกเลิก</button>
+              <button type="submit" class="btn btn-success px-4 py-2 fw-bold shadow-sm" :disabled="submitting || !getPeriodStatus().open">
+                <span v-if="submitting" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <i class="bi bi-save me-1" v-else></i> บันทึกผลการดำเนินงาน
               </button>
             </div>
           </form>
@@ -161,6 +157,7 @@ export default {
       submitting: false,
       periodOptions: [],
       schedule: [],
+      historyList: [],
       form: {
         kpi_id: '',
         year_thai: (() => {
@@ -188,6 +185,18 @@ export default {
     },
     denominatorLabel() {
       return this.selectedKpi?.denominator_label || 'ตัวหาร';
+    },
+    isCriteria() {
+      const unit = this.selectedKpi?.unit || '';
+      return unit === 'เกณฑ์ประเมิน' || unit === 'เกณประเมิน';
+    },
+    displayActualValue() {
+      if (this.isCriteria) {
+        if (this.form.actual_value === 1 || this.form.actual_value === '1') return 'ผ่าน';
+        if (this.form.actual_value === 0 || this.form.actual_value === '0') return 'ไม่ผ่าน';
+        return '-';
+      }
+      return this.form.actual_value !== '' && this.form.actual_value !== null ? this.form.actual_value : '-';
     }
   },
   watch: {
@@ -304,17 +313,15 @@ export default {
       this.form.actual_value = '';
       this.form.numerator = '';
       this.form.denominator = '';
-      // Multiplier reset handled by watch
-
+      
+      this.fetchHistoryData(kpi.id);
       this.bsModal.show();
     },
     openForEdit(kpi, payload) {
       this.selectedKpi = kpi;
       this.form.kpi_id = kpi.id;
-      
       this.form.year_thai = payload.year_thai;
       
-      // Update options based on the periodicity and the selected year
       this.generatePeriodOptions(kpi.kpi_periodicity);
       
       this.form.period_number = payload.period_number;
@@ -322,7 +329,19 @@ export default {
       this.form.numerator = payload.numerator;
       this.form.denominator = payload.denominator;
       
+      this.fetchHistoryData(kpi.id);
       this.bsModal.show();
+    },
+    async fetchHistoryData(kpiId) {
+      this.historyList = [];
+      try {
+        const res = await axios.get(`/api-digital/kpi/get_kpi_history.php?kpi_id=${kpiId}`);
+        if (res.data.status === 'success') {
+          this.historyList = res.data.data;
+        }
+      } catch (err) {
+        console.error(err);
+      }
     },
     hide() {
       this.bsModal.hide();
@@ -371,7 +390,9 @@ export default {
       };
     },
     formatDate(d) {
-      return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+      if (!d) return '-';
+      const dateObj = typeof d === 'string' ? new Date(d) : d;
+      return dateObj.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
     },
     async submitResults() {
       if (!this.selectedKpi) return;
@@ -406,28 +427,3 @@ export default {
   }
 };
 </script>
-
-<style scoped>
-.bg-purple {
-  background-color: #512da8; /* Deep purple matching mockup */
-}
-.bg-light-gray {
-  background-color: #f8f9fa;
-}
-.btn-primary-custom {
-  background-color: #304ffe; /* Bright blue */
-  border: none;
-  transition: all 0.2s;
-}
-.btn-primary-custom:hover {
-  background-color: #1a237e;
-  transform: translateY(-1px);
-}
-.form-control:focus {
-  box-shadow: none;
-  border-color: #512da8;
-}
-.form-select:focus {
-  box-shadow: none;
-}
-</style>
