@@ -1,93 +1,151 @@
 <template>
   <div class="container mt-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h3 class="fw-bold text-success mb-0 d-flex align-items-center">
-        <i class="bi bi-graph-up-arrow me-2"></i> ศูนย์จัดเก็บรายได้โรงพยาบาลชานุมาน
-      </h3>
-      <div>
-        <label class="me-2 fw-bold text-muted">ปีงบประมาณ:</label>
-        <select
-          v-model="selectedYear"
-          class="form-select d-inline-block w-auto"
-          @change="onYearChange"
-        >
-          <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
-        </select>
+    <!-- Premium Header Banner -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+      <div
+        class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-center"
+        style="background: linear-gradient(to right, #ffffff, #f8f9fa)"
+      >
+        <div class="d-flex align-items-center mb-3 mb-lg-0">
+          <div
+            class="bg-success bg-gradient text-white rounded-circle d-flex justify-content-center align-items-center me-3 shadow-sm"
+            style="width: 56px; height: 56px"
+          >
+            <i class="bi bi-graph-up-arrow fs-3"></i>
+          </div>
+          <div>
+            <h3 class="fw-bolder text-success mb-0" style="letter-spacing: -0.5px">
+              ศูนย์จัดเก็บรายได้
+            </h3>
+            <span class="text-secondary fw-semibold">โรงพยาบาลชานุมาน</span>
+          </div>
+        </div>
 
-        <label class="me-2 ms-3 fw-bold text-muted d-none d-md-inline">รายการ:</label>
-        <select
-          v-model="selectedTargetFilter"
-          class="form-select d-inline-block w-auto text-truncate"
-          style="max-width: 250px"
-          @change="fetchDashboardData"
-        >
-          <option value="">ทั้งหมด</option>
-          <option v-for="t in availableTargets" :key="t.target_id" :value="t.target_id">
-            {{ t.revenue_name }}
-          </option>
-        </select>
-        <button
-          v-if="isAdmin || hasResponsibleTarget"
-          class="btn btn-outline-primary ms-3 rounded-pill px-3 fw-bold"
-          @click="$router.push('/revenue-setup')"
-        >
-          <i class="bi bi-gear-fill me-1"></i> ตั้งค่าจัดเก็บรายได้
-        </button>
-        <button
-          class="btn btn-outline-dark ms-3 rounded-pill px-3 fw-bold"
-          @click="$router.push('/home-backoffice')"
-        >
-          กลับหน้าหลัก
-        </button>
+        <div class="d-flex align-items-center flex-wrap gap-3">
+          <div class="d-flex align-items-center bg-white border rounded-pill px-3 py-1 shadow-sm">
+            <label class="me-2 fw-bold text-muted small"><i class="bi bi-calendar-event me-1"></i> ปีงบประมาณ:</label>
+            <select
+              v-model="selectedYear"
+              class="form-select form-select-sm border-0 bg-transparent fw-bold text-dark p-0"
+              style="width: 70px; cursor: pointer; box-shadow: none;"
+              @change="onYearChange"
+            >
+              <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
+            </select>
+          </div>
+
+          <div class="d-flex align-items-center bg-white border rounded-pill px-3 py-1 shadow-sm d-none d-md-flex">
+            <label class="me-2 fw-bold text-muted small"><i class="bi bi-funnel me-1"></i> รายการ:</label>
+            <select
+              v-model="selectedTargetFilter"
+              class="form-select form-select-sm border-0 bg-transparent fw-bold text-dark p-0 text-truncate"
+              style="max-width: 200px; cursor: pointer; box-shadow: none;"
+              @change="fetchDashboardData"
+            >
+              <option value="">ทั้งหมด</option>
+              <option v-for="t in availableTargets" :key="t.target_id" :value="t.target_id">
+                {{ t.revenue_name }}
+              </option>
+            </select>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button
+              v-if="isAdmin || hasResponsibleTarget"
+              class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center"
+              @click="$router.push('/revenue-setup')"
+            >
+              <i class="bi bi-gear-fill me-2"></i> ตั้งค่าจัดเก็บ
+            </button>
+            <button
+              class="btn btn-outline-secondary rounded-pill px-4 fw-bold d-flex align-items-center bg-white"
+              @click="$router.push('/home-backoffice')"
+            >
+              <i class="bi bi-box-arrow-left me-2"></i> หน้าหลัก
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Summary Cards -->
-    <div class="row row-cols-1 row-cols-md-5 g-4 mb-5">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-5 g-4 mb-4">
+      <!-- Card 1 -->
       <div class="col">
-        <div class="card shadow-sm border-0 border-start border-4 border-info h-100">
-          <div class="card-body">
-            <h6 class="text-muted text-uppercase fw-bold mb-2">เป้าหมายทั้งหมด</h6>
-            <h3 class="text-info fw-bold mb-0">
+        <div class="card shadow-sm border-0 rounded-4 h-100 overflow-hidden position-relative">
+          <div class="position-absolute top-0 start-0 w-100 bg-info" style="height: 4px"></div>
+          <div class="card-body p-4 d-flex flex-column justify-content-center">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <h6 class="text-muted fw-bold mb-0 text-uppercase small">เป้าหมายทั้งหมด</h6>
+              <div class="bg-info bg-opacity-10 text-info rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                <i class="bi bi-list-task fs-5"></i>
+              </div>
+            </div>
+            <h3 class="text-dark fw-bolder mb-0 mt-2">
               {{ summaryData.length }} <span class="fs-6 text-muted fw-normal">รายการ</span>
             </h3>
           </div>
         </div>
       </div>
+      <!-- Card 2 -->
       <div class="col">
-        <div class="card shadow-sm border-0 border-start border-4 border-primary h-100">
-          <div class="card-body">
-            <h6 class="text-muted text-uppercase fw-bold mb-2">เป้าหมายรวม (บาท)</h6>
-            <h3 class="text-dark fw-bold mb-0">{{ formatCurrency(totalTarget) }}</h3>
+        <div class="card shadow-sm border-0 rounded-4 h-100 overflow-hidden position-relative">
+          <div class="position-absolute top-0 start-0 w-100 bg-primary" style="height: 4px"></div>
+          <div class="card-body p-4 d-flex flex-column justify-content-center">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <h6 class="text-muted fw-bold mb-0 text-uppercase small">เป้าหมายรวม (บาท)</h6>
+              <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                <i class="bi bi-bullseye fs-5"></i>
+              </div>
+            </div>
+            <h3 class="text-dark fw-bolder mb-0 mt-2">{{ formatCurrency(totalTarget) }}</h3>
           </div>
         </div>
       </div>
+      <!-- Card 3 -->
       <div class="col">
-        <div class="card shadow-sm border-0 border-start border-4 border-success h-100">
-          <div class="card-body">
-            <h6 class="text-muted text-uppercase fw-bold mb-2">เรียกเก็บได้ (บาท)</h6>
-            <h3 class="text-success fw-bold mb-0">{{ formatCurrency(totalCollected) }}</h3>
+        <div class="card shadow-sm border-0 rounded-4 h-100 overflow-hidden position-relative">
+          <div class="position-absolute top-0 start-0 w-100 bg-success" style="height: 4px"></div>
+          <div class="card-body p-4 d-flex flex-column justify-content-center">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <h6 class="text-muted fw-bold mb-0 text-uppercase small">เรียกเก็บได้ (บาท)</h6>
+              <div class="bg-success bg-opacity-10 text-success rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                <i class="bi bi-cash-coin fs-5"></i>
+              </div>
+            </div>
+            <h3 class="text-success fw-bolder mb-0 mt-2">{{ formatCurrency(totalCollected) }}</h3>
           </div>
         </div>
       </div>
+      <!-- Card 4 -->
       <div class="col">
-        <div class="card shadow-sm border-0 border-start border-4 border-purple h-100">
-          <div class="card-body">
-            <h6 class="text-muted text-uppercase fw-bold mb-2">จัดเก็บได้จริง(Statement) รวม (บาท)</h6>
-            <h3 class="text-purple fw-bold mb-0" style="color: #6f42c1">
+        <div class="card shadow-sm border-0 rounded-4 h-100 overflow-hidden position-relative">
+          <div class="position-absolute top-0 start-0 w-100 bg-purple" style="height: 4px; background-color: #6f42c1 !important;"></div>
+          <div class="card-body p-4 d-flex flex-column justify-content-center">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <h6 class="text-muted fw-bold mb-0 text-uppercase small" style="line-height: 1.2;">เก็บได้จริง (Statement)</h6>
+              <div class="bg-purple bg-opacity-10 text-purple rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; color: #6f42c1; background-color: rgba(111, 66, 193, 0.1);">
+                <i class="bi bi-safe fs-5"></i>
+              </div>
+            </div>
+            <h3 class="fw-bolder mb-0 mt-2" style="color: #6f42c1">
               {{ formatCurrency(totalStatement) }}
             </h3>
           </div>
         </div>
       </div>
+      <!-- Card 5 -->
       <div class="col">
-        <div
-          class="card shadow-sm border-0 border-start border-4 h-100"
-          :class="percentage >= 100 ? 'border-success' : 'border-warning'"
-        >
-          <div class="card-body">
-            <h6 class="text-muted text-uppercase fw-bold mb-2">คิดเป็นร้อยละ</h6>
-            <h3 class="fw-bold mb-0" :class="percentage >= 100 ? 'text-success' : 'text-warning'">
+        <div class="card shadow-sm border-0 rounded-4 h-100 overflow-hidden position-relative">
+          <div class="position-absolute top-0 start-0 w-100" :class="percentage >= 100 ? 'bg-success' : 'bg-warning'" style="height: 4px"></div>
+          <div class="card-body p-4 d-flex flex-column justify-content-center">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <h6 class="text-muted fw-bold mb-0 text-uppercase small">คิดเป็นร้อยละ</h6>
+              <div class="rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" :class="percentage >= 100 ? 'bg-success bg-opacity-10 text-success' : 'bg-warning bg-opacity-10 text-warning'">
+                <i class="bi bi-pie-chart-fill fs-5"></i>
+              </div>
+            </div>
+            <h3 class="fw-bolder mb-0 mt-2" :class="percentage >= 100 ? 'text-success' : 'text-warning'">
               {{ formatPercent(percentage) }}%
             </h3>
           </div>
@@ -96,26 +154,30 @@
     </div>
 
     <!-- Charts -->
-    <div class="row g-4 mb-5">
+    <div class="row g-4 mb-4">
       <div class="col-lg-8">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-header bg-white py-3 border-0">
-            <h5 class="fw-bold mb-0">แนวโน้มการจัดเก็บรายได้รายเดือน ปี {{ selectedYear }}</h5>
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+          <div class="card-header bg-white py-3 border-bottom-0 rounded-top-4">
+            <h5 class="fw-bolder mb-0 text-dark">
+              <i class="bi bi-bar-chart-line text-primary me-2"></i> แนวโน้มการจัดเก็บรายได้รายเดือน ปี {{ selectedYear }}
+            </h5>
           </div>
           <div class="card-body">
-            <div style="position: relative; height: 300px; width: 100%">
+            <div style="position: relative; height: 320px; width: 100%">
               <canvas id="monthlyTrendChart"></canvas>
             </div>
           </div>
         </div>
       </div>
       <div class="col-lg-4">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-header bg-white py-3 border-0">
-            <h5 class="fw-bold mb-0">องค์ประกอบรายได้ตามหมวดหมู่</h5>
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+          <div class="card-header bg-white py-3 border-bottom-0 rounded-top-4">
+            <h5 class="fw-bolder mb-0 text-dark">
+              <i class="bi bi-pie-chart text-info me-2"></i> สัดส่วนรายได้
+            </h5>
           </div>
           <div class="card-body d-flex align-items-center justify-content-center">
-            <div style="position: relative; height: 300px; width: 100%">
+            <div style="position: relative; height: 280px; width: 100%">
               <canvas id="categoryPieChart"></canvas>
             </div>
           </div>
@@ -124,30 +186,34 @@
     </div>
 
     <!-- Comparison Chart -->
-    <div class="row g-4 mb-5">
+    <div class="row g-4 mb-4">
       <div class="col-12">
-        <div class="card shadow-sm border-0">
-          <div class="card-header bg-white py-3 border-0 d-flex align-items-center flex-wrap gap-2">
-            <h5 class="fw-bold mb-0 me-3">เปรียบเทียบการจัดเก็บรายได้</h5>
-            <div class="d-flex align-items-center">
+        <div class="card shadow-sm border-0 rounded-4">
+          <div class="card-header bg-white py-3 border-bottom-0 rounded-top-4 d-flex align-items-center flex-wrap gap-3">
+            <h5 class="fw-bolder mb-0 text-dark">
+              <i class="bi bi-arrow-left-right text-warning me-2"></i> เปรียบเทียบการจัดเก็บรายได้
+            </h5>
+            <div class="d-flex align-items-center bg-light rounded-pill px-3 py-1 border">
               <select
-                class="form-select form-select-sm w-auto d-inline-block fw-bold text-secondary"
+                class="form-select form-select-sm border-0 bg-transparent fw-bold text-secondary p-0"
                 v-model="compareYear1"
                 @change="fetchComparisonData"
+                style="width: 75px; cursor: pointer; box-shadow: none;"
               >
                 <option v-for="y in yearOptions" :key="y" :value="y">ปีงบฯ {{ y }}</option>
               </select>
-              <span class="mx-2 fw-bold text-muted">vs</span>
+              <span class="mx-3 fw-bolder text-muted small">VS</span>
               <select
-                class="form-select form-select-sm w-auto d-inline-block fw-bold text-primary"
+                class="form-select form-select-sm border-0 bg-transparent fw-bold text-primary p-0"
                 v-model="compareYear2"
                 @change="fetchComparisonData"
+                style="width: 75px; cursor: pointer; box-shadow: none;"
               >
                 <option v-for="y in yearOptions" :key="y" :value="y">ปีงบฯ {{ y }}</option>
               </select>
             </div>
           </div>
-          <div class="card-body">
+          <div class="card-body pb-4">
             <div style="position: relative; height: 350px; width: 100%">
               <canvas id="yearlyComparisonChart"></canvas>
             </div>
@@ -157,72 +223,82 @@
     </div>
 
     <!-- Details Table -->
-    <div class="card shadow-sm rounded-0 border-0 mb-5">
-      <div
-        class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center"
-      >
-        <h5 class="mb-0 fw-bold text-dark">รายละเอียดแต่ละเป้าหมาย</h5>
+    <div class="card shadow-sm rounded-4 border-0 mb-5 overflow-hidden">
+      <div class="card-header bg-white py-4 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bolder text-dark">
+          <i class="bi bi-table text-success me-2"></i> รายละเอียดแต่ละเป้าหมาย
+        </h5>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
-            <thead class="bg-light">
+          <table class="table table-hover align-middle mb-0 border-white">
+            <thead class="bg-light text-secondary">
               <tr>
-                <th class="py-3 ps-3">รายการรายได้</th>
-                <th class="py-3 text-end">เป้าหมาย (บาท)</th>
-                <th class="py-3 text-end">เรียกเก็บได้ (บาท)</th>
-                <th class="py-3 text-end">ยอดเรียกเก็บได้จริง(Statement)</th>
-                <th class="py-3 text-end">% ความสำเร็จ</th>
-                <th class="py-3">ผู้รับผิดชอบ</th>
-                <th class="py-3 pe-3">อัปเดตล่าสุด</th>
+                <th class="py-3 ps-4 border-0 fw-bold">รายการรายได้</th>
+                <th class="py-3 text-end border-0 fw-bold">เป้าหมาย (บาท)</th>
+                <th class="py-3 text-end border-0 fw-bold">เรียกเก็บได้ (บาท)</th>
+                <th class="py-3 text-end border-0 fw-bold">เก็บได้จริง (Statement)</th>
+                <th class="py-3 text-center border-0 fw-bold">ความสำเร็จ</th>
+                <th class="py-3 border-0 fw-bold">ผู้รับผิดชอบ</th>
+                <th class="py-3 pe-4 text-end border-0 fw-bold">จัดการ / อัปเดต</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in summaryData" :key="item.target_id">
-                <td class="ps-3 fw-bold">{{ item.revenue_name }}</td>
+              <tr v-for="item in summaryData" :key="item.target_id" class="border-bottom">
+                <td class="ps-4 fw-bold text-dark">{{ item.revenue_name }}</td>
                 <td class="text-end text-muted">{{ formatCurrency(item.target_amount) }}</td>
                 <td class="text-end text-success fw-bold">
                   {{ formatCurrency(item.total_collected) }}
                 </td>
-                <td class="text-end text-purple fw-bold" style="color: #6f42c1">
+                <td class="text-end fw-bold" style="color: #6f42c1">
                   {{ formatCurrency(item.total_statement) }}
                 </td>
-                <td class="text-end">
-                  <span
-                    class="badge"
-                    :class="getPercentColor(item.target_amount, item.total_collected)"
-                  >
-                    {{ calcPercent(item.target_amount, item.total_collected) }}%
-                  </span>
+                <td class="text-center">
+                  <div class="d-inline-flex flex-column align-items-center">
+                    <span
+                      class="badge rounded-pill px-3 py-2 mb-1"
+                      :class="getPercentColor(item.target_amount, item.total_collected)"
+                    >
+                      {{ calcPercent(item.target_amount, item.total_collected) }}%
+                    </span>
+                  </div>
                 </td>
                 <td>
-                  <div class="small">{{ item.responsible_person || '-' }}</div>
+                  <div class="small fw-semibold text-secondary">
+                    <i class="bi bi-person-circle me-1"></i> {{ item.responsible_person || 'ไม่ระบุ' }}
+                  </div>
                 </td>
-                <td class="pe-3">
-                  <span class="badge bg-light text-dark border" v-if="item.latest_report_date">
-                    {{ formatDateThai(item.latest_report_date) }}
-                  </span>
-                  <span class="text-muted small" v-else>-</span>
-                  <button
-                    class="btn btn-sm btn-outline-success ms-2 border-0"
-                    @click="openHistoryModal(item)"
-                    title="บันทึกผลจัดเก็บ"
-                  >
-                    <i class="bi bi-journal-plus"></i>
-                  </button>
-                  <button
-                    v-if="isAdmin"
-                    class="btn btn-sm btn-outline-purple ms-2 border-0"
-                    @click="openStatementModal(item)"
-                    title="บันทึก Statement"
-                  >
-                    <i class="bi bi-wallet2"></i>
-                  </button>
+                <td class="pe-4 text-end">
+                  <div class="d-flex flex-column align-items-end gap-1">
+                    <div>
+                      <button
+                        class="btn btn-sm btn-light border text-success fw-bold shadow-sm rounded-3 me-2"
+                        @click="openHistoryModal(item)"
+                        title="บันทึกผลจัดเก็บ"
+                      >
+                        <i class="bi bi-journal-plus"></i> บันทึกผล
+                      </button>
+                      <button
+                        v-if="isAdmin"
+                        class="btn btn-sm btn-light border text-purple fw-bold shadow-sm rounded-3"
+                        style="color: #6f42c1"
+                        @click="openStatementModal(item)"
+                        title="บันทึก Statement"
+                      >
+                        <i class="bi bi-wallet2"></i> Statement
+                      </button>
+                    </div>
+                    <div class="small text-muted mt-1" style="font-size: 0.75rem;">
+                      <i class="bi bi-clock-history"></i> อัปเดต: 
+                      {{ item.latest_report_date ? formatDateThai(item.latest_report_date) : '-' }}
+                    </div>
+                  </div>
                 </td>
               </tr>
               <tr v-if="summaryData.length === 0">
-                <td colspan="6" class="text-center py-4 text-muted">
-                  ไม่พบข้อมูลปีงบประมาณ {{ selectedYear }}
+                <td colspan="7" class="text-center py-5 text-muted">
+                  <div class="fs-1 text-light mb-3"><i class="bi bi-inbox"></i></div>
+                  <h6 class="fw-bold">ไม่พบข้อมูลปีงบประมาณ {{ selectedYear }}</h6>
                 </td>
               </tr>
             </tbody>
@@ -1058,28 +1134,50 @@ export default {
       if (ctxPie) {
         if (this.pieChartInstance) this.pieChartInstance.destroy();
 
-        const pLabels = this.summaryData.map((s) => s.revenue_name);
-        const pData = this.summaryData.map((s) => parseFloat(s.total_collected));
+        // Filter out items with 0 collected to avoid cluttering the chart
+        const activeData = this.summaryData.filter(s => parseFloat(s.total_collected || 0) > 0);
+        
+        // Sort by collected amount descending to show largest chunks first
+        activeData.sort((a, b) => parseFloat(b.total_collected || 0) - parseFloat(a.total_collected || 0));
+
+        // Group into top 10 and "อื่นๆ" (Others) if there are too many items
+        let finalLabels = [];
+        let finalData = [];
+        
+        if (activeData.length > 10) {
+          const top10 = activeData.slice(0, 10);
+          const others = activeData.slice(10);
+          
+          finalLabels = top10.map(s => s.revenue_name);
+          finalData = top10.map(s => parseFloat(s.total_collected || 0));
+          
+          const othersTotal = others.reduce((sum, s) => sum + parseFloat(s.total_collected || 0), 0);
+          finalLabels.push('อื่นๆ (Others)');
+          finalData.push(othersTotal);
+        } else {
+          finalLabels = activeData.map(s => s.revenue_name);
+          finalData = activeData.map(s => parseFloat(s.total_collected || 0));
+        }
+
+        const baseColors = [
+          '#0d6efd', '#198754', '#ffc107', '#dc3545', '#0dcaf0', 
+          '#6610f2', '#fd7e14', '#20c997', '#e83e8c', '#6c757d', '#adb5bd'
+        ];
+        
+        const bgColors = finalData.length 
+          ? finalData.map((_, i) => baseColors[i % baseColors.length])
+          : ['#e9ecef'];
 
         this.pieChartInstance = new Chart(ctxPie, {
           type: 'doughnut',
           data: {
-            labels: pLabels.length ? pLabels : ['No Data'],
+            labels: finalLabels.length ? finalLabels : ['ไม่มีข้อมูลจัดเก็บ'],
             datasets: [
               {
-                data: pData.length ? pData : [1],
-                backgroundColor: [
-                  '#0d6efd',
-                  '#198754',
-                  '#ffc107',
-                  '#dc3545',
-                  '#0dcaf0',
-                  '#6610f2',
-                  '#fd7e14',
-                  '#20c997',
-                  '#e83e8c'
-                ],
-                borderWidth: 0
+                data: finalData.length ? finalData : [1],
+                backgroundColor: bgColors,
+                borderWidth: 2,
+                borderColor: '#ffffff'
               }
             ]
           },

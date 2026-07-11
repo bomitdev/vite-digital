@@ -1,217 +1,257 @@
 <template>
   <div class="container mt-5">
-    <div class="card shadow-lg rounded-0 overflow-hidden mb-5 border-0">
-      <div
-        class="card-header bg-success text-white py-3 d-flex justify-content-between align-items-center"
-      >
-        <h4 class="mb-0 fw-bold">กำหนดเป้าหมายจัดเก็บรายได้ (Revenue Target Setup)</h4>
-        <button
-          class="btn btn-light text-dark rounded-pill px-3 fw-bold"
-          @click="$router.push('/revenue-dashboard')"
-        >
-          <i class="bi bi-house-fill me-1"></i> กลับหน้าจัดเก็บรายได้
-        </button>
+    <!-- Premium Page Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 bg-white p-4 rounded-4 shadow-sm border-0">
+      <div class="d-flex align-items-center mb-3 mb-md-0">
+        <div class="bg-success bg-gradient text-white rounded-circle d-flex justify-content-center align-items-center me-3 shadow-sm" style="width: 50px; height: 50px;">
+          <i class="bi bi-sliders fs-4"></i>
+        </div>
+        <div>
+          <h4 class="fw-bolder text-dark mb-0">จัดการเป้าหมายรายได้</h4>
+          <span class="text-muted small fw-semibold">Revenue Target Setup</span>
+        </div>
       </div>
-      <div class="card-body p-4 bg-white" v-if="isAdmin || isEdit">
-        <form @submit.prevent="submitForm">
-          <div class="row g-3 mb-3">
-            <div class="col-md-3">
-              <label class="form-label fw-bold">ปีงบประมาณ</label>
-              <input
-                type="number"
-                v-model="form.fiscal_year"
-                class="form-control border-dark rounded-0 px-3 py-2"
-                required
-              />
-            </div>
-          </div>
+      <button
+        class="btn btn-light border px-4 fw-bold shadow-sm rounded-pill d-flex align-items-center text-secondary"
+        @click="$router.push('/revenue-dashboard')"
+      >
+        <i class="bi bi-arrow-left me-2"></i> กลับหน้าแดชบอร์ด
+      </button>
+    </div>
 
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label class="form-label fw-bold">ชื่อรายการจัดเก็บรายได้</label>
-              <input
-                type="text"
-                v-model="form.revenue_name"
-                class="form-control border-dark rounded-0 px-3 py-2"
-                required
-                placeholder="เช่น รายได้ผู้ป่วยนอกทั่วไป"
-              />
-            </div>
-            <div class="col-md-3">
-              <label class="form-label fw-bold">จำนวนเงินหรือคะแนน/ครั้ง</label>
-              <input
-                type="text"
-                v-model="form.unit_price"
-                class="form-control border-dark rounded-0 px-3 py-2"
-                placeholder="เช่น 20, 100-200, คะแนน"
-              />
-            </div>
-            <div class="col-md-3">
-              <label class="form-label fw-bold">เป้าหมายจัดเก็บรวม (บาท)</label>
-              <input
-                type="number"
-                step="0.01"
-                v-model="form.target_amount"
-                class="form-control border-dark rounded-0 px-3 py-2"
-                required
-              />
-            </div>
-            <div class="col-md-3">
-              <label class="form-label fw-bold">เป้าหมายจำนวน/เดือน</label>
-              <input
-                type="number"
-                step="0.01"
-                v-model="form.target_per_month"
-                class="form-control border-dark rounded-0 px-3 py-2"
-              />
-            </div>
-          </div>
-
-          <div class="row g-3 mb-3">
-            <div class="col-md-12">
-              <label class="form-label fw-bold">ผู้รับผิดชอบ</label>
-              <div class="d-flex mb-2">
-                <input
-                  type="text"
-                  list="hrPersonList"
-                  v-model="currentPersonInput"
-                  class="form-control border-dark rounded-0 px-3 py-2"
-                  placeholder="ค้นหาชื่อเจ้าหน้าที่และกดเพิ่ม..."
-                  @keyup.enter.prevent="addPerson"
-                />
-                <button type="button" class="btn btn-dark rounded-0 px-3" @click="addPerson">
-                  เพิ่ม
-                </button>
-              </div>
-              <datalist id="hrPersonList">
-                <option
-                  v-for="person in hrPersons"
-                  :key="person.ID"
-                  :value="person.FULLNAME"
-                ></option>
-              </datalist>
-              <div class="d-flex flex-wrap gap-2 mt-2">
-                <span
-                  v-for="(name, index) in selectedPersons"
-                  :key="index"
-                  class="badge bg-primary d-flex align-items-center p-2 fs-6"
-                >
-                  {{ name }}
-                  <i
-                    class="bi bi-x-circle ms-2"
-                    style="cursor: pointer"
-                    @click="removePerson(index)"
-                  ></i>
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div class="row g-3 mb-4">
-            <div class="col-md-6">
-              <label class="form-label fw-bold">โปรแกรม Claim</label>
-              <select
-                v-model="form.claim_program"
-                class="form-select border-dark rounded-0 px-3 py-2"
-              >
-                <option value="">-- เลือก / ไม่ระบุ --</option>
-                <option v-for="cp in claimPrograms" :key="cp.id" :value="cp.program_name">
-                  {{ cp.program_name }}
-                </option>
-              </select>
-            </div>
-          </div>
-
-          <div class="d-flex justify-content-center gap-3">
-            <button
-              type="submit"
-              class="btn btn-primary px-5 py-2 fs-5 fw-bold rounded-1 shadow-sm"
-              style="min-width: 200px"
-            >
-              {{ isEdit ? 'อัพเดทข้อมูล' : 'บันทึกเป้าหมาย' }}
-            </button>
+    <!-- Modal เพิ่ม/แก้ไขเป้าหมาย -->
+    <div
+      class="modal fade"
+      id="targetSetupModal"
+      ref="targetSetupModal"
+      aria-hidden="true"
+      data-bs-focus="false"
+    >
+      <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+          <div class="modal-header bg-light border-bottom">
+            <h5 class="modal-title fw-bolder text-dark d-flex align-items-center">
+              <i class="bi bi-gear-fill text-success me-2 fs-4"></i>
+              {{ isEdit ? 'แก้ไขเป้าหมายรายได้' : 'กำหนดเป้าหมายจัดเก็บรายได้ใหม่' }}
+            </h5>
             <button
               type="button"
-              v-if="isEdit"
-              @click="resetForm"
-              class="btn btn-outline-secondary px-4 py-2 rounded-1"
-            >
-              ยกเลิก
-            </button>
+              class="btn-close"
+              data-bs-dismiss="modal"
+              @click="closeSetupModal"
+            ></button>
           </div>
-        </form>
+          <div class="modal-body p-5 bg-white">
+            <form @submit.prevent="submitForm">
+              <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                  <label class="form-label fw-bold">ปีงบประมาณ</label>
+                  <input
+                    type="number"
+                    v-model="form.fiscal_year"
+                    class="form-control border-dark rounded-0 px-3 py-2"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">ชื่อรายการจัดเก็บรายได้</label>
+                  <input
+                    type="text"
+                    v-model="form.revenue_name"
+                    class="form-control border-dark rounded-0 px-3 py-2"
+                    required
+                    placeholder="เช่น รายได้ผู้ป่วยนอกทั่วไป"
+                  />
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label fw-bold">จำนวนเงินหรือคะแนน/ครั้ง</label>
+                  <input
+                    type="text"
+                    v-model="form.unit_price"
+                    class="form-control border-dark rounded-0 px-3 py-2"
+                    placeholder="เช่น 20, 100-200, คะแนน"
+                  />
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label fw-bold">เป้าหมายจัดเก็บรวม (บาท)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    v-model="form.target_amount"
+                    class="form-control border-dark rounded-0 px-3 py-2"
+                    required
+                  />
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label fw-bold">เป้าหมายจำนวน/เดือน</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    v-model="form.target_per_month"
+                    class="form-control border-dark rounded-0 px-3 py-2"
+                  />
+                </div>
+              </div>
+
+              <div class="row g-3 mb-3">
+                <div class="col-md-12">
+                  <label class="form-label fw-bold">ผู้รับผิดชอบ</label>
+                  <div class="d-flex mb-2">
+                    <input
+                      type="text"
+                      list="hrPersonList"
+                      v-model="currentPersonInput"
+                      class="form-control border-dark rounded-0 px-3 py-2"
+                      placeholder="ค้นหาชื่อเจ้าหน้าที่และกดเพิ่ม..."
+                      @keyup.enter.prevent="addPerson"
+                    />
+                    <button type="button" class="btn btn-dark rounded-0 px-3" @click="addPerson">
+                      เพิ่ม
+                    </button>
+                  </div>
+                  <datalist id="hrPersonList">
+                    <option
+                      v-for="person in hrPersons"
+                      :key="person.ID"
+                      :value="person.FULLNAME"
+                    ></option>
+                  </datalist>
+                  <div class="d-flex flex-wrap gap-2 mt-2">
+                    <span
+                      v-for="(name, index) in selectedPersons"
+                      :key="index"
+                      class="badge bg-primary d-flex align-items-center p-2 fs-6"
+                    >
+                      {{ name }}
+                      <i
+                        class="bi bi-x-circle ms-2"
+                        style="cursor: pointer"
+                        @click="removePerson(index)"
+                      ></i>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">โปรแกรม Claim</label>
+                  <select
+                    v-model="form.claim_program"
+                    class="form-select border-dark rounded-0 px-3 py-2"
+                  >
+                    <option value="">-- เลือก / ไม่ระบุ --</option>
+                    <option v-for="cp in claimPrograms" :key="cp.id" :value="cp.program_name">
+                      {{ cp.program_name }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-end gap-3 mt-4 border-top pt-3">
+                <button
+                  type="button"
+                  @click="closeSetupModal"
+                  class="btn btn-light border px-4 py-2 fw-bold"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  class="btn btn-primary px-5 py-2 fw-bold shadow-sm"
+                >
+                  <i class="bi bi-save me-1"></i> {{ isEdit ? 'อัพเดทข้อมูล' : 'บันทึกเป้าหมาย' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- ตารางเป้าหมายรายได้ -->
-    <div class="card shadow-sm rounded-0 border-0" v-if="targets.length > 0">
+    <div class="card shadow-sm rounded-4 border-0 mb-5 overflow-hidden">
       <div
-        class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2"
+        class="card-header bg-white py-4 border-bottom d-flex flex-column flex-md-row justify-content-between align-items-center gap-3"
       >
-        <h5 class="mb-0 fw-bold text-dark">รายการเป้าหมายรายได้ทั้งหมด</h5>
-        <div class="input-group" style="max-width: 300px">
-          <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-          <input
-            type="text"
-            class="form-control border-start-0 ps-0"
-            placeholder="ค้นหารายการ..."
-            v-model="searchQuery"
-          />
+        <h5 class="mb-0 fw-bolder text-dark d-flex align-items-center">
+          <i class="bi bi-table text-primary me-2"></i> รายการเป้าหมายรายได้ทั้งหมด
+        </h5>
+        <div class="d-flex flex-wrap gap-2">
+          <div class="input-group shadow-sm rounded-pill overflow-hidden border bg-white" style="max-width: 300px">
+            <span class="input-group-text bg-transparent border-0 text-muted ps-3"><i class="bi bi-search"></i></span>
+            <input
+              type="text"
+              class="form-control border-0 ps-1 bg-transparent shadow-none"
+              placeholder="ค้นหารายการ..."
+              v-model="searchQuery"
+            />
+          </div>
+          <button v-if="isAdmin" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center" @click="openSetupModal">
+            <i class="bi bi-plus-lg me-2"></i> เพิ่มเป้าหมายใหม่
+          </button>
         </div>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
-            <thead class="bg-light">
+          <table class="table table-hover align-middle mb-0 border-white">
+            <thead class="bg-light text-secondary">
               <tr>
-                <th class="py-3 ps-3">ปีงบฯ</th>
-                <th class="py-3">รายการรายได้ (ต่อหน่วย)</th>
-                <th class="py-3 text-end">เป้าหมายรวม (บาท)</th>
-                <th class="py-3">ผู้รับผิดชอบ / Claim</th>
-                <th class="py-3 pe-3 text-end">จัดการ</th>
+                <th class="py-3 ps-4 border-0 fw-bold">ปีงบฯ</th>
+                <th class="py-3 border-0 fw-bold">รายการรายได้ (ต่อหน่วย)</th>
+                <th class="py-3 text-end border-0 fw-bold">เป้าหมายรวม (บาท)</th>
+                <th class="py-3 border-0 fw-bold">ผู้รับผิดชอบ / Claim</th>
+                <th class="py-3 pe-4 text-end border-0 fw-bold">จัดการ</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="filteredTargets.length === 0">
                 <td colspan="5" class="text-center text-muted py-4">ไม่พบรายการที่ค้นหา</td>
               </tr>
-              <tr v-for="target in filteredTargets" :key="target.id">
-                <td class="ps-3">
-                  <span class="badge bg-secondary">{{ target.fiscal_year }}</span>
+              <tr v-for="target in filteredTargets" :key="target.id" class="border-bottom">
+                <td class="ps-4">
+                  <span class="badge bg-light text-dark border rounded-pill px-3 py-2 fw-bold shadow-sm">{{ target.fiscal_year }}</span>
                 </td>
                 <td>
-                  <div class="fw-bold">{{ target.revenue_name }}</div>
-                  <div class="small text-muted" v-if="target.unit_price">
-                    เงิน/ครั้ง: <span class="badge bg-info text-dark">{{ target.unit_price }}</span>
+                  <div class="fw-bolder text-dark fs-6">{{ target.revenue_name }}</div>
+                  <div class="small text-muted mt-1" v-if="target.unit_price">
+                    เงิน/ครั้ง: <span class="badge bg-info bg-opacity-10 text-info border-info border rounded-pill">{{ target.unit_price }}</span>
                   </div>
                 </td>
                 <td class="text-end">
-                  <div class="text-success fw-bold">{{ formatCurrency(target.target_amount) }}</div>
-                  <div class="small text-muted" v-if="target.target_per_month">
-                    เป้า: {{ Number(target.target_per_month).toLocaleString() }} หน่วย/เดือน
+                  <div class="text-success fw-bolder fs-6">{{ formatCurrency(target.target_amount) }}</div>
+                  <div class="small text-muted fw-semibold mt-1" v-if="target.target_per_month">
+                    เป้า: {{ Number(target.target_per_month).toLocaleString() }} หน่วย/ด.
                   </div>
                 </td>
                 <td>
-                  <div class="small fw-bold text-dark">{{ target.responsible_person || '-' }}</div>
-                  <div class="small text-muted mt-1" v-if="target.claim_program">
-                    <span class="badge bg-light text-dark border">{{ target.claim_program }}</span>
+                  <div class="small fw-semibold text-secondary">
+                    <i class="bi bi-person-circle me-1"></i> {{ target.responsible_person || 'ไม่ระบุ' }}
+                  </div>
+                  <div class="small mt-1" v-if="target.claim_program">
+                    <span class="badge bg-light text-primary border rounded-pill"><i class="bi bi-tag-fill me-1"></i>{{ target.claim_program }}</span>
                   </div>
                 </td>
-                <td class="pe-3 text-end">
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-light border me-1"
-                    @click="openResultModal(target)"
-                    title="บันทึกผลงาน"
-                  >
-                    <i class="bi bi-journal-plus text-primary"></i> บันทึกผล
-                  </button>
-                  <button class="btn btn-sm btn-light border me-1" @click="editTarget(target)">
-                    <i class="bi bi-pencil text-warning"></i>
-                  </button>
-                  <button class="btn btn-sm btn-light border" @click="deleteTarget(target.id)" v-if="isAdmin">
-                    <i class="bi bi-trash text-danger"></i>
-                  </button>
+                <td class="pe-4 text-end">
+                  <div class="d-inline-flex gap-1">
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-light border text-primary fw-bold rounded-3 shadow-sm"
+                      @click="openResultModal(target)"
+                      title="บันทึกผลงาน"
+                    >
+                      <i class="bi bi-journal-plus me-1"></i> บันทึกผล
+                    </button>
+                    <button class="btn btn-sm btn-light border text-warning fw-bold rounded-3 shadow-sm" @click="editTarget(target)" title="แก้ไข">
+                      <i class="bi bi-pencil-square"></i>
+                    </button>
+                    <button class="btn btn-sm btn-light border text-danger fw-bold rounded-3 shadow-sm" @click="deleteTarget(target.id)" v-if="isAdmin" title="ลบ">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -361,6 +401,7 @@ export default {
       selectedTarget: null,
       resultsData: [],
       resultModalInstance: null,
+      setupModalInstance: null,
       form: {
         id: null,
         revenue_name: '',
@@ -499,8 +540,14 @@ export default {
         const res = await axios.post('/api-digital/revenue/save_target.php', this.form, config);
 
         if (res.data.status === 'success') {
-          Swal.fire('สำเร็จ', 'บันทึกข้อมูลเป้าหมายสำเร็จ', 'success');
-          this.resetForm();
+          Swal.fire({
+            title: 'สำเร็จ',
+            text: 'บันทึกข้อมูลเป้าหมายสำเร็จ',
+            icon: 'success',
+            timer: 1500,
+            showConfirmButton: false
+          });
+          this.closeSetupModal();
           this.fetchTargets();
         } else {
           Swal.fire('ข้อผิดพลาด', res.data.message || 'ไม่สามารถบันทึกได้', 'error');
@@ -519,7 +566,16 @@ export default {
             .map((s) => s.trim())
             .filter((s) => s)
         : [];
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      let el = this.$refs.targetSetupModal;
+      if (!el) el = document.getElementById('targetSetupModal');
+      
+      if (el) {
+        if (!this.setupModalInstance) {
+          this.setupModalInstance = new Modal(el);
+        }
+        this.setupModalInstance.show();
+      }
     },
     async deleteTarget(id) {
       const result = await Swal.fire({
@@ -564,6 +620,23 @@ export default {
       };
       this.selectedPersons = [];
       this.currentPersonInput = '';
+    },
+    openSetupModal() {
+      this.resetForm();
+      let el = this.$refs.targetSetupModal;
+      if (!el) el = document.getElementById('targetSetupModal');
+      if (el) {
+        if (!this.setupModalInstance) {
+          this.setupModalInstance = new Modal(el);
+        }
+        this.setupModalInstance.show();
+      }
+    },
+    closeSetupModal() {
+      if (this.setupModalInstance) {
+        this.setupModalInstance.hide();
+      }
+      this.resetForm();
     },
     async openResultModal(t) {
       this.selectedTarget = t;

@@ -109,12 +109,12 @@
             </div>
             <div class="col-md-4">
               <label class="form-label fw-bold">ระดับตัวชี้วัด</label>
-              <select v-model="form.kpi_level" class="form-select border-dark rounded-0 px-3 py-2">
-                <option value="">-- เลือกระดับ --</option>
-                <option v-for="l in masterData.levels" :key="l.id" :value="l.name">
-                  {{ l.name }}
-                </option>
-              </select>
+              <div class="d-flex flex-wrap gap-2 mt-2">
+                <div class="form-check form-check-inline m-0" v-for="l in masterData.levels" :key="l.id">
+                  <input class="form-check-input border-dark" type="checkbox" :id="'level-'+l.id" :value="l.name" v-model="selectedKpiLevels">
+                  <label class="form-check-label" :for="'level-'+l.id">{{ l.name }}</label>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -448,7 +448,8 @@ export default {
         units: [],
         calculation_types: [],
         categories: []
-      }
+      },
+      selectedKpiLevels: []
     };
   },
   computed: {
@@ -767,6 +768,7 @@ export default {
     async submitForm() {
       // Ensure string is updated before submit
       this.form.responsible_person = this.responsiblePersonList.join(', ');
+      this.form.kpi_level = this.selectedKpiLevels.join(', ');
       try {
         const res = await axios.post('/api-digital/kpi/save_kpi.php', this.form);
         if (res.data.status === 'success') {
@@ -808,6 +810,8 @@ export default {
         responsible_unit: kpi.responsible_unit,
         fiscal_year: kpi.fiscal_year || new Date().getFullYear() + 543
       };
+
+      this.selectedKpiLevels = kpi.kpi_level ? kpi.kpi_level.split(',').map(s => s.trim()).filter(s => s) : [];
 
       // Load tags
       if (kpi.responsible_person) {
@@ -868,6 +872,7 @@ export default {
       this.responsiblePersonList = [];
       this.staffInput = '';
       this.showStaffDropdown = false;
+      this.selectedKpiLevels = [];
     }
   },
   mounted() {

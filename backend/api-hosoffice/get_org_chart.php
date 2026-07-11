@@ -149,11 +149,37 @@ try {
             ];
         }
 
+        // Get Direct Staff for Group
+        $sql_group_staff = "SELECT 
+                        p.ID,
+                        CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) as name,
+                        pos.HR_POSITION_NAME as role,
+                        p.HR_IMAGE
+                      FROM hr_person p
+                      LEFT JOIN hr_prefix pf ON p.HR_PREFIX_ID = pf.HR_PREFIX_ID
+                      LEFT JOIN hr_position pos ON p.HR_POSITION_ID = pos.HR_POSITION_ID
+                      WHERE p.HR_DEPARTMENT_ID = :group_id 
+                      AND (p.HR_DEPARTMENT_SUB_ID IS NULL OR p.HR_DEPARTMENT_SUB_ID = '' OR p.HR_DEPARTMENT_SUB_ID = '0')
+                      AND p.ID != :group_head_id
+                      AND p.HR_STATUS_ID = '01'
+                      ORDER BY p.HR_FNAME ASC";
+        $stmt_g_staff = $pdo3->prepare($sql_group_staff);
+        $stmt_g_staff->execute([
+            'group_id' => $group['HR_DEPARTMENT_ID'],
+            'group_head_id' => $group['LEADER_HR_ID'] ?? 0
+        ]);
+        $group_staff_list = $stmt_g_staff->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($group_staff_list as &$staff) {
+            $staff['image'] = $staff['HR_IMAGE'] ? 'data:image/jpeg;base64,' . base64_encode($staff['HR_IMAGE']) : null;
+            unset($staff['HR_IMAGE']);
+        }
+
         $groups[] = [
             'id' => $group['HR_DEPARTMENT_ID'],
             'name' => $group['HR_DEPARTMENT_NAME'],
             'head' => $group_head,
-            'subs' => $subs
+            'subs' => $subs,
+            'staff' => $group_staff_list
         ];
     }
 
