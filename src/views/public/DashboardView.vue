@@ -350,6 +350,7 @@
             </div>
           </div>
         </div>
+        
         <hr />
 
         <!-- survail Card -->
@@ -364,6 +365,39 @@
               <h2 class="card-value">{{ formatNumber(data.surveil) }}</h2>
               <div class="mt-auto pt-2">
                 <small class="text-white-50">ระบาดวิทยา</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <hr />
+        <!-- Telemedicine Card -->
+         <h2 class="dashboard-title">บริการทางไกล (Telemedicine)</h2>
+        <div class="col-12 col-sm-6 col-md-4">
+          <div
+            class="card text-white bg-primary mb-3 h-100 hover-effect"
+            @click="goToTelemedicineReport"
+            style="cursor: pointer"
+          >
+            <div class="card-body d-flex flex-column">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="card-title mb-0">บริการทางไกล (Telemedicine)</h5>
+                <i class="bi bi-telephone fs-4"></i>
+              </div>
+              <h2 class="card-value">{{ formatNumber(data.telemedicine) }}</h2>
+              
+              <!-- Today/Yesterday Trend Badge -->
+              <div class="mt-auto pt-2 d-flex flex-column gap-1">
+                <small class="text-white-50">Telemedicine</small>
+                <div class="d-inline-flex align-items-center bg-white bg-opacity-25 rounded-pill px-2 py-1 align-self-start" style="font-size: 0.8rem;">
+                  <span class="me-1">วันนี้: {{ formatNumber(data.telemedicine_today) }}</span>
+                  <span v-if="data.telemedicine_today >= data.telemedicine_yesterday" class="badge bg-success rounded-pill p-1 ms-1" style="font-size: 0.7rem;">
+                    <i class="bi bi-arrow-up-short"></i> {{ formatNumber(data.telemedicine_today - data.telemedicine_yesterday) }} (จาก {{ formatNumber(data.telemedicine_yesterday) }})
+                  </span>
+                  <span v-else class="badge bg-danger rounded-pill p-1 ms-1" style="font-size: 0.7rem;">
+                    <i class="bi bi-arrow-down-short"></i> {{ formatNumber(data.telemedicine_yesterday - data.telemedicine_today) }} (จาก {{ formatNumber(data.telemedicine_yesterday) }})
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -416,6 +450,9 @@ export default {
         pd: 0,
         refer_out: 0,
         refer_in: 0,
+        telemedicine: 0,
+        telemedicine_today: 0,
+        telemedicine_yesterday: 0,
         sum_income: 0
       },
       loading: false
@@ -546,6 +583,11 @@ export default {
     goToPhysicReport() {
       this.$router.push({
         path: '/physic-report'
+      });
+    },
+    goToTelemedicineReport() {
+      this.$router.push({
+        path: '/telemedicine-report'
       });
     },
     formatNumber(num) {

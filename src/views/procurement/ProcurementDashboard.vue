@@ -112,6 +112,16 @@
                           <i class="bi bi-pencil"></i>
                         </button>
                         
+                        <!-- Print Docs Button -->
+                        <button
+                          v-if="bill.status !== 'Draft'"
+                          class="btn btn-sm btn-outline-success"
+                          @click="openGenerateDocModal(bill)"
+                          title="จัดทำเอกสารพัสดุ"
+                        >
+                          <i class="bi bi-printer"></i>
+                        </button>
+                        
                         <!-- One button for all attachments -->
                         <button
                           class="btn btn-sm btn-outline-primary"
@@ -145,6 +155,7 @@
 
     <!-- Modals -->
     <ProcurementForm ref="procurementForm" @saved="fetchBills" />
+    <GenerateDocModal ref="generateDocModal" />
 
     <!-- File Manager Modal -->
     <div class="modal fade" id="fileManagerModal" tabindex="-1" ref="fileManagerModal">
@@ -362,11 +373,12 @@
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import ProcurementForm from './ProcurementForm.vue';
+import GenerateDocModal from './GenerateDocModal.vue';
 import { Modal } from 'bootstrap';
 
 export default {
   name: 'ProcurementDashboard',
-  components: { ProcurementForm },
+  components: { ProcurementForm, GenerateDocModal },
   data() {
     return {
       bills: [],
@@ -437,6 +449,9 @@ export default {
     },
     openForm(bill = null) {
       this.$refs.procurementForm.open(bill);
+    },
+    openGenerateDocModal(bill) {
+      this.$refs.generateDocModal.open(bill);
     },
     async forwardBill(bill) {
       const result = await Swal.fire({

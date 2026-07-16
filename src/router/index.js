@@ -23,6 +23,7 @@ const routes = [
   { path: '/dental-report', component: () => import('../views/reports/dental/DentalReport.vue') },
   { path: '/ttm-report', component: () => import('../views/reports/ttm/TTMReport.vue') },
   { path: '/physic-report', component: () => import('../views/reports/physic/PhysicReport.vue') },
+  { path: '/telemedicine-report', component: () => import('../views/reports/telemedicine/TelemedicineReport.vue') },
   { path: '/ipd-report', component: () => import('../views/reports/ipd/IPDReport.vue') },
   {
     path: '/opddashboardchart',
@@ -306,6 +307,26 @@ const routes = [
     path: '/procurement',
     component: () => import('../views/procurement/ProcurementDashboard.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/procurement/print/memo/:id',
+    component: () => import('../views/procurement/PrintMemoView.vue'),
+    meta: { requiresAuth: true, hideNavbar: true }
+  },
+  {
+    path: '/procurement/print/winner/:id',
+    component: () => import('../views/procurement/PrintWinnerView.vue'),
+    meta: { requiresAuth: true, hideNavbar: true }
+  },
+  {
+    path: '/procurement/print/po/:id',
+    component: () => import('../views/procurement/PrintPOView.vue'),
+    meta: { requiresAuth: true, hideNavbar: true }
+  },
+  {
+    path: '/procurement/print/inspection/:id',
+    component: () => import('../views/procurement/PrintInspectionView.vue'),
+    meta: { requiresAuth: true, hideNavbar: true }
   },
 
   { path: '/:pathMatch(.*)*', component: () => import('../views/errors/Page404.vue') } // แก้ไขจาก pathMathch เป็น pathMatch

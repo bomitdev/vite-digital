@@ -7,9 +7,9 @@ header("Content-Type: application/json; charset=UTF-8");
 require '../config.php';
 
 try {
-    // สร้างการเชื่อมต่อกับฐานข้อมูล
-    $pdo1 = new PDO("mysql:host={$db1['host']};dbname={$db1['name']};charset=utf8", $db1['user'], $db1['pass']);
-    $pdo1->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    /** @var PDO $pdo1 */
+    // Enable emulated prepares to allow reusing named parameters in this complex query
+    $pdo1->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
 
     // รับค่าช่วงวันที่จาก Vue.js
     $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : '2024-10-01';
@@ -35,6 +35,7 @@ try {
             SUM(CASE WHEN e2.vn IS NOT NULL THEN 1 ELSE 0 END) as er,
 			SUM(CASE WHEN ro.vn IS NOT NULL THEN 1 ELSE 0 END) as refer_out,
 			SUM(CASE WHEN ri.vn IS NOT NULL THEN 1 ELSE 0 END) as refer_in,
+            COUNT(DISTINCT CASE WHEN ov_i.export_code = '5' THEN vn.vn END) as telemedicine,
             SUM(vn.income) as sum_income
         FROM vn_stat vn
         LEFT JOIN ovst o on vn.vn = o.vn
@@ -54,6 +55,7 @@ try {
         LEFT JOIN er_regist e2 ON vn.vn = e2.vn
         LEFT JOIN referout ro on vn.vn = ro.vn
 		LEFT JOIN referin ri on vn.vn = ri.vn
+        LEFT JOIN ovstist ov_i on o.ovstist = ov_i.ovstist
         WHERE vn.vstdate BETWEEN :start_date AND :end_date;
     ");
 
@@ -66,6 +68,26 @@ try {
     
     // Fetch result
     $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Get today count for Telemedicine
+    $stmt_today = $pdo1->prepare("
+        SELECT COUNT(DISTINCT o.vn) AS total 
+        FROM ovst o 
+        LEFT JOIN ovstist i ON o.ovstist = i.ovstist 
+        WHERE o.vstdate = CURDATE() AND i.export_code = '5'
+    ");
+    $stmt_today->execute();
+    $data['telemedicine_today'] = $stmt_today->fetchColumn() ?: 0;
+
+    // Get yesterday count for Telemedicine
+    $stmt_yesterday = $pdo1->prepare("
+        SELECT COUNT(DISTINCT o.vn) AS total 
+        FROM ovst o 
+        LEFT JOIN ovstist i ON o.ovstist = i.ovstist 
+        WHERE o.vstdate = CURDATE() - INTERVAL 1 DAY AND i.export_code = '5'
+    ");
+    $stmt_yesterday->execute();
+    $data['telemedicine_yesterday'] = $stmt_yesterday->fetchColumn() ?: 0;
 
     // Return data as JSON
     echo json_encode($data);
