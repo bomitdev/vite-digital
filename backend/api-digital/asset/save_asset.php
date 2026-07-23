@@ -50,8 +50,8 @@ try {
     }
 
     if (!$id) {
-        $sql = "INSERT INTO assets (asset_code, name, type, brand, model, size, unit, acquisition_method, source, serial_number, spec_cpu, spec_ram, spec_storage, os, status, purchase_date, warranty_expire_date, price, location, responsible_person, notes, image_path)
-VALUES (:code, :name, :type, :brand, :model, :size, :unit, :acq_method, :source, :serial, :cpu, :ram, :storage, :os, :status, :purchase, :warranty, :price, :location, :person, :notes, :image)";
+        $sql = "INSERT INTO assets (asset_code, name, type, brand, model, size, unit, acquisition_method, source, serial_number, spec_cpu, spec_ram, spec_storage, os, status, purchase_date, warranty_expire_date, price, location, responsible_person, notes, image_path, allow_loan)
+VALUES (:code, :name, :type, :brand, :model, :size, :unit, :acq_method, :source, :serial, :cpu, :ram, :storage, :os, :status, :purchase, :warranty, :price, :location, :person, :notes, :image, :allow_loan)";
     } else {
         $sql = "UPDATE assets SET
 asset_code = :code, name = :name, type = :type, brand = :brand, model = :model, size = :size, unit = :unit,
@@ -59,7 +59,7 @@ acquisition_method = :acq_method, source = :source,
 serial_number = :serial,
 spec_cpu = :cpu, spec_ram = :ram, spec_storage = :storage, os = :os, status = :status,
 purchase_date = :purchase, warranty_expire_date = :warranty, price = :price, location = :location,
-responsible_person = :person, notes = :notes, image_path = :image
+responsible_person = :person, notes = :notes, image_path = :image, allow_loan = :allow_loan
 WHERE id = :id";
     }
 
@@ -87,7 +87,8 @@ WHERE id = :id";
         ':location' => $data['location'] ?? '',
         ':person' => $data['responsible_person'] ?? '',
         ':notes' => $data['notes'] ?? '',
-        ':image' => $imagePath
+        ':image' => $imagePath,
+        ':allow_loan' => isset($data['allow_loan']) ? $data['allow_loan'] : 1
     ];
 
     if ($id) {

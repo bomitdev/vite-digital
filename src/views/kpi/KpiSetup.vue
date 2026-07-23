@@ -14,6 +14,13 @@
             <i class="bi bi-plus-circle-fill me-1"></i> เพิ่มตัวชี้วัดใหม่
           </button>
           <button
+            class="btn btn-info text-white rounded-pill px-3 fw-bold me-2"
+            @click="downloadTemplate"
+            v-if="isAdmin"
+          >
+            <i class="bi bi-download me-1"></i> โหลด Template
+          </button>
+          <button
             class="btn btn-warning text-dark rounded-pill px-3 fw-bold me-2"
             @click="$refs.fileInput.click()"
             v-if="isAdmin"
@@ -420,6 +427,7 @@ export default {
       chartInstance: null,
       userDepartment: '',
       userFullname: '',
+      userAccess: [],
       searchQuery: '',
       form: {
         id: null,
@@ -460,6 +468,8 @@ export default {
     },
     isAdmin() {
       return (
+        this.userAccess.includes('administrator') ||
+        this.userAccess.includes('menu_kpi_admin') ||
         this.userDepartment.includes('กลุ่มงานสุขภาพดิจิทัล') ||
         this.userDepartment.includes('ประกัน') ||
         this.userDepartment === 'admin'
@@ -493,6 +503,7 @@ export default {
         if (response.data.status === 'success') {
           this.userDepartment = response.data.department || '';
           this.userFullname = response.data.fullname || '';
+          this.userAccess = response.data.access_user ? response.data.access_user.split(':') : [];
         }
       } catch (e) {
         console.error('Failed to load user profile', e);
@@ -585,6 +596,35 @@ export default {
         }
       };
       reader.readAsArrayBuffer(file);
+    },
+    downloadTemplate() {
+      const templateData = [
+        {
+          code: 'KPI-001',
+          name: 'ตัวอย่าง KPI 1',
+          description: 'คำอธิบายตัวชี้วัด',
+          category_name: 'ด้านการดูแลผู้ป่วย',
+          fiscal_year: new Date().getFullYear() + 543,
+          calculation_type: 'percentage',
+          kpi_level: 'โรงพยาบาล, กลุ่มงาน',
+          kpi_periodicity: 'month',
+          target_value: 80,
+          target_operator: '>=',
+          unit: 'เปอร์เซนต์',
+          responsible_person: 'ชื่อ นามสกุล',
+          responsible_unit: 'หน่วยงาน'
+        }
+      ];
+
+      const ws = XLSX.utils.json_to_sheet(templateData);
+      
+      const colWidths = Object.keys(templateData[0]).map(key => ({ wch: Math.max(key.length, 15) }));
+      ws['!cols'] = colWidths;
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Template');
+
+      XLSX.writeFile(wb, 'KPI_Import_Template.xlsx');
     },
     async fetchMasterData() {
       try {

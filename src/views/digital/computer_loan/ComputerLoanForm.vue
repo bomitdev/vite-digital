@@ -1,5 +1,6 @@
 <template>
-  <div class="row g-4">
+  <div class="container-fluid py-4 min-vh-100" style="background-color: #f8f9fa">
+    <div class="row g-4">
     <div class="col-12 text-center my-4">
       <h3 class="fw-bold text-primary mb-3">แบบฟอร์มขอยืมอุปกรณ์คอมพิวเตอร์</h3>
       <p class="text-secondary">โปรดระบุอุปกรณ์ที่ต้องการยืมและรายละเอียดการใช้งานให้ครบถ้วน</p>
@@ -64,6 +65,21 @@
                     [{{ asset.asset_code }}] {{ asset.name }} ({{ asset.type }})
                   </option>
                 </select>
+
+                <!-- Selected Asset Preview -->
+                <div v-if="selectedAsset" class="mt-3 p-3 bg-light rounded-4 border d-flex align-items-center gap-3">
+                  <div class="flex-shrink-0">
+                    <img v-if="selectedAsset.image_path" :src="getImageUrl(selectedAsset.image_path)" class="rounded shadow-sm" style="width: 80px; height: 80px; object-fit: cover;">
+                    <div v-else class="d-flex justify-content-center align-items-center bg-white rounded shadow-sm text-muted" style="width: 80px; height: 80px;">
+                      <i class="bi bi-pc-display" style="font-size: 2rem;"></i>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="fw-bold text-primary mb-1">[{{ selectedAsset.asset_code }}] {{ selectedAsset.name }}</div>
+                    <div class="small text-muted mb-1"><i class="bi bi-tag me-1"></i>ยี่ห้อ: {{ selectedAsset.brand || '-' }} รุ่น: {{ selectedAsset.model || '-' }}</div>
+                    <div class="small text-muted"><i class="bi bi-cpu me-1"></i>สเปค: {{ selectedAsset.spec_cpu || '-' }} / RAM {{ selectedAsset.spec_ram || '-' }} / {{ selectedAsset.spec_storage || '-' }}</div>
+                  </div>
+                </div>
               </div>
 
               <!-- Objective -->
@@ -107,6 +123,7 @@
       </div>
     </div>
   </div>
+  </div>
 </template>
 
 <script>
@@ -134,6 +151,10 @@ export default {
     minDate() {
       const today = new Date();
       return today.toISOString().split('T')[0];
+    },
+    selectedAsset() {
+      if (!this.form.asset_id) return null;
+      return this.availableAssets.find(a => a.id === this.form.asset_id);
     }
   },
   mounted() {
@@ -168,10 +189,15 @@ export default {
         this.form.department = selectedStaff.HR_DEPARTMENT_SUB_NAME;
       }
     },
+    getImageUrl(path) {
+      if (!path) return '';
+      if (path.startsWith('http')) return path;
+      return `http://localhost/vue-app/vite-digital/${path}`;
+    },
     async fetchAssets() {
       try {
-        // Fetch only assets with status 'Spare' (สำรอง)
-        const res = await axios.get('/api-digital/asset/get_assets.php?status=Spare');
+        // Fetch only assets with status 'Spare' (สำรอง) and available for loan
+        const res = await axios.get('/api-digital/asset/get_assets.php?status=Spare&available_for_loan=1');
         if (res.data.status === 'success') {
           this.availableAssets = res.data.data;
         }

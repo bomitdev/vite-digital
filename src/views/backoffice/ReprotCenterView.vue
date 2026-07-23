@@ -18,6 +18,9 @@
           <button @click="openAddModal" class="btn btn-success btn-sm rounded-pill shadow-sm">
             <i class="bi bi-plus-circle me-1"></i> เพิ่มข้อมูลรายงาน
           </button>
+          <button @click="$router.push('/report-center')" class="btn btn-info text-white btn-sm rounded-pill shadow-sm">
+            <i class="bi bi-file-earmark-bar-graph-fill me-1"></i> ไปหน้า Report Center
+          </button>
           <button @click="goHomeBackoffice" class="btn btn-outline-primary btn-sm rounded-pill">
             <i class="bi bi-house-fill me-1"></i> กลับหน้าเมนู
           </button>
@@ -103,6 +106,14 @@
                       title="ดูรายละเอียด"
                     >
                       <i class="bi bi-eye me-1"></i>รายละเอียด
+                    </button>
+                    <button
+                      v-if="item.data_status_id == 3 && item.linked_report_id"
+                      class="btn btn-success btn-sm shadow-sm px-3 rounded-pill fw-bold text-white"
+                      @click="$router.push({ path: '/report-center', query: { report_id: item.linked_report_id } })"
+                      title="ดูรายงาน"
+                    >
+                      <i class="bi bi-file-earmark-bar-graph me-1"></i>ดูรายงาน
                     </button>
                   </div>
                 </td>
@@ -436,13 +447,23 @@
             </div>
 
             <div class="mb-3">
-              <label class="form-label text-success fw-bold">SQL</label>
+              <label class="form-label text-success fw-bold">SQL (ถ้ามี)</label>
               <textarea
                 class="form-control"
                 v-model="statusForm.sql"
-                rows="10"
+                rows="6"
                 placeholder="ระบุ SQL ที่ใช้ดึงข้อมูล..."
               ></textarea>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label text-success fw-bold"><i class="bi bi-link-45deg"></i> เชื่อมโยงกับ Report Center (เพื่อให้ User กดดูรายงานได้)</label>
+              <select class="form-select" v-model="statusForm.linked_report_id">
+                <option :value="null">-- ไม่เชื่อมโยง (ปล่อยว่าง) --</option>
+                <option v-for="rep in availableReports" :key="rep.id" :value="rep.id">
+                  [{{ rep.id }}] {{ rep.title }}
+                </option>
+              </select>
             </div>
           </div>
           <div class="modal-footer border-0 bg-light">
@@ -496,8 +517,11 @@ const statusForm = ref({
   data_status_id: 1,
   success_date_only: '',
   success_time_only: '',
-  sql: ''
+  sql: '',
+  linked_report_id: null
 });
+
+const availableReports = ref([]);
 
 // Pagination State
 const currentPage = ref(1);
@@ -627,6 +651,7 @@ const openStatusModal = (item) => {
   statusForm.value.data_name = item.data_name;
   statusForm.value.data_status_id = item.data_status_id;
   statusForm.value.sql = item.sql || ''; // Bind SQL from item
+  statusForm.value.linked_report_id = item.linked_report_id || null;
 
   // Set default date/time to now if not set, or current success date
   if (item.success_date && item.success_date !== '0000-00-00 00:00:00') {
@@ -656,6 +681,7 @@ const closeStatusModal = () => {
 
 const resetStatusForm = () => {
   statusForm.value.sql = '';
+  statusForm.value.linked_report_id = null;
 };
 
 const saveStatus = async () => {
@@ -675,7 +701,8 @@ const saveStatus = async () => {
       data_id: statusForm.value.data_id,
       data_status_id: statusForm.value.data_status_id,
       success_date: successDate,
-      sql: statusForm.value.sql
+      sql: statusForm.value.sql,
+      linked_report_id: statusForm.value.linked_report_id
     });
 
     if (response.data.status === 'success') {
@@ -797,7 +824,20 @@ const goHomeBackoffice = () => {
   router.push('/home-backoffice');
 };
 
-onMounted(fetchData);
+const fetchReports = async () => {
+  try {
+    // API from Report Center module
+    const res = await axios.get(`${import.meta.env.VITE_API_URL || ''}/api-digital/report-center/get_reports.php`);
+    availableReports.value = res.data;
+  } catch (e) {
+    console.error('Failed to fetch available reports', e);
+  }
+};
+
+onMounted(() => {
+  fetchData();
+  fetchReports();
+});
 </script>
 
 <style scoped>

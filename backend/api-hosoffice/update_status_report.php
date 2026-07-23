@@ -26,12 +26,15 @@ if (
     $upd_date = date("Y-m-d H:i:s");
     $success_date = ($data_status_id == 3) ? date("Y-m-d H:i:s") : NULL; // ถ้าสถานะคือ ดำเนินการเรียบร้อย (3) ให้ลงวันที่สำเร็จ
 
+    $linked_report_id = isset($data->linked_report_id) && $data->linked_report_id !== '' ? $data->linked_report_id : NULL;
+
     try {
         if ($success_date) {
             $sql = "UPDATE 10985_data_report SET
                     data_status_id = :data_status_id,
                     success_date = :success_date,
                     `sql` = :sql_text,
+                    linked_report_id = :linked_report_id,
                     upd_by = :upd_by,
                     upd_date = :upd_date
                     WHERE data_id = :data_id";
@@ -39,6 +42,7 @@ if (
             $sql = "UPDATE 10985_data_report SET
                     data_status_id = :data_status_id,
                     `sql` = :sql_text,
+                    linked_report_id = :linked_report_id,
                     upd_by = :upd_by,
                     upd_date = :upd_date
                     WHERE data_id = :data_id";
@@ -52,6 +56,7 @@ if (
             $stmt->bindParam(":success_date", $success_date);
         }
         $stmt->bindParam(":sql_text", $data->sql); // Bind SQL text
+        $stmt->bindParam(":linked_report_id", $linked_report_id, PDO::PARAM_INT);
         $stmt->bindParam(":upd_by", $upd_by);
         $stmt->bindParam(":upd_date", $upd_date);
         $stmt->bindParam(":data_id", $data_id);

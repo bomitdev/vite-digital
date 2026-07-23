@@ -35,13 +35,13 @@
                 v-model="selectedCategory"
                 class="form-select form-select-lg shadow-sm border-0 bg-light"
               >
+                <option value="document">ข่าวประกาศ (News & Announcements)</option>
+                <option value="policy">นโยบาย (Policy)</option>
+                <option value="pdpa">PDPA</option>
+                <option value="sla">SLA</option>
+                <option value="handbook">คู่มือการใช้งาน (Handbook)</option>
                 <option value="certificate">ใบประกาศนียบัตร (Certificate)</option>
                 <option value="communication">ช่องทางการสื่อสาร (Communication)</option>
-                <option value="document">เอกสารทั่วไป (Document)</option>
-                <option value="handbook">คู่มือการปฏิบัติงาน (Handbook)</option>
-                <option value="pdpa">PDPA</option>
-                <option value="policy">นโยบาย (Policy)</option>
-                <option value="sla">SLA</option>
               </select>
             </div>
           </div>
@@ -68,13 +68,13 @@ const selectedCategory = ref('document');
 
 const getCategoryTitle = (cat) => {
   const titles = {
-    certificate: 'จัดการใบประกาศนียบัตร',
-    communication: 'จัดการเอกสารการสื่อสาร',
-    document: 'จัดการเอกสารทั่วไป',
-    handbook: 'จัดการคู่มือการปฏิบัติงาน',
-    pdpa: 'จัดการเอกสาร PDPA',
+    document: 'จัดการข่าวประกาศ / เอกสารทั่วไป',
     policy: 'จัดการนโยบายและระเบียบ',
-    sla: 'จัดการเอกสาร SLA'
+    pdpa: 'จัดการเอกสาร PDPA',
+    sla: 'จัดการเอกสาร SLA',
+    handbook: 'จัดการคู่มือการใช้งาน',
+    certificate: 'จัดการใบประกาศนียบัตร',
+    communication: 'จัดการเอกสารการสื่อสาร'
   };
   return titles[cat] || 'จัดการเอกสาร';
 };

@@ -35,7 +35,8 @@ try {
     r.crt_date,
     r.success_date,
     r.want_date,
-    r.data_status_id
+    r.data_status_id,
+    r.linked_report_id
     FROM 10985_data_report r
     LEFT JOIN hr_person p on r.crt_by=p.id
     LEFT JOIN 10985_lookup l on r.reason_id = l.code AND l.module_name = 'datareport' AND l.table_name = 'reason_type'

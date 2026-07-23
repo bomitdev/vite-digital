@@ -3,19 +3,28 @@
     <div class="card shadow-sm border-0 rounded-3">
       <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
         <h3 class="mb-0 text-primary fw-bold"><i class="bi bi-table me-2"></i>Report Center</h3>
-        <button @click="goHome" class="btn btn-outline-secondary rounded-pill">
-          <i class="bi bi-house me-1"></i> กลับหน้าหลัก
-        </button>
+        <div class="d-flex gap-2">
+          <button v-if="isAdmin" @click="$router.push('/report-center/admin')" class="btn btn-warning shadow-sm rounded-pill text-white fw-bold">
+            <i class="bi bi-gear-fill me-1"></i> จัดการรายงาน (Admin)
+          </button>
+          <button @click="$router.push('/report')" class="btn btn-success shadow-sm rounded-pill text-white fw-bold">
+            <i class="bi bi-chat-text-fill me-1"></i> ระบบขอรายงานข้อมูล
+          </button>
+          <button @click="goHome" class="btn btn-outline-secondary rounded-pill">
+            <i class="bi bi-house me-1"></i> กลับหน้าหลัก
+          </button>
+        </div>
       </div>
 
       <div class="card-body">
         <div class="row">
           <!-- Sidebar / List -->
           <div class="col-md-3 border-end">
-            <div class="mb-3">
+            <div class="mb-4 position-relative">
+              <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
               <input
                 type="text"
-                class="form-control"
+                class="form-control form-control-lg rounded-pill bg-light border-0 ps-5 shadow-sm"
                 placeholder="ค้นหารายงาน..."
                 v-model="searchQuery"
               />
@@ -23,35 +32,38 @@
             <div class="list-group list-group-flush custom-scrollbar">
               <template v-for="group in groupedReports" :key="group.id">
                 <div
-                  class="list-group-item fw-bold text-uppercase py-2 text-white d-flex justify-content-between align-items-center cursor-pointer"
-                  style="background: linear-gradient(45deg, #0d6efd, #0dcaf0); cursor: pointer"
+                  class="list-group-item fw-bold py-3 d-flex justify-content-between align-items-center cursor-pointer border-0 bg-light mb-2 rounded-3 transition-all"
                   v-if="group.reports.length > 0"
                   @click="toggleGroup(group.id)"
+                  onmouseover="this.classList.add('shadow-sm', 'bg-white'); this.classList.remove('bg-light');"
+                  onmouseout="this.classList.remove('shadow-sm', 'bg-white'); this.classList.add('bg-light');"
                 >
-                  <div><i class="bi bi-bookmarks-fill me-2"></i>{{ group.name }}</div>
+                  <div class="text-dark"><i class="bi bi-folder2-open me-2 text-primary fs-5 align-middle"></i>{{ group.name }}</div>
                   <i
-                    class="bi"
-                    :class="expandedGroups.includes(group.id) ? 'bi-dash-lg' : 'bi-plus-lg'"
+                    class="bi text-secondary"
+                    :class="expandedGroups.includes(group.id) ? 'bi-chevron-down' : 'bi-chevron-right'"
                   ></i>
                 </div>
 
-                <div v-show="expandedGroups.includes(group.id)">
+                <div v-show="expandedGroups.includes(group.id)" class="mb-3 px-1">
                   <button
                     v-for="rep in group.reports"
                     :key="rep.id"
-                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center ps-4 border-start border-4"
+                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center mb-1 rounded-3 border-0 transition-all"
                     :class="{
-                      active: selectedReport && selectedReport.id === rep.id,
-                      'border-primary': selectedReport && selectedReport.id === rep.id,
-                      'border-light': !selectedReport || selectedReport.id !== rep.id
+                      'bg-primary text-white shadow-sm': selectedReport && selectedReport.id === rep.id,
+                      'bg-white hover-bg-light': !selectedReport || selectedReport.id !== rep.id
                     }"
+                    style="border-left: 4px solid transparent !important;"
+                    :style="selectedReport && selectedReport.id === rep.id ? 'border-left: 4px solid #fff !important;' : 'border-left: 4px solid #dee2e6 !important;'"
                     @click="selectReport(rep)"
                   >
                     <div>
-                      <div class="fw-bold">{{ rep.title }}</div>
+                      <div class="fw-bold"><i class="bi bi-file-earmark-text me-2" :class="selectedReport && selectedReport.id === rep.id ? 'text-white' : 'text-primary'"></i>{{ rep.title }}</div>
                       <small
-                        class="text-muted d-block text-truncate"
-                        style="max-width: 200px"
+                        class="d-block text-truncate mt-1"
+                        :class="selectedReport && selectedReport.id === rep.id ? 'text-white-50' : 'text-muted'"
+                        style="max-width: 220px"
                         v-if="rep.description"
                       >
                         {{ rep.description }}
@@ -69,9 +81,12 @@
 
           <!-- Content -->
           <div class="col-md-9">
-            <div v-if="!selectedReport" class="text-center py-5 text-muted">
-              <i class="bi bi-arrow-left-circle display-4 mb-3 d-block"></i>
-              <h4>กรุณาเลือกรายงานจากเมนูด้านซ้าย</h4>
+            <div v-if="!selectedReport" class="d-flex flex-column align-items-center justify-content-center h-100 py-5 mt-5">
+              <div class="bg-primary bg-opacity-10 rounded-circle p-4 mb-4 shadow-sm" style="width: 120px; height: 120px; display: flex; align-items: center; justify-content: center;">
+                <i class="bi bi-bar-chart-line text-primary" style="font-size: 4rem;"></i>
+              </div>
+              <h3 class="text-secondary fw-bold">ยินดีต้อนรับสู่ Report Center</h3>
+              <p class="text-muted fs-5">กรุณาเลือกรายงานจากเมนูด้านซ้าย เพื่อเรียกดูข้อมูล</p>
             </div>
 
             <div v-else>
@@ -80,28 +95,28 @@
               </div>
 
               <!-- Filter Section -->
-              <div class="card border-0 bg-light mb-4 rounded-3 shadow-sm">
+              <div class="card border-0 mb-4 rounded-4 shadow-sm" style="background: linear-gradient(to right, #f8f9fa, #ffffff);">
                 <div class="card-body p-4">
                   <div class="row g-3 align-items-end">
                     <div class="col-md-5">
-                      <label class="form-label small text-uppercase text-secondary fw-bold mb-1">
-                        <i class="bi bi-calendar-event me-1"></i>Start Date
+                      <label class="form-label small text-secondary fw-bold mb-2">
+                        <i class="bi bi-calendar-check text-primary me-1"></i> วันที่เริ่มต้น
                       </label>
-                      <input type="date" class="form-control shadow-sm" v-model="startDate" />
+                      <input type="date" class="form-control form-control-lg rounded-pill border-0 shadow-sm px-4" v-model="startDate" />
                     </div>
                     <div class="col-md-5">
-                      <label class="form-label small text-uppercase text-secondary fw-bold mb-1">
-                        <i class="bi bi-calendar-event me-1"></i>End Date
+                      <label class="form-label small text-secondary fw-bold mb-2">
+                        <i class="bi bi-calendar-check-fill text-primary me-1"></i> วันที่สิ้นสุด
                       </label>
-                      <input type="date" class="form-control shadow-sm" v-model="endDate" />
+                      <input type="date" class="form-control form-control-lg rounded-pill border-0 shadow-sm px-4" v-model="endDate" />
                     </div>
                     <div class="col-md-2">
                       <button
-                        class="btn btn-primary w-100 shadow-sm fw-bold text-uppercase"
+                        class="btn btn-primary btn-lg w-100 shadow-sm fw-bold rounded-pill"
                         @click="runReport"
                         :disabled="loading"
                       >
-                        <i class="bi bi-play-fill me-1"></i> Run
+                        <i class="bi bi-play-circle-fill me-1"></i> ดึงข้อมูล
                       </button>
                     </div>
                   </div>
@@ -129,21 +144,21 @@
 
               <div
                 v-else-if="resultData"
-                class="table-responsive border rounded bg-white shadow-sm"
+                class="table-responsive border-0 rounded-4 bg-white shadow-sm"
                 style="max-height: 600px; overflow: auto"
               >
-                <table class="table table-striped table-hover mb-0" id="report-table">
-                  <thead class="table-light sticky-top">
+                <table class="table table-hover mb-0 align-middle" id="report-table">
+                  <thead class="bg-light sticky-top" style="z-index: 1;">
                     <tr>
-                      <th v-for="col in columns" :key="col" class="text-nowrap">{{ col }}</th>
+                      <th v-for="col in columns" :key="col" class="text-nowrap py-3 text-secondary border-bottom-0">{{ col }}</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody class="border-top-0">
                     <tr v-for="(row, idx) in resultData" :key="idx">
-                      <td v-for="col in columns" :key="col" class="text-nowrap">{{ row[col] }}</td>
+                      <td v-for="col in columns" :key="col" class="text-nowrap text-secondary">{{ row[col] }}</td>
                     </tr>
                     <tr v-if="resultData.length === 0">
-                      <td :colspan="columns.length" class="text-center p-3">ไม่พบข้อมูล</td>
+                      <td :colspan="columns.length" class="text-center py-5 text-muted">ไม่พบข้อมูล</td>
                     </tr>
                   </tbody>
                 </table>
@@ -160,24 +175,60 @@
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import Swal from 'sweetalert2';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import * as XLSX from 'xlsx'; // Need to insure XLSX is installed or use CDN?
 // The user project has `node_modules`, so I should hope `xlsx` is there or I use a simple csv export if not.
 // "xlsx" is common. If not, I can create a simple CSV function.
 // Let's assume standard dependencies or I will use a simple CSV export function as backup or just verify later.
 
 const router = useRouter();
+const route = useRoute();
 const reports = ref([]);
 const searchQuery = ref('');
 const selectedReport = ref(null);
 const resultData = ref(null);
 const columns = ref([]);
 const loading = ref(false);
-const startDate = ref('');
-const endDate = ref('');
+
+const getFiscalYearDates = () => {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0-indexed (0 = Jan, 9 = Oct)
+  
+  let fiscalYearEndYear = currentYear;
+  if (currentMonth >= 9) {
+    fiscalYearEndYear = currentYear + 1;
+  }
+  
+  return {
+    start: `${fiscalYearEndYear - 1}-10-01`,
+    end: `${fiscalYearEndYear}-09-30`
+  };
+};
+
+const fyDates = getFiscalYearDates();
+const startDate = ref(fyDates.start);
+const endDate = ref(fyDates.end);
+
 const departments = ref([]);
 const selectedDepartment = ref('ALL');
 const expandedGroups = ref([]);
+const isAdmin = ref(false);
+
+const fetchUserProfile = async () => {
+  try {
+    const token = localStorage.getItem('user_token');
+    const response = await axios.get(`${import.meta.env.VITE_API_URL || ''}/api-hosoffice/get_user_profile.php`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (response.data.status === 'success') {
+      const userPerms = response.data.access_user ? response.data.access_user.split(':') : [];
+      isAdmin.value = userPerms.includes('administrator');
+    }
+  } catch (error) {
+    console.error('Failed to load profile', error);
+  }
+};
 
 const toggleGroup = (id) => {
   if (expandedGroups.value.includes(id)) {
@@ -254,6 +305,14 @@ const fetchReports = async () => {
       `${import.meta.env.VITE_API_URL || ''}/api-digital/report-center/get_reports.php`
     );
     reports.value = res.data;
+
+    if (route.query.report_id) {
+      const repId = parseInt(route.query.report_id);
+      const found = reports.value.find(r => r.id === repId);
+      if (found) {
+        selectReport(found);
+      }
+    }
   } catch (e) {
     console.error(e);
   }
@@ -336,9 +395,32 @@ const goHome = () => {
 };
 
 onMounted(() => {
+  fetchUserProfile();
   fetchReports();
   fetchDepartments();
   // Dynamically load XLSX if not present? Or just use CSV.
   // I'll check package.json in next step to see if xlsx is installed.
 });
 </script>
+
+<style scoped>
+.transition-all {
+  transition: all 0.2s ease-in-out;
+}
+.hover-bg-light:hover {
+  background-color: #f8f9fa !important;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+</style>

@@ -16,8 +16,8 @@
         >
           <i class="bi bi-pie-chart-fill me-1"></i> แดชบอร์ด
         </button>
-        <button class="btn btn-primary shadow-sm" @click="openModal('add')">
-          <i class="bi bi-plus-lg me-1"></i> เพิ่มช่องทาง
+        <button class="btn btn-danger shadow-sm ms-2" @click="generatePDF">
+          <i class="bi bi-file-earmark-pdf me-1"></i> พิมพ์รายงาน
         </button>
       </div>
     </header>
@@ -384,6 +384,11 @@
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import bootstrap from 'bootstrap/dist/js/bootstrap.bundle.min.js';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import moment from 'moment';
+
+moment.locale('th');
 
 export default {
   name: 'CommunicationList',
@@ -426,6 +431,111 @@ export default {
       this.searchTimeout = setTimeout(() => {
         this.fetchChannels();
       }, 500);
+    },
+    async fetchFont(url) {
+      return fetch(url)
+        .then((res) => res.arrayBuffer())
+        .then((buffer) => {
+          let binary = '';
+          const bytes = new Uint8Array(buffer);
+          const len = bytes.byteLength;
+          for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+          }
+          return window.btoa(binary);
+        });
+    },
+    async generatePDF() {
+      Swal.fire({
+        title: 'กำลังสร้าง PDF...',
+        text: 'กรุณารอสักครู่ ระบบกำลังจัดเตรียมข้อมูล',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      try {
+        const doc = new jsPDF('landscape');
+        
+        const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+          ? import.meta.env.BASE_URL
+          : import.meta.env.BASE_URL + '/';
+        const fontNormal = await this.fetchFont(`${baseUrl}fonts/THSarabun.ttf`);
+        const fontBold = await this.fetchFont(`${baseUrl}fonts/THSarabun Bold.ttf`);
+
+        doc.addFileToVFS('THSarabun.ttf', fontNormal);
+        doc.addFont('THSarabun.ttf', 'Sarabun', 'normal');
+        doc.addFileToVFS('THSarabunBold.ttf', fontBold);
+        doc.addFont('THSarabunBold.ttf', 'Sarabun', 'bold');
+
+        doc.setFont('Sarabun', 'normal');
+
+        const reportDate = moment();
+        const thaiMonths = [
+          'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+          'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+        ];
+
+        doc.setFontSize(22);
+        doc.setFont('Sarabun', 'bold');
+        doc.text('รายงานสรุปช่องทางการสื่อสารขององค์กร', 148, 20, { align: 'center' });
+        
+        doc.setFontSize(16);
+        doc.setFont('Sarabun', 'normal');
+        doc.text(`ข้อมูล ณ วันที่ ${reportDate.date()} ${thaiMonths[reportDate.month()]} ${reportDate.year() + 543}`, 148, 28, { align: 'center' });
+
+        const head = [[
+          'ลำดับ', 'ชื่อช่องทาง', 'หมวดหมู่', 'ประเภท', 
+          'รายละเอียดการติดต่อ', 'ผู้รับผิดชอบ', 'หน่วยงาน', 'สถานะ'
+        ]];
+
+        const body = this.channelList.map((ch, index) => [
+          index + 1,
+          ch.channel_name || '-',
+          ch.category || '-',
+          ch.channel_type || '-',
+          ch.contact_detail || '-',
+          ch.responsible_person || '-',
+          ch.department || '-',
+          ch.status || '-'
+        ]);
+
+        autoTable(doc, {
+          startY: 35,
+          head: head,
+          body: body,
+          theme: 'grid',
+          styles: {
+            font: 'Sarabun',
+            fontSize: 12,
+            cellPadding: 2,
+            textColor: [0, 0, 0],
+            lineColor: [0, 0, 0],
+            lineWidth: 0.1,
+          },
+          headStyles: {
+            fillColor: [240, 240, 240],
+            textColor: [0, 0, 0],
+            fontStyle: 'bold',
+            halign: 'center',
+          },
+          columnStyles: {
+            0: { halign: 'center', cellWidth: 15 },
+            1: { cellWidth: 40 },
+            2: { cellWidth: 35 },
+            3: { cellWidth: 35 },
+            4: { cellWidth: 50 },
+            5: { cellWidth: 35 },
+            6: { cellWidth: 35 },
+            7: { halign: 'center', cellWidth: 20 }
+          }
+        });
+
+        doc.save(`Communication_Channels_Report_${reportDate.format('YYYYMMDD')}.pdf`);
+        Swal.close();
+      } catch (err) {
+        console.error('PDF Generation Error:', err);
+        Swal.fire('Error', 'ไม่สามารถสร้างไฟล์ PDF ได้', 'error');
+      }
     },
     async fetchChannels() {
       try {

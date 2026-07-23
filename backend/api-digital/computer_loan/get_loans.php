@@ -9,7 +9,7 @@ try {
     $department = isset($_GET['department']) ? trim($_GET['department']) : '';
 
     // NOTE: it_loans is in $pdo2 (digital_hosoffice database). assets is also in $pdo2.
-    $sql = "SELECT l.*, a.asset_code, a.name as asset_name, a.type as asset_type
+    $sql = "SELECT l.*, a.asset_code, a.name as asset_name, a.type as asset_type, a.image_path as asset_image_path
 FROM it_loans l
 LEFT JOIN assets a ON l.asset_id = a.id
 WHERE 1=1";

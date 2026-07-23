@@ -63,12 +63,13 @@
           </div>
 
           <!-- Category 1: บริการไอทีและทรัพย์สิน (IT Support & Assets) -->
-          <h6 class="fw-bold text-secondary mb-3 mt-1 border-bottom pb-2">
-            <i class="bi bi-pc-display me-2 text-primary"></i>สำหรับเจ้าหน้าที่
-          </h6>
-          <div class="row g-3 mb-4">
+          <template v-if="showStaffCategory">
+            <h6 class="fw-bold text-secondary mb-3 mt-1 border-bottom pb-2">
+              <i class="bi bi-pc-display me-2 text-primary"></i>สำหรับเจ้าหน้าที่
+            </h6>
+            <div class="row g-3 mb-4">
             <!-- Access Log -->
-            <div class="col-6 col-md-4 col-lg-3">
+            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_time_in_out', 'backoffice_staff_all'])">
               <div
                 class="nav-card h-100 bg-gradient-teal text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                 @click="goToFingerScan"
@@ -101,7 +102,7 @@
               </div>
             </div>
             <!-- Computer Repair -->
-            <div class="col-6 col-md-4 col-lg-3">
+            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_computer_repair', 'backoffice_staff_all'])">
               <div
                 class="nav-card h-100 bg-gradient-red text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                 @click="goToComputerRepair"
@@ -134,7 +135,7 @@
               </div>
             </div>
             <!-- Material Request Form IT -->
-            <div class="col-6 col-md-4 col-lg-3">
+            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_it_material_req', 'backoffice_staff_all'])">
               <div
                 class="nav-card h-100 bg-gradient-pink text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                 @click="goToMaterialRequestForm"
@@ -168,7 +169,7 @@
             </div>
 
             <!-- Material Request Form Admin -->
-            <div class="col-6 col-md-4 col-lg-3">
+            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_gm_material_req', 'backoffice_staff_all'])">
               <div
                 class="nav-card h-100 bg-gradient-teal text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                 @click="goToMaterialAdminRequestForm"
@@ -202,7 +203,7 @@
             </div>
 
             <!-- Report Status -->
-            <div class="col-6 col-md-4 col-lg-3">
+            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_data_report', 'backoffice_staff_all'])">
               <div
                 class="nav-card h-100 bg-gradient-blue text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                 @click="goToReport"
@@ -236,7 +237,7 @@
             </div>
 
             <!-- Report Center -->
-            <div class="col-6 col-md-4 col-lg-3">
+            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_report_center', 'backoffice_staff_all'])">
               <div
                 class="nav-card h-100 bg-gradient-green text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                 @click="goToReportCenter"
@@ -270,7 +271,7 @@
             </div>
 
             <!-- Computer Loan Form -->
-            <div class="col-6 col-md-4 col-lg-3">
+            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_borrow_it', 'backoffice_staff_all'])">
               <div
                 class="nav-card h-100 bg-gradient-purple text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                 @click="goToComputerLoanForm"
@@ -304,7 +305,7 @@
             </div>
 
             <!-- Revenue Result Reporting (Staff) -->
-            <div class="col-6 col-md-4 col-lg-3">
+            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_revenue_report', 'backoffice_staff_all'])">
               <div
                 class="nav-card h-100 bg-gradient-orange text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                 @click="goToRevenueResult"
@@ -337,13 +338,14 @@
               </div>
             </div>
           </div>
+          </template>
           <template v-if="hasGMAccess">
             <h6 class="fw-bold text-secondary mb-3 mt-4 border-bottom pb-2">
               <i class="bi bi-graph-up me-2 text-primary"></i>งานบริหาร
             </h6>
             <div class="row g-3 mb-4">
               <!-- Material Management Admin -->
-              <div class="col-6 col-md-4 col-lg-3">
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_gm_material_manage')">
                 <div
                   class="nav-card h-100 bg-gradient-green text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="goToMaterialAdmin"
@@ -376,7 +378,7 @@
                 </div>
               </div>
               <!-- Procurement Tracking -->
-              <div class="col-6 col-md-4 col-lg-3">
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_procurement')">
                 <div
                   class="nav-card h-100 bg-gradient-blue text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="goToProcurement"
@@ -412,13 +414,13 @@
           </template>
 
           <!-- Category 2: รายงานและสถิติ (Reports & Analytics) -->
-          <template v-if="isAdmin">
+          <template v-if="isItAdmin">
             <h6 class="fw-bold text-secondary mb-3 mt-4 border-bottom pb-2">
               <i class="bi bi-graph-up me-2 text-primary"></i>งานบริการ IT และทรัพย์สิน
             </h6>
             <div class="row g-3 mb-4">
               <!-- Asset Management -->
-              <div class="col-6 col-md-4 col-lg-3">
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_it_asset')">
                 <div
                   class="nav-card h-100 bg-gradient-cyan text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="goToAssetManagement"
@@ -452,7 +454,7 @@
               </div>
 
               <!-- Software Registration -->
-              <div class="col-6 col-md-4 col-lg-3">
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_software')">
                 <div
                   class="nav-card h-100 bg-gradient-blue text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="goToSoftwareManagement"
@@ -486,7 +488,7 @@
               </div>
 
               <!-- Material Management IT -->
-              <div class="col-6 col-md-4 col-lg-3">
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_it_material_manage')">
                 <div
                   class="nav-card h-100 bg-gradient-orange text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="goToMaterialV2"
@@ -520,7 +522,7 @@
               </div>
 
               <!-- IP Address Registry -->
-              <div class="col-6 col-md-4 col-lg-3">
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_ip_address')">
                 <div
                   class="nav-card h-100 bg-gradient-indigo text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="goToIpAddress"
@@ -554,7 +556,7 @@
               </div>
 
               <!-- Server Registry -->
-              <div class="col-6 col-md-4 col-lg-3">
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_server')">
                 <div
                   class="nav-card h-100 bg-gradient-indigo text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="goToServerList"
@@ -596,7 +598,7 @@
             </h6>
             <div class="row g-3">
               <!-- KPI Dashboard -->
-              <div class="col-6 col-md-4 col-lg-3">
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_kpi_admin')">
                 <div
                   class="nav-card h-100 bg-gradient-indigo text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="goToKpiDashboard"
@@ -629,7 +631,7 @@
                 </div>
               </div>
               <!-- IT Manager Schedule -->
-              <div class="col-6 col-md-4 col-lg-3">
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_it_schedule')">
                 <div
                   class="nav-card h-100 bg-gradient-purple text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="goToManagerSchedule"
@@ -663,7 +665,7 @@
               </div>
 
               <!-- Communication Channels Registry -->
-              <div class="col-6 col-md-4 col-lg-3">
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_communication')">
                 <div
                   class="nav-card h-100 bg-gradient-pink text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="goToCommunicationManagement"
@@ -697,7 +699,7 @@
               </div>
 
               <!-- Admin Docs Center -->
-              <div class="col-6 col-md-4 col-lg-3">
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_doc_center')">
                 <div
                   class="nav-card h-100 bg-gradient-blue text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="goToAdminDocuments"
@@ -731,7 +733,7 @@
               </div>
 
               <!-- User Manager -->
-              <div class="col-6 col-md-4 col-lg-3">
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_user_manager')">
                 <div
                   class="nav-card h-100 bg-gradient-indigo text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="goToUserManager"
@@ -764,7 +766,7 @@
                 </div>
               </div>
               <!-- Git Sync -->
-              <div class="col-6 col-md-4 col-lg-3">
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_git_sync')">
                 <div
                   class="nav-card h-100 bg-gradient-dark text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="$router.push('/git-sync')"
@@ -821,17 +823,41 @@ export default {
     };
   },
   computed: {
-    isAdmin() {
-      const dept = (this.userProfile && this.userProfile.department) || '';
-      return dept.includes('กลุ่มงานสุขภาพดิจิทัล');
+    showStaffCategory() {
+      return this.hasPermission([
+        'menu_time_in_out', 'menu_computer_repair', 'menu_it_material_req',
+        'menu_gm_material_req', 'menu_data_report', 'menu_report_center',
+        'menu_borrow_it', 'menu_revenue_report', 'backoffice_staff_all'
+      ]);
     },
     hasGMAccess() {
-      const dept = (this.userProfile && this.userProfile.department) || '';
-      const allowedDepts = ['สุขภาพดิจิทัล', 'บริหาร'];
-      return allowedDepts.some((key) => dept.includes(key));
+      return this.hasPermission([
+        'menu_gm_material_manage', 'menu_procurement'
+      ]);
+    },
+    isItAdmin() {
+      return this.hasPermission([
+        'menu_it_asset', 'menu_software', 'menu_it_material_manage', 
+        'menu_ip_address', 'menu_server'
+      ]);
+    },
+    isAdmin() {
+      return this.hasPermission([
+        'menu_kpi_admin', 'menu_it_schedule', 'menu_communication', 
+        'menu_doc_center', 'menu_user_manager', 'menu_git_sync'
+      ]);
     }
   },
   methods: {
+    hasPermission(keys) {
+      if (!this.userProfile || !this.userProfile.access_user) return false;
+      const userPerms = this.userProfile.access_user.split(':');
+      if (userPerms.includes('administrator')) return true;
+      if (Array.isArray(keys)) {
+        return keys.some((k) => userPerms.includes(k));
+      }
+      return userPerms.includes(keys);
+    },
     async fetchUserProfile() {
       try {
         const response = await axios.get('/api-hosoffice/get_user_profile.php');
@@ -862,50 +888,29 @@ export default {
         this.$router.push({ path: '/report-center' });
       }
     },
-    async checkITAccessAndGo(path) {
-      const getDept = () => this.userProfile.department || '';
-      let dept = getDept();
-      const allowedDepts = ['สุขภาพดิจิทัล', 'ประกันสุขภาพ', 'ยุทธศาสตร์'];
-
-      const checkAccess = (d) => allowedDepts.some((key) => d.includes(key));
-
-      if (checkAccess(dept)) {
+    async checkAdminAccessAndGo(path) {
+      if (this.isAdmin) {
         this.$router.push({ path: path });
       } else {
-        if (!dept) {
-          await this.fetchUserProfile();
-          dept = getDept();
-          if (checkAccess(dept)) {
-            this.$router.push({ path: path });
-            return;
-          }
-        }
-        alert(`คุณไม่มีสิทธิ์เข้าถึงเมนูนี้ (หน่วยงานของคุณ: ${dept || 'ไม่ระบุ'})`);
+        alert('คุณไม่มีสิทธิ์เข้าถึงเมนูนี้ (เฉพาะสิทธิ์ผู้ดูแลระบบ)');
+      }
+    },
+    async checkITAccessAndGo(path) {
+      if (this.isItAdmin || this.isAdmin) {
+        this.$router.push({ path: path });
+      } else {
+        alert('คุณไม่มีสิทธิ์เข้าถึงเมนูนี้ (เฉพาะสิทธิ์งานบริการ IT)');
       }
     },
     async checkITAccessAndGoGM(path) {
-      const getDept = () => this.userProfile.department || '';
-      let dept = getDept();
-      const allowedDepts = ['สุขภาพดิจิทัล', 'บริหาร'];
-
-      const checkAccess = (d) => allowedDepts.some((key) => d.includes(key));
-
-      if (checkAccess(dept)) {
+      if (this.hasGMAccess || this.isAdmin) {
         this.$router.push({ path: path });
       } else {
-        if (!dept) {
-          await this.fetchUserProfile();
-          dept = getDept();
-          if (checkAccess(dept)) {
-            this.$router.push({ path: path });
-            return;
-          }
-        }
-        alert(`คุณไม่มีสิทธิ์เข้าถึงเมนูนี้ (หน่วยงานของคุณ: ${dept || 'ไม่ระบุ'})`);
+        alert('คุณไม่มีสิทธิ์เข้าถึงเมนูนี้ (เฉพาะสิทธิ์งานบริหาร)');
       }
     },
     async goToManagerSchedule() {
-      await this.checkITAccessAndGo('/manager-schedule');
+      await this.checkAdminAccessAndGo('/manager-schedule');
     },
     async goToServerList() {
       await this.checkITAccessAndGo('/server-list');
@@ -913,17 +918,20 @@ export default {
     goToReport() {
       this.$router.push({ path: '/report' });
     },
+    goToReportCenter() {
+      this.$router.push({ path: '/report-center' });
+    },
     goToFingerScan() {
       this.$router.push({ path: '/finger-scan' });
     },
     async goToUserManager() {
-      await this.checkITAccessAndGo('/user-manager');
+      await this.checkAdminAccessAndGo('/user-manager');
     },
     async goToAdminDocuments() {
-      await this.checkITAccessAndGo('/admin-docs');
+      await this.checkAdminAccessAndGo('/admin-docs');
     },
     async goToKpiDashboard() {
-      await this.checkITAccessAndGo('/kpi-setup');
+      await this.checkAdminAccessAndGo('/kpi-setup');
     },
 
     goToRevenueResult() {
@@ -951,7 +959,7 @@ export default {
       await this.checkITAccessAndGo('/software-dashboard');
     },
     async goToCommunicationManagement() {
-      await this.checkITAccessAndGo('/communication-dashboard');
+      await this.checkAdminAccessAndGo('/communication-dashboard');
     },
     goToMaterialRequestForm() {
       this.$router.push({ path: '/material-request' });

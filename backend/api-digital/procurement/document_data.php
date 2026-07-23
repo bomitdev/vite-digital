@@ -45,6 +45,10 @@ if ($method === 'GET') {
         $vendor_tel = $input['vendor_tel'] ?? null;
         $buyer_name = $input['buyer_name'] ?? null;
         $buyer_position = $input['buyer_position'] ?? null;
+        $officer_name = $input['officer_name'] ?? null;
+        $officer_position = $input['officer_position'] ?? null;
+        $chief_officer_name = $input['chief_officer_name'] ?? null;
+        $chief_officer_position = $input['chief_officer_position'] ?? null;
 
         // Check if exists
         $stmtCheck = $pdo2->prepare("SELECT id FROM procurement_documents_data WHERE bill_id = ?");
@@ -63,13 +67,17 @@ if ($method === 'GET') {
                 vendor_tax_id = :vendor_tax_id,
                 vendor_tel = :vendor_tel,
                 buyer_name = :buyer_name,
-                buyer_position = :buyer_position
+                buyer_position = :buyer_position,
+                officer_name = :officer_name,
+                officer_position = :officer_position,
+                chief_officer_name = :chief_officer_name,
+                chief_officer_position = :chief_officer_position
                 WHERE bill_id = :bill_id";
         } else {
             $sql = "INSERT INTO procurement_documents_data (
-                bill_id, doc_date, to_person, reason, budget, delivery_days, committee, vendor_address, vendor_tax_id, vendor_tel, buyer_name, buyer_position
+                bill_id, doc_date, to_person, reason, budget, delivery_days, committee, vendor_address, vendor_tax_id, vendor_tel, buyer_name, buyer_position, officer_name, officer_position, chief_officer_name, chief_officer_position
             ) VALUES (
-                :bill_id, :doc_date, :to_person, :reason, :budget, :delivery_days, :committee, :vendor_address, :vendor_tax_id, :vendor_tel, :buyer_name, :buyer_position
+                :bill_id, :doc_date, :to_person, :reason, :budget, :delivery_days, :committee, :vendor_address, :vendor_tax_id, :vendor_tel, :buyer_name, :buyer_position, :officer_name, :officer_position, :chief_officer_name, :chief_officer_position
             )";
         }
 
@@ -86,7 +94,11 @@ if ($method === 'GET') {
             ':vendor_tax_id' => $vendor_tax_id,
             ':vendor_tel' => $vendor_tel,
             ':buyer_name' => $buyer_name,
-            ':buyer_position' => $buyer_position
+            ':buyer_position' => $buyer_position,
+            ':officer_name' => $officer_name,
+            ':officer_position' => $officer_position,
+            ':chief_officer_name' => $chief_officer_name,
+            ':chief_officer_position' => $chief_officer_position
         ]);
 
         echo json_encode(['status' => 'success', 'message' => 'Document data saved.']);

@@ -2,18 +2,10 @@
   <div class="container-fluid">
     <div class="row">
       <div>
-        <div class="header-container mt-2">
-          <img src="../../components/img/logo_cnmh.png" alt="Logo" class="logo" />
-          <h1>โรงพยาบาลชานุมาน</h1>
-        </div>
-        <h2>วิสัยทัศน์ : โรงพยาบาลชุมชน คุณภาพชั้นนำ แห่งลุ่มน้ำโขง ในดวงใจประชาชน</h2>
-        <hr />
-        <div class="d-flex justify-content-end mb-2">
+        <div class="d-flex justify-content-end mt-2 mb-2">
           <router-link to="/manager-schedule" class="btn-schedule"> จัดการตารางเวร IT </router-link>
         </div>
-        <!-- Dropdown เลือกเดือน -->
-
-        <div class="month-selector justify-content-start">
+         <div class="month-selector justify-content-end">
           <label for="month"> </label>
           <select v-model="selectedMonth" @change="fetchSchedule">
             <option v-for="(month, index) in months" :key="index" :value="index + 1">
@@ -21,6 +13,16 @@
             </option>
           </select>
         </div>
+        <div class="header-container mt-2">
+          <img src="../../components/img/logo_cnmh.png" alt="Logo" class="logo" />
+          <h1>โรงพยาบาลชานุมาน</h1>
+        </div>
+        <h2>วิสัยทัศน์ : โรงพยาบาลชุมชน คุณภาพชั้นนำ แห่งลุ่มน้ำโขง ในดวงใจประชาชน</h2>
+        <hr />
+        
+        <!-- Dropdown เลือกเดือน -->
+
+       
         <div class="d-flex justify-content-start">
           <h3>ตารางเวร IT : เดือน {{ months[selectedMonth - 1] }}</h3>
         </div>

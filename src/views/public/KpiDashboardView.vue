@@ -245,6 +245,7 @@
                     <th>Target</th>
                     <th>Actual</th>
                     <th>Status</th>
+                    <th>วันที่บันทึก</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -257,6 +258,7 @@
                       <span v-if="checkPassHistory(h)" class="badge bg-success">Pass</span>
                       <span v-else class="badge bg-danger">Fail</span>
                     </td>
+                    <td>{{ formatDateTime(h.created_at) }}</td>
                     <td>
                       <button class="btn btn-sm btn-outline-primary me-2" @click="editHistory(h)" title="แก้ไข">
                         <i class="bi bi-pencil"></i>
@@ -267,7 +269,7 @@
                     </td>
                   </tr>
                   <tr v-if="historyList.length === 0">
-                    <td colspan="4" class="text-muted">No history data found.</td>
+                    <td colspan="6" class="text-muted">No history data found.</td>
                   </tr>
                 </tbody>
               </table>
@@ -706,6 +708,16 @@ export default {
         day: 'numeric'
       });
     },
+    formatDateTime(d) {
+      if (!d) return '-';
+      return new Date(d).toLocaleString('th-TH', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    },
     checkPassHistory(h) {
       const op = this.selectedKpi?.target_operator || '>=';
       const actual = parseFloat(h.actual_value);
@@ -860,7 +872,7 @@ export default {
       let passed = 0;
       let failed = 0;
 
-      this.baseCategories.forEach((cat) => {
+      this.categories.forEach((cat) => {
         if (cat.kpis) {
           cat.kpis.forEach((kpi) => {
             total++;

@@ -61,10 +61,10 @@
                   <div class="d-inline-flex align-items-center bg-white bg-opacity-25 rounded-pill px-3 py-1">
                     <span class="fs-6 me-2">วันนี้: <strong>{{ formatNumber(todayCount) }}</strong></span>
                     <span v-if="todayCount >= yesterdayCount" class="badge bg-success rounded-pill px-2 py-1 ms-1">
-                      <i class="bi bi-arrow-up-short fs-6 align-middle"></i> {{ formatNumber(todayCount - yesterdayCount) }} จากเมื่อวาน ({{ formatNumber(yesterdayCount) }})
+                      +{{ formatNumber(todayCount - yesterdayCount) }} จากเมื่อวาน ({{ formatNumber(yesterdayCount) }})
                     </span>
                     <span v-else class="badge bg-danger rounded-pill px-2 py-1 ms-1">
-                      <i class="bi bi-arrow-down-short fs-6 align-middle"></i> {{ formatNumber(yesterdayCount - todayCount) }} จากเมื่อวาน ({{ formatNumber(yesterdayCount) }})
+                      -{{ formatNumber(yesterdayCount - todayCount) }} จากเมื่อวาน ({{ formatNumber(yesterdayCount) }})
                     </span>
                   </div>
                 </div>
@@ -73,8 +73,8 @@
             </div>
           </div>
           
-          <div class="col-12 mb-3">
-            <div class="card border-0 shadow-sm rounded-4">
+          <div class="col-lg-6 mb-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
               <div class="card-body p-3">
                 <h6 class="card-title fw-bold text-primary mb-3">
                   <i class="bi bi-graph-up me-2"></i>กราฟเปรียบเทียบผู้รับบริการทางไกลแยกตามแผนก
@@ -86,41 +86,77 @@
             </div>
           </div>
           
+          <div class="col-lg-6 mb-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+              <div class="card-body p-3">
+                <h6 class="card-title fw-bold text-success mb-3">
+                  <i class="bi bi-calendar2-check me-2"></i>กราฟแสดงแนวโน้มผู้รับบริการทางไกลรายเดือน
+                </h6>
+                <div style="height: 250px; position: relative">
+                  <LineChart v-if="monthlyTrend && monthlyTrend.length > 0" :data="monthlyChartData" :options="monthlyChartOptions" />
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <div class="col-12">
             <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
               <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                   <thead class="bg-light border-bottom">
                     <tr>
-                      <th class="py-3 px-4 text-secondary small fw-bold" style="width: 40%">แผนก / คลินิก</th>
-                      <th class="py-3 px-4 text-secondary small fw-bold text-center" style="width: 20%">จำนวน (ช่วงเวลาที่เลือก)</th>
-                      <th class="py-3 px-4 text-secondary small fw-bold text-center" style="width: 20%">วันนี้</th>
-                      <th class="py-3 px-4 text-secondary small fw-bold text-center" style="width: 20%">เมื่อวาน</th>
+                      <th class="py-3 px-4 text-secondary small fw-bold" style="width: 30%">แผนก / คลินิก</th>
+                      <th class="py-3 px-4 text-secondary small fw-bold text-center" style="width: 15%">เป้าหมาย</th>
+                      <th class="py-3 px-4 text-secondary small fw-bold text-center" style="width: 25%">จำนวน (ช่วงเวลาที่เลือก)</th>
+                      <th class="py-3 px-4 text-secondary small fw-bold text-center" style="width: 15%">วันนี้</th>
+                      <th class="py-3 px-4 text-secondary small fw-bold text-center" style="width: 15%">เมื่อวาน</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    <tr v-for="(item, index) in data" :key="index">
+                  <tbody v-for="(dept, index) in groupedData" :key="index">
+                    <tr @click="toggleDept(dept.department_name)" style="cursor: pointer;" class="hover-bg-light">
                       <td class="py-3 px-4">
-                        <div class="fw-bold text-dark fs-6">{{ item.department_name }}</div>
+                        <div class="fw-bold text-dark fs-6 d-flex align-items-center">
+                          <i class="bi me-2 text-primary" :class="expandedDepts.includes(dept.department_name) ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+                          {{ dept.department_name }}
+                        </div>
                       </td>
                       <td class="py-3 px-4 text-center">
-                        <div class="fw-bold text-primary fs-5">{{ formatNumber(item.total) }}</div>
+                        <div class="fw-bold text-dark fs-5">20 <span class="fs-6 text-muted fw-normal">/วัน</span></div>
                       </td>
                       <td class="py-3 px-4 text-center">
-                        <div class="fw-bold text-dark fs-5">{{ formatNumber(item.today_count) }}</div>
-                        <div v-if="item.today_count > 0 || item.yesterday_count > 0" class="mt-1">
-                          <span v-if="parseInt(item.today_count) >= parseInt(item.yesterday_count)" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size: 0.7rem;">
-                            <i class="bi bi-arrow-up-short"></i> {{ formatNumber(item.today_count - item.yesterday_count) }}
-                          </span>
-                          <span v-else class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill" style="font-size: 0.7rem;">
-                            <i class="bi bi-arrow-down-short"></i> {{ formatNumber(item.yesterday_count - item.today_count) }}
+                        <div class="fw-bold text-primary fs-5">{{ formatNumber(dept.total) }}</div>
+                      </td>
+                      <td class="py-3 px-4 text-center">
+                        <div class="fw-bold text-dark fs-5">
+                          {{ formatNumber(dept.today_count) }}
+                          <br v-if="dept.today_count >= 20" />
+                          <span v-if="dept.today_count >= 20" class="badge bg-success mt-1" style="font-size: 0.75rem;">
+                            <i class="bi bi-check-circle-fill me-1"></i>ผ่านเป้าหมาย
                           </span>
                         </div>
                       </td>
                       <td class="py-3 px-4 text-center text-muted">
-                        <div class="fs-6">{{ formatNumber(item.yesterday_count) }}</div>
+                        <div class="fs-6">
+                          {{ formatNumber(dept.yesterday_count) }}
+                          <br v-if="dept.yesterday_count >= 20" />
+                          <span v-if="dept.yesterday_count >= 20" class="badge bg-success mt-1" style="font-size: 0.7rem;">
+                            <i class="bi bi-check-circle-fill me-1"></i>ผ่าน
+                          </span>
+                        </div>
                       </td>
                     </tr>
+                    
+                    <template v-if="expandedDepts.includes(dept.department_name) && dept.rooms && dept.rooms.length > 0">
+                      <tr v-for="(room, rIndex) in dept.rooms" :key="'r' + rIndex" class="bg-light">
+                        <td class="py-2 px-4 ps-5">
+                          <div class="small text-muted fw-bold"><i class="bi bi-geo-alt me-1"></i>{{ room.room_name }}</div>
+                        </td>
+                        <td class="py-2 px-4 text-center text-muted">-</td>
+                        <td class="py-2 px-4 text-center text-primary small fw-bold">{{ formatNumber(room.total) }}</td>
+                        <td class="py-2 px-4 text-center text-dark small fw-bold">{{ formatNumber(room.today_count) }}</td>
+                        <td class="py-2 px-4 text-center text-muted small">{{ formatNumber(room.yesterday_count) }}</td>
+                      </tr>
+                    </template>
                   </tbody>
                 </table>
               </div>
@@ -170,12 +206,53 @@ export default {
       startDate: '',
       endDate: '',
       data: [],
+      monthlyTrend: [],
       loading: false,
       todayCount: 0,
       yesterdayCount: 0,
+      expandedDepts: [],
     };
   },
   computed: {
+    groupedData() {
+      if (!this.data || this.data.length === 0) return [];
+      
+      const map = {};
+      this.data.forEach(item => {
+        const dept = item.department_name;
+        if (!map[dept]) {
+          map[dept] = {
+            department_name: dept,
+            total: 0,
+            today_count: 0,
+            yesterday_count: 0,
+            rooms: []
+          };
+        }
+        map[dept].total += parseInt(item.total || 0);
+        map[dept].today_count += parseInt(item.today_count || 0);
+        map[dept].yesterday_count += parseInt(item.yesterday_count || 0);
+        
+        if (item.room) {
+          map[dept].rooms.push({
+            room_name: item.room,
+            total: parseInt(item.total || 0),
+            today_count: parseInt(item.today_count || 0),
+            yesterday_count: parseInt(item.yesterday_count || 0)
+          });
+        } else {
+          // If no room is specified, we can optionally push it as "ไม่ระบุห้อง"
+          map[dept].rooms.push({
+            room_name: 'ไม่ระบุห้อง',
+            total: parseInt(item.total || 0),
+            today_count: parseInt(item.today_count || 0),
+            yesterday_count: parseInt(item.yesterday_count || 0)
+          });
+        }
+      });
+      
+      return Object.values(map).sort((a, b) => b.total - a.total);
+    },
     computedFiscalYear() {
       const today = new Date();
       let fiscalYear = today.getFullYear();
@@ -189,9 +266,9 @@ export default {
       return this.data.reduce((sum, item) => sum + parseInt(item.total || 0), 0);
     },
     chartData() {
-      if (!this.data || this.data.length === 0) return { labels: [], datasets: [] };
+      if (!this.groupedData || this.groupedData.length === 0) return { labels: [], datasets: [] };
       return {
-        labels: this.data.map(item => item.department_name),
+        labels: this.groupedData.map(item => item.department_name),
         datasets: [
           {
             label: 'จำนวน (ครั้ง)',
@@ -204,7 +281,7 @@ export default {
             pointHoverRadius: 7,
             fill: false,
             tension: 0.3,
-            data: this.data.map(item => parseInt(item.total || 0))
+            data: this.groupedData.map(item => parseInt(item.total || 0))
           }
         ]
       };
@@ -240,9 +317,83 @@ export default {
           }
         }
       };
+    },
+    monthlyChartData() {
+      if (!this.monthlyTrend || this.monthlyTrend.length === 0) return { labels: [], datasets: [] };
+      
+      const monthNames = {
+        '01': 'ม.ค.', '02': 'ก.พ.', '03': 'มี.ค.', '04': 'เม.ย.', 
+        '05': 'พ.ค.', '06': 'มิ.ย.', '07': 'ก.ค.', '08': 'ส.ค.', 
+        '09': 'ก.ย.', '10': 'ต.ค.', '11': 'พ.ย.', '12': 'ธ.ค.'
+      };
+
+      const labels = this.monthlyTrend.map(item => {
+        const [year, month] = item.month_year.split('-');
+        const thaiYear = parseInt(year) + 543;
+        return `${monthNames[month]} ${thaiYear.toString().substring(2)}`;
+      });
+
+      return {
+        labels: labels,
+        datasets: [
+          {
+            label: 'จำนวน (ครั้ง)',
+            backgroundColor: 'rgba(25, 135, 84, 0.1)',
+            borderColor: '#198754',
+            borderWidth: 3,
+            pointBackgroundColor: '#fff',
+            pointBorderColor: '#198754',
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            fill: true,
+            tension: 0.3,
+            data: this.monthlyTrend.map(item => parseInt(item.total || 0))
+          }
+        ]
+      };
+    },
+    monthlyChartOptions() {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            bodyFont: { size: 14, family: "'Sarabun', sans-serif" },
+            titleFont: { size: 14, weight: 'bold', family: "'Sarabun', sans-serif" }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function (value) {
+                return value.toLocaleString();
+              },
+              font: { family: "'Sarabun', sans-serif" }
+            }
+          },
+          x: {
+            ticks: {
+              font: { family: "'Sarabun', sans-serif" }
+            }
+          }
+        }
+      };
     }
   },
   methods: {
+    toggleDept(deptName) {
+      const index = this.expandedDepts.indexOf(deptName);
+      if (index > -1) {
+        this.expandedDepts.splice(index, 1);
+      } else {
+        this.expandedDepts.push(deptName);
+      }
+    },
     formatNumber(num) {
       return Number(num || 0).toLocaleString();
     },
@@ -258,6 +409,7 @@ export default {
         });
         if (response.data.status === 'success') {
           this.data = response.data.data;
+          this.monthlyTrend = response.data.monthly_trend || [];
           this.todayCount = response.data.today || 0;
           this.yesterdayCount = response.data.yesterday || 0;
         } else {

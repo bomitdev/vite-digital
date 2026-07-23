@@ -58,7 +58,7 @@
       </div>
 
       <!-- Charts Row -->
-      <div v-show="users.length > 0" class="row mb-4 g-3">
+      <div v-if="users.length > 0" class="row mb-4 g-3">
         <!-- Position Chart -->
         <div class="col-12">
           <div class="card border-0 shadow-sm rounded-4 h-100">
@@ -181,7 +181,7 @@
 
     <!-- Edit Modal -->
     <div class="modal fade" id="editAccessModal" tabindex="-1" ref="editModal">
-      <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content border-0 shadow">
           <div class="modal-header bg-warning-subtle text-warning-emphasis border-0">
             <h5 class="modal-title fw-bold">
@@ -447,8 +447,24 @@ export default {
       const sortedKeys = Object.keys(positionCounts).sort(
         (a, b) => positionCounts[b] - positionCounts[a]
       );
-      const labels = sortedKeys;
-      const data = sortedKeys.map((k) => positionCounts[k]);
+      
+      let labels = [];
+      let data = [];
+      
+      if (sortedKeys.length > 15) {
+        labels = sortedKeys.slice(0, 15);
+        data = labels.map((k) => positionCounts[k]);
+        
+        let otherCount = 0;
+        for (let i = 15; i < sortedKeys.length; i++) {
+          otherCount += positionCounts[sortedKeys[i]];
+        }
+        labels.push('อื่นๆ');
+        data.push(otherCount);
+      } else {
+        labels = sortedKeys;
+        data = sortedKeys.map((k) => positionCounts[k]);
+      }
 
       const ctx = document.getElementById('positionChart');
       if (!ctx) return;
@@ -456,9 +472,6 @@ export default {
       if (this.positionChartInstance) {
         this.positionChartInstance.destroy();
       }
-
-      // Use standard Chart default font setting
-      Chart.defaults.font.family = "'Sarabun', sans-serif";
 
       this.positionChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -538,8 +551,24 @@ export default {
 
       // Sort by counts descending
       const sortedKeys = Object.keys(deptCounts).sort((a, b) => deptCounts[b] - deptCounts[a]);
-      const labels = sortedKeys;
-      const data = sortedKeys.map((k) => deptCounts[k]);
+      
+      let labels = [];
+      let data = [];
+      
+      if (sortedKeys.length > 15) {
+        labels = sortedKeys.slice(0, 15);
+        data = labels.map((k) => deptCounts[k]);
+        
+        let otherCount = 0;
+        for (let i = 15; i < sortedKeys.length; i++) {
+          otherCount += deptCounts[sortedKeys[i]];
+        }
+        labels.push('อื่นๆ');
+        data.push(otherCount);
+      } else {
+        labels = sortedKeys;
+        data = sortedKeys.map((k) => deptCounts[k]);
+      }
 
       const ctx = document.getElementById('departmentChart');
       if (!ctx) return;

@@ -236,6 +236,31 @@ const form = ref({
 
 const previewResult = ref(null);
 
+const checkAdmin = async () => {
+  try {
+    const token = localStorage.getItem('user_token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+    const response = await axios.get(`${import.meta.env.VITE_API_URL || ''}/api-hosoffice/get_user_profile.php`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (response.data.status === 'success') {
+      const userPerms = response.data.access_user ? response.data.access_user.split(':') : [];
+      if (!userPerms.includes('administrator')) {
+        Swal.fire('ปฏิเสธการเข้าถึง', 'เมนูนี้สำหรับผู้ดูแลระบบ (Admin) เท่านั้น', 'warning');
+        router.push('/report-center');
+      }
+    } else {
+      router.push('/report-center');
+    }
+  } catch (error) {
+    console.error('Failed to load profile', error);
+    router.push('/report-center');
+  }
+};
+
 const fetchDepartments = async () => {
   try {
     const res = await axios.get(
@@ -265,6 +290,10 @@ const fetchReports = async () => {
 
 const openModal = (report = null) => {
   previewResult.value = null;
+  const today = new Date().toISOString().split('T')[0];
+  testStartDate.value = today;
+  testEndDate.value = today;
+  
   if (report) {
     isEdit.value = true;
     form.value = { ...report };
@@ -380,6 +409,7 @@ const runPreview = (report) => {
 };
 
 onMounted(() => {
+  checkAdmin();
   fetchReports();
   fetchDepartments();
 });

@@ -1,5 +1,6 @@
 <template>
-  <div class="row g-4">
+  <div class="container-fluid py-4 min-vh-100" style="background-color: #f8f9fa">
+    <div class="row g-4">
     <!-- Header Page -->
     <div class="col-12 text-center my-4">
       <h3 class="fw-bold text-primary mb-3">
@@ -8,44 +9,59 @@
       <p class="text-secondary">จัดการตรวจสอบ อนุมัติการยืม และบันทึกการรับคืนอุปกรณ์</p>
     </div>
 
-    <!-- Stats summary (optional but helpful) -->
+    <!-- Stats summary -->
     <div class="col-12">
-      <div class="row g-3 text-center">
-        <div class="col-md-3">
-          <div class="card bg-warning text-dark border-0 shadow-sm rounded-4 h-100 p-3">
-            <h4 class="fw-bold mb-0">{{ pendingCount }}</h4>
-            <span class="small">รอตรวจสอบ</span>
+      <div class="row g-4 text-start">
+        <div class="col-md-4">
+          <div class="card text-dark border-0 shadow-sm rounded-4 h-100 p-4 position-relative overflow-hidden" style="background-color: #ffd60a;">
+            <div class="position-absolute top-50 translate-middle-y end-0 pe-4 opacity-25">
+              <i class="bi bi-hourglass-split" style="font-size: 4.5rem;"></i>
+            </div>
+            <div class="position-relative" style="z-index: 1;">
+              <h2 class="fw-bolder display-5 mb-0">{{ pendingCount }}</h2>
+              <span class="fw-semibold">รอตรวจสอบ</span>
+            </div>
           </div>
         </div>
-        <div class="col-md-3">
-          <div class="card bg-info text-dark border-0 shadow-sm rounded-4 h-100 p-3">
-            <h4 class="fw-bold mb-0">{{ borrowedCount }}</h4>
-            <span class="small">กำลังยืม (ยังไม่คืน)</span>
+        <div class="col-md-4">
+          <div class="card text-white border-0 shadow-sm rounded-4 h-100 p-4 position-relative overflow-hidden" style="background-color: #00b4d8;">
+            <div class="position-absolute top-50 translate-middle-y end-0 pe-4 opacity-25">
+              <i class="bi bi-pc-display" style="font-size: 4.5rem;"></i>
+            </div>
+            <div class="position-relative" style="z-index: 1;">
+              <h2 class="fw-bolder display-5 mb-0">{{ borrowedCount }}</h2>
+              <span class="fw-semibold">กำลังยืม (ยังไม่คืน)</span>
+            </div>
           </div>
         </div>
-        <div class="col-md-3">
-          <div class="card bg-success text-white border-0 shadow-sm rounded-4 h-100 p-3">
-            <h4 class="fw-bold mb-0">{{ returnedCount }}</h4>
-            <span class="small">คืนแล้ว</span>
+        <div class="col-md-4">
+          <div class="card text-white border-0 shadow-sm rounded-4 h-100 p-4 position-relative overflow-hidden" style="background-color: #2b9348;">
+            <div class="position-absolute top-50 translate-middle-y end-0 pe-4 opacity-25">
+              <i class="bi bi-check-circle" style="font-size: 4.5rem;"></i>
+            </div>
+            <div class="position-relative" style="z-index: 1;">
+              <h2 class="fw-bolder display-5 mb-0">{{ returnedCount }}</h2>
+              <span class="fw-semibold">คืนแล้ว</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Data Table -->
-    <div class="col-12">
-      <div class="card shadow-sm border-0 rounded-4">
-        <div class="card-body p-4 table-responsive">
+    <div class="col-12 mt-2">
+      <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+        <div class="card-body p-0 table-responsive">
           <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
               <tr>
-                <th class="py-3">วันที่ขอ</th>
-                <th class="py-3">ผู้ยืม / หน่วยงาน</th>
-                <th class="py-3">ครุภัณฑ์ที่ยืม</th>
-                <th class="py-3">วัตถุประสงค์</th>
-                <th class="py-3">กำหนดคืน</th>
-                <th class="py-3 text-center">สถานะ</th>
-                <th class="py-3 text-center">จัดการ</th>
+                <th class="py-3 px-4 text-secondary fw-semibold border-bottom-0">วันที่ขอ</th>
+                <th class="py-3 px-4 text-secondary fw-semibold border-bottom-0">ผู้ยืม / หน่วยงาน</th>
+                <th class="py-3 px-4 text-secondary fw-semibold border-bottom-0">ครุภัณฑ์ที่ยืม</th>
+                <th class="py-3 px-4 text-secondary fw-semibold border-bottom-0">วัตถุประสงค์</th>
+                <th class="py-3 px-4 text-secondary fw-semibold border-bottom-0">กำหนดคืน</th>
+                <th class="py-3 px-4 text-center text-secondary fw-semibold border-bottom-0">สถานะ</th>
+                <th class="py-3 px-4 text-center text-secondary fw-semibold border-bottom-0">จัดการ</th>
               </tr>
             </thead>
             <tbody>
@@ -57,20 +73,30 @@
               <tr v-else-if="loans.length === 0">
                 <td colspan="7" class="text-center py-5 text-muted">ไม่พบข้อมูลการยืม</td>
               </tr>
-              <tr v-for="loan in loans" :key="loan.id">
-                <td>{{ formatDate(loan.created_at) }}</td>
-                <td>
+              <tr v-for="loan in loans" :key="loan.id" class="border-bottom">
+                <td class="px-4 py-3">{{ formatDate(loan.created_at) }}</td>
+                <td class="px-4 py-3">
                   <div class="fw-bold text-dark">{{ loan.borrower_name }}</div>
                   <div class="small text-muted">{{ loan.department }}</div>
                 </td>
-                <td>
-                  <div class="fw-bold text-primary">[{{ loan.asset_code }}]</div>
-                  <div class="small text-muted">{{ loan.asset_name }}</div>
+                <td class="px-4 py-3">
+                  <div class="d-flex align-items-center gap-3">
+                    <div v-if="loan.asset_image_path" class="flex-shrink-0">
+                      <img :src="getImageUrl(loan.asset_image_path)" class="rounded shadow-sm" style="width: 48px; height: 48px; object-fit: cover;">
+                    </div>
+                    <div v-else class="flex-shrink-0 d-flex justify-content-center align-items-center bg-light rounded text-muted shadow-sm" style="width: 48px; height: 48px;">
+                      <i class="bi bi-pc-display" style="font-size: 1.25rem;"></i>
+                    </div>
+                    <div>
+                      <div class="fw-bold text-primary">[{{ loan.asset_code }}]</div>
+                      <div class="small text-muted">{{ loan.asset_name }}</div>
+                    </div>
+                  </div>
                 </td>
-                <td style="max-width: 200px" class="text-truncate" :title="loan.objective">
+                <td class="px-4 py-3 text-truncate" style="max-width: 250px" :title="loan.objective">
                   {{ loan.objective }}
                 </td>
-                <td>
+                <td class="px-4 py-3">
                   <div :class="{ 'text-danger fw-bold': isOverdue(loan) }">
                     {{ formatDate(loan.expected_return_date, false) }}
                   </div>
@@ -78,12 +104,12 @@
                     (คืนเมื่อ: {{ formatDate(loan.actual_return_date) }})
                   </div>
                 </td>
-                <td class="text-center">
+                <td class="px-4 py-3 text-center">
                   <span :class="getStatusBadgeClass(loan.status)">
                     {{ getStatusLabel(loan.status) }}
                   </span>
                 </td>
-                <td class="text-center">
+                <td class="px-4 py-3 text-center">
                   <!-- Action Buttons -->
                   <div class="d-flex justify-content-center gap-2">
                     <button
@@ -176,6 +202,7 @@
       </div>
     </div>
   </div>
+  </div>
 </template>
 
 <script>
@@ -234,6 +261,11 @@ export default {
       const hours = d.getHours().toString().padStart(2, '0');
       const minutes = d.getMinutes().toString().padStart(2, '0');
       return `${day}/${month}/${year} ${hours}:${minutes}`;
+    },
+    getImageUrl(path) {
+      if (!path) return '';
+      if (path.startsWith('http')) return path;
+      return `http://localhost/vue-app/vite-digital/${path}`;
     },
     isOverdue(loan) {
       if (loan.status !== 'borrowed') return false;

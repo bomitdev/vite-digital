@@ -103,6 +103,7 @@
                     <th width="10%">วิธีการได้รับ</th>
                     <th width="10%">สถานที่ติดตั้ง</th>
                     <th width="10%">บริษัท</th>
+                    <th width="8%" class="text-center">อนุญาตยืม</th>
                     <th width="10%" class="text-center">จัดการ</th>
                   </tr>
                 </thead>
@@ -112,8 +113,18 @@
                     <td>{{ formatDate(asset.purchase_date) }}</td>
                     <td class="fw-bold text-primary">{{ asset.asset_code }}</td>
                     <td>
-                      <div class="fw-bold">{{ asset.name }}</div>
-                      <div class="small text-muted">{{ asset.brand }} {{ asset.model }}</div>
+                      <div class="d-flex align-items-center gap-3">
+                        <div v-if="asset.image_path" class="flex-shrink-0">
+                          <img :src="getImageUrl(asset.image_path)" alt="Asset Image" class="rounded border shadow-sm" style="width: 48px; height: 48px; object-fit: cover;">
+                        </div>
+                        <div v-else class="flex-shrink-0 d-flex justify-content-center align-items-center bg-light rounded border text-muted shadow-sm" style="width: 48px; height: 48px;">
+                          <i class="bi bi-pc-display" style="font-size: 1.25rem;"></i>
+                        </div>
+                        <div>
+                          <div class="fw-bold">{{ asset.name }}</div>
+                          <div class="small text-muted">{{ asset.brand }} {{ asset.model }}</div>
+                        </div>
+                      </div>
                     </td>
                     <td>{{ formatPrice(asset.price) }}</td>
                     <td>{{ asset.acquisition_method || '-' }}</td>
@@ -121,6 +132,15 @@
                       <div class="small"><i class="bi bi-geo-alt me-1"></i>{{ asset.location || '-' }}</div>
                     </td>
                     <td>{{ asset.source || '-' }}</td>
+                    <td class="text-center">
+                      <div class="form-check form-switch d-flex justify-content-center" v-if="asset.status === 'Spare'">
+                        <input class="form-check-input" type="checkbox" role="switch"
+                          :checked="asset.allow_loan == 1"
+                          @change="toggleAllowLoan(asset, $event)"
+                          title="เปิด/ปิด การอนุญาตให้ยืม">
+                      </div>
+                      <span v-else class="text-muted small">-</span>
+                    </td>
                     <td>
                       <div class="d-flex justify-content-center gap-2">
                         <button
@@ -158,7 +178,7 @@
                     </td>
                   </tr>
                   <tr v-if="assets.length === 0">
-                    <td colspan="9" class="text-center py-5 text-muted">ไม่พบข้อมูล</td>
+                    <td colspan="10" class="text-center py-5 text-muted">ไม่พบข้อมูล</td>
                   </tr>
                 </tbody>
               </table>
@@ -314,6 +334,49 @@ export default {
         }
       }
     },
+    async toggleAllowLoan(asset, event) {
+      const isChecked = event.target.checked;
+      const newValue = isChecked ? 1 : 0;
+      
+      // Optimistic update
+      asset.allow_loan = newValue;
+
+      try {
+        const res = await axios.post('/api-digital/asset/toggle_allow_loan.php', {
+          id: asset.id,
+          allow_loan: newValue
+        });
+        
+        if (res.data.status !== 'success') {
+          // Revert on failure
+          asset.allow_loan = isChecked ? 0 : 1;
+          event.target.checked = !isChecked;
+          Swal.fire({
+            icon: 'error',
+            title: 'ผิดพลาด',
+            text: res.data.message || 'ไม่สามารถอัปเดตสถานะได้',
+            toast: true,
+            position: 'top-end',
+            timer: 2000,
+            showConfirmButton: false
+          });
+        } else {
+          Swal.fire({
+            icon: 'success',
+            title: 'อัปเดตสำเร็จ',
+            toast: true,
+            position: 'top-end',
+            timer: 1500,
+            showConfirmButton: false
+          });
+        }
+      } catch (err) {
+        // Revert on failure
+        asset.allow_loan = isChecked ? 0 : 1;
+        event.target.checked = !isChecked;
+        console.error(err);
+      }
+    },
     getStatusClass(status) {
       switch (status) {
         case 'Active':
@@ -346,6 +409,11 @@ export default {
     formatPrice(price) {
       if (!price || isNaN(price)) return '-';
       return Number(price).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    },
+    getImageUrl(path) {
+      if (!path) return '';
+      if (path.startsWith('http')) return path;
+      return `http://localhost/vue-app/vite-digital/${path}`;
     },
     exportExcel() {
       if (this.assets.length === 0) {

@@ -11,6 +11,7 @@ try {
     $type = isset($_GET['type']) ? $_GET['type'] : '';
     $os = isset($_GET['os']) ? $_GET['os'] : '';
     $name = isset($_GET['name']) ? $_GET['name'] : '';
+    $available_for_loan = isset($_GET['available_for_loan']) ? $_GET['available_for_loan'] : '';
 
     $sql = "SELECT a.*, ac.name as category_name 
             FROM assets a 
@@ -48,6 +49,11 @@ try {
         // Filter by year in asset_code (e.g. /66%)
         $sql .= " AND a.asset_code LIKE :year_pattern";
         $params[':year_pattern'] = "%/$year%";
+    }
+
+    if ($available_for_loan === '1') {
+        $sql .= " AND a.allow_loan = 1";
+        $sql .= " AND NOT EXISTS (SELECT 1 FROM it_loans l WHERE l.asset_id = a.id AND l.status IN ('pending', 'borrowed'))";
     }
 
     $sql .= " ORDER BY a.id DESC";

@@ -25,10 +25,12 @@
         <div class="card h-100 document-card shadow-sm" @click="openFile(file)">
           <div class="card-body d-flex align-items-center">
             <div class="file-icon me-3">
-              <i
+              <img
                 v-if="isImage(file.file_name)"
-                class="bi bi-file-earmark-image-fill text-success fs-1"
-              ></i>
+                :src="getFileUrl(file)"
+                class="file-thumbnail"
+                alt="thumbnail"
+              />
               <i v-else class="bi bi-file-earmark-pdf-fill text-danger fs-1"></i>
             </div>
             <div class="file-info overflow-hidden flex-grow-1">
@@ -263,9 +265,12 @@ const deleteFile = async (file) => {
   }
 };
 
+const getFileUrl = (file) => {
+  return `/backend/api-digital/uploads/${encodeURIComponent(file.file_path)}`;
+};
+
 const openFile = (file) => {
-  const path = `/backend/api-digital/uploads/${encodeURIComponent(file.file_path)}`;
-  window.open(path, '_blank');
+  window.open(getFileUrl(file), '_blank');
 };
 
 watch(
@@ -319,6 +324,19 @@ onMounted(() => {
 
 .file-icon {
   flex-shrink: 0;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-thumbnail {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .empty-state {

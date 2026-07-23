@@ -616,6 +616,14 @@
                       <option value="Write-off">แทงจำหน่าย</option>
                       <option value="Sold">ขาย/โอน</option>
                     </select>
+
+                    <!-- Checkbox for allow_loan if status is Spare -->
+                    <div class="form-check mt-2" v-if="form.status === 'Spare'">
+                      <input class="form-check-input" type="checkbox" v-model="form.allow_loan" :true-value="0" :false-value="1" id="allowLoanCheck">
+                      <label class="form-check-label text-danger" for="allowLoanCheck">
+                        ไม่อนุญาตให้ยืม (ระงับการยืม)
+                      </label>
+                    </div>
                   </div>
                   <div class="col-12">
                     <label class="form-label">หมายเหตุ</label>
@@ -701,6 +709,7 @@ export default {
         responsible_person: '',
         location: '',
         status: 'Active',
+        allow_loan: 1,
         notes: '',
         image_path: '',
         acquisition_method: '',
@@ -1254,6 +1263,7 @@ export default {
         responsible_person: '',
         location: '',
         status: 'Active',
+        allow_loan: 1,
         notes: '',
         image_path: ''
       };

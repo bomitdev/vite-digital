@@ -392,10 +392,10 @@
                 <div class="d-inline-flex align-items-center bg-white bg-opacity-25 rounded-pill px-2 py-1 align-self-start" style="font-size: 0.8rem;">
                   <span class="me-1">วันนี้: {{ formatNumber(data.telemedicine_today) }}</span>
                   <span v-if="data.telemedicine_today >= data.telemedicine_yesterday" class="badge bg-success rounded-pill p-1 ms-1" style="font-size: 0.7rem;">
-                    <i class="bi bi-arrow-up-short"></i> {{ formatNumber(data.telemedicine_today - data.telemedicine_yesterday) }} (จาก {{ formatNumber(data.telemedicine_yesterday) }})
+                    +{{ formatNumber(data.telemedicine_today - data.telemedicine_yesterday) }} (จาก {{ formatNumber(data.telemedicine_yesterday) }})
                   </span>
                   <span v-else class="badge bg-danger rounded-pill p-1 ms-1" style="font-size: 0.7rem;">
-                    <i class="bi bi-arrow-down-short"></i> {{ formatNumber(data.telemedicine_yesterday - data.telemedicine_today) }} (จาก {{ formatNumber(data.telemedicine_yesterday) }})
+                    -{{ formatNumber(data.telemedicine_yesterday - data.telemedicine_today) }} (จาก {{ formatNumber(data.telemedicine_yesterday) }})
                   </span>
                 </div>
               </div>

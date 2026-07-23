@@ -109,6 +109,30 @@
               </div>
             </div>
 
+            <hr>
+            <h6 class="fw-bold text-primary mb-3"><i class="bi bi-person-badge me-2"></i>ข้อมูลเจ้าหน้าที่พัสดุ</h6>
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">ชื่อเจ้าหน้าที่</label>
+                <input type="text" class="form-control rounded-3" v-model="formData.officer_name" placeholder="นายสุริยา จันทรา"/>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">ตำแหน่ง</label>
+                <input type="text" class="form-control rounded-3" v-model="formData.officer_position" placeholder="นักวิชาการคอมพิวเตอร์"/>
+              </div>
+            </div>
+            
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">ชื่อหัวหน้าเจ้าหน้าที่</label>
+                <input type="text" class="form-control rounded-3" v-model="formData.chief_officer_name" placeholder="นายปัญญา กระบวนศรี"/>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">ตำแหน่ง</label>
+                <input type="text" class="form-control rounded-3" v-model="formData.chief_officer_position" placeholder="เภสัชกรชำนาญการพิเศษ"/>
+              </div>
+            </div>
+
             <div class="d-flex justify-content-between mt-4">
               <div>
                 <!-- Buttons to print specific forms -->
@@ -164,6 +188,10 @@ export default {
         vendor_tel: '',
         buyer_name: '',
         buyer_position: 'นายแพทย์ชำนาญการ รักษาการในตำแหน่งผู้อำนวยการโรงพยาบาล',
+        officer_name: 'นายสุริยา จันทรา',
+        officer_position: 'นักวิชาการคอมพิวเตอร์',
+        chief_officer_name: 'นายปัญญา กระบวนศรี',
+        chief_officer_position: 'เภสัชกรชำนาญการพิเศษ',
         committee: [
           { name: '', position: 'พยาบาลวิชาชีพชำนาญการ', role: 'ผู้ตรวจรับพัสดุ' }
         ]
@@ -199,6 +227,10 @@ export default {
             vendor_tel: d.vendor_tel || '',
             buyer_name: d.buyer_name || '',
             buyer_position: d.buyer_position || this.formData.buyer_position,
+            officer_name: d.officer_name || this.formData.officer_name,
+            officer_position: d.officer_position || this.formData.officer_position,
+            chief_officer_name: d.chief_officer_name || this.formData.chief_officer_name,
+            chief_officer_position: d.chief_officer_position || this.formData.chief_officer_position,
             committee: (d.committee && d.committee.length > 0) ? d.committee : this.formData.committee
           };
           this.isSaved = true;
