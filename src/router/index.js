@@ -107,6 +107,12 @@ const routes = [
     component: () => import('../views/asset/AssetDashboard.vue'),
     meta: { requiresAuth: true }
   },
+  // Project Management
+  {
+    path: '/projects',
+    component: () => import('../views/digital/projects/ProjectDashboard.vue'),
+    meta: { requiresAuth: true }
+  },
   // IP Address Management
   {
     path: '/ip-address',
