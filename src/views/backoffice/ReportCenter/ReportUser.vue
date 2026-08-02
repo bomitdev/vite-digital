@@ -20,6 +20,22 @@
         <div class="row">
           <!-- Sidebar / List -->
           <div class="col-md-3 border-end">
+            <!-- Filter Department Dropdown -->
+            <div class="mb-3">
+              <label class="form-label small text-secondary fw-bold mb-2">
+                <i class="bi bi-building text-primary me-1"></i> เลือกกลุ่มงาน
+              </label>
+              <select class="form-select form-select-lg rounded-pill bg-primary bg-opacity-10 text-primary fw-bold border-0 shadow-sm px-4" v-model="filterDepartment" style="cursor: pointer;">
+                <option value="" disabled>-- กรุณาเลือกกลุ่มงาน --</option>
+                <option value="ALL" class="text-dark">-- ทุกกลุ่มงาน --</option>
+                <option v-for="dept in departmentsWithReports" :key="dept.HR_DEPARTMENT_SUB_ID" :value="dept.HR_DEPARTMENT_SUB_ID" class="text-dark">
+                  {{ dept.HR_DEPARTMENT_SUB_NAME }}
+                </option>
+                <option v-if="hasGeneralReports" value="GENERAL" class="text-dark">General / Uncategorized</option>
+              </select>
+            </div>
+
+            <!-- Search -->
             <div class="mb-4 position-relative">
               <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
               <input
@@ -29,59 +45,47 @@
                 v-model="searchQuery"
               />
             </div>
-            <div class="list-group list-group-flush custom-scrollbar">
-              <template v-for="group in groupedReports" :key="group.id">
-                <div
-                  class="list-group-item fw-bold py-3 d-flex justify-content-between align-items-center cursor-pointer border-0 bg-light mb-2 rounded-3 transition-all"
-                  v-if="group.reports.length > 0"
-                  @click="toggleGroup(group.id)"
-                  onmouseover="this.classList.add('shadow-sm', 'bg-white'); this.classList.remove('bg-light');"
-                  onmouseout="this.classList.remove('shadow-sm', 'bg-white'); this.classList.add('bg-light');"
-                >
-                  <div class="text-dark"><i class="bi bi-folder2-open me-2 text-primary fs-5 align-middle"></i>{{ group.name }}</div>
-                  <i
-                    class="bi text-secondary"
-                    :class="expandedGroups.includes(group.id) ? 'bi-chevron-down' : 'bi-chevron-right'"
-                  ></i>
-                </div>
-
-                <div v-show="expandedGroups.includes(group.id)" class="mb-3 px-1">
-                  <button
-                    v-for="rep in group.reports"
-                    :key="rep.id"
-                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center mb-1 rounded-3 border-0 transition-all"
-                    :class="{
-                      'bg-primary text-white shadow-sm': selectedReport && selectedReport.id === rep.id,
-                      'bg-white hover-bg-light': !selectedReport || selectedReport.id !== rep.id
-                    }"
-                    style="border-left: 4px solid transparent !important;"
-                    :style="selectedReport && selectedReport.id === rep.id ? 'border-left: 4px solid #fff !important;' : 'border-left: 4px solid #dee2e6 !important;'"
-                    @click="selectReport(rep)"
-                  >
-                    <div>
-                      <div class="fw-bold"><i class="bi bi-file-earmark-text me-2" :class="selectedReport && selectedReport.id === rep.id ? 'text-white' : 'text-primary'"></i>{{ rep.title }}</div>
-                      <small
-                        class="d-block text-truncate mt-1"
-                        :class="selectedReport && selectedReport.id === rep.id ? 'text-white-50' : 'text-muted'"
-                        style="max-width: 220px"
-                        v-if="rep.description"
-                      >
-                        {{ rep.description }}
-                      </small>
-                    </div>
-                  </button>
-                </div>
-              </template>
-
-              <div v-if="groupedReports.length === 0" class="text-center text-muted p-3">
+            
+            <div class="list-group list-group-flush">
+              
+              <div v-if="!filterDepartment && !searchQuery" class="text-center text-muted p-4">
+                <i class="bi bi-arrow-up-circle fs-1 d-block mb-2 text-primary opacity-50"></i>
+                กรุณาเลือกกลุ่มงานด้านบนเพื่อดูรายงาน
+              </div>
+              <div v-else-if="filteredReports.length === 0" class="text-center text-muted p-4">
                 ไม่พบรายงาน
               </div>
+
+              <button
+                v-for="rep in filteredReports"
+                :key="rep.id"
+                class="list-group-item list-group-item-action d-flex justify-content-between align-items-center mb-1 rounded-3 border-0 transition-all"
+                :class="{
+                  'bg-primary text-white shadow-sm': selectedReport && selectedReport.id === rep.id,
+                  'bg-white hover-bg-light': !selectedReport || selectedReport.id !== rep.id
+                }"
+                style="border-left: 4px solid transparent !important;"
+                :style="selectedReport && selectedReport.id === rep.id ? 'border-left: 4px solid #fff !important;' : 'border-left: 4px solid #dee2e6 !important;'"
+                @click="selectReport(rep)"
+              >
+                <div>
+                  <div class="fw-bold"><i class="bi bi-file-earmark-text me-2" :class="selectedReport && selectedReport.id === rep.id ? 'text-white' : 'text-primary'"></i>{{ rep.title }}</div>
+                  <small
+                    class="d-block text-truncate mt-1"
+                    :class="selectedReport && selectedReport.id === rep.id ? 'text-white-50' : 'text-muted'"
+                    style="max-width: 220px"
+                    v-if="rep.description"
+                  >
+                    {{ rep.description }}
+                  </small>
+                </div>
+              </button>
             </div>
           </div>
 
           <!-- Content -->
-          <div class="col-md-9">
-            <div v-if="!selectedReport" class="d-flex flex-column align-items-center justify-content-center h-100 py-5 mt-5">
+          <div class="col-md-9" id="report-filter-section">
+            <div v-if="!selectedReport" class="d-flex flex-column align-items-center justify-content-center py-5 mt-5">
               <div class="bg-primary bg-opacity-10 rounded-circle p-4 mb-4 shadow-sm" style="width: 120px; height: 120px; display: flex; align-items: center; justify-content: center;">
                 <i class="bi bi-bar-chart-line text-primary" style="font-size: 4rem;"></i>
               </div>
@@ -90,34 +94,36 @@
             </div>
 
             <div v-else>
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="mb-0 text-primary fw-bold">{{ selectedReport.title }}</h4>
-              </div>
+              <div class="sticky-top bg-white pb-2" style="top: 0; z-index: 10; padding-top: 10px;">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h4 class="mb-0 text-primary fw-bold">{{ selectedReport.title }}</h4>
+                </div>
 
-              <!-- Filter Section -->
-              <div class="card border-0 mb-4 rounded-4 shadow-sm" style="background: linear-gradient(to right, #f8f9fa, #ffffff);">
-                <div class="card-body p-4">
-                  <div class="row g-3 align-items-end">
-                    <div class="col-md-5">
-                      <label class="form-label small text-secondary fw-bold mb-2">
-                        <i class="bi bi-calendar-check text-primary me-1"></i> วันที่เริ่มต้น
-                      </label>
-                      <input type="date" class="form-control form-control-lg rounded-pill border-0 shadow-sm px-4" v-model="startDate" />
-                    </div>
-                    <div class="col-md-5">
-                      <label class="form-label small text-secondary fw-bold mb-2">
-                        <i class="bi bi-calendar-check-fill text-primary me-1"></i> วันที่สิ้นสุด
-                      </label>
-                      <input type="date" class="form-control form-control-lg rounded-pill border-0 shadow-sm px-4" v-model="endDate" />
-                    </div>
-                    <div class="col-md-2">
-                      <button
-                        class="btn btn-primary btn-lg w-100 shadow-sm fw-bold rounded-pill"
-                        @click="runReport"
-                        :disabled="loading"
-                      >
-                        <i class="bi bi-play-circle-fill me-1"></i> ดึงข้อมูล
-                      </button>
+                <!-- Filter Section -->
+                <div class="card border-0 mb-2 rounded-4 shadow-sm" style="background: linear-gradient(to right, #f8f9fa, #ffffff);">
+                  <div class="card-body p-3">
+                    <div class="row g-3 align-items-end">
+                      <div class="col-md-5">
+                        <label class="form-label small text-secondary fw-bold mb-1">
+                          <i class="bi bi-calendar-check text-primary me-1"></i> วันที่เริ่มต้น
+                        </label>
+                        <input type="date" class="form-control form-control-lg rounded-pill border-0 shadow-sm px-4" v-model="startDate" />
+                      </div>
+                      <div class="col-md-5">
+                        <label class="form-label small text-secondary fw-bold mb-1">
+                          <i class="bi bi-calendar-check-fill text-primary me-1"></i> วันที่สิ้นสุด
+                        </label>
+                        <input type="date" class="form-control form-control-lg rounded-pill border-0 shadow-sm px-4" v-model="endDate" />
+                      </div>
+                      <div class="col-md-2">
+                        <button
+                          class="btn btn-primary btn-lg w-100 shadow-sm fw-bold rounded-pill"
+                          @click="runReport"
+                          :disabled="loading"
+                        >
+                          <i class="bi bi-play-circle-fill me-1"></i> ดึงข้อมูล
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -125,9 +131,21 @@
 
               <!-- Action Bar -->
               <div
-                class="d-flex justify-content-end mb-3"
+                class="d-flex justify-content-between align-items-center mb-3"
                 v-if="resultData && resultData.length > 0"
               >
+                <div class="d-flex align-items-center">
+                  <span class="me-2 text-muted small">แสดง</span>
+                  <select class="form-select form-select-sm rounded-pill border-0 shadow-sm" v-model="itemsPerPage" @change="currentPage = 1" style="min-width: 80px; width: auto;">
+                    <option :value="5">5</option>
+                    <option :value="10">10</option>
+                    <option :value="20">20</option>
+                    <option :value="50">50</option>
+                    <option :value="100">100</option>
+                    <option :value="999999">ทั้งหมด</option>
+                  </select>
+                  <span class="ms-2 text-muted small">รายการ</span>
+                </div>
                 <button
                   class="btn btn-success custom-shadow hover-scale rounded-pill px-4"
                   @click="exportExcel"
@@ -145,23 +163,48 @@
               <div
                 v-else-if="resultData"
                 class="table-responsive border-0 rounded-4 bg-white shadow-sm"
-                style="max-height: 600px; overflow: auto"
               >
                 <table class="table table-hover mb-0 align-middle" id="report-table">
                   <thead class="bg-light sticky-top" style="z-index: 1;">
                     <tr>
+                      <th class="text-nowrap py-3 text-secondary border-bottom-0 text-center" style="width: 60px;">ลำดับ</th>
                       <th v-for="col in columns" :key="col" class="text-nowrap py-3 text-secondary border-bottom-0">{{ col }}</th>
                     </tr>
                   </thead>
                   <tbody class="border-top-0">
-                    <tr v-for="(row, idx) in resultData" :key="idx">
+                    <tr v-for="(row, idx) in paginatedData" :key="idx">
+                      <td class="text-nowrap text-secondary text-center fw-bold">{{ (currentPage - 1) * itemsPerPage + idx + 1 }}</td>
                       <td v-for="col in columns" :key="col" class="text-nowrap text-secondary">{{ row[col] }}</td>
                     </tr>
-                    <tr v-if="resultData.length === 0">
-                      <td :colspan="columns.length" class="text-center py-5 text-muted">ไม่พบข้อมูล</td>
+                    <tr v-if="paginatedData.length === 0">
+                      <td :colspan="columns.length + 1" class="text-center py-5 text-muted">ไม่พบข้อมูล</td>
                     </tr>
                   </tbody>
                 </table>
+              </div>
+
+              <!-- Pagination Controls -->
+              <div v-if="resultData && resultData.length > 0" class="d-flex flex-wrap justify-content-between align-items-center mt-3 gap-3">
+                <div class="text-muted small">
+                  แสดง {{ (currentPage - 1) * itemsPerPage + 1 }} ถึง {{ Math.min(currentPage * itemsPerPage, resultData.length) }} จากทั้งหมด {{ resultData.length }} รายการ
+                </div>
+                <nav>
+                  <ul class="pagination pagination-sm mb-0 shadow-sm rounded-pill">
+                    <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                      <button class="page-link rounded-start-pill border-0" @click="prevPage">ก่อนหน้า</button>
+                    </li>
+                    
+                    <li v-for="(p, index) in visiblePages" :key="index" class="page-item" :class="{ active: currentPage === p, disabled: p === '...' }">
+                      <button class="page-link border-0" @click="goToPage(p)">
+                        {{ p }}
+                      </button>
+                    </li>
+
+                    <li class="page-item" :class="{ disabled: currentPage === totalPages || totalPages === 0 }">
+                      <button class="page-link rounded-end-pill border-0" @click="nextPage">ถัดไป</button>
+                    </li>
+                  </ul>
+                </nav>
               </div>
             </div>
           </div>
@@ -190,6 +233,51 @@ const resultData = ref(null);
 const columns = ref([]);
 const loading = ref(false);
 
+const currentPage = ref(1);
+const itemsPerPage = ref(10);
+
+const paginatedData = computed(() => {
+  if (!resultData.value) return [];
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return resultData.value.slice(start, end);
+});
+
+const totalPages = computed(() => {
+  if (!resultData.value) return 0;
+  return Math.ceil(resultData.value.length / itemsPerPage.value);
+});
+
+const visiblePages = computed(() => {
+  const pages = [];
+  const maxPagesToShow = 5;
+  const current = currentPage.value;
+  const total = totalPages.value;
+  
+  if (total <= maxPagesToShow) {
+    for (let i = 1; i <= total; i++) pages.push(i);
+  } else {
+    if (current <= 3) {
+      pages.push(1, 2, 3, 4, '...', total);
+    } else if (current >= total - 2) {
+      pages.push(1, '...', total - 3, total - 2, total - 1, total);
+    } else {
+      pages.push(1, '...', current - 1, current, current + 1, '...', total);
+    }
+  }
+  return pages;
+});
+
+const prevPage = () => {
+  if (currentPage.value > 1) currentPage.value--;
+};
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) currentPage.value++;
+};
+const goToPage = (p) => {
+  if (p !== '...') currentPage.value = p;
+};
+
 const getFiscalYearDates = () => {
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -211,8 +299,9 @@ const startDate = ref(fyDates.start);
 const endDate = ref(fyDates.end);
 
 const departments = ref([]);
+const filterDepartment = ref('');
 const selectedDepartment = ref('ALL');
-const expandedGroups = ref([]);
+const expandedGroups = ref([]); // Not used anymore, but safe to keep
 const isAdmin = ref(false);
 
 const fetchUserProfile = async () => {
@@ -230,57 +319,34 @@ const fetchUserProfile = async () => {
   }
 };
 
-const toggleGroup = (id) => {
-  if (expandedGroups.value.includes(id)) {
-    expandedGroups.value = expandedGroups.value.filter((gId) => gId !== id);
-  } else {
-    expandedGroups.value.push(id);
-  }
-};
+const departmentsWithReports = computed(() => {
+  if (!reports.value || reports.value.length === 0) return [];
+  const deptIdsWithReports = new Set(reports.value.map(r => r.department_id).filter(id => id));
+  return departments.value.filter(dept => deptIdsWithReports.has(dept.HR_DEPARTMENT_SUB_ID));
+});
 
-const groupedReports = computed(() => {
-  let baseReports = reports.value; // Start with all reports
+const hasGeneralReports = computed(() => {
+  return reports.value.some(r => !r.department_id || r.department_id === 'GENERAL');
+});
+
+const filteredReports = computed(() => {
+  if (!filterDepartment.value && !searchQuery.value) {
+    return []; // Show nothing initially unless they search
+  }
+
+  let result = reports.value;
+
+  if (filterDepartment.value && filterDepartment.value !== 'ALL') {
+    if (filterDepartment.value === 'GENERAL') {
+      result = result.filter(r => !r.department_id || r.department_id === 'GENERAL');
+    } else {
+      result = result.filter(r => r.department_id === filterDepartment.value);
+    }
+  }
 
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase();
-    baseReports = baseReports.filter((r) => r.title.toLowerCase().includes(q));
-  }
-
-  // Group by Department
-  const groups = {};
-
-  // Initialize groups from departments list to ensure order (optional, but good)
-  departments.value.forEach((dept) => {
-    groups[dept.HR_DEPARTMENT_SUB_ID] = {
-      id: dept.HR_DEPARTMENT_SUB_ID,
-      name: dept.HR_DEPARTMENT_SUB_NAME,
-      reports: []
-    };
-  });
-  // Add General group
-  groups['GENERAL'] = { id: 'GENERAL', name: 'General / Uncategorized', reports: [] };
-
-  baseReports.forEach((rep) => {
-    if (rep.department_id && groups[rep.department_id]) {
-      groups[rep.department_id].reports.push(rep);
-    } else {
-      groups['GENERAL'].reports.push(rep);
-    }
-  });
-
-  // Convert to array and filter out empty groups (optional, or keep them)
-  // Let's filter out empty to keep it clean, unless "All" is selected?
-  // User just wants to see categorization.
-  // Convert to array and filter out empty groups
-  const result = Object.values(groups).filter((g) => g.reports.length > 0);
-
-  // Auto-expand if searching
-  if (searchQuery.value) {
-    result.forEach((g) => {
-      if (!expandedGroups.value.includes(g.id)) {
-        expandedGroups.value.push(g.id);
-      }
-    });
+    result = result.filter(r => r.title.toLowerCase().includes(q));
   }
 
   return result;
@@ -322,12 +388,23 @@ const selectReport = (rep) => {
   selectedReport.value = rep;
   resultData.value = null;
   columns.value = [];
-  // Reset dates or keep them? Let's keep them for convenience.
+  currentPage.value = 1;
+  
+  // เลื่อนหน้าจอขึ้นไปที่ส่วนค้นหาข้อมูลเมื่อเลือกรายงาน
+  setTimeout(() => {
+    const el = document.getElementById('report-filter-section');
+    if (el) {
+      // เลื่อนโดยเผื่อระยะ header ด้านบนไว้หน่อย
+      const y = el.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  }, 100);
 };
 
 const runReport = async () => {
   if (!selectedReport.value) return;
   loading.value = true;
+  currentPage.value = 1;
   try {
     const res = await axios.post(
       `${import.meta.env.VITE_API_URL || ''}/api-digital/report-center/execute_report.php`,
@@ -357,7 +434,15 @@ const exportExcel = () => {
 
   // Check if XLSX is available
   if (typeof XLSX !== 'undefined') {
-    const ws = XLSX.utils.json_to_sheet(resultData.value);
+    // สร้างแผ่นงานเปล่าก่อน
+    const ws = XLSX.utils.json_to_sheet([]);
+    
+    // เพิ่มชื่อรายงานลงในแถวแรก (A1)
+    XLSX.utils.sheet_add_aoa(ws, [[selectedReport.value.title]], { origin: 'A1' });
+    
+    // เพิ่มข้อมูลตารางโดยให้เริ่มที่แถวที่ 3 (A3)
+    XLSX.utils.sheet_add_json(ws, resultData.value, { origin: 'A3', skipHeader: false });
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Report');
     XLSX.writeFile(
@@ -375,11 +460,13 @@ const exportCSV = () => {
   const items = resultData.value;
   const keys = Object.keys(items[0]);
   const csvContent = [
+    `"${selectedReport.value.title}"`,
+    "", // Empty line
     keys.join(','),
     ...items.map((row) => keys.map((k) => `"${String(row[k]).replace(/"/g, '""')}"`).join(','))
   ].join('\n');
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);
   link.setAttribute('href', url);

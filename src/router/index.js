@@ -12,6 +12,7 @@ const routes = [
   { path: '/handbook', component: () => import('../views/public/HandbookView.vue') },
   { path: '/dashboard', component: () => import('../views/public/DashboardView.vue') },
   { path: '/schedule', component: () => import('../views/public/ScheduleView.vue') },
+  { path: '/docs/:category', component: () => import('../views/public/GenericDocumentView.vue') },
   { path: '/kpi', component: () => import('../views/public/KpiDashboardView.vue'), meta: { requiresAuth: true } },
   { path: '/asset-scan/:code(.*)', name: 'AssetScan', component: () => import('../views/asset/AssetScanView.vue') },
 
@@ -340,7 +341,15 @@ const routes = [
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    // If returning from history (back/forward), keep the saved position
+    if (savedPosition) {
+      return savedPosition;
+    }
+    // Otherwise, always scroll to the top of the new page
+    return { top: 0 };
+  }
 });
 
 // --- Navigation Guard ---

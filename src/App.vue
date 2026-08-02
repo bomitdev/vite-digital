@@ -56,25 +56,10 @@
               aria-labelledby="importantLinks"
             >
               <li><h6 class="dropdown-header">เอกสาร & ระเบียบ</h6></li>
-              <li>
-                <RouterLink class="dropdown-item" to="/document"
-                  ><i class="bi bi-file-text"></i> ข่าวประกาศ</RouterLink
-                >
-              </li>
-              <li>
-                <RouterLink class="dropdown-item" to="/policy"
-                  ><i class="bi bi-file-earmark-medical"></i> นโยบาย</RouterLink
-                >
-              </li>
-              <li>
-                <RouterLink class="dropdown-item" to="/pdpa"
-                  ><i class="bi bi-shield-check"></i> PDPA</RouterLink
-                >
-              </li>
-              <li>
-                <RouterLink class="dropdown-item" to="/sla"
-                  ><i class="bi bi-hand-thumbs-up"></i> SLA</RouterLink
-                >
+              <li v-for="cat in docCategories" :key="cat.category_key">
+                <RouterLink class="dropdown-item" :to="`/docs/${cat.category_key}`">
+                  <i class="bi bi-file-earmark-text"></i> {{ cat.category_name }}
+                </RouterLink>
               </li>
               <li class="nav-item dropdown-submenu">
                 <RouterLink class="dropdown-item dropdown-toggle" to="/structure">
@@ -444,6 +429,7 @@ let timeoutInterval = null;
 // STATE
 // =========================
 const orgMenu = ref([]);
+const docCategories = ref([]);
 const activeDropdown = ref(null);
 const activeSubmenu = ref(null);
 
@@ -562,6 +548,19 @@ onMounted(async () => {
     }
   } catch (err) {
     console.error('Failed to fetch org menu:', err);
+  }
+
+  // Fetch Doc Categories
+  try {
+    const res = await fetch('/backend/api-digital/document_center/get_categories.php');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 'success') {
+        docCategories.value = data.data;
+      }
+    }
+  } catch (err) {
+    console.error('Failed to fetch doc categories:', err);
   }
 
   // Check timeout every minute

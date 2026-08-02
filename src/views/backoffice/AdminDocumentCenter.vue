@@ -28,25 +28,34 @@
       <!-- Main Content -->
       <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
         <div class="card-body p-4">
-          <div class="row g-4 mb-4">
-            <div class="col-md-6 col-lg-4">
+          <div class="row g-4 mb-4 align-items-end">
+            <div class="col-md-6 col-lg-5">
               <label class="form-label fw-bold">เลือกหมวดหมู่เอกสาร</label>
               <select
                 v-model="selectedCategory"
                 class="form-select form-select-lg shadow-sm border-0 bg-light"
               >
-                <option value="document">ข่าวประกาศ (News & Announcements)</option>
-                <option value="policy">นโยบาย (Policy)</option>
-                <option value="pdpa">PDPA</option>
-                <option value="sla">SLA</option>
-                <option value="handbook">คู่มือการใช้งาน (Handbook)</option>
-                <option value="certificate">ใบประกาศนียบัตร (Certificate)</option>
-                <option value="communication">ช่องทางการสื่อสาร (Communication)</option>
+                <option v-for="cat in categories" :key="cat.category_key" :value="cat.category_key">
+                  {{ cat.category_name }}
+                </option>
               </select>
+            </div>
+            <div class="col-md-6 col-lg-7 d-flex gap-2">
+              <button class="btn btn-success" @click="addCategory">
+                <i class="bi bi-plus-circle me-1"></i> เพิ่มหมวดหมู่
+              </button>
+              <button 
+                class="btn btn-outline-danger" 
+                @click="deleteCategory" 
+                :disabled="!selectedCategory || isDefaultCategory(selectedCategory)"
+                title="ลบหมวดหมู่ที่เลือก (ไม่สามารถลบหมวดหมู่หลักได้)"
+              >
+                <i class="bi bi-trash me-1"></i> ลบ
+              </button>
             </div>
           </div>
 
-          <div class="document-area bg-light rounded-4 p-3">
+          <div class="document-area bg-light rounded-4 p-3" v-if="selectedCategory">
             <DocumentManager
               :key="selectedCategory"
               :category="selectedCategory"
@@ -61,23 +70,124 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import axios from 'axios';
+import Swal from 'sweetalert2';
 import DocumentManager from '../../components/DocumentManager.vue';
 
-const selectedCategory = ref('document');
+const selectedCategory = ref('');
+const categories = ref([]);
 
-const getCategoryTitle = (cat) => {
-  const titles = {
-    document: 'จัดการข่าวประกาศ / เอกสารทั่วไป',
-    policy: 'จัดการนโยบายและระเบียบ',
-    pdpa: 'จัดการเอกสาร PDPA',
-    sla: 'จัดการเอกสาร SLA',
-    handbook: 'จัดการคู่มือการใช้งาน',
-    certificate: 'จัดการใบประกาศนียบัตร',
-    communication: 'จัดการเอกสารการสื่อสาร'
-  };
-  return titles[cat] || 'จัดการเอกสาร';
+const defaultCategories = ['document', 'policy', 'pdpa', 'sla', 'handbook', 'certificate', 'communication'];
+
+const isDefaultCategory = (key) => {
+  return defaultCategories.includes(key);
 };
+
+const fetchCategories = async () => {
+  try {
+    const res = await axios.get('/backend/api-digital/document_center/get_categories.php');
+    if (res.data.status === 'success') {
+      categories.value = res.data.data;
+      if (!selectedCategory.value && categories.value.length > 0) {
+        selectedCategory.value = categories.value[0].category_key;
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+  }
+};
+
+const addCategory = async () => {
+  const { value: categoryName } = await Swal.fire({
+    title: 'เพิ่มหมวดหมู่ใหม่',
+    input: 'text',
+    inputLabel: 'ชื่อหมวดหมู่เอกสาร',
+    inputPlaceholder: 'ระบุชื่อหมวดหมู่ เช่น รายงานประจำปี',
+    showCancelButton: true,
+    confirmButtonText: 'บันทึก',
+    cancelButtonText: 'ยกเลิก',
+    inputValidator: (value) => {
+      if (!value) {
+        return 'กรุณาระบุชื่อหมวดหมู่';
+      }
+    }
+  });
+
+  if (categoryName) {
+    try {
+      const res = await axios.post('/backend/api-digital/document_center/add_category.php', {
+        category_name: categoryName
+      });
+      if (res.data.status === 'success') {
+        await fetchCategories();
+        selectedCategory.value = res.data.category_key;
+        Swal.fire({
+          icon: 'success',
+          title: 'สำเร็จ',
+          text: 'เพิ่มหมวดหมู่เรียบร้อยแล้ว',
+          timer: 1500,
+          showConfirmButton: false
+        });
+      } else {
+        Swal.fire('ข้อผิดพลาด', res.data.message || 'ไม่สามารถเพิ่มหมวดหมู่ได้', 'error');
+      }
+    } catch (error) {
+      console.error(error);
+      Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+    }
+  }
+};
+
+const deleteCategory = async () => {
+  if (!selectedCategory.value || isDefaultCategory(selectedCategory.value)) return;
+
+  const catObj = categories.value.find(c => c.category_key === selectedCategory.value);
+  const catName = catObj ? catObj.category_name : '';
+
+  const result = await Swal.fire({
+    title: 'ยืนยันการลบหมวดหมู่',
+    text: `ต้องการลบหมวดหมู่ "${catName}" หรือไม่? (ต้องไม่มีเอกสารอยู่ในหมวดหมู่นี้)`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'ใช่, ลบเลย',
+    cancelButtonText: 'ยกเลิก'
+  });
+
+  if (result.isConfirmed) {
+    try {
+      const res = await axios.post('/backend/api-digital/document_center/delete_category.php', {
+        category_key: selectedCategory.value
+      });
+      if (res.data.status === 'success') {
+        Swal.fire({
+          icon: 'success',
+          title: 'ลบสำเร็จ',
+          timer: 1500,
+          showConfirmButton: false
+        });
+        selectedCategory.value = '';
+        await fetchCategories();
+      } else {
+        Swal.fire('ข้อผิดพลาด', res.data.message || 'ไม่สามารถลบหมวดหมู่ได้', 'error');
+      }
+    } catch (error) {
+      console.error(error);
+      Swal.fire('เกิดข้อผิดพลาด', error.response?.data?.message || 'ไม่สามารถลบหมวดหมู่ได้', 'error');
+    }
+  }
+};
+
+const getCategoryTitle = (key) => {
+  const cat = categories.value.find(c => c.category_key === key);
+  return cat ? `จัดการ${cat.category_name}` : 'จัดการเอกสาร';
+};
+
+onMounted(() => {
+  fetchCategories();
+});
 </script>
 
 <style scoped>

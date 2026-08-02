@@ -136,8 +136,8 @@
                   </span>
                 </div>
               </td>
-              <td>
-                <span :class="getStatusBadge(item.status)" class="px-3 py-2 rounded-pill fw-bold" style="font-size: 0.85rem;">
+              <td class="text-nowrap">
+                <span :class="getStatusBadge(item.status)" class="d-inline-flex align-items-center px-3 py-1 rounded-pill fw-bold" style="font-size: 0.85rem;">
                   <i :class="getStatusIcon(item.status)" class="me-1"></i>{{ getStatusText(item.status) }}
                 </span>
               </td>
@@ -355,10 +355,13 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import * as bootstrap from 'bootstrap';
 import * as XLSX from 'xlsx';
+
+const router = useRouter();
 
 const projects = ref([]);
 const categories = ref([]);
@@ -712,7 +715,40 @@ const getInitials = (name) => {
   return name.substring(0, 2).toUpperCase();
 };
 
-onMounted(() => {
+const checkPermission = async () => {
+  try {
+    const token = localStorage.getItem('user_token');
+    const res = await axios.get('/api-hosoffice/get_user_profile.php', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.data && res.data.status === 'success') {
+      const accessUser = res.data.access_user || '';
+      const userPerms = accessUser.split(':');
+      if (!userPerms.includes('administrator') && !userPerms.includes('menu_projects')) {
+        Swal.fire({
+          icon: 'error',
+          title: 'ไม่มีสิทธิ์เข้าถึง',
+          text: 'คุณไม่มีสิทธิ์เข้าถึงระบบงานโครงการ',
+          confirmButtonText: 'กลับหน้าหลัก',
+          allowOutsideClick: false
+        }).then(() => {
+          router.push('/home-backoffice');
+        });
+        return false;
+      }
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('Check Permission Error:', error);
+    router.push('/home-backoffice');
+    return false;
+  }
+};
+
+onMounted(async () => {
+  const hasAccess = await checkPermission();
+  if (!hasAccess) return;
   fetchCategories();
   fetchDepartments();
   fetchProjects();

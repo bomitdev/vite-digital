@@ -267,11 +267,12 @@ export default {
       editingUser: null,
       selectedAccess: [],
       editingFingerId: '',
-      saving: false,
-
-      positionChartInstance: null,
-      departmentChartInstance: null
+      saving: false
     };
+  },
+  created() {
+    this.positionChartInstance = null;
+    this.departmentChartInstance = null;
   },
   computed: {
     accessMap() {
