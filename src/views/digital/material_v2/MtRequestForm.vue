@@ -124,12 +124,14 @@
                         >วัสดุที่ต้องการเบิก <span class="text-danger">*</span></label
                       >
                       <div class="dropdown custom-select-dropdown w-100">
+                        <!-- Invisible overlay to detect clicks outside -->
+                        <div v-if="isDropdownOpen" @click="isDropdownOpen = false" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 999;"></div>
+                        
                         <button 
-                          class="btn form-select form-select-lg fs-6 shadow-none border-light-subtle d-flex justify-content-between align-items-center w-100 bg-white" 
+                          class="btn form-select form-select-lg fs-6 shadow-none border-light-subtle d-flex justify-content-between align-items-center w-100 bg-white position-relative" 
                           type="button" 
-                          id="materialDropdown" 
-                          data-bs-toggle="dropdown" 
-                          aria-expanded="false"
+                          @click="isDropdownOpen = !isDropdownOpen"
+                          style="z-index: 1000;"
                         >
                           <div class="d-flex align-items-center text-truncate">
                             <template v-if="selectedMaterial">
@@ -142,7 +144,7 @@
                             </template>
                           </div>
                         </button>
-                        <ul class="dropdown-menu w-100 shadow-lg border-0 p-2" aria-labelledby="materialDropdown" style="max-height: 400px; overflow-y: auto;">
+                        <ul class="dropdown-menu w-100 shadow-lg border-0 p-2" :class="{ show: isDropdownOpen }" style="max-height: 400px; overflow-y: auto; z-index: 1001; position: absolute;">
                           <li v-for="mat in materials" :key="mat.id" class="mb-1">
                             <a class="dropdown-item d-flex align-items-center rounded p-2 custom-dropdown-item" href="#" @click.prevent="selectMaterial(mat)">
                               <img v-if="mat.image_path" :src="getImageUrl(mat.image_path)" class="rounded me-3 object-fit-cover border" style="width: 50px; height: 50px;">
@@ -278,7 +280,8 @@ export default {
       },
       loading: false,
       requests: [],
-      searchQuery: ''
+      searchQuery: '',
+      isDropdownOpen: false
     };
   },
   mounted() {
@@ -319,8 +322,15 @@ export default {
       try {
         const res = await axios.get('/api-digital/material_v2/get_materials.php');
         if (res.data.status === 'success') {
-          // ดึงเฉพาะวัสดุที่มีของเหลือ (balance > 0)
-          this.materials = res.data.data.filter((mat) => mat.balance > 0);
+          // ดึงเฉพาะวัสดุที่มีของเหลือ (balance > 0) และเรียงลำดับจากจำนวนเหลือเยอะสุดไปน้อยสุด
+          this.materials = res.data.data
+            .filter((mat) => mat.balance > 0)
+            .sort((a, b) => b.balance - a.balance);
+          
+          // Auto-select the first material if none is selected
+          if (this.materials.length > 0 && !this.form.material_id) {
+            this.form.material_id = this.materials[0].id;
+          }
         }
       } catch (error) {
         console.error('Error fetching materials:', error);
@@ -379,14 +389,7 @@ export default {
     },
     selectMaterial(mat) {
       this.form.material_id = mat.id;
-      // Force close the dropdown
-      const dropdownEl = document.getElementById('materialDropdown');
-      if (dropdownEl) {
-        const dropdown = bootstrap.Dropdown.getInstance(dropdownEl);
-        if (dropdown) {
-          dropdown.hide();
-        }
-      }
+      this.isDropdownOpen = false;
     },
     async submitRequest() {
       // Input Validation
