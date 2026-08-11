@@ -59,12 +59,41 @@
                 <label class="form-label fw-bold"
                   >อุปกรณ์ที่ต้องการยืม <span class="text-danger">*</span></label
                 >
-                <select v-model="form.asset_id" class="form-select" required>
-                  <option value="" disabled>-- เลือกอุปกรณ์ (แสดงเฉพาะเครื่องสำรอง) --</option>
-                  <option v-for="asset in availableAssets" :key="asset.id" :value="asset.id">
-                    [{{ asset.asset_code }}] {{ asset.name }} ({{ asset.type }})
-                  </option>
-                </select>
+                <div class="dropdown custom-select-dropdown w-100">
+                  <div v-if="isDropdownOpen" @click="isDropdownOpen = false" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 999;"></div>
+                  
+                  <button 
+                    class="btn form-select fs-6 shadow-none border-light-subtle d-flex justify-content-between align-items-center w-100 bg-white position-relative" 
+                    type="button" 
+                    @click="isDropdownOpen = !isDropdownOpen"
+                    style="z-index: 1000;"
+                  >
+                    <div class="d-flex align-items-center text-truncate">
+                      <template v-if="selectedAsset">
+                        <img v-if="selectedAsset.image_path" :src="getImageUrl(selectedAsset.image_path)" class="me-2 rounded object-fit-cover" style="width: 24px; height: 24px;">
+                        <i v-else class="bi bi-pc-display me-2 text-muted"></i>
+                        <span class="text-truncate text-dark">[{{ selectedAsset.asset_code }}] {{ selectedAsset.name }} ({{ selectedAsset.type }})</span>
+                      </template>
+                      <template v-else>
+                        <span class="text-muted">-- เลือกอุปกรณ์ (แสดงเฉพาะเครื่องสำรอง) --</span>
+                      </template>
+                    </div>
+                  </button>
+                  <ul class="dropdown-menu w-100 shadow-lg border-0 p-2" :class="{ show: isDropdownOpen }" style="max-height: 400px; overflow-y: auto; z-index: 1001; position: absolute;">
+                    <li v-for="asset in availableAssets" :key="asset.id" class="mb-1">
+                      <a class="dropdown-item d-flex align-items-center rounded p-2 custom-dropdown-item" href="#" @click.prevent="selectAsset(asset)">
+                        <img v-if="asset.image_path" :src="getImageUrl(asset.image_path)" class="rounded me-3 object-fit-cover border" style="width: 50px; height: 50px;">
+                        <div v-else class="rounded me-3 bg-light d-flex align-items-center justify-content-center text-muted border" style="width: 50px; height: 50px;">
+                          <i class="bi bi-pc-display fs-5"></i>
+                        </div>
+                        <div class="overflow-hidden">
+                          <div class="fw-bold text-dark text-truncate">[{{ asset.asset_code }}] {{ asset.name }}</div>
+                          <div class="small text-muted text-truncate">{{ asset.type }} | ยี่ห้อ: {{ asset.brand || '-' }}</div>
+                        </div>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
 
                 <!-- Selected Asset Preview -->
                 <div v-if="selectedAsset" class="mt-3 p-3 bg-light rounded-4 border d-flex align-items-center gap-3">
@@ -144,7 +173,8 @@ export default {
         objective: '',
         expected_return_date: ''
       },
-      loading: false
+      loading: false,
+      isDropdownOpen: false
     };
   },
   computed: {
@@ -154,7 +184,7 @@ export default {
     },
     selectedAsset() {
       if (!this.form.asset_id) return null;
-      return this.availableAssets.find(a => a.id === this.form.asset_id);
+      return this.availableAssets.find(a => a.id == this.form.asset_id);
     }
   },
   mounted() {
@@ -194,6 +224,10 @@ export default {
       if (path.startsWith('http')) return path;
       const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
       return `${baseUrl}/vue-app/vite-digital/${path}`;
+    },
+    selectAsset(asset) {
+      this.form.asset_id = asset.id;
+      this.isDropdownOpen = false;
     },
     async fetchAssets() {
       try {
