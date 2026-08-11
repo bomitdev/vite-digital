@@ -43,24 +43,34 @@
                 </div>
 
                 <div class="row g-3">
-                  <div class="col-sm-8">
+                  <div class="col-sm-4">
                     <button 
                       class="btn btn-primary w-100 rounded-pill py-2 fw-bold shadow-sm" 
                       @click="confirmAction('push')"
                       :disabled="loading || selectedFolders.length === 0"
                     >
                       <span v-if="loadingAction === 'push'" class="spinner-border spinner-border-sm me-2"></span>
-                      <i v-else class="bi bi-upload me-2"></i> เริ่มการอัพโหลด
+                      <i v-else class="bi bi-upload me-2"></i> อัพโหลด (Push)
                     </button>
                   </div>
-                  <div class="col-sm-4">
+                  <div class="col-sm-5">
+                    <button 
+                      class="btn btn-danger w-100 rounded-pill py-2 fw-bold shadow-sm" 
+                      @click="confirmAction('pull')"
+                      :disabled="loading || selectedFolders.length === 0"
+                    >
+                      <span v-if="loadingAction === 'pull'" class="spinner-border spinner-border-sm me-2"></span>
+                      <i v-else class="bi bi-download me-2"></i> โหลดกลับมาทับ (Pull)
+                    </button>
+                  </div>
+                  <div class="col-sm-3">
                     <button 
                       class="btn btn-outline-secondary w-100 rounded-pill py-2 fw-bold" 
                       @click="performAction('status')"
                       :disabled="loading"
                     >
                       <span v-if="loadingAction === 'status'" class="spinner-border spinner-border-sm me-2"></span>
-                      <i v-else class="bi bi-info-circle me-2"></i> สถานะ (Status)
+                      <i v-else class="bi bi-info-circle me-2"></i> สถานะ
                     </button>
                   </div>
                 </div>
@@ -112,16 +122,30 @@ export default {
   },
   methods: {
     async confirmAction(action) {
-      if (action !== 'push') return;
+      if (action !== 'push' && action !== 'pull') return;
       
+      let title, text, icon, confirmButtonText, confirmButtonColor;
+
+      if (action === 'push') {
+        title = 'ยืนยันการอัพโหลด?';
+        text = 'คุณกำลังจะอัพโหลดโฟลเดอร์ที่เลือกไปยัง GitHub';
+        icon = 'question';
+        confirmButtonText = 'อัพโหลด';
+        confirmButtonColor = '#0d6efd';
+      } else {
+        title = 'ยืนยันโหลดทับข้อมูล?';
+        text = 'คำเตือน: ข้อมูลในเครื่องของคุณที่ยังไม่ได้อัพโหลดจะถูกลบทิ้ง และแทนที่ด้วยข้อมูลล่าสุดจาก GitHub ยืนยันหรือไม่?';
+        icon = 'warning';
+        confirmButtonText = 'โหลดทับเดี๋ยวนี้';
+        confirmButtonColor = '#dc3545';
+      }
+
       const result = await Swal.fire({
-        title: 'ยืนยันการอัพโหลด?',
-        text: 'คุณกำลังจะอัพโหลดโฟลเดอร์ที่เลือกไปยัง GitHub',
-        icon: 'question',
+        title, text, icon,
         showCancelButton: true,
-        confirmButtonColor: '#0d6efd',
+        confirmButtonColor,
         cancelButtonColor: '#6c757d',
-        confirmButtonText: 'อัพโหลด',
+        confirmButtonText,
         cancelButtonText: 'ยกเลิก'
       });
 
@@ -136,7 +160,7 @@ export default {
       
       try {
         const payload = { action };
-        if (action === 'push') {
+        if (action === 'push' || action === 'pull') {
           payload.folders = this.selectedFolders;
         }
 

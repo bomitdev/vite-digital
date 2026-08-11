@@ -92,6 +92,35 @@ if ($action === 'push') {
     
     $response['logs'] = $logOutput;
 
+} else if ($action === 'pull') {
+    $folders = isset($input['folders']) && is_array($input['folders']) ? $input['folders'] : [];
+    
+    if (empty($folders)) {
+        echo json_encode(['status' => 'error', 'message' => 'No folders selected for pull.']);
+        exit;
+    }
+
+    $logOutput = "--- Starting Git Pull (Restore) ---\n";
+    
+    // 1. Fetch latest from origin
+    $fetchCommand = "git fetch origin";
+    $logOutput .= "> " . $fetchCommand . "\n";
+    $logOutput .= runGitCommand($fetchCommand, $projectRoot) . "\n";
+    
+    // 2. Checkout specific folders to match origin/main (Overwrite local)
+    $checkoutCommand = "git checkout origin/main --";
+    foreach ($folders as $folder) {
+        // Simple security check to prevent command injection
+        if (preg_match('/^[a-zA-Z0-9_\-\.\/]+$/', $folder)) {
+            $checkoutCommand .= " " . escapeshellarg($folder);
+        }
+    }
+    
+    $logOutput .= "> " . $checkoutCommand . "\n";
+    $logOutput .= runGitCommand($checkoutCommand, $projectRoot) . "\n";
+    
+    $response['logs'] = $logOutput;
+
 } else if ($action === 'status') {
     $logOutput = "--- Starting Git Status ---\n";
     
