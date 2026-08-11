@@ -38,7 +38,7 @@
     <!-- Form Content -->
     <div class="row justify-content-center">
       <div class="col-lg-10 col-xl-9">
-        <div class="card border-0 shadow-lg rounded-4 overflow-hidden glass-card mb-5">
+        <div class="card border-0 shadow-lg rounded-4 glass-card mb-5">
           <div class="card-body p-4 p-md-5">
             <form @submit.prevent="submitRequest">
               <div class="row g-4">
@@ -107,7 +107,7 @@
                   </datalist>
                 </div>
 
-                <div class="col-12 mt-4 pt-4 border-top border-light-subtle">
+                <div class="col-12 mt-4 pt-4 border-top border-light-subtle" style="padding-bottom: 12rem;">
                   <div class="d-flex align-items-center gap-2 mb-4">
                     <span class="badge bg-primary text-white rounded-pill px-2 py-1 shadow-sm"
                       ><i class="bi bi-2-circle fs-6"></i
@@ -123,17 +123,40 @@
                       <label class="form-label fw-bold text-secondary small"
                         >วัสดุที่ต้องการเบิก <span class="text-danger">*</span></label
                       >
-                      <select
-                        v-model="form.material_id"
-                        class="form-select form-select-lg fs-6 shadow-none border-light-subtle"
-                        required
-                      >
-                        <option value="" disabled>-- เลือกรายการวัสดุ --</option>
-                        <option v-for="mat in materials" :key="mat.id" :value="mat.id">
-                          {{ mat.code }} - {{ mat.name }} (คงเหลือ: {{ mat.balance }}
-                          {{ mat.unit }})
-                        </option>
-                      </select>
+                      <div class="dropdown custom-select-dropdown w-100">
+                        <button 
+                          class="btn form-select form-select-lg fs-6 shadow-none border-light-subtle d-flex justify-content-between align-items-center w-100 bg-white" 
+                          type="button" 
+                          id="materialDropdown" 
+                          data-bs-toggle="dropdown" 
+                          aria-expanded="false"
+                        >
+                          <div class="d-flex align-items-center text-truncate">
+                            <template v-if="selectedMaterial">
+                              <img v-if="selectedMaterial.image_path" :src="getImageUrl(selectedMaterial.image_path)" class="me-2 rounded object-fit-cover" style="width: 24px; height: 24px;">
+                              <i v-else class="bi bi-box me-2 text-muted"></i>
+                              <span class="text-truncate text-dark">{{ selectedMaterial.code }} - {{ selectedMaterial.name }} (คงเหลือ: {{ selectedMaterial.balance }} {{ selectedMaterial.unit }})</span>
+                            </template>
+                            <template v-else>
+                              <span class="text-muted">-- เลือกรายการวัสดุ --</span>
+                            </template>
+                          </div>
+                        </button>
+                        <ul class="dropdown-menu w-100 shadow-lg border-0 p-2" aria-labelledby="materialDropdown" style="max-height: 400px; overflow-y: auto;">
+                          <li v-for="mat in materials" :key="mat.id" class="mb-1">
+                            <a class="dropdown-item d-flex align-items-center rounded p-2 custom-dropdown-item" href="#" @click.prevent="form.material_id = mat.id">
+                              <img v-if="mat.image_path" :src="getImageUrl(mat.image_path)" class="rounded me-3 object-fit-cover border" style="width: 50px; height: 50px;">
+                              <div v-else class="rounded me-3 bg-light d-flex align-items-center justify-content-center text-muted border" style="width: 50px; height: 50px;">
+                                <i class="bi bi-image fs-5"></i>
+                              </div>
+                              <div class="overflow-hidden">
+                                <div class="fw-bold text-dark text-truncate">{{ mat.name }}</div>
+                                <div class="small text-muted text-truncate">{{ mat.code }} | คงเหลือ: <span class="text-primary fw-bold">{{ mat.balance }} {{ mat.unit }}</span></div>
+                              </div>
+                            </a>
+                          </li>
+                        </ul>
+                      </div>
                     </div>
 
                     <!-- Quantity -->
@@ -181,7 +204,7 @@
         </div>
 
         <!-- History Section -->
-        <div class="card border-0 shadow-lg rounded-4 overflow-hidden glass-card mb-5 fade-in" style="animation-delay: 0.2s;">
+        <div class="card border-0 shadow-lg rounded-4 glass-card mb-5 fade-in" style="animation-delay: 0.2s;">
           <div class="card-body p-4 p-md-5">
             <div class="d-flex align-items-center gap-2 mb-4">
               <span class="badge bg-info text-white rounded-pill px-2 py-1 shadow-sm"><i class="bi bi-clock-history fs-6"></i></span>
@@ -285,6 +308,10 @@ export default {
         (req.department && req.department.toLowerCase().includes(q)) ||
         (req.material_name && req.material_name.toLowerCase().includes(q))
       );
+    },
+    selectedMaterial() {
+      if (!this.form.material_id) return null;
+      return this.materials.find(m => m.id === this.form.material_id) || null;
     }
   },
   methods: {
@@ -344,8 +371,23 @@ export default {
         console.error('Error fetching requesters and departments:', error);
       }
     },
+    getImageUrl(path) {
+      if (!path) return '';
+      if (path.startsWith('http')) return path;
+      const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
+      return `${baseUrl}/vue-app/vite-digital/${path}`;
+    },
     async submitRequest() {
       // Input Validation
+      if (!this.form.material_id) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'กรุณาเลือกวัสดุ',
+          text: 'โปรดระบุวัสดุที่คุณต้องการเบิก'
+        });
+        return;
+      }
+
       const selectedMat = this.materials.find((m) => m.id === this.form.material_id);
       if (selectedMat && this.form.quantity > selectedMat.balance) {
         Swal.fire({
@@ -508,5 +550,17 @@ export default {
 }
 .submit-btn:active:not(:disabled) {
   transform: translateY(1px);
+}
+
+/* Custom Dropdown for Select */
+.custom-dropdown-item {
+  transition: all 0.2s ease;
+}
+.custom-dropdown-item:hover {
+  background-color: #f8f9fa;
+  transform: translateX(4px);
+}
+.custom-select-dropdown .dropdown-toggle::after {
+  margin-left: auto;
 }
 </style>

@@ -280,9 +280,16 @@ export default {
     };
 
     const getEventColorClass = (event) => {
-      if (event.STATUS === 'SUCCESS') return 'event-success';
-      if (event.STATUS === 'CANCEL') return 'event-danger';
-      return 'event-warning';
+      const roomId = parseInt(event.ROOM_ID) || 0;
+      const colors = [
+        'event-primary', 
+        'event-success', 
+        'event-danger', 
+        'event-warning',
+        'event-info',
+        'event-purple'
+      ];
+      return colors[roomId % colors.length];
     };
 
     const getStatusText = (status) => {
@@ -474,21 +481,39 @@ export default {
 }
 
 .event-success {
-  background-color: #f0fdf4;
-  color: #15803d;
-  border-left-color: #22c55e;
+  background-color: #10b981;
+  color: #ffffff;
+  border-left-color: #047857;
 }
 
 .event-danger {
-  background-color: #fef2f2;
-  color: #b91c1c;
-  border-left-color: #ef4444;
+  background-color: #ef4444;
+  color: #ffffff;
+  border-left-color: #b91c1c;
 }
 
 .event-warning {
-  background-color: #fefce8;
-  color: #b45309;
-  border-left-color: #eab308;
+  background-color: #f59e0b;
+  color: #ffffff;
+  border-left-color: #b45309;
+}
+
+.event-primary {
+  background-color: #3b82f6;
+  color: #ffffff;
+  border-left-color: #1d4ed8;
+}
+
+.event-info {
+  background-color: #06b6d4;
+  color: #ffffff;
+  border-left-color: #0891b2;
+}
+
+.event-purple {
+  background-color: #8b5cf6;
+  color: #ffffff;
+  border-left-color: #6d28d9;
 }
 
 .event-text {
