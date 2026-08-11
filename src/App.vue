@@ -29,7 +29,7 @@
 
           <li class="nav-item">
             <RouterLink class="nav-link" to="/schedule">
-              <i class="bi bi-calendar-week"></i> <span>ตารางเวร IT</span>
+              <i class="bi bi-calendar-week"></i> <span>ตารางเวร-IT</span>
             </RouterLink>
           </li>
 
