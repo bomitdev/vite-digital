@@ -355,7 +355,7 @@
                       <i class="bi bi-kanban fs-4"></i>
                     </div>
                     <h6 class="fw-bold text-white mb-1 text-truncate" title="ระบบงานโครงการ">
-                      ระบบงานโครงการ
+                      โครงการ
                     </h6>
                     <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
                       ติดตามความคืบหน้าโครงการ
