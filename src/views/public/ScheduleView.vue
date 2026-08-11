@@ -2,17 +2,20 @@
   <div class="container-fluid">
     <div class="row">
       <div>
-        <div class="d-flex justify-content-end mt-2 mb-2">
-          <router-link to="/manager-schedule" class="btn-schedule"> จัดการตารางเวร IT </router-link>
-        </div>
-         <div class="month-selector justify-content-end">
+        <div class="d-flex justify-content-end mt-3 mb-2">
+          
+          <div class="month-selector justify-content-end">
           <label for="month"> </label>
           <select v-model="selectedMonth" @change="fetchSchedule">
             <option v-for="(month, index) in months" :key="index" :value="index + 1">
               {{ month }}
             </option>
           </select>
+          
         </div>
+        <router-link to="/manager-schedule" class="btn-schedule"> จัดการตารางเวร IT </router-link>
+        </div>
+         
         <div class="header-container mt-2">
           <img src="../../components/img/logo_cnmh.png" alt="Logo" class="logo" />
           <h1>โรงพยาบาลชานุมาน</h1>
@@ -219,9 +222,16 @@ td {
 }
 
 .month-selector {
-  margin: 10px 0;
+  background: linear-gradient(135deg, #b6acc0 0%, #b6acc0 100%); /* หรือใช้เฉดม่วงตามธีมโรงพยาบาล */
+  background: linear-gradient(to right, #430579, #430579);
   display: flex;
   border: 1px solid white;
+  border-radius: 10px;
+  height: 50px;
+  align-items: center;
+  justify-content: center;
+  width: 165px;
+  padding: 5px 15px;
 }
 
 .btn {
@@ -238,11 +248,11 @@ td {
 }
 /* ปุ่มสไตล์ Gradient ม่วง-ชมพู */
 .btn-schedule {
-  background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); /* หรือใช้เฉดม่วงตามธีมโรงพยาบาล */
-  background: linear-gradient(to right, #8e2de2, #4a00e0);
+  background: linear-gradient(135deg, #b6acc0 0%, #b6acc0 100%); /* หรือใช้เฉดม่วงตามธีมโรงพยาบาล */
+  background: linear-gradient(to right, #430579, #430579);
   color: white;
   border: none;
-  padding: 10px 25px;
+  padding: 5px 15px;
   font-size: 18px;
   font-weight: bold;
   border-radius: 10px; /* ทรงมนสวยงาม */
@@ -251,6 +261,8 @@ td {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   display: inline-flex;
   align-items: center;
+  width: 175px;
+  height: 50px;
 }
 
 /* เอฟเฟกต์เมื่อ Hover */

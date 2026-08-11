@@ -16,10 +16,10 @@
                  style="cursor: pointer"
                  :class="{'ring-active': statusFilter === 'pass'}"
                  @click="setStatusFilter('pass')">
-              <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-check-circle me-2"></i>KPIs Passed</h5>
-                <h2 class="display-4 fw-bold">{{ summary.passed }}</h2>
-                <small>{{ summary.passedPercent }}% of Total KPIs</small>
+              <div class="card-body p-3">
+                <h6 class="card-title fw-bold text-uppercase mb-1"><i class="bi bi-check-circle me-1"></i>KPIs Passed</h6>
+                <h2 class="display-6 fw-bold mb-0">{{ summary.passed }}</h2>
+                <small class="opacity-75">{{ summary.passedPercent }}% of Total KPIs</small>
               </div>
             </div>
           </div>
@@ -28,10 +28,10 @@
                  style="cursor: pointer"
                  :class="{'ring-active': statusFilter === 'fail'}"
                  @click="setStatusFilter('fail')">
-              <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-x-circle me-2"></i>KPIs Failed</h5>
-                <h2 class="display-4 fw-bold">{{ summary.failed }}</h2>
-                <small>{{ summary.failedPercent }}% need attention</small>
+              <div class="card-body p-3">
+                <h6 class="card-title fw-bold text-uppercase mb-1"><i class="bi bi-x-circle me-1"></i>KPIs Failed</h6>
+                <h2 class="display-6 fw-bold mb-0">{{ summary.failed }}</h2>
+                <small class="opacity-75">{{ summary.failedPercent }}% need attention</small>
               </div>
             </div>
           </div>
@@ -40,10 +40,10 @@
                  style="cursor: pointer"
                  :class="{'ring-active': statusFilter === 'warning'}"
                  @click="setStatusFilter('warning')">
-              <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-exclamation-triangle me-2"></i>Warning</h5>
-                <h2 class="display-4 fw-bold">{{ summary.warning }}</h2>
-                <small>Close to target</small>
+              <div class="card-body p-3">
+                <h6 class="card-title fw-bold text-uppercase mb-1"><i class="bi bi-exclamation-triangle me-1"></i>Warning</h6>
+                <h2 class="display-6 fw-bold mb-0">{{ summary.warning }}</h2>
+                <small class="opacity-75">Close to target</small>
               </div>
             </div>
           </div>
@@ -52,10 +52,10 @@
                  style="cursor: pointer"
                  :class="{'ring-active': statusFilter === 'all'}"
                  @click="setStatusFilter('all')">
-              <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-list-task me-2"></i>Total KPIs</h5>
-                <h2 class="display-4 fw-bold">{{ summary.total }}</h2>
-                <small>Active Indicators</small>
+              <div class="card-body p-3">
+                <h6 class="card-title fw-bold text-uppercase mb-1"><i class="bi bi-list-task me-1"></i>Total KPIs</h6>
+                <h2 class="display-6 fw-bold mb-0">{{ summary.total }}</h2>
+                <small class="opacity-75">Active Indicators</small>
               </div>
             </div>
           </div>
@@ -64,9 +64,9 @@
       <!-- Donut Chart Area -->
       <div class="col-md-4">
         <div class="card h-100 shadow-sm border-0">
-          <div class="card-body d-flex flex-column align-items-center justify-content-center pt-4">
-            <h5 class="card-title text-muted mb-0 fw-bold">Performance Overview</h5>
-            <div style="height: 220px; width: 100%; position: relative">
+          <div class="card-body d-flex flex-column align-items-center justify-content-center pt-3 pb-3">
+            <h6 class="card-title text-muted mb-0 fw-bold text-uppercase">Performance Overview</h6>
+            <div style="height: 180px; width: 100%; position: relative" class="mt-2">
               <DoughnutChart
                 v-if="!loading && summary.total > 0"
                 :data="doughnutChartData"
@@ -323,6 +323,7 @@ export default {
       selectedLevel: '',
       userDepartment: '',
       userFullname: '',
+      userAccess: [],
       yearList: [],
       searchQuery: '',
       statusFilter: 'all',
@@ -346,6 +347,8 @@ export default {
     isAdmin() {
       // Basic check for admin departments
       return (
+        this.userAccess.includes('administrator') ||
+        this.userAccess.includes('menu_kpi_admin') ||
         this.userDepartment.includes('กลุ่มงานสุขภาพดิจิทัล') ||
         this.userDepartment.includes('ประกัน') ||
         this.userDepartment === 'admin'
@@ -551,6 +554,7 @@ export default {
         if (response.data.status === 'success') {
           this.userDepartment = response.data.department || '';
           this.userFullname = response.data.fullname || '';
+          this.userAccess = response.data.access_user ? response.data.access_user.split(':') : [];
         }
       } catch (e) {
         console.error('Failed to load user profile', e);

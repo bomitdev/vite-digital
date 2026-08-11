@@ -90,13 +90,26 @@
                 >
                   <td class="ps-4 fw-bold">{{ item.code }}</td>
                   <td>
-                    <div class="d-flex align-items-center">
-                      <i
-                        v-if="item.balance <= item.min_alert"
-                        class="bi bi-exclamation-circle-fill text-danger me-2"
-                        title="ของใกล้หมด"
-                      ></i>
-                      {{ item.name }}
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="flex-shrink-0" style="width: 40px; height: 40px;">
+                        <img
+                          v-if="item.image_path"
+                          :src="getImageUrl(item.image_path)"
+                          class="img-fluid rounded border shadow-sm"
+                          style="width: 100%; height: 100%; object-fit: cover;"
+                        />
+                        <div v-else class="d-flex justify-content-center align-items-center bg-light rounded border text-muted shadow-sm h-100 w-100">
+                          <i class="bi bi-box"></i>
+                        </div>
+                      </div>
+                      <div>
+                        <i
+                          v-if="item.balance <= item.min_alert"
+                          class="bi bi-exclamation-circle-fill text-danger me-1"
+                          title="ของใกล้หมด"
+                        ></i>
+                        {{ item.name }}
+                      </div>
                     </div>
                   </td>
                   <td>
@@ -218,6 +231,16 @@
                     <label class="form-label">จำนวนยกยอดสต๊อกเริ่มต้น</label>
                     <input type="number" class="form-control" v-model="form.balance" min="0" />
                   </div>
+                  <div class="col-12 mb-3">
+                    <label class="form-label">รูปภาพประกอบ</label>
+                    <input type="file" class="form-control" accept="image/*" @change="handleFileUpload" ref="fileInput" />
+                    <div v-if="previewImage || form.image_path" class="mt-2 position-relative d-inline-block">
+                      <img :src="previewImage || getImageUrl(form.image_path)" class="img-thumbnail" style="max-height: 120px;" />
+                      <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 py-0 px-1" @click="removeImage">
+                        <i class="bi bi-x"></i>
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div class="d-flex justify-content-end mt-4">
                   <button
@@ -259,8 +282,11 @@ export default {
         unit: '',
         price_per_unit: 0.0,
         min_alert: 5,
-        balance: 0
+        balance: 0,
+        image_path: ''
       },
+      previewImage: null,
+      selectedFile: null,
       modalInstance: null
     };
   },
@@ -279,6 +305,10 @@ export default {
       }
     },
     openModal(item = null) {
+      this.previewImage = null;
+      this.selectedFile = null;
+      if (this.$refs.fileInput) this.$refs.fileInput.value = '';
+
       if (item) {
         this.form = { ...item };
       } else {
@@ -290,7 +320,8 @@ export default {
           unit: '',
           price_per_unit: 0.0,
           min_alert: 5,
-          balance: 0
+          balance: 0,
+          image_path: ''
         };
       }
       if (!this.modalInstance) {
@@ -300,7 +331,19 @@ export default {
     },
     async saveMaterial() {
       try {
-        const res = await axios.post('/api-digital/material_admin/save_material.php', this.form);
+        const formData = new FormData();
+        for (const key in this.form) {
+          if (this.form[key] !== null) {
+            formData.append(key, this.form[key]);
+          }
+        }
+        if (this.selectedFile) {
+          formData.append('image', this.selectedFile);
+        }
+
+        const res = await axios.post('/api-digital/material_admin/save_material.php', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
         if (res.data.status === 'success') {
           // alert(res.data.message);
           this.modalInstance.hide();
@@ -329,6 +372,26 @@ export default {
           alert('ไม่สามารถลบข้อมูลได้ อาจมีการเชื่อมโยงอยู่');
         }
       }
+    },
+    handleFileUpload(event) {
+      this.selectedFile = event.target.files[0];
+      if (this.selectedFile) {
+        this.previewImage = URL.createObjectURL(this.selectedFile);
+      } else {
+        this.previewImage = null;
+      }
+    },
+    removeImage() {
+      this.form.image_path = '';
+      this.selectedFile = null;
+      this.previewImage = null;
+      if (this.$refs.fileInput) this.$refs.fileInput.value = '';
+    },
+    getImageUrl(path) {
+      if (!path) return '';
+      if (path.startsWith('http')) return path;
+      const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
+      return `${baseUrl}/vue-app/vite-digital/${path}`;
     }
   },
   mounted() {

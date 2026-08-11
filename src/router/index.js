@@ -139,6 +139,19 @@ const routes = [
     meta: { requiresAuth: true }
   },
 
+  // Car Schedule
+  {
+    path: '/car-schedule',
+    component: () => import('../views/digital/car/CarCalendar.vue')
+  },
+  
+  // Room Schedule
+  {
+    path: '/room-schedule',
+    component: () => import('../views/digital/room/RoomCalendar.vue')
+  },
+
+
   // Revenue Collection Center
   {
     path: '/revenue-dashboard',

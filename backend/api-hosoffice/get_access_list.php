@@ -9,7 +9,7 @@ require '../config.php';
 
 try {
     // Assuming table name is 10985_hos_access based on request
-    $sql = "SELECT access_id, access_name FROM `10985_hos_access` ORDER BY access_name ASC";
+    $sql = "SELECT access_id, access_name FROM `10985_hos_access` WHERE access_status = 'Y' ORDER BY access_name ASC";
     $stmt = $pdo3->prepare($sql);
     $stmt->execute();
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);

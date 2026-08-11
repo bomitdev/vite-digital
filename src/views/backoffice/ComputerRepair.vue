@@ -488,8 +488,8 @@ export default {
     getImageUrl(path) {
       if (!path) return '';
       if (path.startsWith('http')) return path;
-      // Remove leading slash if present to ensure relative path for both Vite (Proxy) and XAMPP
-      return path.startsWith('/') ? path.substring(1) : path;
+      const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
+      return `${baseUrl}/vue-app/vite-digital/${path}`;
     },
     async saveRequest() {
       this.submitting = true;

@@ -451,7 +451,8 @@ export default {
     getImageUrl(path) {
       if (!path) return '';
       if (path.startsWith('http')) return path;
-      return path.startsWith('/') ? path : `/${path}`;
+      const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
+      return `${baseUrl}/vue-app/vite-digital/${path}`;
     }
   }
 };

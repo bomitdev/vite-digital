@@ -37,8 +37,19 @@ try {
     $data = json_decode(file_get_contents("php://input"), true);
 
     // Validate required fields
-    if (empty($data['kpi_name']) || empty($data['category_id'])) {
-        throw new Exception("Missing required fields (kpi_name, category_id)");
+    if (empty($data['kpi_name'])) {
+        throw new Exception("Missing required field (kpi_name)");
+    }
+
+    $cat_id = $data['category_id'] ?? null;
+    
+    // Handle new category creation
+    if ($cat_id === 'new' && !empty($data['new_category_name'])) {
+        $stmtCat = $pdo2->prepare("INSERT INTO kpi_categories (name, description) VALUES (?, ?)");
+        $stmtCat->execute([$data['new_category_name'], $data['new_category_name']]);
+        $cat_id = $pdo2->lastInsertId();
+    } elseif (empty($cat_id)) {
+        throw new Exception("Missing required field (category_id)");
     }
 
     // Check if ID exists (Update) or not (Insert)

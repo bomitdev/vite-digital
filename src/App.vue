@@ -38,6 +38,30 @@
               <i class="bi bi-speedometer2"></i> <span>KPI</span>
             </RouterLink>
           </li>
+          <li class="nav-item dropdown" :class="{ show: activeDropdown === 'calendar' }">
+            <a
+              class="nav-link dropdown-toggle"
+              href="#"
+              id="calendarLinks"
+              role="button"
+              @click.prevent="toggleDropdown('calendar')"
+              :aria-expanded="activeDropdown === 'calendar'"
+            >
+              <i class="bi bi-calendar2-event"></i> <span>ปฏิทิน</span>
+            </a>
+            <ul class="dropdown-menu" :class="{ show: activeDropdown === 'calendar' }" aria-labelledby="calendarLinks">
+              <li>
+                <RouterLink class="dropdown-item" to="/car-schedule" @click="closeNavbar">
+                  <i class="bi bi-car-front-fill me-2"></i>ปฏิทินรถยนต์
+                </RouterLink>
+              </li>
+              <li>
+                <RouterLink class="dropdown-item" to="/room-schedule" @click="closeNavbar">
+                  <i class="bi bi-display me-2"></i>ปฏิทินห้องประชุม
+                </RouterLink>
+              </li>
+            </ul>
+          </li>
 
           <li class="nav-item dropdown" :class="{ show: activeDropdown === 'important' }">
             <a
@@ -179,6 +203,15 @@
                   target="_blank"
                 >
                   <i class="bi bi-file-medical fa-fw me-2"></i> Moph PHR-Viwer
+                </a>
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  href="https://moph-iot-portal.moph.go.th/"
+                  target="_blank"
+                >
+                  <i class="bi bi-file-medical fa-fw me-2"></i> Moph IOT
                 </a>
               </li>
 

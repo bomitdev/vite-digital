@@ -1,16 +1,16 @@
 <template>
-  <div class="container-fluid py-4">
-    <div class="card shadow-sm border-0 rounded-3">
-      <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-        <h3 class="mb-0 text-primary fw-bold"><i class="bi bi-table me-2"></i>Report Center</h3>
+  <div class="container-fluid py-4" style="background-color: #ffffff; min-height: 100vh;">
+    <div class="card border-0 rounded-3">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center py-3 border-0">
+        <h3 class="mb-0 calm-text-navy fw-bold"><i class="bi bi-table me-2"></i>Report Center</h3>
         <div class="d-flex gap-2">
-          <button v-if="isAdmin" @click="$router.push('/report-center/admin')" class="btn btn-warning shadow-sm rounded-pill text-white fw-bold">
+          <button v-if="isAdmin" @click="$router.push('/report-center/admin')" class="btn btn-warning rounded-pill text-white fw-bold">
             <i class="bi bi-gear-fill me-1"></i> จัดการรายงาน (Admin)
           </button>
-          <button @click="$router.push('/report')" class="btn btn-success shadow-sm rounded-pill text-white fw-bold">
+          <button @click="$router.push('/report')" class="btn calm-btn-primary rounded-pill fw-bold">
             <i class="bi bi-chat-text-fill me-1"></i> ระบบขอรายงานข้อมูล
           </button>
-          <button @click="goHome" class="btn btn-outline-secondary rounded-pill">
+          <button @click="goHome" class="btn calm-btn-secondary rounded-pill fw-bold">
             <i class="bi bi-house me-1"></i> กลับหน้าหลัก
           </button>
         </div>
@@ -22,10 +22,10 @@
           <div class="col-md-3 border-end">
             <!-- Filter Department Dropdown -->
             <div class="mb-3">
-              <label class="form-label small text-secondary fw-bold mb-2">
-                <i class="bi bi-building text-primary me-1"></i> เลือกกลุ่มงาน
+              <label class="form-label small text-dark fw-bold mb-2">
+                <i class="bi bi-building calm-text-navy me-1"></i> เลือกกลุ่มงาน
               </label>
-              <select class="form-select form-select-lg rounded-pill bg-primary bg-opacity-10 text-primary fw-bold border-0 shadow-sm px-4" v-model="filterDepartment" style="cursor: pointer;">
+              <select class="form-select form-select-lg calm-input px-4 calm-text-navy fw-bold" v-model="filterDepartment" style="cursor: pointer;">
                 <option value="" disabled>-- กรุณาเลือกกลุ่มงาน --</option>
                 <option value="ALL" class="text-dark">-- ทุกกลุ่มงาน --</option>
                 <option v-for="dept in departmentsWithReports" :key="dept.HR_DEPARTMENT_SUB_ID" :value="dept.HR_DEPARTMENT_SUB_ID" class="text-dark">
@@ -40,7 +40,7 @@
               <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
               <input
                 type="text"
-                class="form-control form-control-lg rounded-pill bg-light border-0 ps-5 shadow-sm"
+                class="form-control form-control-lg calm-input ps-5"
                 placeholder="ค้นหารายงาน..."
                 v-model="searchQuery"
               />
@@ -61,15 +61,15 @@
                 :key="rep.id"
                 class="list-group-item list-group-item-action d-flex justify-content-between align-items-center mb-1 rounded-3 border-0 transition-all"
                 :class="{
-                  'bg-primary text-white shadow-sm': selectedReport && selectedReport.id === rep.id,
+                  'calm-btn-primary': selectedReport && selectedReport.id === rep.id,
                   'bg-white hover-bg-light': !selectedReport || selectedReport.id !== rep.id
                 }"
                 style="border-left: 4px solid transparent !important;"
-                :style="selectedReport && selectedReport.id === rep.id ? 'border-left: 4px solid #fff !important;' : 'border-left: 4px solid #dee2e6 !important;'"
+                :style="selectedReport && selectedReport.id === rep.id ? 'border-left: 4px solid #ffffff !important;' : 'border-left: 4px solid #dee2e6 !important;'"
                 @click="selectReport(rep)"
               >
                 <div>
-                  <div class="fw-bold"><i class="bi bi-file-earmark-text me-2" :class="selectedReport && selectedReport.id === rep.id ? 'text-white' : 'text-primary'"></i>{{ rep.title }}</div>
+                  <div class="fw-bold"><i class="bi bi-file-earmark-text me-2" :class="selectedReport && selectedReport.id === rep.id ? 'text-white' : 'calm-text-navy'"></i>{{ rep.title }}</div>
                   <small
                     class="d-block text-truncate mt-1"
                     :class="selectedReport && selectedReport.id === rep.id ? 'text-white-50' : 'text-muted'"
@@ -85,43 +85,40 @@
 
           <!-- Content -->
           <div class="col-md-9" id="report-filter-section">
-            <div v-if="!selectedReport" class="d-flex flex-column align-items-center justify-content-center py-5 mt-5">
-              <div class="bg-primary bg-opacity-10 rounded-circle p-4 mb-4 shadow-sm" style="width: 120px; height: 120px; display: flex; align-items: center; justify-content: center;">
-                <i class="bi bi-bar-chart-line text-primary" style="font-size: 4rem;"></i>
-              </div>
-              <h3 class="text-secondary fw-bold">ยินดีต้อนรับสู่ Report Center</h3>
-              <p class="text-muted fs-5">กรุณาเลือกรายงานจากเมนูด้านซ้าย เพื่อเรียกดูข้อมูล</p>
+            <div v-if="!selectedReport" class="d-flex flex-column align-items-center justify-content-center py-5 mt-5 calm-bg-lavender calm-card">
+              <h3 class="calm-text-navy fw-bold mb-3">ยินดีต้อนรับสู่ Report Center</h3>
+              <p class="text-dark fs-5">กรุณาเลือกรายงานจากเมนูด้านซ้าย เพื่อเรียกดูข้อมูล</p>
             </div>
 
             <div v-else>
               <div class="sticky-top bg-white pb-2" style="top: 0; z-index: 10; padding-top: 10px;">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                  <h4 class="mb-0 text-primary fw-bold">{{ selectedReport.title }}</h4>
+                  <h4 class="mb-0 calm-text-navy fw-bold">{{ selectedReport.title }}</h4>
                 </div>
 
                 <!-- Filter Section -->
-                <div class="card border-0 mb-2 rounded-4 shadow-sm" style="background: linear-gradient(to right, #f8f9fa, #ffffff);">
-                  <div class="card-body p-3">
+                <div class="card calm-card calm-bg-lavender mb-2">
+                  <div class="card-body p-4">
                     <div class="row g-3 align-items-end">
                       <div class="col-md-5">
-                        <label class="form-label small text-secondary fw-bold mb-1">
-                          <i class="bi bi-calendar-check text-primary me-1"></i> วันที่เริ่มต้น
+                        <label class="form-label small text-dark fw-bold mb-1">
+                          <i class="bi bi-calendar-check calm-text-navy me-1"></i> วันที่เริ่มต้น
                         </label>
-                        <input type="date" class="form-control form-control-lg rounded-pill border-0 shadow-sm px-4" v-model="startDate" />
+                        <input type="date" class="form-control form-control-lg calm-input px-4" v-model="startDate" />
                       </div>
                       <div class="col-md-5">
-                        <label class="form-label small text-secondary fw-bold mb-1">
-                          <i class="bi bi-calendar-check-fill text-primary me-1"></i> วันที่สิ้นสุด
+                        <label class="form-label small text-dark fw-bold mb-1">
+                          <i class="bi bi-calendar-check-fill calm-text-navy me-1"></i> วันที่สิ้นสุด
                         </label>
-                        <input type="date" class="form-control form-control-lg rounded-pill border-0 shadow-sm px-4" v-model="endDate" />
+                        <input type="date" class="form-control form-control-lg calm-input px-4" v-model="endDate" />
                       </div>
                       <div class="col-md-2">
                         <button
-                          class="btn btn-primary btn-lg w-100 shadow-sm fw-bold rounded-pill"
+                          class="btn calm-btn-primary btn-lg w-100 fw-bold rounded-pill"
                           @click="runReport"
                           :disabled="loading"
                         >
-                          <i class="bi bi-play-circle-fill me-1"></i> ดึงข้อมูล
+                          ดึงข้อมูล
                         </button>
                       </div>
                     </div>
@@ -135,8 +132,8 @@
                 v-if="resultData && resultData.length > 0"
               >
                 <div class="d-flex align-items-center">
-                  <span class="me-2 text-muted small">แสดง</span>
-                  <select class="form-select form-select-sm rounded-pill border-0 shadow-sm" v-model="itemsPerPage" @change="currentPage = 1" style="min-width: 80px; width: auto;">
+                  <span class="me-2 text-dark small">แสดง</span>
+                  <select class="form-select form-select-sm calm-input" v-model="itemsPerPage" @change="currentPage = 1" style="min-width: 80px; width: auto; height: auto;">
                     <option :value="5">5</option>
                     <option :value="10">10</option>
                     <option :value="20">20</option>
@@ -144,13 +141,13 @@
                     <option :value="100">100</option>
                     <option :value="999999">ทั้งหมด</option>
                   </select>
-                  <span class="ms-2 text-muted small">รายการ</span>
+                  <span class="ms-2 text-dark small">รายการ</span>
                 </div>
                 <button
-                  class="btn btn-success custom-shadow hover-scale rounded-pill px-4"
+                  class="btn calm-btn-primary rounded-pill px-4 fw-bold"
                   @click="exportExcel"
                 >
-                  <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
+                  Export Excel
                 </button>
               </div>
 
@@ -162,19 +159,19 @@
 
               <div
                 v-else-if="resultData"
-                class="table-responsive border-0 rounded-4 bg-white shadow-sm"
+                class="table-responsive border-0 calm-card bg-white"
               >
                 <table class="table table-hover mb-0 align-middle" id="report-table">
                   <thead class="bg-light sticky-top" style="z-index: 1;">
                     <tr>
-                      <th class="text-nowrap py-3 text-secondary border-bottom-0 text-center" style="width: 60px;">ลำดับ</th>
-                      <th v-for="col in columns" :key="col" class="text-nowrap py-3 text-secondary border-bottom-0">{{ col }}</th>
+                      <th class="text-nowrap py-3 text-dark border-bottom-0 text-center" style="width: 60px;">ลำดับ</th>
+                      <th v-for="col in columns" :key="col" class="text-nowrap py-3 text-dark border-bottom-0">{{ col }}</th>
                     </tr>
                   </thead>
                   <tbody class="border-top-0">
                     <tr v-for="(row, idx) in paginatedData" :key="idx">
-                      <td class="text-nowrap text-secondary text-center fw-bold">{{ (currentPage - 1) * itemsPerPage + idx + 1 }}</td>
-                      <td v-for="col in columns" :key="col" class="text-nowrap text-secondary">{{ row[col] }}</td>
+                      <td class="text-nowrap text-dark text-center fw-bold">{{ (currentPage - 1) * itemsPerPage + idx + 1 }}</td>
+                      <td v-for="col in columns" :key="col" class="text-nowrap text-dark">{{ row[col] }}</td>
                     </tr>
                     <tr v-if="paginatedData.length === 0">
                       <td :colspan="columns.length + 1" class="text-center py-5 text-muted">ไม่พบข้อมูล</td>
@@ -185,23 +182,23 @@
 
               <!-- Pagination Controls -->
               <div v-if="resultData && resultData.length > 0" class="d-flex flex-wrap justify-content-between align-items-center mt-3 gap-3">
-                <div class="text-muted small">
+                <div class="text-dark small">
                   แสดง {{ (currentPage - 1) * itemsPerPage + 1 }} ถึง {{ Math.min(currentPage * itemsPerPage, resultData.length) }} จากทั้งหมด {{ resultData.length }} รายการ
                 </div>
                 <nav>
-                  <ul class="pagination pagination-sm mb-0 shadow-sm rounded-pill">
+                  <ul class="pagination pagination-sm mb-0 rounded-pill">
                     <li class="page-item" :class="{ disabled: currentPage === 1 }">
-                      <button class="page-link rounded-start-pill border-0" @click="prevPage">ก่อนหน้า</button>
+                      <button class="page-link rounded-start-pill border-0 text-dark" @click="prevPage">ก่อนหน้า</button>
                     </li>
                     
-                    <li v-for="(p, index) in visiblePages" :key="index" class="page-item" :class="{ active: currentPage === p, disabled: p === '...' }">
-                      <button class="page-link border-0" @click="goToPage(p)">
+                    <li v-for="(p, index) in visiblePages" :key="index" class="page-item" :class="{ disabled: p === '...' }">
+                      <button class="page-link border-0 text-dark" :class="{ 'calm-bg-lavender calm-text-navy fw-bold': currentPage === p }" @click="goToPage(p)">
                         {{ p }}
                       </button>
                     </li>
 
                     <li class="page-item" :class="{ disabled: currentPage === totalPages || totalPages === 0 }">
-                      <button class="page-link rounded-end-pill border-0" @click="nextPage">ถัดไป</button>
+                      <button class="page-link rounded-end-pill border-0 text-dark" @click="nextPage">ถัดไป</button>
                     </li>
                   </ul>
                 </nav>
@@ -491,6 +488,62 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700&display=swap');
+
+* {
+  font-family: 'Figtree', sans-serif;
+}
+
+.calm-text-navy {
+  color: #1a3e6f !important;
+}
+
+.calm-bg-lavender {
+  background-color: #e2eaff !important;
+}
+
+.calm-btn-primary {
+  background: linear-gradient(90deg, #2477aa, #6461e0) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.calm-btn-primary:hover {
+  background: linear-gradient(90deg, #6461e0, #2477aa) !important;
+}
+
+.calm-btn-secondary {
+  background-color: #ffffff !important;
+  color: #1a3e6f !important;
+  border: 1px solid #1a3e6f !important;
+}
+
+.calm-btn-secondary:hover {
+  background-color: #f8f9fa !important;
+}
+
+.calm-input {
+  border: 1px solid #1a3e6f !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+
+.calm-input:focus {
+  border-width: 2px !important;
+  outline: none !important;
+}
+
+.calm-card {
+  border-radius: 20px !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Remove Bootstrap shadows globally within this scoped component to strictly enforce flat design */
+:deep(.shadow-sm), :deep(.shadow) {
+  box-shadow: none !important;
+}
+
 .transition-all {
   transition: all 0.2s ease-in-out;
 }

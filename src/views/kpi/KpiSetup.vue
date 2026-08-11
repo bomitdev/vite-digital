@@ -1,27 +1,27 @@
 <template>
   <div class="container mt-5">
-    <div class="card shadow-lg rounded-0 overflow-hidden mb-5 border-0">
+    <div class="card calm-card mb-5">
       <div
-        class="card-header bg-purple text-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2"
+        class="card-header calm-bg-lavender calm-text-navy py-3 d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom-0 calm-card"
       >
-        <h4 class="mb-0 fw-bold">กำหนดตัวชี้วัด KPI</h4>
+        <h4 class="mb-0 fw-bold calm-text-navy">กำหนดตัวชี้วัด KPI</h4>
         <div>
           <button
-            class="btn btn-success rounded-pill px-3 fw-bold me-2"
+            class="btn calm-btn-primary rounded-pill px-3 fw-bold me-2"
             @click="openAddModal"
             v-if="isAdmin || userFullname"
           >
             <i class="bi bi-plus-circle-fill me-1"></i> เพิ่มตัวชี้วัดใหม่
           </button>
           <button
-            class="btn btn-info text-white rounded-pill px-3 fw-bold me-2"
+            class="btn calm-btn-secondary rounded-pill px-3 fw-bold me-2"
             @click="downloadTemplate"
             v-if="isAdmin"
           >
             <i class="bi bi-download me-1"></i> โหลด Template
           </button>
           <button
-            class="btn btn-warning text-dark rounded-pill px-3 fw-bold me-2"
+            class="btn calm-btn-secondary rounded-pill px-3 fw-bold me-2"
             @click="$refs.fileInput.click()"
             v-if="isAdmin"
           >
@@ -35,7 +35,7 @@
             class="d-none"
           />
           <button
-            class="btn btn-light text-dark rounded-pill px-3 fw-bold"
+            class="btn calm-btn-secondary rounded-pill px-3 fw-bold"
             @click="$router.push('/home-backoffice')"
           >
             <i class="bi bi-house-fill me-1"></i> กลับหน้าหลัก
@@ -47,33 +47,33 @@
     <!-- Setup Modal -->
     <div class="modal fade" id="kpiSetupModal" tabindex="-1" ref="kpiSetupModal" aria-hidden="true" data-bs-backdrop="static">
       <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-3">
-          <div class="modal-header bg-purple text-white py-3">
+        <div class="modal-content calm-card">
+          <div class="modal-header calm-bg-lavender calm-text-navy py-3 border-bottom-0">
             <h5 class="modal-title fw-bold">
               <i class="bi" :class="isEdit ? 'bi-pencil-square' : 'bi-plus-circle'"></i> 
               {{ isEdit ? 'แก้ไขตัวชี้วัด KPI' : 'เพิ่มตัวชี้วัด KPI ใหม่' }}
             </h5>
-            <button type="button" class="btn-close btn-close-white" @click="closeSetupModal"></button>
+            <button type="button" class="btn-close" @click="closeSetupModal"></button>
           </div>
-          <div class="modal-body p-4 bg-light">
+          <div class="modal-body p-4 bg-white">
             <form @submit.prevent="submitForm">
           <!-- Row: KPI Code & Name -->
           <div class="row g-3 mb-3">
             <div class="col-md-3">
-              <label class="form-label fw-bold">รหัสตัวชี้วัด</label>
+              <label class="form-label fw-bold calm-text-navy">รหัสตัวชี้วัด</label>
               <input
                 type="text"
                 v-model="form.kpi_code"
-                class="form-control border-dark rounded-0 px-3 py-2"
+                class="form-control calm-input"
                 placeholder="เช่น KPI-001"
               />
             </div>
             <div class="col-md-9">
-              <label class="form-label fw-bold">ชื่อตัวชี้วัด</label>
+              <label class="form-label fw-bold calm-text-navy">ชื่อตัวชี้วัด</label>
               <input
                 type="text"
                 v-model="form.kpi_name"
-                class="form-control border-dark rounded-0 px-3 py-2"
+                class="form-control calm-input"
                 required
               />
             </div>
@@ -85,37 +85,46 @@
             <input
               type="text"
               v-model="form.description"
-              class="form-control border-dark rounded-0 px-3 py-2"
+              class="form-control calm-input"
             />
           </div>
 
           <!-- Row 1: Fiscal Year, Category, Level -->
           <div class="row g-3 mb-3">
             <div class="col-md-3">
-              <label class="form-label fw-bold">ปีงบประมาณ</label>
+              <label class="form-label fw-bold calm-text-navy">ปีงบประมาณ</label>
               <select
                 v-model="form.fiscal_year"
-                class="form-select border-dark rounded-0 px-3 py-2"
+                class="form-select calm-input"
                 required
               >
                 <option v-for="y in fiscalYearList" :key="y" :value="y">{{ y }}</option>
               </select>
             </div>
             <div class="col-md-5">
-              <label class="form-label fw-bold">หมวดหมู่</label>
+              <label class="form-label fw-bold calm-text-navy">หมวดหมู่</label>
               <select
                 v-model="form.category_id"
-                class="form-select border-dark rounded-0 px-3 py-2"
+                class="form-select calm-input"
                 required
               >
                 <option value="">-- เลือกหมวดหมู่ --</option>
                 <option v-for="cat in masterData.categories" :key="cat.id" :value="cat.id">
                   {{ cat.name }}
                 </option>
+                <option value="new">+ เพิ่มหมวดหมู่ใหม่</option>
               </select>
+              <input
+                v-if="form.category_id === 'new'"
+                type="text"
+                v-model="form.new_category_name"
+                class="form-control calm-input mt-2"
+                placeholder="ระบุชื่อหมวดหมู่ใหม่"
+                required
+              />
             </div>
             <div class="col-md-4">
-              <label class="form-label fw-bold">ระดับตัวชี้วัด</label>
+              <label class="form-label fw-bold calm-text-navy">ระดับตัวชี้วัด</label>
               <div class="d-flex flex-wrap gap-2 mt-2">
                 <div class="form-check form-check-inline m-0" v-for="l in masterData.levels" :key="l.id">
                   <input class="form-check-input border-dark" type="checkbox" :id="'level-'+l.id" :value="l.name" v-model="selectedKpiLevels">
@@ -128,20 +137,20 @@
           <!-- Row 2: Target, Operator, Unit -->
           <div class="row g-3 mb-3">
             <div class="col-md-4">
-              <label class="form-label fw-bold">เป้าหมาย</label>
+              <label class="form-label fw-bold calm-text-navy">เป้าหมาย</label>
               <input
                 type="number"
                 step="0.01"
                 v-model="form.target_value"
-                class="form-control border-dark rounded-0 px-3 py-2"
+                class="form-control calm-input"
                 required
               />
             </div>
             <div class="col-md-4">
-              <label class="form-label fw-bold">เครื่องหมาย</label>
+              <label class="form-label fw-bold calm-text-navy">เครื่องหมาย</label>
               <select
                 v-model="form.target_operator"
-                class="form-select border-dark rounded-0 px-3 py-2"
+                class="form-select calm-input"
               >
                 <option value=">=">≥</option>
                 <option value="<=">≤</option>
@@ -151,8 +160,8 @@
               </select>
             </div>
             <div class="col-md-4">
-              <label class="form-label fw-bold">หน่วยนับ</label>
-              <select v-model="form.unit" class="form-select border-dark rounded-0 px-3 py-2">
+              <label class="form-label fw-bold calm-text-navy">หน่วยนับ</label>
+              <select v-model="form.unit" class="form-select calm-input">
                 <option value="">-- เลือกหน่วยนับ --</option>
                 <option v-for="u in masterData.units" :key="u.id" :value="u.name">
                   {{ u.name }}
@@ -164,12 +173,12 @@
           <!-- Row 3: Responsible Person & Unit -->
           <div class="row g-3 mb-4">
             <div class="col-md-6">
-              <label class="form-label fw-bold">ผู้รับผิดชอบ</label>
+              <label class="form-label fw-bold calm-text-navy">ผู้รับผิดชอบ</label>
               <div class="position-relative">
                 <input
                   type="text"
                   v-model="staffInput"
-                  class="form-control border-dark rounded-0 px-3 py-2"
+                  class="form-control calm-input"
                   placeholder="พิมพ์ชื่อเพื่อค้นหา..."
                   @focus="showStaffDropdown = true"
                   @blur="hideStaffDropdown"
@@ -198,7 +207,7 @@
                   <span
                     v-for="(person, index) in responsiblePersonList"
                     :key="index"
-                    class="badge bg-primary-custom text-white me-1 mb-1 rounded-pill"
+                    class="badge calm-bg-navy text-white me-1 mb-1 rounded-pill"
                   >
                     {{ person }}
                     <i
@@ -211,11 +220,11 @@
               </div>
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-bold">หน่วยงาน</label>
+              <label class="form-label fw-bold calm-text-navy">หน่วยงาน</label>
               <input
                 type="text"
                 v-model="form.responsible_unit"
-                class="form-control border-dark rounded-0 px-3 py-2"
+                class="form-control calm-input"
               />
             </div>
           </div>
@@ -223,10 +232,10 @@
           <!-- Row 4: Frequency -->
           <div class="row g-3 mb-4">
             <div class="col-md-6">
-              <label class="form-label fw-bold">การรายงานผล (Frequency)</label>
+              <label class="form-label fw-bold calm-text-navy">การรายงานผล (Frequency)</label>
               <select
                 v-model="form.kpi_periodicity"
-                class="form-select border-dark rounded-0 px-3 py-2"
+                class="form-select calm-input"
               >
                 <option v-for="p in masterData.periodicities" :key="p.id" :value="p.code">
                   {{ p.name }}
@@ -241,7 +250,7 @@
           <div class="d-flex justify-content-center gap-3">
             <button
               type="submit"
-              class="btn btn-primary-custom px-5 py-2 fs-5 fw-bold rounded-1 shadow-sm"
+              class="btn calm-btn-primary px-5 py-2 fs-5 fw-bold rounded-pill"
               style="min-width: 200px"
             >
               {{ isEdit ? 'อัพเดทข้อมูล' : 'บันทึกตัวชี้วัด' }}
@@ -261,21 +270,42 @@
   </div>
 
     <!-- ตารางข้อมูล KPI -->
-    <div class="card shadow-sm rounded-0 border-0" v-if="kpis.length > 0">
-      <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <h5 class="mb-0 fw-bold text-dark">รายการ KPI ทั้งหมด</h5>
-        <div class="input-group" style="max-width: 350px;">
-          <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
-          <input type="text" class="form-control border-start-0 ps-0 bg-light" placeholder="ค้นหา KPI, รหัส, ผู้รับผิดชอบ..." v-model="searchQuery">
+    <div class="card calm-card" v-if="kpis.length > 0">
+      <div class="card-header calm-bg-lavender py-3 border-bottom-0 d-flex justify-content-between align-items-center flex-wrap gap-2 calm-card">
+        <h5 class="mb-0 fw-bold calm-text-navy">รายการ KPI ทั้งหมด</h5>
+        <div class="d-flex flex-nowrap align-items-center gap-2 overflow-auto" style="padding-bottom: 2px;">
+          <select class="form-select bg-light" style="min-width: 150px; max-width: 150px;" v-model="selectedYearFilter">
+            <option value="">-- ทุกปีงบประมาณ --</option>
+            <option v-for="y in fiscalYearList" :key="y" :value="y">
+              ปีงบประมาณ {{ y }}
+            </option>
+          </select>
+          <select class="form-select bg-light" style="min-width: 130px; max-width: 130px;" v-model="selectedLevelFilter">
+            <option value="">-- ทุกระดับ --</option>
+            <option v-for="l in masterData.levels" :key="l.id" :value="l.name">
+              {{ l.name }}
+            </option>
+          </select>
+          <select class="form-select bg-light" style="min-width: 150px; max-width: 180px;" v-model="selectedCategoryFilter">
+            <option value="">-- ทุกหมวดหมู่ --</option>
+            <option v-for="cat in masterData.categories" :key="cat.id" :value="cat.id">
+              {{ cat.name }}
+            </option>
+          </select>
+          <div class="input-group" style="min-width: 250px; max-width: 300px;">
+            <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" class="form-control border-start-0 ps-0 bg-light" placeholder="ค้นหา KPI, รหัส, ผู้รับผิดชอบ..." v-model="searchQuery">
+          </div>
         </div>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
-            <thead class="bg-light">
+            <thead class="calm-bg-lavender calm-text-navy">
               <tr>
                 <th class="py-3 ps-3">Category</th>
                 <th class="py-3">ชื่อ KPI</th>
+                <th class="py-3">ระดับ</th>
                 <th class="py-3">Target</th>
                 <th class="py-3">ผู้รับผิดชอบ</th>
                 <th class="py-3 pe-3 text-end">Action</th>
@@ -298,7 +328,11 @@
                   }}</small>
                 </td>
                 <td>
-                  <span class="fw-bold text-primary-custom"
+                  <span class="badge calm-bg-lavender text-dark border" v-if="kpi.kpi_level">{{ kpi.kpi_level }}</span>
+                  <span class="text-muted small" v-else>-</span>
+                </td>
+                <td>
+                  <span class="fw-bold calm-text-navy"
                     >{{ kpi.target_operator }} {{ kpi.target_value }}</span
                   >
                   <span class="small text-muted ms-1">{{ kpi.unit }}</span>
@@ -341,7 +375,7 @@
     <div class="modal fade" id="trendModal" tabindex="-1" ref="trendModal" aria-hidden="true">
       <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-          <div class="modal-header bg-info text-white">
+          <div class="modal-header calm-bg-lavender calm-text-navy border-bottom-0">
             <h5 class="modal-title">แนวโน้ม (Trend) - {{ selectedKpi?.name }}</h5>
             <button
               type="button"
@@ -363,7 +397,7 @@
     <div class="modal fade" id="historyModal" tabindex="-1" ref="historyModal" aria-hidden="true">
       <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-          <div class="modal-header bg-secondary text-white">
+          <div class="modal-header calm-bg-lavender calm-text-navy border-bottom-0">
             <h5 class="modal-title">ประวัติการรายงาน (History) - {{ selectedKpi?.name }}</h5>
             <button
               type="button"
@@ -429,10 +463,14 @@ export default {
       userFullname: '',
       userAccess: [],
       searchQuery: '',
+      selectedCategoryFilter: '',
+      selectedLevelFilter: '',
+      selectedYearFilter: '',
       form: {
         id: null,
         kpi_code: '',
         category_id: '',
+        new_category_name: '',
         kpi_name: '',
         calculation_type: 'percentage',
         kpi_level: 'โรงพยาบาล',
@@ -480,6 +518,18 @@ export default {
         ? this.kpis 
         : (this.userFullname ? this.kpis.filter(kpi => kpi.responsible_person && kpi.responsible_person.includes(this.userFullname)) : []);
       
+      if (this.selectedCategoryFilter) {
+        baseList = baseList.filter(kpi => kpi.category_id == this.selectedCategoryFilter);
+      }
+
+      if (this.selectedLevelFilter) {
+        baseList = baseList.filter(kpi => kpi.kpi_level && kpi.kpi_level.includes(this.selectedLevelFilter));
+      }
+
+      if (this.selectedYearFilter) {
+        baseList = baseList.filter(kpi => kpi.fiscal_year == this.selectedYearFilter);
+      }
+
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();
         return baseList.filter(kpi => {
@@ -813,6 +863,8 @@ export default {
         const res = await axios.post('/api-digital/kpi/save_kpi.php', this.form);
         if (res.data.status === 'success') {
           Swal.fire('Saved!', 'บันทึกข้อมูลสำเร็จ', 'success');
+          this.fetchMasterData();
+          this.fetchKPIs();
           this.resetForm();
           this.closeSetupModal();
         } else {
@@ -897,6 +949,7 @@ export default {
         id: null,
         kpi_code: '',
         category_id: '',
+        new_category_name: '',
         kpi_name: '',
         calculation_type: 'percentage',
         kpi_level: 'โรงพยาบาล',
@@ -927,26 +980,83 @@ export default {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700&display=swap');
+
+* {
+  font-family: 'Figtree', sans-serif;
+}
+
+.calm-text-navy {
+  color: #1a3e6f !important;
+}
+
+.calm-bg-navy {
+  background-color: #1a3e6f !important;
+}
+
+.calm-bg-lavender {
+  background-color: #e2eaff !important;
+}
+
+.calm-btn-primary {
+  background: linear-gradient(90deg, #2477aa, #6461e0) !important;
+  color: white !important;
+  border: none !important;
+}
+
+.calm-btn-primary:hover {
+  opacity: 0.9;
+}
+
+.calm-btn-secondary {
+  background-color: #ffffff !important;
+  color: #1a3e6f !important;
+  border: 1px solid #1a3e6f !important;
+}
+
+.calm-btn-secondary:hover {
+  background-color: #f8f9fa !important;
+}
+
+.calm-card {
+  border-radius: 20px !important;
+  box-shadow: none !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+.calm-input {
+  border-radius: 10px !important;
+  border: 1px solid #1a3e6f !important;
+  padding: 0.5rem 1rem !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease;
+}
+
+.calm-input:focus {
+  border-width: 2px !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Override existing scoped styles that might conflict */
+:deep(.shadow-sm), :deep(.shadow-lg), :deep(.shadow) {
+  box-shadow: none !important;
+}
+
+.table > :not(caption) > * > * {
+  border-bottom-color: rgba(26, 62, 111, 0.1);
+}
+
 .bg-purple {
-  background-color: #4a148c; /* Deep purple */
+  background-color: #e2eaff !important;
+  color: #1a3e6f !important;
 }
-.btn-primary-custom {
-  background-color: #304ffe; /* Bright blue */
-  color: white;
-  border: none;
-  transition: all 0.2s;
-}
-.btn-primary-custom:hover {
-  background-color: #1a237e;
-  transform: translateY(-1px);
-}
+
 .text-primary-custom {
-  color: #304ffe;
+  color: #1a3e6f !important;
 }
-.badge.bg-primary-custom {
-  background-color: #304ffe !important;
-}
-.cursor-pointer {
-  cursor: pointer;
+
+.bg-primary-custom {
+  background-color: #1a3e6f !important;
 }
 </style>
