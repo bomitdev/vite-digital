@@ -144,7 +144,7 @@
                         </button>
                         <ul class="dropdown-menu w-100 shadow-lg border-0 p-2" aria-labelledby="materialDropdown" style="max-height: 400px; overflow-y: auto;">
                           <li v-for="mat in materials" :key="mat.id" class="mb-1">
-                            <a class="dropdown-item d-flex align-items-center rounded p-2 custom-dropdown-item" href="#" @click.prevent="form.material_id = mat.id">
+                            <a class="dropdown-item d-flex align-items-center rounded p-2 custom-dropdown-item" href="#" @click.prevent="selectMaterial(mat)">
                               <img v-if="mat.image_path" :src="getImageUrl(mat.image_path)" class="rounded me-3 object-fit-cover border" style="width: 50px; height: 50px;">
                               <div v-else class="rounded me-3 bg-light d-flex align-items-center justify-content-center text-muted border" style="width: 50px; height: 50px;">
                                 <i class="bi bi-image fs-5"></i>
@@ -311,7 +311,7 @@ export default {
     },
     selectedMaterial() {
       if (!this.form.material_id) return null;
-      return this.materials.find(m => m.id === this.form.material_id) || null;
+      return this.materials.find(m => m.id == this.form.material_id) || null;
     }
   },
   methods: {
@@ -376,6 +376,17 @@ export default {
       if (path.startsWith('http')) return path;
       const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
       return `${baseUrl}/vue-app/vite-digital/${path}`;
+    },
+    selectMaterial(mat) {
+      this.form.material_id = mat.id;
+      // Force close the dropdown
+      const dropdownEl = document.getElementById('materialDropdown');
+      if (dropdownEl) {
+        const dropdown = bootstrap.Dropdown.getInstance(dropdownEl);
+        if (dropdown) {
+          dropdown.hide();
+        }
+      }
     },
     async submitRequest() {
       // Input Validation
