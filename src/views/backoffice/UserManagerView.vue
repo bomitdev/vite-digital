@@ -337,11 +337,17 @@ export default {
         });
         if (response.data.status === 'success') {
           let fetchedUsers = response.data.data;
-          // Sort by finger_id descending (numerically)
+          // Sort by finger_id descending, but put empty finger_id at the top
           fetchedUsers.sort((a, b) => {
+            const emptyA = !a.FINGLE_ID || String(a.FINGLE_ID).trim() === '' || a.FINGLE_ID == '0';
+            const emptyB = !b.FINGLE_ID || String(b.FINGLE_ID).trim() === '' || b.FINGLE_ID == '0';
+
+            if (emptyA && !emptyB) return -1; // a is empty, put at top
+            if (!emptyA && emptyB) return 1;  // b is empty, put at top
+
             const idA = parseInt(a.FINGLE_ID) || 0;
             const idB = parseInt(b.FINGLE_ID) || 0;
-            return idB - idA;
+            return idB - idA; // Otherwise sort by ID descending
           });
           this.users = fetchedUsers;
           this.$nextTick(() => {
