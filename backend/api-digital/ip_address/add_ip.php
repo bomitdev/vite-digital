@@ -20,8 +20,8 @@ try {
     }
 
     $sql = "INSERT INTO it_ip_addresses 
-            (ip_address, device_name, mac_address, device_type, department, user_name, status, notes) 
-            VALUES (:ip_address, :device_name, :mac_address, :device_type, :department, :user_name, :status, :notes)";
+            (ip_address, device_name, mac_address, device_type, department, user_name, status, notes, vlan) 
+            VALUES (:ip_address, :device_name, :mac_address, :device_type, :department, :user_name, :status, :notes, :vlan)";
 
     $stmt = $pdo2->prepare($sql);
 
@@ -33,7 +33,8 @@ try {
         ':department' => $data['department'] ?? null,
         ':user_name' => $data['user_name'] ?? null,
         ':status' => $data['status'] ?? 'active',
-        ':notes' => $data['notes'] ?? null
+        ':notes' => $data['notes'] ?? null,
+        ':vlan' => $data['vlan'] ?? 'Default'
     ]);
 
     if ($success) {

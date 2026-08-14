@@ -6,6 +6,7 @@ header('Content-Type: application/json');
 try {
     $search = isset($_GET['search']) ? $_GET['search'] : '';
     $status = isset($_GET['status']) ? $_GET['status'] : 'all'; // all, active, inactive, reserved
+    $vlan = isset($_GET['vlan']) ? $_GET['vlan'] : 'all';
 
     $sql = "SELECT * FROM it_ip_addresses WHERE 1=1";
     $params = [];
@@ -20,6 +21,12 @@ try {
     if ($status !== 'all') {
         $sql .= " AND status = :status";
         $params[':status'] = $status;
+    }
+
+    // VLAN filter
+    if ($vlan !== 'all') {
+        $sql .= " AND vlan = :vlan";
+        $params[':vlan'] = $vlan;
     }
 
     // Convert IP to integer for correct sorting

@@ -32,7 +32,8 @@ try {
                 department = :department,
                 user_name = :user_name,
                 status = :status,
-                notes = :notes
+                notes = :notes,
+                vlan = :vlan
             WHERE id = :id";
 
     $stmt = $pdo2->prepare($sql);
@@ -46,6 +47,7 @@ try {
         ':user_name' => $data['user_name'] ?? null,
         ':status' => $data['status'] ?? 'active',
         ':notes' => $data['notes'] ?? null,
+        ':vlan' => $data['vlan'] ?? 'Default',
         ':id' => $data['id']
     ]);
 
