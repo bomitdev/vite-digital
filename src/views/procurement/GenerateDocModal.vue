@@ -114,7 +114,7 @@
             <div class="row g-3 mb-3">
               <div class="col-md-6">
                 <label class="form-label fw-bold">ชื่อเจ้าหน้าที่</label>
-                <input type="text" class="form-control rounded-3" v-model="formData.officer_name" placeholder="นายสุริยา จันทรา"/>
+                <input type="text" class="form-control rounded-3" v-model="formData.officer_name" @change="fetchOfficerDetails" placeholder="นายสุริยา จันทรา"/>
               </div>
               <div class="col-md-6">
                 <label class="form-label fw-bold">ตำแหน่ง</label>
@@ -250,6 +250,24 @@ export default {
     },
     removeCommittee(index) {
       this.formData.committee.splice(index, 1);
+    },
+    async fetchOfficerDetails() {
+      if (!this.formData.officer_name.trim()) return;
+      try {
+        const res = await axios.get(`/api-digital/procurement/get_officer_info.php?name=${encodeURIComponent(this.formData.officer_name.trim())}`);
+        if (res.data.status === 'success' && res.data.data) {
+          const d = res.data.data;
+          this.formData.officer_name = d.officer_name;
+          this.formData.officer_position = d.officer_position || this.formData.officer_position;
+          
+          if (d.chief_officer_name) {
+            this.formData.chief_officer_name = d.chief_officer_name;
+            this.formData.chief_officer_position = d.chief_officer_position || this.formData.chief_officer_position;
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching officer details', err);
+      }
     },
     async saveData() {
       this.saving = true;

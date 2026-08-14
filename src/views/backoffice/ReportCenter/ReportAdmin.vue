@@ -9,6 +9,12 @@
           <button @click="openModal()" class="btn btn-primary rounded-pill shadow-sm">
             <i class="bi bi-plus-lg me-1"></i> สร้างรายงานใหม่
           </button>
+          <button @click="$router.push('/report')" class="btn btn-info rounded-pill ms-2 text-white">
+            <i class="bi bi-chat-text-fill me-1"></i> ระบบขอรายงาน
+          </button>
+          <button @click="$router.push('/report-center')" class="btn btn-secondary rounded-pill ms-2">
+            <i class="bi bi-table me-1"></i> หน้า Report Center
+          </button>
           <button @click="goHome" class="btn btn-outline-secondary rounded-pill ms-2">
             <i class="bi bi-house me-1"></i> กลับหน้าหลัก
           </button>
