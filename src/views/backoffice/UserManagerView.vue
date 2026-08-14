@@ -10,14 +10,114 @@
             <small class="text-muted">User Access Management</small>
           </div>
         </div>
-        <button
-          @click="$router.push('/home-backoffice')"
-          class="btn btn-outline-secondary rounded-pill fw-bold"
-        >
-          <i class="bi bi-house-fill me-1"></i> กลับหน้าเมนู
-        </button>
+        <div class="d-flex gap-2">
+          
+          <button
+            @click="$router.push('/home-backoffice')"
+            class="btn btn-outline-secondary rounded-pill fw-bold"
+          >
+            <i class="bi bi-house-fill me-1"></i> กลับหน้าเมนู
+          </button>
+        </div>
       </div>
 
+      <!-- Summary Card -->
+      <div class="row mb-4">
+        <div class="col-12 col-md-4 mb-3 mb-md-0">
+          <div
+            class="card border-0 shadow-sm rounded-4 bg-primary text-white h-100"
+            style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)"
+          >
+            <div class="card-body p-3 p-md-4 d-flex align-items-center">
+              <div
+                class="rounded-circle bg-white bg-opacity-25 p-3 me-3 d-flex align-items-center justify-content-center"
+                style="width: 64px; height: 64px"
+              >
+                <i class="bi bi-people-fill fs-1"></i>
+              </div>
+              <div>
+                <h6 class="mb-1 fw-bold text-white-50">จำนวนเจ้าหน้าที่ทั้งหมด</h6>
+                <h2 class="mb-0 fw-bold display-6">
+                  {{ users.length }} <span class="fs-5 fw-normal text-white-50">คน</span>
+                </h2>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-8">
+          <div class="row g-2 h-100 align-content-start">
+            <div class="col-12 mb-1">
+              <h6 class="fw-bold text-dark text-center">แยกตามประเภทบุคลากร</h6>
+            </div>
+            <div
+              class="col-6 col-md-4 col-lg-3"
+              v-for="type in personnelTypeStats"
+              :key="type.name"
+            >
+              <div
+                class="card border-0 shadow-sm text-center h-100 overflow-hidden"
+                style="border-radius: 4px"
+              >
+                <div
+                  class="text-white py-1 fw-bold"
+                  style="
+                    background-color: #b091fb;
+                    font-size: 0.85rem;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    padding-left: 5px;
+                    padding-right: 5px;
+                  "
+                  :title="type.name"
+                >
+                  {{ type.name }}
+                </div>
+                <div
+                  class="card-body py-2 bg-white d-flex align-items-center justify-content-center"
+                >
+                  <h5 class="mb-0 fw-bold text-dark">
+                    {{ type.count }} <span class="small fw-normal">คน</span>
+                  </h5>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div v-if="users.length > 0" class="row mb-4 g-3">
+        <!-- Position Chart -->
+        <div class="col-12 col-xl-6">
+          <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-body p-4">
+              <h6 class="fw-bold text-dark mb-3">
+                <i class="bi bi-bar-chart-fill me-2 text-primary"></i
+                >กราฟแสดงจำนวนผู้ใช้งานแบ่งตามตำแหน่ง
+              </h6>
+              <div style="height: 250px; width: 100%">
+                <canvas id="positionChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Department Chart -->
+        <div class="col-12 col-xl-6">
+          <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-body p-4">
+              <h6 class="fw-bold text-dark mb-3">
+                <i class="bi bi-bar-chart-line-fill me-2 text-success"></i
+                >กราฟแสดงจำนวนผู้ใช้งานแบ่งตามแผนก
+              </h6>
+              <div style="height: 250px; width: 100%">
+                <canvas id="departmentChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       <!-- Search & Filters -->
       <div class="card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-body p-4">
@@ -53,42 +153,18 @@
                 </option>
               </select>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Charts Row -->
-      <div v-if="users.length > 0" class="row mb-4 g-3">
-        <!-- Position Chart -->
-        <div class="col-12">
-          <div class="card border-0 shadow-sm rounded-4 h-100">
-            <div class="card-body p-4">
-              <h6 class="fw-bold text-dark mb-3">
-                <i class="bi bi-bar-chart-fill me-2 text-primary"></i
-                >กราฟแสดงจำนวนผู้ใช้งานแบ่งตามตำแหน่ง
-              </h6>
-              <div style="height: 300px; width: 100%">
-                <canvas id="positionChart"></canvas>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Department Chart -->
-        <div class="col-12">
-          <div class="card border-0 shadow-sm rounded-4 h-100">
-            <div class="card-body p-4">
-              <h6 class="fw-bold text-dark mb-3">
-                <i class="bi bi-bar-chart-line-fill me-2 text-success"></i
-                >กราฟแสดงจำนวนผู้ใช้งานแบ่งตามแผนก
-              </h6>
-              <div style="height: 300px; width: 100%">
-                <canvas id="departmentChart"></canvas>
-              </div>
+            <div class="col-md-2 align-self-end">
+              <button
+                @click="exportExcel"
+                class="btn btn-success rounded-pill fw-bold w-100"
+                :disabled="users.length === 0"
+              >
+                <i class="bi bi-file-earmark-excel-fill me-1"></i> ส่งออก Excel
+              </button>
             </div>
           </div>
         </div>
       </div>
-
       <!-- Users Table -->
       <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
         <div class="table-responsive">
@@ -99,9 +175,11 @@
                 <th class="py-3 px-4 text-secondary small fw-bold">person_id</th>
                 <th class="py-3 px-4 text-secondary small fw-bold">finger_id</th>
                 <th class="py-3 px-4 text-secondary small fw-bold">ชื่อ-นามสกุล (ชื่อเล่น)</th>
-                <th class="py-3 text-secondary small fw-bold">ตำแหน่ง / แผนก / เริ่มงาน</th>
+                <th class="py-3 text-secondary small fw-bold" style="min-width: 250px">
+                  ตำแหน่ง / แผนก / ข้อมูลเพิ่มเติม
+                </th>
                 <th class="py-3 text-secondary small fw-bold">สิทธิ์การใช้งาน</th>
-                <th class="py-3 text-secondary small fw-bold text-center" style="width: 100px">
+                <th class="py-3 text-secondary small fw-bold text-center position-sticky end-0 bg-light" style="width: 100px; z-index: 1;">
                   จัดการ
                 </th>
               </tr>
@@ -120,7 +198,9 @@
                 <td class="py-3 px-4">
                   <div class="fw-bold text-dark">
                     {{ user.FULLNAME }}
-                    <span v-if="user.NICKNAME" class="text-primary ms-1">({{ user.NICKNAME }})</span>
+                    <span v-if="user.NICKNAME" class="text-primary ms-1"
+                      >({{ user.NICKNAME }})</span
+                    >
                   </div>
                   <div class="small text-muted">
                     <i class="bi bi-person me-1"></i>{{ user.HR_USERNAME }}
@@ -135,10 +215,37 @@
                   </div>
                 </td>
                 <td class="py-3">
-                  <div class="small text-dark fw-bold">{{ user.POSITION_NAME }}</div>
-                  <div class="small text-muted">{{ user.DEPARTMENT_NAME }}</div>
-                  <div class="small text-success mt-1" v-if="user.HR_STARTWORK_DATE && user.HR_STARTWORK_DATE !== '0000-00-00'">
-                    <i class="bi bi-calendar-check me-1"></i>เริ่มงาน: {{ formatDate(user.HR_STARTWORK_DATE) }}
+                  <div class="text-dark fw-bold mb-1" style="font-size: 0.95rem">
+                    {{ user.POSITION_NAME }}
+                  </div>
+
+                  <div class="mb-2">
+                    <span class="badge bg-light text-secondary border">
+                      <i class="bi bi-building me-1"></i>{{ user.DEPARTMENT_NAME }}
+                    </span>
+                  </div>
+
+                  <div class="d-flex flex-column gap-1" style="font-size: 0.85rem">
+                    <div class="text-secondary" v-if="user.HR_POSITION_NUM">
+                      <i class="bi bi-hash text-muted me-1"></i
+                      ><span class="text-muted">เลขตำแหน่ง:</span>
+                      <span class="fw-semibold text-dark">{{ user.HR_POSITION_NUM }}</span>
+                    </div>
+                    <div class="text-secondary" v-if="user.VCODE">
+                      <i class="bi bi-card-checklist text-muted me-1"></i
+                      ><span class="text-muted">ใบประกอบ:</span>
+                      <span class="fw-semibold text-dark">{{ user.VCODE }}</span>
+                    </div>
+                    <div
+                      class="text-success"
+                      v-if="user.HR_STARTWORK_DATE && user.HR_STARTWORK_DATE !== '0000-00-00'"
+                    >
+                      <i class="bi bi-calendar-check text-success me-1"></i
+                      ><span class="text-muted">เริ่มงาน:</span>
+                      <span class="fw-semibold text-success">{{
+                        formatDate(user.HR_STARTWORK_DATE)
+                      }}</span>
+                    </div>
                   </div>
                 </td>
                 <td class="py-3">
@@ -147,16 +254,17 @@
                     <span
                       v-for="(id, idx) in parseAccess(user.access_user)"
                       :key="idx"
-                      class="badge bg-info-subtle text-info-emphasis fw-normal border border-info-subtle"
+                      class="badge bg-info-subtle text-info-emphasis fw-normal border border-info-subtle text-truncate d-inline-block"
+                      style="max-width: 200px; vertical-align: bottom;"
+                      :title="getAccessName(id)"
                     >
                       {{ getAccessName(id) }}
                     </span>
                     <span v-if="!user.access_user" class="text-muted small">- ไม่มีสิทธิ์ -</span>
                   </div>
                 </td>
-                <td class="text-center">
+                <td class="text-center position-sticky end-0 bg-white shadow-sm">
                   <button
-                    v-if="canEdit"
                     class="btn btn-sm btn-outline-warning rounded-pill px-3"
                     @click="openEditModal(user)"
                   >
@@ -249,6 +357,7 @@
 import axios from 'axios';
 import { Modal } from 'bootstrap';
 import Chart from 'chart.js/auto';
+import * as XLSX from 'xlsx';
 
 export default {
   name: 'UserManagerView',
@@ -295,6 +404,20 @@ export default {
         const name = this.accessMap[token];
         return name && allowedRoles.includes(name);
       });
+    },
+    personnelTypeStats() {
+      if (!this.users || this.users.length === 0) return [];
+      const counts = {};
+      this.users.forEach((u) => {
+        const type = u.PERSON_TYPE_NAME || 'ไม่ระบุ';
+        counts[type] = (counts[type] || 0) + 1;
+      });
+      return Object.keys(counts)
+        .map((key) => ({
+          name: key,
+          count: counts[key]
+        }))
+        .sort((a, b) => b.count - a.count);
     }
   },
   methods: {
@@ -315,6 +438,52 @@ export default {
     },
     getAccessName(id) {
       return this.accessMap[id] || id; // Fallback to ID if not found
+    },
+    exportExcel() {
+      if (this.users.length === 0) return;
+
+      const exportData = this.users.map((u, index) => {
+        return {
+          ลำดับ: index + 1,
+          person_id: u.ID,
+          finger_id: u.FINGLE_ID || '-',
+          'ชื่อ-นามสกุล': u.FULLNAME,
+          ชื่อเล่น: u.NICKNAME || '-',
+          Username: u.HR_USERNAME || '-',
+          Email: u.HR_EMAIL || '-',
+          โทรศัพท์: u.HR_PHONE || '-',
+          ตำแหน่ง: u.POSITION_NAME || '-',
+          เลขตำแหน่ง: u.HR_POSITION_NUM || '-',
+          เลขใบประกอบ: u.VCODE || '-',
+          แผนก: u.DEPARTMENT_NAME || '-',
+          เริ่มงาน: this.formatDate(u.HR_STARTWORK_DATE)
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+
+      const colWidths = [
+        { wch: 8 },
+        { wch: 10 },
+        { wch: 10 },
+        { wch: 25 },
+        { wch: 10 },
+        { wch: 15 },
+        { wch: 20 },
+        { wch: 15 },
+        { wch: 20 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 25 },
+        { wch: 15 }
+      ];
+      ws['!cols'] = colWidths;
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Users');
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `รายงานสิทธิ์ผู้ใช้งาน_${dateStr}.xlsx`);
     },
     async fetchUserProfile() {
       try {
@@ -343,7 +512,7 @@ export default {
             const emptyB = !b.FINGLE_ID || String(b.FINGLE_ID).trim() === '' || b.FINGLE_ID == '0';
 
             if (emptyA && !emptyB) return -1; // a is empty, put at top
-            if (!emptyA && emptyB) return 1;  // b is empty, put at top
+            if (!emptyA && emptyB) return 1; // b is empty, put at top
 
             const idA = parseInt(a.FINGLE_ID) || 0;
             const idB = parseInt(b.FINGLE_ID) || 0;
@@ -454,14 +623,14 @@ export default {
       const sortedKeys = Object.keys(positionCounts).sort(
         (a, b) => positionCounts[b] - positionCounts[a]
       );
-      
+
       let labels = [];
       let data = [];
-      
+
       if (sortedKeys.length > 15) {
         labels = sortedKeys.slice(0, 15);
         data = labels.map((k) => positionCounts[k]);
-        
+
         let otherCount = 0;
         for (let i = 15; i < sortedKeys.length; i++) {
           otherCount += positionCounts[sortedKeys[i]];
@@ -558,14 +727,14 @@ export default {
 
       // Sort by counts descending
       const sortedKeys = Object.keys(deptCounts).sort((a, b) => deptCounts[b] - deptCounts[a]);
-      
+
       let labels = [];
       let data = [];
-      
+
       if (sortedKeys.length > 15) {
         labels = sortedKeys.slice(0, 15);
         data = labels.map((k) => deptCounts[k]);
-        
+
         let otherCount = 0;
         for (let i = 15; i < sortedKeys.length; i++) {
           otherCount += deptCounts[sortedKeys[i]];

@@ -69,15 +69,19 @@ try {
                 p.HR_PHONE,
                 p.NICKNAME,
                 p.HR_STARTWORK_DATE,
+                p.HR_POSITION_NUM,
+                p.VCODE,
                 CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) as FULLNAME,
                 p.access_user,
                 CONCAT(COALESCE(pos.HR_POSITION_NAME, '-'), COALESCE(hl.HR_LEVEL_NAME, '')) as POSITION_NAME,
-                COALESCE(dep.HR_DEPARTMENT_SUB_NAME, '-') as DEPARTMENT_NAME
+                COALESCE(dep.HR_DEPARTMENT_SUB_NAME, '-') as DEPARTMENT_NAME,
+                COALESCE(pt.HR_PERSON_TYPE_NAME, 'ไม่ระบุ') as PERSON_TYPE_NAME
             FROM hr_person p
             LEFT JOIN hr_prefix pf ON p.HR_PREFIX_ID = pf.HR_PREFIX_ID
             LEFT JOIN hr_position pos ON p.HR_POSITION_ID = pos.HR_POSITION_ID
             LEFT JOIN hr_level hl ON p.HR_LEVEL_ID = hl.HR_LEVEL_ID
             LEFT JOIN hr_department_sub dep ON p.HR_DEPARTMENT_SUB_ID = dep.HR_DEPARTMENT_SUB_ID
+            LEFT JOIN hr_person_type pt ON p.HR_PERSON_TYPE_ID = pt.HR_PERSON_TYPE_ID
             WHERE $whereClause
             ORDER BY p.ID ASC";
 
