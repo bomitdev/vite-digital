@@ -13,7 +13,7 @@
           </select>
           
         </div>
-        <router-link to="/manager-schedule" class="btn-schedule"> จัดการตารางเวร IT </router-link>
+        <router-link to="/manager-schedule" class="btn-schedule"> IT </router-link>
         </div>
          
         <div class="header-container mt-2">
@@ -225,7 +225,7 @@ td {
   background: linear-gradient(135deg, #b6acc0 0%, #b6acc0 100%); /* หรือใช้เฉดม่วงตามธีมโรงพยาบาล */
   background: linear-gradient(to right, #430579, #430579);
   display: flex;
-  border: 1px solid white;
+  border: 2px solid white;
   border-radius: 10px;
   height: 50px;
   align-items: center;
@@ -261,7 +261,7 @@ td {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   display: inline-flex;
   align-items: center;
-  width: 175px;
+  width: 45px;
   height: 50px;
 }
 

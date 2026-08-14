@@ -70,6 +70,16 @@
             <i class="bi bi-pc-display me-2"></i> ตารางเวร IT
           </a>
         </li>
+        <li class="nav-item">
+          <a
+            href="#"
+            class="nav-link"
+            :class="currentTab === 'leave' ? 'active bg-purple text-white' : 'link-dark'"
+            @click.prevent="switchTab('leave')"
+          >
+            <i class="bi bi-person-dash-fill me-2"></i> ปฏิทินวันลา/ไปราชการ
+          </a>
+        </li>
       </ul>
       <hr />
 
@@ -108,6 +118,7 @@
           <h1 class="h4 mb-0 text-purple fw-bold">
             <span v-if="currentTab === 'it'">ตารางเวร IT Support</span>
             <span v-else-if="currentTab === 'claim'">ตารางเวรงานประกัน/เบิกเครม</span>
+            <span v-else-if="currentTab === 'leave'">ตารางวันลา/ไปราชการ</span>
             <span v-else>ตารางเวรห้องบัตร (OPD Card)</span>
           </h1>
           <small class="text-muted d-none d-sm-block"
@@ -116,6 +127,7 @@
         </div>
         <div class="btn-group">
           <button
+            v-if="currentTab !== 'leave'"
             class="btn btn-outline-danger btn-sm fw-bold border"
             @click="$router.push('/ot-report-summary')"
             title="พิมพ์หน้าสรุปทุกแผนก"
@@ -143,10 +155,10 @@
           >
             <i class="bi bi-printer"></i> รายงาน OT
           </button>
-          <button class="btn btn-warning btn-sm text-dark fw-bold border" @click="goToDeletePage">
+          <button v-if="currentTab !== 'leave'" class="btn btn-warning btn-sm text-dark fw-bold border" @click="goToDeletePage">
             <i class="bi bi-pencil-square"></i> แก้ไข
           </button>
-          <button class="btn btn-purple btn-sm text-white" @click="goToAddPage">
+          <button v-if="currentTab !== 'leave'" class="btn btn-purple btn-sm text-white" @click="goToAddPage">
             <i class="bi bi-plus-lg"></i> เพิ่มเวร
           </button>
           <button
@@ -159,7 +171,10 @@
       </header>
 
       <div class="p-3 flex-grow-1 overflow-auto bg-light">
-        <div class="card shadow-sm border-0 h-100">
+        <div v-if="currentTab === 'leave'" class="h-100">
+          <LeaveCalendar />
+        </div>
+        <div v-else class="card shadow-sm border-0 h-100">
           <div class="card-body d-flex flex-column p-0">
             <div
               class="p-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3"
@@ -627,9 +642,13 @@
 
 <script>
 import axios from 'axios';
+import LeaveCalendar from './leave/LeaveCalendar.vue';
 
 export default {
   name: 'ScheduleViewFull',
+  components: {
+    LeaveCalendar
+  },
   data() {
     return {
       currentTab: 'card',

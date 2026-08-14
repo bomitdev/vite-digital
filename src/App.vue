@@ -29,7 +29,7 @@
 
           <li class="nav-item">
             <RouterLink class="nav-link" to="/schedule">
-              <i class="bi bi-calendar-week"></i> <span>ตารางเวร-IT</span>
+              <i class="bi bi-calendar-week"></i> <span>ตารางเวรIT</span>
             </RouterLink>
           </li>
 
@@ -545,9 +545,22 @@ const syncLogout = (e) => {
 // =========================
 // ROUTE CHANGE
 // =========================
+const closeNavbar = () => {
+  const navbarCollapse = document.getElementById('navbarNav');
+  const toggler = document.querySelector('.navbar-toggler');
+  if (navbarCollapse && navbarCollapse.classList.contains('show')) {
+    if (toggler && window.getComputedStyle(toggler).display !== 'none') {
+      toggler.click();
+    } else {
+      navbarCollapse.classList.remove('show');
+    }
+  }
+};
+
 router.afterEach(() => {
   activeDropdown.value = null;
   activeSubmenu.value = null;
+  closeNavbar();
 });
 
 // =========================
