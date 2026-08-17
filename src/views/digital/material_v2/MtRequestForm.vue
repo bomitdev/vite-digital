@@ -116,37 +116,49 @@
                   </div>
 
                   <div
-                    class="row g-3 align-items-center p-3 rounded-4 bg-light border border-white shadow-sm position-relative fade-in item-row"
+                    v-for="(item, index) in form.items"
+                    :key="index"
+                    class="row g-3 align-items-center p-3 rounded-4 bg-light border border-white shadow-sm position-relative fade-in item-row mb-3"
                   >
+                    <!-- Remove Item Button -->
+                    <button 
+                      v-if="form.items.length > 1"
+                      type="button" 
+                      class="btn btn-sm btn-outline-danger position-absolute" 
+                      style="top: -10px; right: -10px; width: 30px; height: 30px; border-radius: 50%; padding: 0; z-index: 10;"
+                      @click="removeItem(index)"
+                    >
+                      <i class="bi bi-x"></i>
+                    </button>
+
                     <!-- Material Selection -->
-                    <div class="col-md-8">
+                    <div class="col-md-7">
                       <label class="form-label fw-bold text-secondary small"
                         >วัสดุที่ต้องการเบิก <span class="text-danger">*</span></label
                       >
                       <div class="dropdown custom-select-dropdown w-100">
-                        <!-- Invisible overlay to detect clicks outside -->
-                        <div v-if="isDropdownOpen" @click="isDropdownOpen = false" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 999;"></div>
+                        <div v-if="item.isDropdownOpen" @click="item.isDropdownOpen = false" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 999;"></div>
                         
                         <button 
                           class="btn form-select form-select-lg fs-6 shadow-none border-light-subtle d-flex justify-content-between align-items-center w-100 bg-white position-relative" 
                           type="button" 
-                          @click="isDropdownOpen = !isDropdownOpen"
+                          @click="item.isDropdownOpen = !item.isDropdownOpen"
                           style="z-index: 1000;"
                         >
                           <div class="d-flex align-items-center text-truncate">
-                            <template v-if="selectedMaterial">
-                              <img v-if="selectedMaterial.image_path" :src="getImageUrl(selectedMaterial.image_path)" class="me-2 rounded object-fit-cover" style="width: 24px; height: 24px;">
+                            <template v-if="getSelectedMaterial(item.material_id)">
+                              <img v-if="getSelectedMaterial(item.material_id).image_path" :src="getImageUrl(getSelectedMaterial(item.material_id).image_path)" class="me-2 rounded object-fit-cover" style="width: 24px; height: 24px;">
                               <i v-else class="bi bi-box me-2 text-muted"></i>
-                              <span class="text-truncate text-dark">{{ selectedMaterial.code }} - {{ selectedMaterial.name }} (คงเหลือ: {{ selectedMaterial.balance }} {{ selectedMaterial.unit }})</span>
+                              <span class="text-truncate text-dark">{{ getSelectedMaterial(item.material_id).code }} - {{ getSelectedMaterial(item.material_id).name }} (คงเหลือ: {{ getSelectedMaterial(item.material_id).balance }} {{ getSelectedMaterial(item.material_id).unit }})</span>
                             </template>
                             <template v-else>
                               <span class="text-muted">-- เลือกรายการวัสดุ --</span>
                             </template>
                           </div>
                         </button>
-                        <ul class="dropdown-menu w-100 shadow-lg border-0 p-2" :class="{ show: isDropdownOpen }" style="max-height: 400px; overflow-y: auto; z-index: 1001; position: absolute;">
+                        <ul class="dropdown-menu w-100 shadow-lg border-0 p-2" :class="{ show: item.isDropdownOpen }" style="max-height: 400px; overflow-y: auto; z-index: 1001; position: absolute;">
                           <li v-for="mat in materials" :key="mat.id" class="mb-1">
-                            <a class="dropdown-item d-flex align-items-center rounded p-2 custom-dropdown-item" href="#" @click.prevent="selectMaterial(mat)">
+                            <a class="dropdown-item d-flex align-items-center rounded p-2 custom-dropdown-item" href="#" @click.prevent="selectMaterial(item, mat)">
                               <img v-if="mat.image_path" :src="getImageUrl(mat.image_path)" class="rounded me-3 object-fit-cover border" style="width: 50px; height: 50px;">
                               <div v-else class="rounded me-3 bg-light d-flex align-items-center justify-content-center text-muted border" style="width: 50px; height: 50px;">
                                 <i class="bi bi-image fs-5"></i>
@@ -162,20 +174,26 @@
                     </div>
 
                     <!-- Quantity -->
-                    <div class="col-md-4">
+                    <div class="col-md-5">
                       <label class="form-label fw-bold text-secondary small"
                         >จำนวน <span class="text-danger">*</span></label
                       >
                       <div class="input-group">
                         <input
                           type="number"
-                          v-model.number="form.quantity"
+                          v-model.number="item.quantity"
                           class="form-control form-control-lg fs-6 shadow-none border-light-subtle"
                           min="1"
                           required
                         />
                       </div>
                     </div>
+                  </div>
+
+                  <div class="text-end mt-3">
+                    <button type="button" class="btn btn-outline-primary rounded-pill px-4 shadow-sm fw-bold hover-lift" @click="addItem">
+                      <i class="bi bi-plus-circle me-1"></i> เพิ่มรายการ
+                    </button>
                   </div>
                 </div>
 
@@ -275,13 +293,13 @@ export default {
       form: {
         requester_name: localStorage.getItem('last_requester_name') || '',
         department: localStorage.getItem('last_department') || '',
-        material_id: '',
-        quantity: 1
+        items: [
+          { material_id: '', quantity: 1, isDropdownOpen: false }
+        ]
       },
       loading: false,
       requests: [],
-      searchQuery: '',
-      isDropdownOpen: false
+      searchQuery: ''
     };
   },
   mounted() {
@@ -312,10 +330,7 @@ export default {
         (req.material_name && req.material_name.toLowerCase().includes(q))
       );
     },
-    selectedMaterial() {
-      if (!this.form.material_id) return null;
-      return this.materials.find(m => m.id == this.form.material_id) || null;
-    }
+    // selectedMaterial is replaced by getSelectedMaterial method
   },
   methods: {
     async fetchMaterials() {
@@ -328,8 +343,8 @@ export default {
             .sort((a, b) => b.balance - a.balance);
           
           // Auto-select the first material if none is selected
-          if (this.materials.length > 0 && !this.form.material_id) {
-            this.form.material_id = this.materials[0].id;
+          if (this.materials.length > 0 && !this.form.items[0].material_id) {
+            this.form.items[0].material_id = this.materials[0].id;
           }
         }
       } catch (error) {
@@ -387,27 +402,64 @@ export default {
       const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
       return `${baseUrl}/vue-app/vite-digital/${path}`;
     },
-    selectMaterial(mat) {
-      this.form.material_id = mat.id;
-      this.isDropdownOpen = false;
+    getSelectedMaterial(id) {
+      if (!id) return null;
+      return this.materials.find(m => m.id == id) || null;
+    },
+    selectMaterial(item, mat) {
+      item.material_id = mat.id;
+      item.isDropdownOpen = false;
+    },
+    addItem() {
+      this.form.items.push({
+        material_id: this.materials.length > 0 ? this.materials[0].id : '',
+        quantity: 1,
+        isDropdownOpen: false
+      });
+    },
+    removeItem(index) {
+      this.form.items.splice(index, 1);
     },
     async submitRequest() {
       // Input Validation
-      if (!this.form.material_id) {
+      if (this.form.items.length === 0) {
         Swal.fire({
           icon: 'warning',
-          title: 'กรุณาเลือกวัสดุ',
-          text: 'โปรดระบุวัสดุที่คุณต้องการเบิก'
+          title: 'ไม่มีรายการ',
+          text: 'โปรดเพิ่มวัสดุที่คุณต้องการเบิกอย่างน้อย 1 รายการ'
         });
         return;
       }
 
-      const selectedMat = this.materials.find((m) => m.id === this.form.material_id);
-      if (selectedMat && this.form.quantity > selectedMat.balance) {
+      for (let i = 0; i < this.form.items.length; i++) {
+        const item = this.form.items[i];
+        if (!item.material_id) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'ข้อมูลไม่ครบ',
+            text: `กรุณาเลือกวัสดุในรายการที่ ${i + 1}`
+          });
+          return;
+        }
+
+        const selectedMat = this.materials.find((m) => m.id === item.material_id);
+        if (selectedMat && item.quantity > selectedMat.balance) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'ของไม่พอเบิก',
+            text: `รายการที่ ${i + 1} (${selectedMat.name}) คุณขอเบิก ${item.quantity} แต่มีของในสต๊อกเพียง ${selectedMat.balance}`
+          });
+          return;
+        }
+      }
+
+      // Check duplicate materials in the form
+      const materialIds = this.form.items.map(item => item.material_id);
+      if (new Set(materialIds).size !== materialIds.length) {
         Swal.fire({
           icon: 'warning',
-          title: 'ของไม่พอเบิก',
-          text: `คุณขอเบิก ${this.form.quantity} แต่มีของในสต๊อกเพียง ${selectedMat.balance}`
+          title: 'รายการซ้ำกัน',
+          text: 'กรุณารวมจำนวนวัสดุชนิดเดียวกันให้อยู่ในรายการเดียว'
         });
         return;
       }
@@ -430,8 +482,13 @@ export default {
           this.form = {
             requester_name: localStorage.getItem('last_requester_name') || '',
             department: localStorage.getItem('last_department') || '',
-            material_id: '',
-            quantity: 1
+            items: [
+              { 
+                material_id: this.materials.length > 0 ? this.materials[0].id : '', 
+                quantity: 1, 
+                isDropdownOpen: false 
+              }
+            ]
           };
           this.fetchRequests(); // Refresh the history list
         } else {

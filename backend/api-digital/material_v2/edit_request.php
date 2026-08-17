@@ -17,7 +17,7 @@ if (!isset($pdo2)) {
 
 $data = json_decode(file_get_contents("php://input"));
 
-if (!isset($data->id) || !isset($data->requester_name) || !isset($data->department) || !isset($data->material_id) || !isset($data->quantity)) {
+if (!isset($data->group_id) || !isset($data->requester_name) || !isset($data->department) || empty($data->items)) {
     echo json_encode(['success' => false, 'message' => 'Missing required fields']);
     exit;
 }
@@ -25,53 +25,82 @@ if (!isset($data->id) || !isset($data->requester_name) || !isset($data->departme
 try {
     $pdo2->beginTransaction();
 
-    // Check request
-    $stmtCheck = $pdo2->prepare("SELECT * FROM mt_requests WHERE id = :id FOR UPDATE");
-    $stmtCheck->execute([':id' => $data->id]);
-    $request = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+    // 1. Identify which rows to delete based on request_no or legacy group_id
+    $requestNo = isset($data->request_no) ? $data->request_no : null;
+    $groupId = $data->group_id;
 
-    if (!$request) {
+    $legacyId = null;
+    if (strpos($groupId, 'LEGACY-') === 0) {
+        $legacyId = str_replace('LEGACY-', '', $groupId);
+    }
+
+    // Check status of existing requests
+    if ($requestNo) {
+        $stmtCheck = $pdo2->prepare("SELECT status FROM mt_requests WHERE request_no = :request_no FOR UPDATE");
+        $stmtCheck->execute([':request_no' => $requestNo]);
+    } else {
+        $stmtCheck = $pdo2->prepare("SELECT status FROM mt_requests WHERE id = :id FOR UPDATE");
+        $stmtCheck->execute([':id' => $legacyId]);
+    }
+
+    $existingRequests = $stmtCheck->fetchAll(PDO::FETCH_ASSOC);
+
+    if (empty($existingRequests)) {
         $pdo2->rollBack();
         echo json_encode(['success' => false, 'message' => 'Request not found']);
         exit;
     }
 
-    // Optional check: Ensure material exists
-    $stmtMat = $pdo2->prepare("SELECT id FROM mt_materials WHERE id = :id");
-    $stmtMat->execute([':id' => $data->material_id]);
-    if ($stmtMat->rowCount() === 0) {
-        $pdo2->rollBack();
-        echo json_encode(['success' => false, 'message' => 'Material not found']);
-        exit;
+    // Only allow editing if pending or rejected
+    foreach ($existingRequests as $req) {
+        if ($req['status'] === 'approved') {
+            $pdo2->rollBack();
+            echo json_encode(['success' => false, 'message' => 'Cannot edit an approved request. Please delete and recreate.']);
+            exit;
+        }
     }
 
-    // Only allow editing if pending or rejected (don't allow if approved to avoid stock mismatch)
-    // Actually, if the user really wants to edit an approved request, we would need to refund old qty and deduct new qty. 
-    // It's safer to only allow edit on 'pending' or 'rejected'.
-    if ($request['status'] === 'approved') {
-        $pdo2->rollBack();
-        echo json_encode(['success' => false, 'message' => 'Cannot edit approved request. Delete it to refund stock instead.']);
-        exit;
+    // 2. Delete existing requests
+    if ($requestNo) {
+        $stmtDelete = $pdo2->prepare("DELETE FROM mt_requests WHERE request_no = :request_no AND status != 'approved'");
+        $stmtDelete->execute([':request_no' => $requestNo]);
+    } else {
+        $stmtDelete = $pdo2->prepare("DELETE FROM mt_requests WHERE id = :id AND status != 'approved'");
+        $stmtDelete->execute([':id' => $legacyId]);
+        
+        // Generate a new request_no for this legacy ticket since it's becoming a proper batch
+        $dateStr = date('Ymd-His');
+        $random = bin2hex(random_bytes(2));
+        $requestNo = "REQ-{$dateStr}-{$random}";
     }
 
-    // Update request
-    $sql = "UPDATE mt_requests 
-            SET requester_name = :requester_name, 
-                department = :department, 
-                material_id = :material_id, 
-                quantity = :quantity,
-                request_date = IFNULL(:request_date, request_date)
-            WHERE id = :id";
+    // 3. Insert new items
+    $stmtInsert = $pdo2->prepare("
+        INSERT INTO mt_requests (request_no, material_id, requester_name, department, quantity, request_date, status) 
+        VALUES (:request_no, :material_id, :requester_name, :department, :quantity, :request_date, 'pending')
+    ");
 
-    $stmt = $pdo2->prepare($sql);
-    $stmt->execute([
-        ':id' => $data->id,
-        ':requester_name' => $data->requester_name,
-        ':department' => $data->department,
-        ':material_id' => $data->material_id,
-        ':quantity' => $data->quantity,
-        ':request_date' => isset($data->request_date) ? $data->request_date : null
-    ]);
+    $requestDate = isset($data->request_date) ? $data->request_date : date('Y-m-d');
+
+    foreach ($data->items as $item) {
+        // Validate material exists
+        $stmtMat = $pdo2->prepare("SELECT id FROM mt_materials WHERE id = :id");
+        $stmtMat->execute([':id' => $item->material_id]);
+        if ($stmtMat->rowCount() === 0) {
+            $pdo2->rollBack();
+            echo json_encode(['success' => false, 'message' => "Material ID {$item->material_id} not found"]);
+            exit;
+        }
+
+        $stmtInsert->execute([
+            ':request_no' => $requestNo,
+            ':material_id' => $item->material_id,
+            ':requester_name' => $data->requester_name,
+            ':department' => $data->department,
+            ':quantity' => $item->quantity,
+            ':request_date' => $requestDate
+        ]);
+    }
 
     $pdo2->commit();
     echo json_encode([

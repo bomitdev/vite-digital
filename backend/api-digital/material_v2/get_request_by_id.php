@@ -4,7 +4,7 @@ header("Access-Control-Allow-Methods: GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json; charset=UTF-8");
 
-require_once '../../config.php';
+require_once __DIR__ . '/../../config.php';
 
 if (!isset($pdo2)) {
     echo json_encode(['success' => false, 'message' => 'Database connection failed']);
@@ -12,31 +12,75 @@ if (!isset($pdo2)) {
 }
 
 try {
-    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+    $requestNo = isset($_GET['request_no']) ? $_GET['request_no'] : (isset($_GET['id']) ? 'LEGACY-' . $_GET['id'] : '');
 
-    if ($id <= 0) {
-        echo json_encode(['success' => false, 'message' => 'Invalid ID']);
+    if (empty($requestNo)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid Request No']);
         exit;
     }
 
-    $sql = "
-        SELECT 
-            r.*, 
-            m.name AS material_name, 
-            m.code AS material_code,
-            m.unit AS material_unit,
-            m.balance AS current_balance
-        FROM mt_requests r
-        JOIN mt_materials m ON r.material_id = m.id
-        WHERE r.id = :id
-    ";
+    $isLegacy = strpos($requestNo, 'LEGACY-') === 0;
 
-    $stmt = $pdo2->prepare($sql);
-    $stmt->execute([':id' => $id]);
-    $request = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($isLegacy) {
+        $id = str_replace('LEGACY-', '', $requestNo);
+        $sql = "
+            SELECT 
+                r.*, 
+                m.name AS material_name, 
+                m.code AS material_code,
+                m.unit AS material_unit,
+                m.balance AS current_balance
+            FROM mt_requests r
+            JOIN mt_materials m ON r.material_id = m.id
+            WHERE r.id = :id
+        ";
+        $stmt = $pdo2->prepare($sql);
+        $stmt->execute([':id' => $id]);
+    } else {
+        $sql = "
+            SELECT 
+                r.*, 
+                m.name AS material_name, 
+                m.code AS material_code,
+                m.unit AS material_unit,
+                m.balance AS current_balance
+            FROM mt_requests r
+            JOIN mt_materials m ON r.material_id = m.id
+            WHERE r.request_no = :request_no
+        ";
+        $stmt = $pdo2->prepare($sql);
+        $stmt->execute([':request_no' => $requestNo]);
+    }
 
-    if ($request) {
-        if (isset($pdo3) && !empty($request['requester_name'])) {
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (!empty($rows)) {
+        $firstRow = $rows[0];
+        
+        $requestData = [
+            'id' => $firstRow['id'],
+            'request_no' => isset($firstRow['request_no']) ? $firstRow['request_no'] : null,
+            'request_date' => $firstRow['request_date'],
+            'requester_name' => $firstRow['requester_name'],
+            'department' => $firstRow['department'],
+            'status' => $firstRow['status'],
+            'items' => []
+        ];
+
+        foreach ($rows as $r) {
+            $requestData['items'][] = [
+                'id' => $r['id'],
+                'material_id' => $r['material_id'],
+                'material_name' => $r['material_name'],
+                'material_code' => $r['material_code'],
+                'material_unit' => $r['material_unit'],
+                'quantity' => $r['quantity'],
+                'current_balance' => $r['current_balance'],
+                'status' => $r['status']
+            ];
+        }
+
+        if (isset($pdo3) && !empty($requestData['requester_name'])) {
             $posSql = "
                 SELECT 
                     CONCAT(pos.HR_POSITION_NAME, 
@@ -51,18 +95,18 @@ try {
                 LIMIT 1
             ";
             $posStmt = $pdo3->prepare($posSql);
-            $posStmt->execute([':name' => $request['requester_name']]);
+            $posStmt->execute([':name' => $requestData['requester_name']]);
             $posData = $posStmt->fetch(PDO::FETCH_ASSOC);
-            $request['requester_position'] = $posData ? $posData['position_name'] : '';
-            $request['position_name2'] = $posData ? $posData['position_name2'] : '';
+            $requestData['requester_position'] = $posData ? $posData['position_name'] : '';
+            $requestData['position_name2'] = $posData ? $posData['position_name2'] : '';
         } else {
-            $request['requester_position'] = '';
-            $request['position_name2'] = '';
+            $requestData['requester_position'] = '';
+            $requestData['position_name2'] = '';
         }
 
         echo json_encode([
             'success' => true,
-            'data' => $request
+            'data' => $requestData
         ]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Request not found']);

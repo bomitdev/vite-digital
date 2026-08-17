@@ -17,48 +17,63 @@ if (!isset($pdo2)) {
 
 $data = json_decode(file_get_contents("php://input"));
 
-if (!isset($data->id)) {
-    echo json_encode(['success' => false, 'message' => 'Missing ID field']);
+if (!isset($data->request_no)) {
+    echo json_encode(['success' => false, 'message' => 'Missing Request No field']);
     exit;
 }
+
+$requestNo = $data->request_no;
+$isLegacy = strpos($requestNo, 'LEGACY-') === 0;
 
 try {
     $pdo2->beginTransaction();
 
-    // 1. Get request to check status
-    $stmt = $pdo2->prepare("SELECT * FROM mt_requests WHERE id = :id FOR UPDATE");
-    $stmt->execute([':id' => $data->id]);
-    $request = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($isLegacy) {
+        $id = str_replace('LEGACY-', '', $requestNo);
+        $stmt = $pdo2->prepare("SELECT * FROM mt_requests WHERE id = :id FOR UPDATE");
+        $stmt->execute([':id' => $id]);
+    } else {
+        $stmt = $pdo2->prepare("SELECT * FROM mt_requests WHERE request_no = :request_no FOR UPDATE");
+        $stmt->execute([':request_no' => $requestNo]);
+    }
 
-    if (!$request) {
+    $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (empty($requests)) {
         $pdo2->rollBack();
         echo json_encode(['success' => false, 'message' => 'Request not found']);
         exit;
     }
 
-    // 2. If approved, refund stock and remove transaction
-    if ($request['status'] === 'approved') {
-        $qty = (int)$request['quantity'];
-        $matId = $request['material_id'];
+    $refundedCount = 0;
+    foreach ($requests as $request) {
+        // 2. If approved, refund stock and remove transaction
+        if ($request['status'] === 'approved') {
+            $qty = (int)$request['quantity'];
+            $matId = $request['material_id'];
 
-        // Add back balance
-        $stmtMat = $pdo2->prepare("UPDATE mt_materials SET balance = balance + :qty WHERE id = :matId");
-        $stmtMat->execute([':qty' => $qty, ':matId' => $matId]);
+            // Add back balance
+            $stmtMat = $pdo2->prepare("UPDATE mt_materials SET balance = balance + :qty WHERE id = :matId");
+            $stmtMat->execute([':qty' => $qty, ':matId' => $matId]);
 
-        // Remove the transaction OUT that was created
-        $stmtDelTx = $pdo2->prepare("DELETE FROM mt_transactions WHERE material_id = :matId AND action_type = 'OUT' AND note = :note");
-        $stmtDelTx->execute([':matId' => $matId, ':note' => 'Approved request ID ' . $request['id']]);
+            // Remove the transaction OUT that was created
+            $noteText = $isLegacy ? 'Approved request ID ' . $request['id'] : 'Approved request No: ' . $requestNo;
+            $stmtDelTx = $pdo2->prepare("DELETE FROM mt_transactions WHERE material_id = :matId AND action_type = 'OUT' AND note = :note");
+            $stmtDelTx->execute([':matId' => $matId, ':note' => $noteText]);
+
+            $refundedCount++;
+        }
+
+        // 3. Delete the request
+        $stmtDel = $pdo2->prepare("DELETE FROM mt_requests WHERE id = :id");
+        $stmtDel->execute([':id' => $request['id']]);
     }
-
-    // 3. Delete the request
-    $stmtDel = $pdo2->prepare("DELETE FROM mt_requests WHERE id = :id");
-    $stmtDel->execute([':id' => $data->id]);
 
     $pdo2->commit();
 
     echo json_encode([
         'success' => true,
-        'message' => 'Material request deleted' . ($request['status'] === 'approved' ? ' and material stock refunded' : '')
+        'message' => 'Material request deleted' . ($refundedCount > 0 ? " and $refundedCount items refunded" : '')
     ]);
 } catch (PDOException $e) {
     if ($pdo2->inTransaction()) {

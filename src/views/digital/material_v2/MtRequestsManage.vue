@@ -84,11 +84,16 @@
                   <td>{{ req.requester_name }}</td>
                   <td>{{ req.department }}</td>
                   <td>
-                    <span class="fw-bold">{{ req.material_name }}</span
-                    ><br />
-                    <small class="text-muted">{{ req.material_code }}</small>
+                    <div v-for="item in req.items" :key="item.id" class="mb-1 pb-1 border-bottom border-light">
+                      <span class="fw-bold">{{ item.material_name }}</span><br />
+                      <small class="text-muted">{{ item.material_code }}</small>
+                    </div>
                   </td>
-                  <td class="text-center fw-bold text-dark fs-5">{{ req.quantity }}</td>
+                  <td class="text-center fw-bold text-dark fs-6">
+                    <div v-for="item in req.items" :key="item.id" class="mb-1 pb-1 border-bottom border-light" style="min-height: 42px; display: flex; align-items: center; justify-content: center;">
+                      {{ item.quantity }}
+                    </div>
+                  </td>
                   <td class="text-center">
                     <span
                       class="badge rounded-pill px-3 py-2 fw-normal"
@@ -101,42 +106,33 @@
                   </td>
                   <td>{{ req.admin_note || '-' }}</td>
                   <td class="text-end pe-4">
-                    <div class="d-flex gap-2 justify-content-end">
+                    <div class="d-flex gap-2 justify-content-end align-items-center h-100 flex-wrap" style="max-width: 150px">
                       <template v-if="req.status === 'pending'">
                         <button
-                          class="btn btn-sm btn-success"
+                          class="btn btn-sm btn-success flex-fill"
                           @click="approveRequest(req)"
                           title="อนุมัติจ่ายของ"
                         >
                           <i class="bi bi-check-circle"></i> อนุมัติ
                         </button>
                         <button
-                          class="btn btn-sm btn-secondary"
+                          class="btn btn-sm btn-warning flex-fill text-dark"
                           @click="openEditModal(req)"
                           title="แก้ไข"
                         >
                           <i class="bi bi-pencil-square"></i> แก้ไข
                         </button>
                         <button
-                          class="btn btn-sm btn-danger"
+                          class="btn btn-sm btn-danger flex-fill"
                           @click="rejectRequest(req)"
                           title="ปฏิเสธ"
                         >
                           <i class="bi bi-x-circle"></i> ปฏิเสธ
                         </button>
                       </template>
-                      <template v-else-if="req.status === 'rejected'">
-                        <button
-                          class="btn btn-sm btn-secondary"
-                          @click="openEditModal(req)"
-                          title="แก้ไข"
-                        >
-                          <i class="bi bi-pencil-square"></i> แก้ไข
-                        </button>
-                      </template>
                       <template v-else-if="req.status === 'approved'">
                         <button
-                          class="btn btn-sm btn-danger text-white"
+                          class="btn btn-sm btn-danger text-white flex-fill"
                           @click="exportPDF(req)"
                           title="Export PDF"
                         >
@@ -144,7 +140,7 @@
                         </button>
                       </template>
                       <button
-                        class="btn btn-sm btn-outline-danger"
+                        class="btn btn-sm btn-outline-danger flex-fill"
                         @click="deleteRequest(req)"
                         title="ลบข้อมูล"
                       >
@@ -162,86 +158,142 @@
 
     <!-- Edit Request Modal -->
     <div class="modal fade" id="editRequestModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-4">
-          <div class="modal-header bg-light border-bottom-0 rounded-top-4">
-            <h5 class="modal-title fw-bold text-primary">
-              <i class="bi bi-pencil-square me-2"></i>แก้ไขรายการขอเบิก
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+          <div class="modal-header bg-warning bg-opacity-10 border-bottom-0 pb-0">
+            <h5 class="modal-title text-warning-emphasis fw-bold">
+              <i class="bi bi-pencil-square me-2"></i>แก้ไขรายการเบิกวัสดุ
             </h5>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-              aria-label="Close"
-            ></button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-          <div class="modal-body p-4">
-            <form @submit.prevent="submitEditRequest">
-              <div class="mb-3">
-                <label class="form-label fw-bold"
-                  >ชื่อผู้เบิก <span class="text-danger">*</span></label
+          <div class="modal-body p-4 pt-3">
+            <form @submit.prevent="saveEdit">
+              <!-- ข้อมูลผู้เบิก -->
+              <div class="card border border-light shadow-sm mb-4">
+                <div class="card-body">
+                  <h6 class="card-title text-muted mb-3 fw-bold">
+                    <i class="bi bi-person-badge me-1"></i> ข้อมูลผู้เบิก
+                  </h6>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label text-secondary small mb-1">ชื่อ-สกุลผู้เบิก <span class="text-danger">*</span></label>
+                      <input
+                        type="text"
+                        class="form-control bg-light"
+                        v-model="editData.requester_name"
+                        required
+                        list="requesterOptionsEdit"
+                      />
+                      <datalist id="requesterOptionsEdit">
+                        <option v-for="(name, index) in pastRequesters" :key="index" :value="name"></option>
+                      </datalist>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label text-secondary small mb-1">หน่วยงาน <span class="text-danger">*</span></label>
+                      <input
+                        type="text"
+                        class="form-control bg-light"
+                        v-model="editData.department"
+                        required
+                        list="deptOptionsEdit"
+                      />
+                      <datalist id="deptOptionsEdit">
+                        <option v-for="(dept, index) in pastDepartments" :key="index" :value="dept"></option>
+                      </datalist>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label text-secondary small mb-1">วันที่ขอเบิก <span class="text-danger">*</span></label>
+                      <input
+                        type="date"
+                        class="form-control bg-light"
+                        v-model="editData.request_date"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- รายการวัสดุ -->
+              <div class="card border border-light shadow-sm mb-4">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="card-title text-muted mb-0 fw-bold">
+                      <i class="bi bi-box-seam me-1"></i> รายการวัสดุที่ต้องการเบิก
+                    </h6>
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" @click="addEditItem">
+                      <i class="bi bi-plus-lg"></i> เพิ่มรายการ
+                    </button>
+                  </div>
+
+                  <div v-if="editData.items.length === 0" class="text-center p-3 bg-light rounded text-muted">
+                    กรุณาเพิ่มรายการวัสดุ
+                  </div>
+
+                  <div 
+                    v-for="(item, index) in editData.items" 
+                    :key="index" 
+                    class="row g-2 align-items-end mb-3 p-3 bg-light rounded position-relative"
+                  >
+                    <button 
+                      type="button" 
+                      class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 mt-2 me-2 rounded-circle border-0" 
+                      style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;"
+                      @click="removeEditItem(index)"
+                      title="ลบรายการนี้"
+                      v-if="editData.items.length > 1"
+                    >
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+
+                    <div class="col-md-7">
+                      <label class="form-label text-secondary small mb-1">เลือกวัสดุ <span class="text-danger">*</span></label>
+                      <select class="form-select" v-model="item.material_id" required>
+                        <option value="" disabled>-- เลือกวัสดุ --</option>
+                        <option
+                          v-for="mat in materials"
+                          :key="mat.id"
+                          :value="mat.id"
+                          :disabled="mat.balance <= 0"
+                        >
+                          {{ mat.name }} ({{ mat.code }}) - คงเหลือ: {{ mat.balance }} {{ mat.unit || 'ชิ้น' }}
+                        </option>
+                      </select>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label text-secondary small mb-1">จำนวน <span class="text-danger">*</span></label>
+                      <div class="input-group">
+                        <button type="button" class="btn btn-outline-secondary" @click="item.quantity > 1 ? item.quantity-- : null">-</button>
+                        <input
+                          type="number"
+                          class="form-control text-center px-1"
+                          v-model.number="item.quantity"
+                          min="1"
+                          required
+                        />
+                        <button type="button" class="btn btn-outline-secondary" @click="item.quantity++">+</button>
+                      </div>
+                    </div>
+                    <div class="col-md-2 d-none d-md-block text-end pb-1">
+                      <span class="badge bg-info bg-opacity-10 text-info border border-info rounded-pill px-2 py-1" v-if="item.material_id">
+                        เหลือ {{ getMaterialBalance(item.material_id) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Submit -->
+              <div class="text-end">
+                <button
+                  type="button"
+                  class="btn btn-light me-2 fw-bold"
+                  data-bs-dismiss="modal"
                 >
-                <input
-                  type="text"
-                  v-model="editForm.requester_name"
-                  class="form-control"
-                  required
-                  placeholder="ระบุชื่อ-นามสกุล"
-                  list="edit_requester_list"
-                />
-                <datalist id="edit_requester_list">
-                  <option
-                    v-for="(name, index) in pastRequesters"
-                    :key="index"
-                    :value="name"
-                  ></option>
-                </datalist>
-              </div>
-              <div class="mb-3">
-                <label class="form-label fw-bold"
-                  >หน่วยงาน/แผนก <span class="text-danger">*</span></label
-                >
-                <input
-                  type="text"
-                  v-model="editForm.department"
-                  class="form-control"
-                  required
-                  placeholder="ระบุหน่วยงาน"
-                  list="edit_department_list"
-                />
-                <datalist id="edit_department_list">
-                  <option
-                    v-for="(dept, index) in pastDepartments"
-                    :key="index"
-                    :value="dept"
-                  ></option>
-                </datalist>
-              </div>
-              <div class="mb-3">
-                <label class="form-label fw-bold"
-                  >วัสดุที่ต้องการเบิก <span class="text-danger">*</span></label
-                >
-                <select v-model="editForm.material_id" class="form-select" required>
-                  <option value="" disabled>-- เลือกวัสดุ --</option>
-                  <option v-for="mat in materials" :key="mat.id" :value="mat.id">
-                    {{ mat.code }} - {{ mat.name }} (คงเหลือ: {{ mat.balance }} {{ mat.unit }})
-                  </option>
-                </select>
-              </div>
-              <div class="mb-4">
-                <label class="form-label fw-bold">จำนวน <span class="text-danger">*</span></label>
-                <input
-                  type="number"
-                  v-model.number="editForm.quantity"
-                  class="form-control"
-                  min="1"
-                  required
-                />
-              </div>
-              <div class="d-flex justify-content-end gap-2">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">ยกเลิก</button>
-                <button type="submit" class="btn btn-primary px-4" :disabled="submittingEdit">
-                  {{ submittingEdit ? 'กำลังบันทึก...' : 'บันทึกข้อมูล' }}
+                  ยกเลิก
+                </button>
+                <button type="submit" class="btn btn-warning text-dark fw-bold px-4 shadow-sm" :disabled="!isEditFormValid">
+                  <i class="bi bi-save me-1"></i> บันทึกการแก้ไข
                 </button>
               </div>
             </form>
@@ -268,27 +320,30 @@ export default {
       materials: [],
       pastRequesters: [],
       pastDepartments: [],
-      editForm: {
-        id: null,
+      editData: {
+        request_no: null,
+        group_id: null,
         requester_name: '',
         department: '',
-        material_id: '',
-        quantity: 1
+        request_date: '',
+        items: []
       },
       editModalInstance: null,
-      submittingEdit: false
+      editData: {
+        request_no: null,
+        group_id: null,
+        requester_name: '',
+        department: '',
+        request_date: '',
+        items: []
+      },
+      editModalInstance: null
     };
   },
   mounted() {
     this.fetchRequests();
     this.fetchMaterials();
     this.fetchRequestersAndDepts();
-
-    // Initialize standard modal instance
-    const modalEl = document.getElementById('editRequestModal');
-    if (modalEl) {
-      this.editModalInstance = new bootstrap.Modal(modalEl);
-    }
   },
   methods: {
     async fetchRequests() {
@@ -348,19 +403,96 @@ export default {
       };
       return map[status] || status;
     },
-    async approveRequest(req) {
-      if (req.quantity > req.current_balance) {
-        Swal.fire(
-          'ข้อผิดพลาด',
-          `ยอดคงเหลือไม่พอ (เหลือ ${req.current_balance}) เบิก ${req.quantity}`,
-          'error'
+    getMaterialBalance(materialId) {
+      if (!materialId) return 0;
+      const mat = this.materials.find(m => m.id === materialId);
+      return mat ? mat.balance : 0;
+    },
+    openEditModal(req) {
+      // Clone data to avoid live binding edits
+      this.editData = {
+        request_no: req.request_no,
+        group_id: req.group_id,
+        requester_name: req.requester_name,
+        department: req.department,
+        request_date: req.request_date,
+        items: req.items.map(i => ({
+          material_id: i.material_id,
+          quantity: i.quantity
+        }))
+      };
+      
+      // Initialize if empty
+      if (this.editData.items.length === 0) {
+        this.addEditItem();
+      }
+
+      if (!this.editModalInstance) {
+        this.editModalInstance = new bootstrap.Modal(
+          document.getElementById('editRequestModal')
         );
+      }
+      this.editModalInstance.show();
+    },
+    addEditItem() {
+      this.editData.items.push({ material_id: '', quantity: 1 });
+    },
+    removeEditItem(index) {
+      if (this.editData.items.length > 1) {
+        this.editData.items.splice(index, 1);
+      }
+    },
+    async saveEdit() {
+      try {
+        const payload = {
+          request_no: this.editData.request_no,
+          group_id: this.editData.group_id,
+          requester_name: this.editData.requester_name,
+          department: this.editData.department,
+          request_date: this.editData.request_date,
+          items: this.editData.items
+        };
+
+        const res = await axios.post('/api-digital/material_v2/edit_request.php', payload);
+        
+        if (res.data.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'บันทึกสำเร็จ',
+            text: res.data.message || 'แก้ไขข้อมูลเรียบร้อย',
+            timer: 1500,
+            showConfirmButton: false
+          });
+          this.editModalInstance.hide();
+          this.fetchRequests();
+        } else {
+          Swal.fire('ข้อผิดพลาด', res.data.message || 'ไม่สามารถแก้ไขข้อมูลได้', 'error');
+        }
+      } catch (error) {
+        console.error('Error saving edit', error);
+        Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+      }
+    },
+    async approveRequest(req) {
+      // Validate items
+      let hasError = false;
+      let errorMsg = '';
+      for (const item of req.items) {
+        if (item.quantity > item.current_balance) {
+          hasError = true;
+          errorMsg = `ยอดคงเหลือไม่พอสำหรับ ${item.material_name} (เหลือ ${item.current_balance}) เบิก ${item.quantity}`;
+          break;
+        }
+      }
+
+      if (hasError) {
+        Swal.fire('ข้อผิดพลาด', errorMsg, 'error');
         return;
       }
 
       const confirm = await Swal.fire({
         title: 'ยืนยันการอนุมัติจ่ายวัสดุ?',
-        text: `คุณต้องการจ่าย ${req.material_name} จำนวน ${req.quantity} ชิ้น ให้แก่ ${req.requester_name} ใช่หรือไม่? (สต๊อกจะถูกตัดทันที)`,
+        text: `คุณต้องการจ่ายวัสดุจำนวน ${req.items.length} รายการ ให้แก่ ${req.requester_name} ใช่หรือไม่? (สต๊อกจะถูกตัดทันที)`,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#198754',
@@ -370,7 +502,7 @@ export default {
       if (confirm.isConfirmed) {
         try {
           const res = await axios.post('/api-digital/material_v2/approve_request.php', {
-            id: req.id,
+            request_no: req.group_id,
             admin_note: 'อนุมัติผ่านระบบ'
           });
           if (res.data.success) {
@@ -401,7 +533,7 @@ export default {
       if (note !== undefined) {
         try {
           const res = await axios.post('/api-digital/material_v2/reject_request.php', {
-            id: req.id,
+            request_no: req.group_id,
             admin_note: note
           });
           if (res.data.success) {
@@ -418,55 +550,6 @@ export default {
         } catch (err) {
           Swal.fire('Error', 'Failed to reject request', 'error');
         }
-      }
-    },
-    openEditModal(req) {
-      this.editForm = {
-        id: req.id,
-        requester_name: req.requester_name,
-        department: req.department,
-        material_id: req.material_id, // make sure material_id exists in req... Wait, does req contain material_id?
-        quantity: req.quantity
-      };
-
-      // If req doesn't have material_id (maybe it only has material_code?), we need to find it by code or name
-      if (!req.material_id) {
-        const mat =
-          this.materials.find(
-            (m) => m.code === req.material_code && m.name === req.material_name
-          ) || this.materials.find((m) => m.name === req.material_name);
-        if (mat) {
-          this.editForm.material_id = mat.id;
-        }
-      }
-
-      if (this.editModalInstance) {
-        this.editModalInstance.show();
-      }
-    },
-    async submitEditRequest() {
-      this.submittingEdit = true;
-      try {
-        const res = await axios.post('/api-digital/material_v2/edit_request.php', this.editForm);
-        if (res.data.success) {
-          Swal.fire({
-            icon: 'success',
-            title: 'อัปเดตข้อมูลสำเร็จ',
-            showConfirmButton: false,
-            timer: 1500
-          });
-          if (this.editModalInstance) {
-            this.editModalInstance.hide();
-          }
-          this.fetchRequests();
-        } else {
-          Swal.fire('ข้อผิดพลาด', res.data.message, 'error');
-        }
-      } catch (error) {
-        console.error(error);
-        Swal.fire('ข้อผิดพลาด', 'ไม่สามารถอัปเดตข้อมูลได้', 'error');
-      } finally {
-        this.submittingEdit = false;
       }
     },
     async deleteRequest(req) {
@@ -487,7 +570,7 @@ export default {
       if (confirm.isConfirmed) {
         try {
           const res = await axios.post('/api-digital/material_v2/delete_request.php', {
-            id: req.id
+            request_no: req.group_id
           });
           if (res.data.success) {
             Swal.fire({
@@ -528,7 +611,7 @@ export default {
 
       try {
         const [reqRes, setRes] = await Promise.all([
-          axios.get(`/api-digital/material_v2/get_request_by_id.php?id=${req.id}`),
+          axios.get(`/api-digital/material_v2/get_request_by_id.php?request_no=${req.group_id}`),
           axios.get('/api-digital/material_v2/get_print_settings.php')
         ]);
 
@@ -614,20 +697,19 @@ export default {
 
         doc.text('ขอเบิกวัสดุสำนักงานเพื่อใช้ใน สำนักงาน ดังต่อไปนี้', 30, 85);
 
+        const tableBody = requestData.items.map((item, index) => [
+          (index + 1).toString(),
+          item.material_name + (item.material_code ? ` (${item.material_code})` : ''),
+          item.material_unit || 'ชิ้น',
+          item.quantity,
+          item.status === 'approved' ? item.quantity : '-',
+          item.current_balance
+        ]);
+
         autoTable(doc, {
           startY: 92,
           head: [['ลำดับที่', 'รายการ', 'หน่วยนับ', 'จำนวนเบิก', 'อนุมัติ', 'คงเหลือในบัญชีคุม']],
-          body: [
-            [
-              '1',
-              requestData.material_name +
-                (requestData.material_code ? ` (${requestData.material_code})` : ''),
-              requestData.material_unit || 'ชิ้น',
-              requestData.quantity,
-              requestData.status === 'approved' ? requestData.quantity : '-',
-              requestData.current_balance
-            ]
-          ],
+          body: tableBody,
           styles: {
             font: 'Sarabun',
             fontStyle: 'normal',
@@ -716,12 +798,40 @@ export default {
           { align: 'center' }
         );
 
-        doc.save(`material-request-${requestData.id}.pdf`);
+        doc.save(`material-request-${requestData.request_no || requestData.id}.pdf`);
         Swal.close();
       } catch (err) {
         console.error(err);
         Swal.fire('Error', 'เกิดข้อผิดพลาดในการสร้าง PDF', 'error');
       }
+    }
+  },
+  computed: {
+    isEditFormValid() {
+      if (!this.editData.requester_name || !this.editData.department || !this.editData.request_date) {
+        return false;
+      }
+      if (this.editData.items.length === 0) return false;
+      for (const item of this.editData.items) {
+        if (!item.material_id || !item.quantity || item.quantity < 1) {
+          return false;
+        }
+      }
+      return true;
+    }
+  },
+  computed: {
+    isEditFormValid() {
+      if (!this.editData.requester_name || !this.editData.department || !this.editData.request_date) {
+        return false;
+      }
+      if (this.editData.items.length === 0) return false;
+      for (const item of this.editData.items) {
+        if (!item.material_id || !item.quantity || item.quantity < 1) {
+          return false;
+        }
+      }
+      return true;
     }
   }
 };
