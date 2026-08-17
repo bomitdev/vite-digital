@@ -57,7 +57,9 @@
             >
               <div
                 class="card border-0 shadow-sm text-center h-100 overflow-hidden"
-                style="border-radius: 4px"
+                style="border-radius: 4px; cursor: pointer; transition: all 0.2s ease;"
+                :style="selectedPersonnelType === type.name ? 'box-shadow: 0 0 0 3px #b091fb !important; opacity: 1;' : (selectedPersonnelType ? 'opacity: 0.5;' : 'opacity: 1;')"
+                @click="selectedPersonnelType = selectedPersonnelType === type.name ? '' : type.name"
               >
                 <div
                   class="text-white py-1 fw-bold"
@@ -157,7 +159,7 @@
               <button
                 @click="exportExcel"
                 class="btn btn-success rounded-pill fw-bold w-100"
-                :disabled="users.length === 0"
+                :disabled="filteredUsers.length === 0"
               >
                 <i class="bi bi-file-earmark-excel-fill me-1"></i> ส่งออก Excel
               </button>
@@ -185,7 +187,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(user, index) in users" :key="user.ID">
+              <tr v-for="(user, index) in filteredUsers" :key="user.ID">
                 <td class="py-3 px-4 text-center">
                   <div class="fw-bold text-muted">{{ index + 1 }}</div>
                 </td>
@@ -219,7 +221,10 @@
                     {{ user.POSITION_NAME }}
                   </div>
 
-                  <div class="mb-2">
+                  <div class="mb-2 d-flex flex-wrap gap-1">
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle" v-if="user.PERSON_TYPE_NAME">
+                      <i class="bi bi-person-badge me-1"></i>{{ user.PERSON_TYPE_NAME }}
+                    </span>
                     <span class="badge bg-light text-secondary border">
                       <i class="bi bi-building me-1"></i>{{ user.DEPARTMENT_NAME }}
                     </span>
@@ -272,7 +277,7 @@
                   </button>
                 </td>
               </tr>
-              <tr v-if="users.length === 0 && !loading">
+              <tr v-if="filteredUsers.length === 0 && !loading">
                 <td colspan="7" class="text-center py-5 text-muted">ไม่พบข้อมูล</td>
               </tr>
               <tr v-if="loading">
@@ -367,6 +372,7 @@ export default {
       users: [],
       availableAccess: [],
       selectedDepartment: '',
+      selectedPersonnelType: '',
       departments: [],
       loading: false,
       currentUserProfile: null,
@@ -418,6 +424,13 @@ export default {
           count: counts[key]
         }))
         .sort((a, b) => b.count - a.count);
+    },
+    filteredUsers() {
+      if (!this.selectedPersonnelType) return this.users;
+      return this.users.filter((u) => {
+        const type = u.PERSON_TYPE_NAME || 'ไม่ระบุ';
+        return type === this.selectedPersonnelType;
+      });
     }
   },
   methods: {
@@ -440,9 +453,9 @@ export default {
       return this.accessMap[id] || id; // Fallback to ID if not found
     },
     exportExcel() {
-      if (this.users.length === 0) return;
+      if (this.filteredUsers.length === 0) return;
 
-      const exportData = this.users.map((u, index) => {
+      const exportData = this.filteredUsers.map((u, index) => {
         return {
           ลำดับ: index + 1,
           person_id: u.ID,
@@ -452,6 +465,7 @@ export default {
           Username: u.HR_USERNAME || '-',
           Email: u.HR_EMAIL || '-',
           โทรศัพท์: u.HR_PHONE || '-',
+          ประเภทบุคลากร: u.PERSON_TYPE_NAME || '-',
           ตำแหน่ง: u.POSITION_NAME || '-',
           เลขตำแหน่ง: u.HR_POSITION_NUM || '-',
           เลขใบประกอบ: u.VCODE || '-',
@@ -466,8 +480,9 @@ export default {
         { wch: 8 },
         { wch: 10 },
         { wch: 10 },
-        { wch: 25 },
-        { wch: 10 },
+        { wch: 15 },
+        { wch: 20 },
+        { wch: 15 },
         { wch: 15 },
         { wch: 20 },
         { wch: 15 },
