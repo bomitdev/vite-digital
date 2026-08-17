@@ -58,6 +58,8 @@ try {
             CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) as person_name,
             ri.DATE_GO as start_date,
             ri.DATE_BACK as end_date,
+            ri.DATE_TRAVEL_GO,
+            ri.DATE_TRAVEL_BACK,
             ri.RECORD_HEAD_USE as title,
             ri.PROVINCE_NAME as detail,
             ri.STATUS as status_id,
@@ -68,16 +70,22 @@ try {
         WHERE p.HR_DEPARTMENT_SUB_ID IN ($dept_ids)
         AND (ri.CANCEL_STATUS IS NULL OR ri.CANCEL_STATUS = '' OR ri.CANCEL_STATUS = 'False')
         AND (
-            (YEAR(ri.DATE_GO) = :year AND MONTH(ri.DATE_GO) = :month)
-            OR (YEAR(ri.DATE_BACK) = :year_end AND MONTH(ri.DATE_BACK) = :month_end)
+            (YEAR(ri.DATE_GO) = :year1 AND MONTH(ri.DATE_GO) = :month1)
+            OR (YEAR(ri.DATE_BACK) = :year2 AND MONTH(ri.DATE_BACK) = :month2)
+            OR (YEAR(ri.DATE_TRAVEL_GO) = :year3 AND MONTH(ri.DATE_TRAVEL_GO) = :month3)
+            OR (YEAR(ri.DATE_TRAVEL_BACK) = :year4 AND MONTH(ri.DATE_TRAVEL_BACK) = :month4)
         )
     ";
     $stmt2 = $pdo3->prepare($sqlTrip);
     $stmt2->execute([
-        ':year' => $year,
-        ':month' => $month,
-        ':year_end' => $year,
-        ':month_end' => $month
+        ':year1' => $year,
+        ':month1' => $month,
+        ':year2' => $year,
+        ':month2' => $month,
+        ':year3' => $year,
+        ':month3' => $month,
+        ':year4' => $year,
+        ':month4' => $month
     ]);
     $trips = $stmt2->fetchAll(PDO::FETCH_ASSOC);
 

@@ -52,13 +52,18 @@
               <div 
                 v-for="(event, idx) in day.events.slice(0, 3)" 
                 :key="idx" 
-                class="event-badge"
+                class="event-badge align-items-start"
                 :class="getEventColorClass(event)"
               >
-                <i :class="getEventIcon(event)" class="me-1 flex-shrink-0"></i>
-                <span class="event-text text-truncate" :title="event.person_name + ' - ' + event.title">
-                  {{ event.person_name.split(' ')[0] }} ({{ event.event_type === 'TRIP' ? 'ไปราชการ' : 'ลา' }})
-                </span>
+                <i :class="getEventIcon(event)" class="me-1 mt-1 flex-shrink-0" style="font-size: 0.75rem;"></i>
+                <div class="w-100 overflow-hidden" :title="event.person_name + ' - ' + event.title + ' ' + getEventDateRange(event)">
+                  <div class="event-text text-truncate">
+                    {{ event.person_name.split(' ')[0] }} ({{ event.event_type === 'TRIP' ? 'ไปราชการ' : 'ลา' }})
+                  </div>
+                  <div class="text-truncate" style="font-size: 0.65rem; opacity: 0.85; margin-top: -1px;">
+                    {{ getEventDateRange(event) }}
+                  </div>
+                </div>
               </div>
               <div v-if="day.events.length > 3" class="more-events">
                 +{{ day.events.length - 3 }} รายการ
@@ -217,7 +222,13 @@ export default {
         const url = `${import.meta.env.VITE_API_URL || '/backend'}/api-digital/leave/get_leave_schedule.php?year=${year}&month=${month}`;
         const response = await axios.get(url);
         if (response.data.status === 'success') {
-          events.value = response.data.data;
+          events.value = response.data.data.map(e => {
+            if (e.event_type === 'TRIP') {
+              if (e.DATE_TRAVEL_GO) e.start_date = e.DATE_TRAVEL_GO;
+              if (e.DATE_TRAVEL_BACK) e.end_date = e.DATE_TRAVEL_BACK;
+            }
+            return e;
+          });
         }
       } catch (error) {
         console.error('Error fetching leave events:', error);
@@ -318,6 +329,29 @@ export default {
       return `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear() + 543}`;
     };
 
+    const getEventDateRange = (event) => {
+      let startDate = event.start_date;
+      let endDate = event.end_date;
+      
+      if (event.event_type === 'TRIP') {
+        if (event.DATE_TRAVEL_GO) startDate = event.DATE_TRAVEL_GO;
+        if (event.DATE_TRAVEL_BACK) endDate = event.DATE_TRAVEL_BACK;
+      }
+
+      if (!startDate || !endDate) return '';
+      const d1 = new Date(startDate);
+      const d2 = new Date(endDate);
+      const shortMonthNames = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+      
+      const str1 = `${d1.getDate()} ${shortMonthNames[d1.getMonth()]}`;
+      const str2 = `${d2.getDate()} ${shortMonthNames[d2.getMonth()]}`;
+      
+      if (startDate === endDate) {
+        return `(${str1})`;
+      }
+      return `(${str1} - ${str2})`;
+    };
+
     const openDayDetail = (day) => {
       selectedDay.value = day;
       if (!modalInstance && dayDetailModalRef.value) {
@@ -362,7 +396,8 @@ export default {
       getEventTextColor,
       getStatusText,
       getStatusBadge,
-      formatDateThai
+      formatDateThai,
+      getEventDateRange
     };
   }
 };
