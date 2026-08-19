@@ -218,6 +218,26 @@
               />
               <p v-else class="text-center text-muted mt-5">No data available.</p>
             </div>
+            
+            <!-- Analysis Section -->
+            <div class="mt-4 border-top pt-3">
+              <h6 class="fw-bold text-dark"><i class="bi bi-chat-left-text me-2"></i>วิเคราะห์ตัวชี้วัด</h6>
+              <textarea
+                class="form-control mb-3 shadow-sm border-1 bg-light"
+                rows="4"
+                v-model="analysisText"
+                placeholder="พิมพ์ผลการวิเคราะห์ตัวชี้วัด เพื่อใช้อ้างอิงและติดตามผล..."
+                style="resize: none;"
+                :readonly="!isAdmin && !hasResponsibleKpi"
+              ></textarea>
+              <div class="d-flex justify-content-end" v-if="isAdmin || hasResponsibleKpi">
+                <button class="btn btn-primary fw-bold px-4 shadow-sm" @click="saveAnalysis" :disabled="savingAnalysis">
+                  <span v-if="savingAnalysis" class="spinner-border spinner-border-sm me-2"></span>
+                  <i class="bi bi-save me-1" v-else></i> บันทึกผลวิเคราะห์
+                </button>
+              </div>
+            </div>
+            
           </div>
         </div>
       </div>
@@ -320,6 +340,8 @@ export default {
       trendModalInstance: null,
       historyModalInstance: null,
       selectedYear: null,
+      analysisText: '',
+      savingAnalysis: false,
       selectedLevel: '',
       userDepartment: '',
       userFullname: '',
@@ -593,6 +615,7 @@ export default {
     },
     async openTrendModal(kpi) {
       this.selectedKpi = kpi;
+      this.analysisText = kpi.analysis || '';
       let el = this.$refs.trendModal;
       if (!el) el = document.getElementById('trendModal');
       if (el) {
@@ -679,6 +702,27 @@ export default {
           console.error(e);
           Swal.fire('Error', 'Connection Error', 'error');
         }
+      }
+    },
+    async saveAnalysis() {
+      if (!this.selectedKpi) return;
+      this.savingAnalysis = true;
+      try {
+        const res = await axios.post('/api-digital/kpi/save_kpi_analysis.php', {
+          kpi_id: this.selectedKpi.id,
+          analysis: this.analysisText
+        });
+        if (res.data.status === 'success') {
+          Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', timer: 1500, showConfirmButton: false });
+          this.selectedKpi.analysis = this.analysisText; // update local
+        } else {
+          Swal.fire('Error', res.data.message || 'บันทึกไม่สำเร็จ', 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        Swal.fire('Error', 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+      } finally {
+        this.savingAnalysis = false;
       }
     },
     prepareChart(history) {

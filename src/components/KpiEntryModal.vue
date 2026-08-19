@@ -93,7 +93,8 @@
               <span class="fw-bold text-primary fs-5">ผลลัพธ์คำนวณ (Actual Value)</span>
               <div class="d-flex align-items-center">
                 <div class="bg-white border border-primary border-opacity-25 rounded-2 d-flex align-items-center px-3 py-2 me-3 shadow-sm" style="min-width: 150px">
-                  <input type="text" class="form-control border-0 p-0 text-center fw-bold text-dark fs-5 bg-transparent" :value="displayActualValue" readonly />
+                  <input v-if="isCriteria" type="text" class="form-control border-0 p-0 text-center fw-bold text-dark fs-5 bg-transparent" :value="displayActualValue" readonly />
+                  <input v-else type="number" step="any" class="form-control border-0 p-0 text-center fw-bold text-dark fs-5 bg-transparent" v-model="form.actual_value" placeholder="-" />
                 </div>
                 <span class="text-primary fw-bold" v-if="!isCriteria">{{ selectedKpi?.unit }}</span>
               </div>
