@@ -441,7 +441,7 @@
     </div>
   </nav>
 
-  <main class="content-area">
+  <main :class="['content-area', { 'no-padding': route.meta.hideNavbar }]">
     <RouterView />
   </main>
   <AppFooter v-if="!route.meta.hideNavbar" />
@@ -918,6 +918,11 @@ onUnmounted(() => {
 .content-area {
   min-height: calc(100vh - 70px);
   padding-top: 80px; /* Space for the fixed-top navbar */
+}
+
+.content-area.no-padding {
+  padding-top: 0;
+  min-height: 100vh;
 }
 
 /* =========================

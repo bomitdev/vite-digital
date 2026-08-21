@@ -8,7 +8,7 @@ $secret_key = $_ENV['JWT_SECRET'] ?? 'default_secret_key_10985_cnm';
 /**
  * Generate a signed token (Payload + HMAC Signature)
  */
-function generateToken($payload)
+function generateToken(array $payload)
 {
     global $secret_key;
     $jsonPayload = json_encode($payload);
@@ -24,7 +24,7 @@ function generateToken($payload)
 /**
  * Verify a signed token
  */
-function verifyToken($token)
+function verifyToken(string $token)
 {
     global $secret_key;
     $parts = explode('.', $token);
@@ -53,6 +53,12 @@ function authGuard()
 {
     $headers = getallheaders();
     $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+    
+    if (empty($authHeader) && isset($_SERVER['HTTP_AUTHORIZATION'])) {
+        $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
+    } elseif (empty($authHeader) && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+        $authHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+    }
 
     if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
         $token = $matches[1];

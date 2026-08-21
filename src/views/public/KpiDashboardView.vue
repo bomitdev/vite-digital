@@ -94,6 +94,10 @@
         <option value="">ทุกระดับ (All Levels)</option>
         <option v-for="level in availableLevels" :key="level" :value="level">{{ level }}</option>
       </select>
+      <select class="form-select w-auto shadow-sm" v-model="selectedFrequency" v-if="availableFrequencies.length > 0">
+        <option value="">ความถี่ (All Freq)</option>
+        <option v-for="freq in availableFrequencies" :key="freq" :value="freq">{{ getFrequencyLabel(freq) }}</option>
+      </select>
       <select class="form-select w-auto shadow-sm" v-model="selectedYear" @change="fetchData">
         <option v-for="y in yearList" :key="y" :value="y">ปีงบประมาณ {{ y }}</option>
       </select>
@@ -204,6 +208,9 @@
             <h5 class="modal-title">
               <i class="bi bi-graph-up me-2"></i> Trend: {{ selectedKpi?.name }}
             </h5>
+            <button class="btn btn-sm btn-light text-primary fw-bold ms-auto me-3 shadow-sm" @click="openExportPreview">
+              <i class="bi bi-file-word-fill me-1"></i> Export Word
+            </button>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
@@ -298,6 +305,73 @@
         </div>
       </div>
     </div>
+    
+    <!-- Export Preview Modal -->
+    <div class="modal fade" id="exportPreviewModal" tabindex="-1" aria-hidden="true" ref="exportPreviewModal">
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">
+              <i class="bi bi-file-earmark-word me-2"></i> ตัวอย่างรายงานก่อนดาวน์โหลด (Preview)
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body bg-light">
+            
+            <div class="card shadow-sm border-0 mb-3" v-if="exportPreviewData">
+              <div class="card-body p-4 bg-white" style="font-family: 'Sarabun', 'Sarabun New', sans-serif;">
+                <div class="text-center mb-4">
+                  <h4 class="fw-bold">รายงานตัวชี้วัดสำคัญ</h4>
+                  <h5 class="fw-bold">{{ exportPreviewData.kpiName }}</h5>
+                </div>
+                
+                <div class="table-responsive">
+                  <table class="table table-bordered border-dark text-center align-middle" style="min-width: 800px;">
+                    <thead class="table-light border-dark">
+                      <tr>
+                        <th width="5%">ลำดับ</th>
+                        <th width="30%">ข้อมูล/ตัวชี้วัด</th>
+                        <th width="15%">เป้าหมาย<br>ปีปัจจุบัน</th>
+                        <th v-for="(p, idx) in exportPreviewData.periods" :key="'h'+idx">{{ p }}</th>
+                      </tr>
+                    </thead>
+                    <tbody class="border-dark">
+                      <tr>
+                        <td>1</td>
+                        <td class="text-start">{{ exportPreviewData.kpiName }}</td>
+                        <td>{{ exportPreviewData.targetStr }}</td>
+                        <td v-for="(a, idx) in exportPreviewData.actuals" :key="'d'+idx">{{ a }}</td>
+                      </tr>
+                      <tr>
+                        <td colspan="3" class="p-3">
+                          <img :src="'data:image/png;base64,' + exportPreviewData.base64Data" class="img-fluid border" alt="Trend Chart" style="max-height: 250px;">
+                        </td>
+                        <td :colspan="exportPreviewData.periods.length" class="text-start p-3" style="vertical-align: top;">
+                          <h6 class="fw-bold text-decoration-underline mb-2">ผลการวิเคราะห์:</h6>
+                          <div v-for="(line, idx) in exportPreviewData.analysisLines" :key="'a'+idx" class="mb-1">
+                            {{ line }}
+                          </div>
+                          <div v-if="!exportPreviewData.analysisLines.length" class="text-muted fst-italic">ไม่มีข้อมูลการวิเคราะห์</div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                
+              </div>
+            </div>
+            
+          </div>
+          <div class="modal-footer bg-white">
+            <button type="button" class="btn btn-light border fw-bold px-4" data-bs-dismiss="modal">ยกเลิก</button>
+            <button type="button" class="btn btn-primary fw-bold px-4 shadow-sm" @click="confirmExportWord">
+              <i class="bi bi-download me-2"></i> ยืนยันการ Export เป็น Word
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- KPI Entry Modal -->
     <KpiEntryModal ref="entryModal" @saved="fetchData" />
   </div>
@@ -311,6 +385,9 @@ import { Doughnut } from 'vue-chartjs';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import KpiTrendChart from '../../components/KpiTrendChart.vue';
 import KpiEntryModal from '../../components/KpiEntryModal.vue';
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, BorderStyle, WidthType, ImageRun, AlignmentType, HeadingLevel, VerticalAlign } from 'docx';
+import saveAs from 'file-saver';
+
 
 // Register specific compenents for Doughnut
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -339,10 +416,13 @@ export default {
       historyList: [],
       trendModalInstance: null,
       historyModalInstance: null,
+      exportPreviewModalInstance: null,
+      exportPreviewData: null,
       selectedYear: null,
       analysisText: '',
       savingAnalysis: false,
       selectedLevel: '',
+      selectedFrequency: '',
       userDepartment: '',
       userFullname: '',
       userAccess: [],
@@ -410,6 +490,14 @@ export default {
           return { ...cat, kpis: cat.kpis.filter(kpi => kpi.kpi_level === this.selectedLevel) };
         });
       }
+      
+      // Filter by selected frequency
+      if (this.selectedFrequency) {
+        result = result.map(cat => {
+          if (!cat.kpis) return cat;
+          return { ...cat, kpis: cat.kpis.filter(kpi => kpi.kpi_periodicity === this.selectedFrequency) };
+        });
+      }
 
       // Filter by search query
       if (this.searchQuery) {
@@ -449,6 +537,19 @@ export default {
         }
       });
       return Array.from(levels).sort();
+    },
+    availableFrequencies() {
+      const freqs = new Set();
+      this.baseCategories.forEach(cat => {
+        if (cat.kpis) {
+          cat.kpis.forEach(kpi => {
+            if (kpi.kpi_periodicity) {
+              freqs.add(kpi.kpi_periodicity);
+            }
+          });
+        }
+      });
+      return Array.from(freqs);
     },
     doughnutChartData() {
       return {
@@ -725,6 +826,179 @@ export default {
         this.savingAnalysis = false;
       }
     },
+    async openExportPreview() {
+      if (!this.selectedKpi) {
+        console.error('No selected KPI');
+        return;
+      }
+      
+      const canvas = document.querySelector('#trendModal canvas');
+      if (!canvas) {
+        Swal.fire('Error', 'ไม่พบกราฟสำหรับ Export', 'error');
+        return;
+      }
+      
+      const dataUrl = canvas.toDataURL('image/png');
+      const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
+      
+      const recentData = this.historyList.slice(0, 5).reverse();
+      const periods = recentData.map(h => this.formatDate(h.period_date));
+      const actuals = recentData.map(h => h.actual_value);
+      const targetStr = `${this.selectedKpi.target_operator || ''} ${this.selectedKpi.target_value || ''} ${this.selectedKpi.unit || ''}`;
+      
+      const analysisLines = (this.analysisText || '').split('\n').filter(line => line.trim() !== '');
+
+      this.exportPreviewData = {
+        kpiName: this.selectedKpi.name || '',
+        kpiCode: this.selectedKpi.code || 'Export',
+        targetStr: targetStr,
+        periods: periods,
+        actuals: actuals,
+        base64Data: base64Data,
+        analysisLines: analysisLines
+      };
+
+      let el = this.$refs.exportPreviewModal;
+      if (!el) el = document.getElementById('exportPreviewModal');
+      if (el) {
+        if (!this.exportPreviewModalInstance) this.exportPreviewModalInstance = new Modal(el);
+        this.exportPreviewModalInstance.show();
+      }
+    },
+    async confirmExportWord() {
+      if (!this.exportPreviewData) return;
+      
+      const data = this.exportPreviewData;
+      
+      // Build Table Headers
+      const headerCells = [
+        new TableCell({ children: [new Paragraph({ text: "ลำดับ", alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
+        new TableCell({ children: [new Paragraph({ text: "ข้อมูล/ตัวชี้วัด", alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
+        new TableCell({ children: [new Paragraph({ text: "เป้าหมาย\nปีปัจจุบัน", alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER })
+      ];
+      
+      data.periods.forEach(p => {
+        headerCells.push(new TableCell({ children: [new Paragraph({ text: p, alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }));
+      });
+      
+      for (let i = data.periods.length; i < 5; i++) {
+        headerCells.push(new TableCell({ children: [new Paragraph({ text: "-", alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }));
+      }
+      
+      // Build Data Row
+      const dataCells = [
+        new TableCell({ children: [new Paragraph({ text: "1", alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
+        new TableCell({ children: [new Paragraph({ text: data.kpiName })], verticalAlign: VerticalAlign.CENTER }),
+        new TableCell({ children: [new Paragraph({ text: data.targetStr, alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER })
+      ];
+      
+      data.actuals.forEach(a => {
+        dataCells.push(new TableCell({ children: [new Paragraph({ text: String(a), alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }));
+      });
+      
+      for (let i = data.actuals.length; i < 5; i++) {
+        dataCells.push(new TableCell({ children: [new Paragraph({ text: "-", alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }));
+      }
+      
+      // Analysis Paragraphs
+      const analysisParagraphs = [
+        new Paragraph({
+          text: "ผลการวิเคราะห์:",
+          heading: HeadingLevel.HEADING_3,
+          spacing: { after: 120 }
+        })
+      ];
+      
+      data.analysisLines.forEach(line => {
+        analysisParagraphs.push(new Paragraph({ text: line, spacing: { after: 120 } }));
+      });
+      
+      if (data.analysisLines.length === 0) {
+        analysisParagraphs.push(new Paragraph({ text: "ไม่มีข้อมูลการวิเคราะห์", spacing: { after: 120 } }));
+      }
+      
+      // Build Content Row (Chart + Analysis)
+      const contentCells = [
+        new TableCell({
+          columnSpan: 3,
+          children: [
+            new Paragraph({
+              children: [
+                new ImageRun({
+                  data: Uint8Array.from(atob(data.base64Data), c => c.charCodeAt(0)),
+                  transformation: { width: 300, height: 180 }
+                })
+              ],
+              alignment: AlignmentType.CENTER
+            })
+          ],
+          verticalAlign: VerticalAlign.CENTER
+        }),
+        new TableCell({
+          columnSpan: 5,
+          children: analysisParagraphs,
+          verticalAlign: VerticalAlign.TOP,
+          margins: { top: 150, bottom: 150, left: 150, right: 150 }
+        })
+      ];
+      
+      // Create Document
+      const doc = new Document({
+        styles: {
+          default: {
+            document: {
+              run: {
+                font: "TH SarabunPSK",
+                size: 32 // 16pt (32 half-points)
+              }
+            }
+          }
+        },
+        sections: [
+          {
+            properties: {
+              page: {
+                margin: { top: 1000, right: 1000, bottom: 1000, left: 1000 }
+              }
+            },
+            children: [
+              new Paragraph({
+                text: "รายงานตัวชี้วัดสำคัญ",
+                heading: HeadingLevel.HEADING_1,
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 200 }
+              }),
+              new Paragraph({
+                text: data.kpiName,
+                heading: HeadingLevel.HEADING_2,
+                spacing: { after: 200 }
+              }),
+              new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                rows: [
+                  new TableRow({ children: headerCells }),
+                  new TableRow({ children: dataCells }),
+                  new TableRow({ children: contentCells })
+                ]
+              })
+            ]
+          }
+        ]
+      });
+      
+      try {
+        const blob = await Packer.toBlob(doc);
+        saveAs(blob, `KPI_Report_${data.kpiCode}.docx`);
+        
+        if (this.exportPreviewModalInstance) {
+          this.exportPreviewModalInstance.hide();
+        }
+        Swal.fire({ icon: 'success', title: 'Export สำเร็จ', timer: 1500, showConfirmButton: false });
+      } catch (e) {
+        console.error(e);
+        Swal.fire('Error', 'เกิดข้อผิดพลาดในการสร้างไฟล์ Word', 'error');
+      }
+    },
     prepareChart(history) {
       const sorted = [...history].reverse();
       this.chartData = {
@@ -750,7 +1024,9 @@ export default {
     },
     formatDate(d) {
       if (!d) return '-';
-      return new Date(d).toLocaleDateString('th-TH', {
+      const dateObj = new Date(d);
+      const lastDayOfMonth = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0);
+      return lastDayOfMonth.toLocaleDateString('th-TH', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'

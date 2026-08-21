@@ -10,7 +10,23 @@
             <small class="text-muted">User Access Management</small>
           </div>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex align-items-center gap-3">
+          <div v-if="canEdit" class="form-check form-switch bg-white rounded-pill shadow-sm px-4 py-2 border d-flex align-items-center gap-2">
+            <input 
+              class="form-check-input m-0 ms-1" 
+              type="checkbox" 
+              id="otpToggleSwitch" 
+              v-model="isOtpEnabled"
+              @change="toggleOtpSetting"
+              :disabled="isSavingOtp"
+              style="width: 2.5em; height: 1.25em; cursor: pointer;"
+            >
+            <label class="form-check-label fw-bold mb-0 ms-2" for="otpToggleSwitch" style="cursor: pointer;" :class="isOtpEnabled ? 'text-success' : 'text-danger'">
+              <i class="bi bi-shield-lock-fill me-1"></i>
+              ระบบ OTP: {{ isOtpEnabled ? 'เปิดใช้งาน' : 'ปิดฉุกเฉิน' }}
+              <span v-if="isSavingOtp" class="spinner-border spinner-border-sm ms-2"></span>
+            </label>
+          </div>
           
           <button
             @click="$router.push('/home-backoffice')"
@@ -382,7 +398,11 @@ export default {
       editingUser: null,
       selectedAccess: [],
       editingFingerId: '',
-      saving: false
+      saving: false,
+
+      // OTP Setting
+      isOtpEnabled: true,
+      isSavingOtp: false
     };
   },
   created() {
@@ -834,6 +854,40 @@ export default {
           }
         ]
       });
+    },
+    async fetchOtpSetting() {
+      try {
+        const response = await axios.get('/backend/api-digital/settings/get_otp_setting.php');
+        if (response.data.status === 'success') {
+          this.isOtpEnabled = response.data.data.is_otp_enabled;
+        }
+      } catch (error) {
+        console.error('Error fetching OTP setting', error);
+      }
+    },
+    async toggleOtpSetting() {
+      if (!confirm(`คุณต้องการ ${this.isOtpEnabled ? 'เปิด' : 'ปิด'} การบังคับใช้ OTP สำหรับทุกคนใช่หรือไม่?`)) {
+        this.isOtpEnabled = !this.isOtpEnabled; // Revert switch if cancelled
+        return;
+      }
+      this.isSavingOtp = true;
+      try {
+        const token = localStorage.getItem('user_token');
+        const response = await axios.post('/backend/api-digital/settings/save_otp_setting.php', {
+          is_otp_enabled: this.isOtpEnabled
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.status !== 'success') {
+          alert('Failed to save settings: ' + response.data.message);
+          this.isOtpEnabled = !this.isOtpEnabled;
+        }
+      } catch (error) {
+        alert('Save failed: ' + error.message);
+        this.isOtpEnabled = !this.isOtpEnabled;
+      } finally {
+        this.isSavingOtp = false;
+      }
     }
   },
   mounted() {
@@ -841,6 +895,7 @@ export default {
     this.fetchDepartments(); // Fetch departments first/parallel
     this.fetchUsers();
     this.fetchAccessList();
+    this.fetchOtpSetting();
   }
 };
 </script>

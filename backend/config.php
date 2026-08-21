@@ -71,22 +71,3 @@ $pdo2 = connectDatabase($db2);
 /** @var PDO $pdo3 */
 $pdo3 = connectDatabase($db3);
 
-// try {
-//     $pdo1->query("SELECT 1");
-//     echo "DB1 connected OK<br>";
-// } catch (Exception $e) {
-//     echo "DB1 error: " . $e->getMessage() . "<br>";
-// }
-
-// try {
-//     $pdo2->query("SELECT 1");
-//     echo "DB2 connected OK<br>";
-// } catch (Exception $e) {
-//     echo "DB2 error: " . $e->getMessage() . "<br>";
-// }
-// try {
-//     $pdo3->query("SELECT 1");
-//     echo "DB3 connected OK<br>";
-// } catch (Exception $e) {
-//     echo "DB3 error: " . $e->getMessage() . "<br>";
-// }
