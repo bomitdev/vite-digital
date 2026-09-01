@@ -141,7 +141,7 @@
             <div class="signature-block ms-auto text-center" style="width: 55%">
              <br>
               <div class="mb-1">(นายศราวุฒิ แสนโท)</div>
-              <div>นักวิชาการคอมพิวเตอร์ปฏิบัติการ</div>
+              <div>นักวิชาการคอมพิวเตอร์ชำนาญการ</div>
               <div>หัวหน้ากลุ่มงานสุขภาพดิจิทัล</div>
             </div>
 

@@ -1,38 +1,38 @@
 <template>
   <div class="request-form-container mt-2 fade-in">
-    <!-- Header Section -->
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4">
-      <div class="mb-3 mb-md-0">
-        <nav aria-label="breadcrumb">
-          <ol class="breadcrumb mb-2 custom-breadcrumb">
-            <li class="breadcrumb-item">
-              <router-link to="/material-v2" class="text-decoration-none">
-                <i class="bi bi-house-fill me-1"></i>หน้าหลักวัสดุคอม
-              </router-link>
-            </li>
-            <li class="breadcrumb-item active fw-medium" aria-current="page">
-              แบบฟอร์มขอเบิกวัสดุ
-            </li>
-          </ol>
-        </nav>
-        <h3 class="fw-black text-dark mb-1 d-flex align-items-center gap-3 title-animate">
-          <div class="icon-square bg-gradient-primary text-white shadow-sm">
-            <i class="bi bi-pc-display"></i>
-          </div>
-          แบบฟอร์มขอเบิกวัสดุคอมพิวเตอร์
-        </h3>
-        <p class="text-muted mb-0 ms-5 ps-3 fs-6">
-          โปรดระบุวัสดุที่ต้องการเบิกและข้อมูลของท่านให้ครบถ้วนเพื่อความรวดเร็วในการตรวจสอบ
-        </p>
+    <!-- Top Nav Section (Breadcrumb & Back Button) -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-3 mb-md-0 custom-breadcrumb">
+          <li class="breadcrumb-item">
+            <router-link to="/material-v2" class="text-decoration-none">
+              <i class="bi bi-house-fill me-1"></i>หน้าหลักวัสดุคอม
+            </router-link>
+          </li>
+          <li class="breadcrumb-item active fw-medium" aria-current="page">
+            แบบฟอร์มขอเบิกวัสดุ
+          </li>
+        </ol>
+      </nav>
+      <router-link
+        to="/home-backoffice"
+        class="btn btn-light shadow-sm border rounded-pill px-4 hover-lift"
+      >
+        <i class="bi bi-arrow-left me-2 text-primary"></i>กลับหน้าหลัก
+      </router-link>
+    </div>
+
+    <!-- Centered Header Section -->
+    <div class="text-center mb-5 fade-in">
+      <div class="d-inline-flex align-items-center justify-content-center gap-3 mb-2 title-animate">
+        <div class="icon-square bg-gradient-primary text-white shadow-sm">
+          <i class="bi bi-pc-display fs-4"></i>
+        </div>
+        <h3 class="fw-black text-dark m-0">แบบฟอร์มขอเบิกวัสดุคอมพิวเตอร์</h3>
       </div>
-      <div>
-        <router-link
-          to="/home-backoffice"
-          class="btn btn-light shadow-sm border rounded-pill px-4 hover-lift"
-        >
-          <i class="bi bi-arrow-left me-2 text-primary"></i>กลับหน้าหลัก
-        </router-link>
-      </div>
+      <p class="text-muted mb-0 fs-6">
+        โปรดระบุวัสดุที่ต้องการเบิกและข้อมูลของท่านให้ครบถ้วนเพื่อความรวดเร็วในการตรวจสอบ
+      </p>
     </div>
 
     <!-- Form Content -->
@@ -107,7 +107,7 @@
                   </datalist>
                 </div>
 
-                <div class="col-12 mt-4 pt-4 border-top border-light-subtle" style="padding-bottom: 12rem;">
+                <div class="col-12 mt-4 pt-4 border-top border-light-subtle">
                   <div class="d-flex align-items-center gap-2 mb-4">
                     <span class="badge bg-primary text-white rounded-pill px-2 py-1 shadow-sm"
                       ><i class="bi bi-2-circle fs-6"></i
@@ -118,21 +118,10 @@
                   <div
                     v-for="(item, index) in form.items"
                     :key="index"
-                    class="row g-3 align-items-center p-3 rounded-4 bg-light border border-white shadow-sm position-relative fade-in item-row mb-3"
+                    class="row g-3 align-items-end p-4 rounded-4 bg-light border shadow-sm fade-in item-row mb-4"
                   >
-                    <!-- Remove Item Button -->
-                    <button 
-                      v-if="form.items.length > 1"
-                      type="button" 
-                      class="btn btn-sm btn-outline-danger position-absolute" 
-                      style="top: -10px; right: -10px; width: 30px; height: 30px; border-radius: 50%; padding: 0; z-index: 10;"
-                      @click="removeItem(index)"
-                    >
-                      <i class="bi bi-x"></i>
-                    </button>
-
                     <!-- Material Selection -->
-                    <div class="col-md-7">
+                    <div :class="form.items.length > 1 ? 'col-md-7' : 'col-md-8'">
                       <label class="form-label fw-bold text-secondary small"
                         >วัสดุที่ต้องการเบิก <span class="text-danger">*</span></label
                       >
@@ -140,31 +129,31 @@
                         <div v-if="item.isDropdownOpen" @click="item.isDropdownOpen = false" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 999;"></div>
                         
                         <button 
-                          class="btn form-select form-select-lg fs-6 shadow-none border-light-subtle d-flex justify-content-between align-items-center w-100 bg-white position-relative" 
+                          class="btn form-select form-select-lg fs-6 shadow-sm border-light-subtle d-flex justify-content-between align-items-center w-100 bg-white position-relative" 
                           type="button" 
                           @click="item.isDropdownOpen = !item.isDropdownOpen"
                           style="z-index: 1000;"
                         >
                           <div class="d-flex align-items-center text-truncate">
                             <template v-if="getSelectedMaterial(item.material_id)">
-                              <img v-if="getSelectedMaterial(item.material_id).image_path" :src="getImageUrl(getSelectedMaterial(item.material_id).image_path)" class="me-2 rounded object-fit-cover" style="width: 24px; height: 24px;">
-                              <i v-else class="bi bi-box me-2 text-muted"></i>
-                              <span class="text-truncate text-dark">{{ getSelectedMaterial(item.material_id).code }} - {{ getSelectedMaterial(item.material_id).name }} (คงเหลือ: {{ getSelectedMaterial(item.material_id).balance }} {{ getSelectedMaterial(item.material_id).unit }})</span>
+                              <img v-if="getSelectedMaterial(item.material_id).image_path" :src="getImageUrl(getSelectedMaterial(item.material_id).image_path)" class="me-2 rounded object-fit-cover shadow-sm" style="width: 28px; height: 28px;">
+                              <i v-else class="bi bi-box me-2 text-muted fs-5"></i>
+                              <span class="text-truncate text-dark fw-medium">{{ getSelectedMaterial(item.material_id).code }} - {{ getSelectedMaterial(item.material_id).name }} <span class="text-primary ms-1">(คงเหลือ: {{ getSelectedMaterial(item.material_id).balance }} {{ getSelectedMaterial(item.material_id).unit }})</span></span>
                             </template>
                             <template v-else>
                               <span class="text-muted">-- เลือกรายการวัสดุ --</span>
                             </template>
                           </div>
                         </button>
-                        <ul class="dropdown-menu w-100 shadow-lg border-0 p-2" :class="{ show: item.isDropdownOpen }" style="max-height: 400px; overflow-y: auto; z-index: 1001; position: absolute;">
+                        <ul class="dropdown-menu w-100 shadow-lg border-0 p-2" :class="{ show: item.isDropdownOpen }" style="max-height: 400px; overflow-y: auto; z-index: 1001; position: absolute; top: 100%; margin-top: 5px;">
                           <li v-for="mat in materials" :key="mat.id" class="mb-1">
                             <a class="dropdown-item d-flex align-items-center rounded p-2 custom-dropdown-item" href="#" @click.prevent="selectMaterial(item, mat)">
-                              <img v-if="mat.image_path" :src="getImageUrl(mat.image_path)" class="rounded me-3 object-fit-cover border" style="width: 50px; height: 50px;">
-                              <div v-else class="rounded me-3 bg-light d-flex align-items-center justify-content-center text-muted border" style="width: 50px; height: 50px;">
-                                <i class="bi bi-image fs-5"></i>
+                              <img v-if="mat.image_path" :src="getImageUrl(mat.image_path)" class="rounded me-3 object-fit-cover border shadow-sm" style="width: 55px; height: 55px;">
+                              <div v-else class="rounded me-3 bg-light d-flex align-items-center justify-content-center text-muted border shadow-sm" style="width: 55px; height: 55px;">
+                                <i class="bi bi-image fs-4"></i>
                               </div>
                               <div class="overflow-hidden">
-                                <div class="fw-bold text-dark text-truncate">{{ mat.name }}</div>
+                                <div class="fw-bold text-dark text-truncate fs-6">{{ mat.name }}</div>
                                 <div class="small text-muted text-truncate">{{ mat.code }} | คงเหลือ: <span class="text-primary fw-bold">{{ mat.balance }} {{ mat.unit }}</span></div>
                               </div>
                             </a>
@@ -174,19 +163,34 @@
                     </div>
 
                     <!-- Quantity -->
-                    <div class="col-md-5">
+                    <div :class="form.items.length > 1 ? 'col-md-3' : 'col-md-4'">
                       <label class="form-label fw-bold text-secondary small"
                         >จำนวน <span class="text-danger">*</span></label
                       >
-                      <div class="input-group">
+                      <div class="input-group shadow-sm rounded">
+                        <span class="input-group-text bg-white border-end-0 text-primary px-3">
+                          <i class="bi bi-box-seam"></i>
+                        </span>
                         <input
                           type="number"
                           v-model.number="item.quantity"
-                          class="form-control form-control-lg fs-6 shadow-none border-light-subtle"
+                          class="form-control form-control-lg fs-6 border-start-0 ps-0 shadow-none border-light-subtle fw-bold text-center"
                           min="1"
                           required
                         />
                       </div>
+                    </div>
+
+                    <!-- Remove Item Button -->
+                    <div class="col-md-2" v-if="form.items.length > 1">
+                      <button 
+                        type="button" 
+                        class="btn btn-outline-danger shadow-sm rounded w-100 fw-bold d-flex align-items-center justify-content-center hover-lift" 
+                        style="height: 48px; border-width: 2px;"
+                        @click="removeItem(index)"
+                      >
+                        <i class="bi bi-trash-fill me-2"></i> ลบรายการ
+                      </button>
                     </div>
                   </div>
 

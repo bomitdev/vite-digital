@@ -349,7 +349,7 @@ export default {
         signY += 30;
         doc.text('(นายศราวุฒิ  แสนโท)', 75, signY, { align: 'center' });
         doc.line(60, signY + 1, 90, signY + 1);
-        doc.text('นักวิชาการคอมพิวเตอร์ปฏิบัติการ', 75, signY + 8, { align: 'center' });
+        doc.text('นักวิชาการคอมพิวเตอร์ชำนาญการ', 75, signY + 8, { align: 'center' });
         doc.text('หัวหน้ากลุ่มงานสุขภาพดิจิทัล', 75, signY + 16, { align: 'center' });
 
         // Approval 2 (Director)
@@ -720,7 +720,7 @@ export default {
           { align: 'center' }
         );
         doc.text('(นายศราวุฒิ  แสนโท)', 105, sumSignY + 22, { align: 'center' });
-        doc.text('นักวิชาการคอมพิวเตอร์ปฏิบัติการ', 105, sumSignY + 30, { align: 'center' });
+        doc.text('นักวิชาการคอมพิวเตอร์ชำนาญการ', 105, sumSignY + 30, { align: 'center' });
         doc.text('หัวหน้ากลุ่มงานสุขภาพดิจิทัล', 105, sumSignY + 38, { align: 'center' });
 
         // --- Director ---

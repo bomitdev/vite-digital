@@ -357,7 +357,7 @@ export default {
         signY += 30;
         doc.text('(นายศราวุฒิ แสนโท)', 75, signY, { align: 'center' });
         doc.line(55, signY + 1, 95, signY + 1);
-        doc.text('นักวิชาการคอมพิวเตอร์ปฏิบัติการ', 75, signY + 8, { align: 'center' });
+        doc.text('นักวิชาการคอมพิวเตอร์ชำนาญการ', 75, signY + 8, { align: 'center' });
 
         // Approval 2 (Director)
         signY += 5;
@@ -761,7 +761,7 @@ export default {
           { align: 'center' }
         );
         doc.text('(นายศราวุฒิ แสนโท)', 105, sumSignY + 22, { align: 'center' });
-        doc.text('นักวิชาการคอมพิวเตอร์ปฏิบัติการ', 105, sumSignY + 30, { align: 'center' });
+        doc.text('นักวิชาการคอมพิวเตอร์ชำนาญการ', 105, sumSignY + 30, { align: 'center' });
 
         // --- Director ---
         sumSignY += 60;
