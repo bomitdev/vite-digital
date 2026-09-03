@@ -1,5 +1,5 @@
 <template>
-  <div class="container-fluid mt-4">
+  <div class="container-fluid mt-4" id="dashboardContent">
     <div class="mb-4">
       <h2 class="mb-0 text-primary">
         <i class="bi bi-speedometer2 me-2"></i>Hospital KPI Dashboard
@@ -80,7 +80,7 @@
     </div>
 
     <!-- Filters Section -->
-    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-4">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-4" data-html2canvas-ignore="true">
       <div class="input-group shadow-sm" style="width: 280px">
         <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
         <input
@@ -104,7 +104,9 @@
       <button class="btn btn-outline-primary shadow-sm fw-bold" @click="fetchData">
         <i class="bi bi-arrow-clockwise me-1"></i> Refresh
       </button>
-      <button class="btn btn-primary shadow-sm fw-bold"><i class="bi bi-file-earmark-pdf me-1"></i> Export</button>
+      <button class="btn btn-success shadow-sm fw-bold" @click="exportDashboardExcel">
+        <i class="bi bi-file-earmark-excel me-1"></i> Export
+      </button>
       <router-link to="/kpi-setup" class="btn btn-dark shadow-sm fw-bold" v-if="isAdmin || hasResponsibleKpi">
         <i class="bi bi-gear-fill me-1"></i> ตั้งค่า KPI
       </router-link>
@@ -129,64 +131,82 @@
             <span class="text-muted fs-6 fw-normal">({{ category.description }})</span>
           </h4>
         </div>
-        <div class="card-body bg-light p-4">
-          <div v-for="kpi in category.kpis" :key="kpi.id" class="card border rounded-3 shadow-sm mb-4">
-            <div class="card-body p-4">
-              <div class="row mb-3">
-                <div class="col-md-7">
-                  <span class="badge bg-primary bg-opacity-10 text-primary mb-2 px-3 py-2" v-if="kpi.code">{{ kpi.code }}</span>
-                  <span class="badge bg-secondary text-white mb-2 px-3 py-2 ms-2" v-if="kpi.kpi_level">
-                    <i class="bi bi-diagram-3-fill me-1"></i>{{ kpi.kpi_level }}
-                  </span>
-                  <h5 class="fw-bold mb-3 lh-base">{{ kpi.name }}</h5>
-                  <span class="badge bg-light text-secondary border px-3 py-2">
-                    <i class="bi bi-person-fill me-1"></i> {{ kpi.responsible_person || 'ยังไม่ระบุ' }}
-                  </span>
-                </div>
-                <div class="col-md-5 d-flex justify-content-md-end align-items-start mt-3 mt-md-0 flex-wrap gap-2">
-                  <div class="bg-light p-3 rounded-3 text-center border" style="min-width: 140px">
-                    <div class="small text-muted mb-1">เป้าหมาย</div>
-                    <div class="fw-bold text-dark">{{ kpi.target_operator }} {{ kpi.target_value }} <span class="small">{{ kpi.unit }}</span></div>
+        <div class="card-body p-4" style="background-color: #eef2f6; border-bottom-left-radius: inherit; border-bottom-right-radius: inherit;">
+          <div class="row g-4">
+            <div class="col-12 col-md-6 col-xl-3" v-for="kpi in category.kpis" :key="kpi.id">
+              <div class="card border border-top border-4 rounded-4 shadow h-100 kpi-card bg-white overflow-hidden"
+                   :class="kpi.actual_value === null ? 'border-secondary' : (checkStatus(kpi) === 'pass' ? 'border-success' : 'border-danger')">
+                <div class="card-body p-3 d-flex flex-column">
+                  
+                  <div class="mb-2 flex-grow-1">
+                    <div class="mb-2 d-flex flex-wrap gap-1">
+                      <span class="badge bg-primary bg-opacity-10 text-primary" v-if="kpi.code" style="font-size: 0.7rem;">{{ kpi.code }}</span>
+                      <span class="badge bg-secondary text-white" v-if="kpi.kpi_level" style="font-size: 0.7rem;">
+                        <i class="bi bi-diagram-3-fill me-1"></i>{{ kpi.kpi_level }}
+                      </span>
+                    </div>
+                    
+                    <h6 class="fw-bold mb-2 lh-base text-dark" style="font-size: 0.95rem; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">{{ kpi.name }}</h6>
+                    
+                    <div class="badge bg-light text-secondary border w-100 text-start text-truncate fw-normal py-2 mb-3" style="font-size: 0.8rem;">
+                      <i class="bi bi-person-fill me-1"></i> {{ kpi.responsible_person || 'ยังไม่ระบุ' }}
+                    </div>
+
+                    <div class="row g-2 mb-3 text-center">
+                      <div class="col-6">
+                        <div class="bg-light p-2 rounded-3 border h-100 d-flex flex-column justify-content-center">
+                          <div class="text-muted mb-1" style="font-size: 0.7rem;">เป้าหมาย</div>
+                          <div class="fw-bold text-dark" style="font-size: 0.85rem;">{{ kpi.target_operator }} {{ kpi.target_value }}</div>
+                          <div class="text-muted" style="font-size: 0.65rem;">{{ kpi.unit }}</div>
+                        </div>
+                      </div>
+                      <div class="col-6">
+                        <div class="bg-light p-2 rounded-3 border h-100 d-flex flex-column justify-content-center">
+                          <div class="text-muted mb-1" style="font-size: 0.7rem;">ผลงานล่าสุด</div>
+                          <div class="fw-bold" style="font-size: 0.9rem;" :class="kpi.actual_value !== null ? 'text-primary' : 'text-muted'">{{ kpi.actual_value !== null ? kpi.actual_value : '-' }}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="d-flex flex-column gap-1 mb-2">
+                         <span v-if="kpi.actual_value === null" class="badge bg-secondary w-100 py-2">No Data</span>
+                         <span v-else-if="checkStatus(kpi) === 'pass'" class="badge bg-success w-100 py-2">Pass</span>
+                         <span v-else class="badge bg-danger w-100 py-2">Fail</span>
+                         
+                         <span v-if="getMissingPeriods(kpi).length > 0" 
+                               class="badge bg-warning text-dark border border-warning w-100 py-2" 
+                               style="cursor: pointer; transition: 0.2s;"
+                               @click="showMissingPeriodsDetails(kpi)">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>ค้างรายงาน {{ getMissingPeriods(kpi).length }} รอบ
+                         </span>
+                    </div>
                   </div>
-                  <div class="bg-light p-3 rounded-3 text-center border" style="min-width: 140px">
-                    <div class="small text-muted mb-1">ผลงานล่าสุด</div>
-                    <div class="fw-bold" :class="kpi.actual_value !== null ? 'text-primary' : 'text-muted'">{{ kpi.actual_value !== null ? kpi.actual_value : 'รอการบันทึก' }}</div>
+                  
+                  <div class="d-flex align-items-center mb-3 mt-auto justify-content-between">
+                    <button class="btn btn-sm btn-outline-primary rounded-pill flex-grow-1 me-2 fw-bold" style="font-size: 0.8rem;" @click.stop="openEntryModal(kpi)">
+                      <i class="bi bi-pencil-square"></i> รายงาน
+                    </button>
+                    <div class="d-flex gap-1">
+                      <button class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" @click.stop="openTrendModal(kpi)" title="กราฟแนวโน้ม">
+                        <i class="bi bi-bar-chart-fill text-info"></i>
+                      </button>
+                      <button class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" @click.stop="openHistoryModal(kpi)" title="ประวัติ">
+                        <i class="bi bi-clock-history text-secondary"></i>
+                      </button>
+                    </div>
                   </div>
-                  <div class="d-flex flex-column align-items-end justify-content-center ms-2" style="height: 100%">
-                     <span v-if="kpi.actual_value === null" class="badge bg-secondary rounded-pill py-2 px-4 mb-2">No Data</span>
-                     <span v-else-if="checkStatus(kpi) === 'pass'" class="badge bg-success rounded-pill py-2 px-4 mb-2">Pass</span>
-                     <span v-else class="badge bg-danger rounded-pill py-2 px-4 mb-2">Fail</span>
-                     
-                     <span v-if="getMissingPeriods(kpi).length > 0" 
-                           class="badge bg-warning text-dark border border-warning" 
-                           style="cursor: pointer; transition: 0.2s;"
-                           @click="showMissingPeriodsDetails(kpi)">
-                        <i class="bi bi-exclamation-triangle-fill me-1"></i>ค้างรายงาน {{ getMissingPeriods(kpi).length }} รอบ
-                     </span>
+                  
+                  <hr class="text-muted opacity-25 my-2">
+                  
+                  <div class="d-flex overflow-auto gap-2 pb-1" style="scrollbar-width: thin;">
+                    <div v-for="(block, idx) in getFrequencyBlocks(kpi)" :key="idx" style="min-width: 60px; flex: 1;">
+                      <div class="bg-warning bg-opacity-10 p-1 rounded-2 border border-warning border-opacity-25 h-100 text-center d-flex flex-column justify-content-center">
+                        <div class="text-dark mb-0 text-truncate" style="font-size: 0.65rem; font-weight: 600;" :title="block.label">{{ block.label }}</div>
+                        <div class="fw-bold" style="font-size: 0.75rem;" :class="block.value !== '-' ? 'text-primary' : 'text-muted'">{{ block.value }}</div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-              
-              <div class="d-flex align-items-center mb-4">
-                <button class="btn btn-sm btn-outline-primary rounded-pill px-4 me-2 fw-bold" @click.stop="openEntryModal(kpi)">
-                  <i class="bi bi-pencil-square me-1"></i> รายงานผล
-                </button>
-                <button class="btn btn-sm btn-light border rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 35px; height: 35px;" @click.stop="openTrendModal(kpi)" title="กราฟแนวโน้ม">
-                  <i class="bi bi-bar-chart-fill text-info"></i>
-                </button>
-                <button class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center" style="width: 35px; height: 35px;" @click.stop="openHistoryModal(kpi)" title="ประวัติ">
-                  <i class="bi bi-clock-history text-secondary"></i>
-                </button>
-              </div>
-              
-              <hr class="text-muted opacity-25 mb-4">
-              
-              <div class="row text-center g-2 row-cols-2 row-cols-md-4 row-cols-lg-auto" style="justify-content: flex-start;">
-                <div class="col" v-for="(block, idx) in getFrequencyBlocks(kpi)" :key="idx" style="flex: 1; min-width: 100px; max-width: 150px;">
-                  <div class="bg-warning bg-opacity-10 p-2 rounded-3 border border-warning border-opacity-25 h-100 d-flex flex-column justify-content-center">
-                    <div class="small fw-bold text-dark mb-1" style="font-size: 0.8rem;">{{ block.label }}</div>
-                    <div class="fw-bold" :class="block.value !== '-' ? 'text-primary' : 'text-muted'">{{ block.value }}</div>
-                  </div>
+
                 </div>
               </div>
             </div>
@@ -208,8 +228,8 @@
             <h5 class="modal-title">
               <i class="bi bi-graph-up me-2"></i> Trend: {{ selectedKpi?.name }}
             </h5>
-            <button class="btn btn-sm btn-light text-primary fw-bold ms-auto me-3 shadow-sm" @click="openExportPreview">
-              <i class="bi bi-file-word-fill me-1"></i> Export Word
+            <button class="btn btn-sm btn-light text-success fw-bold ms-auto me-3 shadow-sm" @click="openExportPreview">
+              <i class="bi bi-file-earmark-excel-fill me-1"></i> Export Excel
             </button>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
@@ -312,7 +332,7 @@
         <div class="modal-content">
           <div class="modal-header bg-primary text-white">
             <h5 class="modal-title">
-              <i class="bi bi-file-earmark-word me-2"></i> ตัวอย่างรายงานก่อนดาวน์โหลด (Preview)
+              <i class="bi bi-file-earmark-excel me-2"></i> ตัวอย่างรายงานก่อนดาวน์โหลด (Preview)
             </h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
@@ -364,8 +384,8 @@
           </div>
           <div class="modal-footer bg-white">
             <button type="button" class="btn btn-light border fw-bold px-4" data-bs-dismiss="modal">ยกเลิก</button>
-            <button type="button" class="btn btn-primary fw-bold px-4 shadow-sm" @click="confirmExportWord">
-              <i class="bi bi-download me-2"></i> ยืนยันการ Export เป็น Word
+            <button type="button" class="btn btn-success fw-bold px-4 shadow-sm" @click="confirmExportTrendExcel">
+              <i class="bi bi-download me-2"></i> ยืนยันการ Export เป็น Excel
             </button>
           </div>
         </div>
@@ -387,6 +407,7 @@ import KpiTrendChart from '../../components/KpiTrendChart.vue';
 import KpiEntryModal from '../../components/KpiEntryModal.vue';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, BorderStyle, WidthType, ImageRun, AlignmentType, HeadingLevel, VerticalAlign } from 'docx';
 import saveAs from 'file-saver';
+import * as XLSX from 'xlsx';
 
 
 // Register specific compenents for Doughnut
@@ -621,8 +642,21 @@ export default {
         });
       }
 
+      const isAverage = kpi.unit && (kpi.unit.includes('%') || kpi.unit.includes('ร้อยละ'));
+      const calcAgg = (values) => {
+        const validVals = values.filter(v => v !== '-' && v !== null && v !== '').map(v => parseFloat(v)).filter(v => !isNaN(v));
+        if (validVals.length === 0) return '-';
+        const sum = validVals.reduce((a, b) => a + b, 0);
+        if (isAverage) {
+          const avg = sum / validVals.length;
+          return Number.isInteger(avg) ? String(avg) : avg.toFixed(2);
+        }
+        return Number.isInteger(sum) ? String(sum) : sum.toFixed(2);
+      };
+
       if (freq === 'month') {
         const months = ['ต.ค.', 'พ.ย.', 'ธ.ค.', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.'];
+        const mValues = [];
         months.forEach((m, idx) => {
           let monthNum = idx < 3 ? idx + 10 : idx - 2;
           let val = '-';
@@ -632,8 +666,14 @@ export default {
               break;
             }
           }
+          mValues.push(val);
           blocks.push({ label: m, value: val });
         });
+        
+        blocks.push({ label: 'ครึ่งปีแรก', value: calcAgg(mValues.slice(0, 6)) });
+        blocks.push({ label: 'ครึ่งปีหลัง', value: calcAgg(mValues.slice(6, 12)) });
+        blocks.push({ label: 'ผลงานทั้งปี', value: calcAgg(mValues) });
+        
       } else if (freq === 'quarter') {
         blocks = [
           { label: 'ไตรมาส 1', value: '-' },
@@ -648,6 +688,10 @@ export default {
           else if (m >= 4 && m <= 6) blocks[2].value = dataMap[date];
           else if (m >= 7 && m <= 9) blocks[3].value = dataMap[date];
         }
+        const qVals = blocks.map(b => b.value);
+        blocks.push({ label: 'ครึ่งปีแรก', value: calcAgg(qVals.slice(0, 2)) });
+        blocks.push({ label: 'ครึ่งปีหลัง', value: calcAgg(qVals.slice(2, 4)) });
+        blocks.push({ label: 'ผลงานทั้งปี', value: calcAgg(qVals) });
       } else if (freq === '6month' || freq === 'halfyear' || freq === 'half_year') {
         blocks = [
           { label: 'ครึ่งปีแรก', value: '-' },
@@ -658,6 +702,8 @@ export default {
           if (m >= 10 || (m >= 1 && m <= 3)) blocks[0].value = dataMap[date];
           else blocks[1].value = dataMap[date];
         }
+        const hVals = blocks.map(b => b.value);
+        blocks.push({ label: 'ผลงานทั้งปี', value: calcAgg(hVals) });
       } else if (freq === 'year') {
         blocks = [{ label: 'ผลงานทั้งปี', value: '-' }];
         for (let date in dataMap) {
@@ -865,138 +911,56 @@ export default {
         this.exportPreviewModalInstance.show();
       }
     },
-    async confirmExportWord() {
+    async confirmExportTrendExcel() {
       if (!this.exportPreviewData) return;
       
       const data = this.exportPreviewData;
+      const exportData = [];
+
+      // Title & Target
+      exportData.push(['ตัวชี้วัด:', data.kpiName]);
+      exportData.push(['เป้าหมาย:', data.targetStr]);
+      exportData.push([]);
+
+      // Headers (Periods)
+      const headerRow = ['รอบการประเมิน'];
+      data.periods.forEach(p => headerRow.push(p));
+      exportData.push(headerRow);
+
+      // Data (Actuals)
+      const dataRow = ['ผลงาน'];
+      data.actuals.forEach(a => dataRow.push(String(a)));
+      exportData.push(dataRow);
       
-      // Build Table Headers
-      const headerCells = [
-        new TableCell({ children: [new Paragraph({ text: "ลำดับ", alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
-        new TableCell({ children: [new Paragraph({ text: "ข้อมูล/ตัวชี้วัด", alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
-        new TableCell({ children: [new Paragraph({ text: "เป้าหมาย\nปีปัจจุบัน", alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER })
-      ];
+      exportData.push([]);
       
-      data.periods.forEach(p => {
-        headerCells.push(new TableCell({ children: [new Paragraph({ text: p, alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }));
-      });
-      
-      for (let i = data.periods.length; i < 5; i++) {
-        headerCells.push(new TableCell({ children: [new Paragraph({ text: "-", alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }));
+      // Analysis
+      exportData.push(['ผลการวิเคราะห์:']);
+      if (data.analysisLines.length > 0) {
+        data.analysisLines.forEach(line => exportData.push([line]));
+      } else {
+        exportData.push(['- ไม่มีข้อมูลการวิเคราะห์ -']);
       }
+
+      const ws = XLSX.utils.aoa_to_sheet(exportData);
       
-      // Build Data Row
-      const dataCells = [
-        new TableCell({ children: [new Paragraph({ text: "1", alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }),
-        new TableCell({ children: [new Paragraph({ text: data.kpiName })], verticalAlign: VerticalAlign.CENTER }),
-        new TableCell({ children: [new Paragraph({ text: data.targetStr, alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER })
-      ];
-      
-      data.actuals.forEach(a => {
-        dataCells.push(new TableCell({ children: [new Paragraph({ text: String(a), alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }));
-      });
-      
-      for (let i = data.actuals.length; i < 5; i++) {
-        dataCells.push(new TableCell({ children: [new Paragraph({ text: "-", alignment: AlignmentType.CENTER })], verticalAlign: VerticalAlign.CENTER }));
-      }
-      
-      // Analysis Paragraphs
-      const analysisParagraphs = [
-        new Paragraph({
-          text: "ผลการวิเคราะห์:",
-          heading: HeadingLevel.HEADING_3,
-          spacing: { after: 120 }
-        })
-      ];
-      
-      data.analysisLines.forEach(line => {
-        analysisParagraphs.push(new Paragraph({ text: line, spacing: { after: 120 } }));
-      });
-      
-      if (data.analysisLines.length === 0) {
-        analysisParagraphs.push(new Paragraph({ text: "ไม่มีข้อมูลการวิเคราะห์", spacing: { after: 120 } }));
-      }
-      
-      // Build Content Row (Chart + Analysis)
-      const contentCells = [
-        new TableCell({
-          columnSpan: 3,
-          children: [
-            new Paragraph({
-              children: [
-                new ImageRun({
-                  data: Uint8Array.from(atob(data.base64Data), c => c.charCodeAt(0)),
-                  transformation: { width: 300, height: 180 }
-                })
-              ],
-              alignment: AlignmentType.CENTER
-            })
-          ],
-          verticalAlign: VerticalAlign.CENTER
-        }),
-        new TableCell({
-          columnSpan: 5,
-          children: analysisParagraphs,
-          verticalAlign: VerticalAlign.TOP,
-          margins: { top: 150, bottom: 150, left: 150, right: 150 }
-        })
-      ];
-      
-      // Create Document
-      const doc = new Document({
-        styles: {
-          default: {
-            document: {
-              run: {
-                font: "TH SarabunPSK",
-                size: 32 // 16pt (32 half-points)
-              }
-            }
-          }
-        },
-        sections: [
-          {
-            properties: {
-              page: {
-                margin: { top: 1000, right: 1000, bottom: 1000, left: 1000 }
-              }
-            },
-            children: [
-              new Paragraph({
-                text: "รายงานตัวชี้วัดสำคัญ",
-                heading: HeadingLevel.HEADING_1,
-                alignment: AlignmentType.CENTER,
-                spacing: { after: 200 }
-              }),
-              new Paragraph({
-                text: data.kpiName,
-                heading: HeadingLevel.HEADING_2,
-                spacing: { after: 200 }
-              }),
-              new Table({
-                width: { size: 100, type: WidthType.PERCENTAGE },
-                rows: [
-                  new TableRow({ children: headerCells }),
-                  new TableRow({ children: dataCells }),
-                  new TableRow({ children: contentCells })
-                ]
-              })
-            ]
-          }
-        ]
-      });
+      // Auto-fit columns
+      const colWidths = [{ wch: 15 }];
+      for (let i = 0; i < data.periods.length; i++) colWidths.push({ wch: 20 });
+      ws['!cols'] = colWidths;
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Trend Analysis");
       
       try {
-        const blob = await Packer.toBlob(doc);
-        saveAs(blob, `KPI_Report_${data.kpiCode}.docx`);
-        
+        XLSX.writeFile(wb, `KPI_Trend_${data.kpiCode}.xlsx`);
         if (this.exportPreviewModalInstance) {
           this.exportPreviewModalInstance.hide();
         }
         Swal.fire({ icon: 'success', title: 'Export สำเร็จ', timer: 1500, showConfirmButton: false });
       } catch (e) {
         console.error(e);
-        Swal.fire('Error', 'เกิดข้อผิดพลาดในการสร้างไฟล์ Word', 'error');
+        Swal.fire('Error', 'เกิดข้อผิดพลาดในการสร้างไฟล์ Excel', 'error');
       }
     },
     prepareChart(history) {
@@ -1222,6 +1186,67 @@ export default {
     viewDetails(kpi) {
       // Legacy method, replaced by openHistoryModal
       this.openHistoryModal(kpi);
+    },
+    exportDashboardExcel() {
+      if (!this.filteredCategories || this.filteredCategories.length === 0) {
+        Swal.fire('Warning', 'ไม่มีข้อมูลสำหรับ Export', 'warning');
+        return;
+      }
+
+      const data = [];
+      data.push([
+        'หมวดหมู่ (Dimension)', 
+        'รหัส KPI', 
+        'ระดับ', 
+        'ชื่อตัวชี้วัด', 
+        'ผู้รับผิดชอบ', 
+        'เป้าหมาย', 
+        'ผลงานล่าสุด', 
+        'สถานะ'
+      ]);
+
+      this.filteredCategories.forEach(cat => {
+        if (cat.kpis) {
+          cat.kpis.forEach(kpi => {
+            const status = this.checkStatus(kpi);
+            let statusText = 'No Data';
+            if (status === 'pass') statusText = 'ผ่าน (Pass)';
+            else if (status === 'fail') statusText = 'ไม่ผ่าน (Fail)';
+
+            const targetStr = `${kpi.target_operator || ''} ${kpi.target_value || ''} ${kpi.unit || ''}`.trim();
+            const actualStr = kpi.actual_value !== null ? kpi.actual_value : 'รอการบันทึก';
+
+            data.push([
+              cat.name || '',
+              kpi.code || '-',
+              kpi.kpi_level || '-',
+              kpi.name || '',
+              kpi.responsible_person || 'ยังไม่ระบุ',
+              targetStr,
+              actualStr,
+              statusText
+            ]);
+          });
+        }
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      
+      const colWidths = [
+        { wch: 30 },
+        { wch: 15 },
+        { wch: 20 },
+        { wch: 60 },
+        { wch: 25 },
+        { wch: 20 },
+        { wch: 15 },
+        { wch: 15 }
+      ];
+      ws['!cols'] = colWidths;
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "KPI Dashboard");
+      XLSX.writeFile(wb, `KPI_Dashboard_${this.selectedYear}.xlsx`);
     }
   }
 };
@@ -1234,6 +1259,13 @@ export default {
 }
 .card {
   transition: transform 0.2s, box-shadow 0.2s;
+}
+.kpi-card {
+  transition: transform 0.25s cubic-bezier(0.165, 0.84, 0.44, 1), box-shadow 0.25s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+.kpi-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.15) !important;
 }
 .card-header {
   background-color: transparent;
