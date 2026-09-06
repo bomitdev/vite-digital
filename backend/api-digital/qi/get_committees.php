@@ -9,7 +9,7 @@ try {
             FROM qi_committees c 
             LEFT JOIN qi_committee_members m ON c.id = m.committee_id 
             GROUP BY c.id 
-            ORDER BY c.id ASC";
+            ORDER BY c.sort_order ASC, c.id ASC";
             
     $stmt = $pdo2->query($sql);
     $committees = $stmt->fetchAll(PDO::FETCH_ASSOC);

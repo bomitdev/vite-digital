@@ -2,10 +2,16 @@
   <div class="container mt-5">
     <div class="card calm-card mb-4">
       <div class="card-header calm-bg-lavender calm-text-navy py-3 d-flex justify-content-between align-items-center border-bottom-0">
-        <h4 class="mb-0 fw-bold">คณะกรรมการพัฒนาคุณภาพ (QI Teams)</h4>
-        <button class="btn btn-secondary rounded-pill px-3 fw-bold" @click="$router.push('/home-backoffice')">
-          <i class="bi bi-house-fill me-1"></i> กลับหน้าหลัก
-        </button>
+        <h4 class="mb-0 fw-bold">คณะกรรมการพัฒนาคุณภาพโรงพยาบาล (HA)</h4>
+        <div>
+          <button class="btn btn-danger rounded-pill px-3 fw-bold me-2" @click="generatePdf" :disabled="generatingPdf">
+            <span v-if="generatingPdf" class="spinner-border spinner-border-sm me-1"></span>
+            <i class="bi bi-file-earmark-pdf-fill me-1" v-else></i> สร้างคำสั่งแต่งตั้ง (PDF)
+          </button>
+          <button class="btn btn-secondary rounded-pill px-3 fw-bold" @click="$router.push('/home-backoffice')">
+            <i class="bi bi-house-fill me-1"></i> กลับหน้าหลัก
+          </button>
+        </div>
       </div>
     </div>
 
@@ -40,7 +46,7 @@
               <i class="bi bi-person-plus-fill me-1"></i> เพิ่มรายชื่อ
             </button>
           </div>
-          <div class="card-body p-0">
+          <div class="card-body p-0 border-bottom">
             <div class="table-responsive">
               <table class="table table-hover align-middle mb-0">
                 <thead class="calm-bg-lavender calm-text-navy">
@@ -77,6 +83,22 @@
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+          
+          <!-- Moved description block here -->
+          <div class="card-body p-4 bg-light mt-auto rounded-bottom">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold text-dark m-0"><i class="bi bi-card-text text-primary me-2"></i>บทบาทหน้าที่ (Roles and Responsibilities)</h6>
+              <button class="btn btn-sm btn-outline-primary rounded-pill px-3" @click="openEditDescriptionModal">
+                <i class="bi bi-pencil-square"></i> แก้ไขบทบาทหน้าที่
+              </button>
+            </div>
+            <div class="p-3 bg-white rounded border shadow-sm text-dark" style="white-space: pre-wrap; font-size: 0.95rem; min-height: 80px;" v-if="selectedTeam.description">
+              {{ selectedTeam.description }}
+            </div>
+            <div class="p-3 bg-white rounded border shadow-sm text-muted fst-italic text-center py-4" v-else>
+              ยังไม่มีข้อมูลบทบาทหน้าที่ของคณะกรรมการชุดนี้
             </div>
           </div>
         </div>
@@ -147,6 +169,102 @@
         </div>
       </div>
     </div>
+
+    <!-- Edit Description Modal -->
+    <div class="modal fade" id="editDescriptionModal" tabindex="-1" ref="editDescriptionModal">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content calm-card">
+          <div class="modal-header calm-bg-lavender calm-text-navy border-0">
+            <h5 class="modal-title fw-bold">แก้ไขบทบาทหน้าที่ {{ selectedTeam?.name }}</h5>
+            <button type="button" class="btn-close" @click="closeEditDescriptionModal"></button>
+          </div>
+          <div class="modal-body p-4 bg-white">
+            <form @submit.prevent="saveDescription">
+              <div class="mb-3">
+                <label class="form-label fw-bold text-dark mb-2">บทบาทหน้าที่ (Roles & Responsibilities)</label>
+                <textarea class="form-control bg-light shadow-sm" rows="10" v-model="editDescriptionText" placeholder="ระบุบทบาทหน้าที่..."></textarea>
+              </div>
+              <div class="d-grid mt-4">
+                <button type="submit" class="btn btn-primary fw-bold py-2 rounded-pill shadow-sm" :disabled="savingDescription">
+                  <span v-if="savingDescription" class="spinner-border spinner-border-sm me-2"></span>
+                  <i class="bi bi-save-fill me-1" v-else></i> บันทึกบทบาทหน้าที่
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PDF Preview Modal -->
+    <div class="modal fade" id="pdfPreviewModal" tabindex="-1" ref="pdfPreviewModal">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content calm-card bg-light">
+          <div class="modal-header calm-bg-navy text-white border-0">
+            <h5 class="modal-title fw-bold"><i class="bi bi-search me-2"></i>ตัวอย่างก่อนพิมพ์ (Print Preview)</h5>
+            <button type="button" class="btn-close btn-close-white" @click="closePdfPreview"></button>
+          </div>
+          <div class="modal-body p-4 d-flex justify-content-center bg-secondary" style="overflow-y: auto; max-height: 75vh;">
+             <!-- The actual PDF container -->
+             <div id="pdf-container" class="bg-white text-dark shadow-sm" style="width: 210mm; min-height: 297mm; font-family: 'Sarabun', sans-serif; font-size: 16px; color: #000; padding: 20mm; line-height: 1.5; box-sizing: border-box;">
+                <!-- Page 1 Header -->
+                <div class="text-center mb-4">
+                  <img :src="krutImg" alt="Krut" style="height: 60px; width: 60px;" class="mb-2" />
+                  <h5 class="fw-bold mb-1" style="font-size: 20px;">คำสั่งโรงพยาบาลชานุมาน</h5>
+                  <h5 class="fw-bold mb-3" style="font-size: 20px;">ที่ ........ / ........</h5>
+                  <h5 class="fw-bold" style="font-size: 20px;">เรื่อง แต่งตั้งคณะกรรมการพัฒนาคุณภาพโรงพยาบาล (HA) ปีงบประมาณ ๒๕๖๖</h5>
+                </div>
+                
+                <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 20px;">
+                  ด้วย โรงพยาบาลชานุมาน มีความมุ่งมั่น ที่จะพัฒนาให้เป็นโรงพยาบาลที่ผ่านการรับรองคุณภาพ ตามมาตรฐานของสถาบันรับรองคุณภาพสถานพยาบาล (สรพ.) และให้มีการพัฒนางานบริการให้มีคุณภาพตามมาตรฐานอย่างเป็นระบบและมีความต่อเนื่อง เกิดผลลัพธ์แก่ผู้รับบริการ เจ้าหน้าที่ และประชาชน ได้รับการบริการที่มีคุณภาพมาตรฐาน มีความปลอดภัย และเกิดความพึงพอใจ
+                </div>
+                <div style="text-indent: 2.5em; text-align: justify; margin-bottom: 30px;">
+                  ดังนั้น เพื่อให้การดำเนินงานพัฒนาคุณภาพโรงพยาบาล เป็นไปด้วยความเรียบร้อย และบรรลุเป้าหมายตามวัตถุประสงค์ โรงพยาบาลชานุมาน จึงขอแต่งตั้งคณะกรรมการดำเนินงานดังต่อไปนี้
+                </div>
+                
+                <!-- Loop Committees -->
+                <div v-for="(team, teamIndex) in allTeamsData" :key="team.id" class="mb-4" style="page-break-inside: avoid;">
+                  <div class="fw-bold mb-2">
+                    {{ teamIndex + 1 }}. {{ team.name.includes('ผู้จัดการ') || team.name.includes('ผู้ประสานงาน') ? team.name : 'ทีม' + team.name }}
+                  </div>
+                  
+                  <!-- Members -->
+                  <table class="table table-borderless table-sm mb-2" style="font-size: 16px; margin-left: 2em; width: 90%; color: #000;">
+                    <tbody>
+                      <tr v-for="(member, mIndex) in team.members" :key="member.id">
+                        <td style="width: 8%; padding: 2px 0;">{{ teamIndex + 1 }}.{{ mIndex + 1 }}</td>
+                        <td style="width: 50%; padding: 2px 0;">{{ member.officer_name }}</td>
+                        <td style="padding: 2px 0;">{{ member.role }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  
+                  <!-- Description -->
+                  <div class="fw-bold mt-2 mb-1" style="margin-left: 1em;">มีหน้าที่</div>
+                  <div style="margin-left: 2.5em; text-align: justify; white-space: pre-wrap; margin-bottom: 15px;">{{ team.description || '-' }}</div>
+                </div>
+                
+                <!-- Signatures -->
+                <div class="mt-5 text-center" style="margin-top: 50px !important; page-break-inside: avoid;">
+                  <div>สั่ง ณ วันที่ .................................................</div>
+                  <div style="margin-top: 50px;">
+                    (นายธนากร คนเพียร)
+                  </div>
+                  <div>ผู้อำนวยการโรงพยาบาลชานุมาน</div>
+                </div>
+             </div>
+          </div>
+          <div class="modal-footer border-0 d-flex justify-content-between">
+            <button type="button" class="btn btn-secondary rounded-pill px-4" @click="closePdfPreview">ปิด</button>
+            <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold" @click="confirmGeneratePdf" :disabled="generatingPdf">
+              <span v-if="generatingPdf" class="spinner-border spinner-border-sm me-2"></span>
+              <i class="bi bi-file-earmark-pdf-fill me-2" v-else></i> ยืนยันและดาวน์โหลด PDF
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -154,6 +272,8 @@
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { Modal } from 'bootstrap';
+import html2pdf from 'html2pdf.js';
+import krutImgUrl from '../../assets/krut.png';
 
 export default {
   name: 'QiCommittees',
@@ -171,7 +291,14 @@ export default {
         officer_name: '',
         role: 'กรรมการ'
       },
-      addModalInstance: null
+      addModalInstance: null,
+      editDescriptionText: '',
+      savingDescription: false,
+      editDescModalInstance: null,
+      generatingPdf: false,
+      allTeamsData: [],
+      krutImg: krutImgUrl,
+      pdfPreviewModalInstance: null
     };
   },
   computed: {
@@ -320,6 +447,40 @@ export default {
         Swal.fire('ข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
       }
     },
+    openEditDescriptionModal() {
+      if (!this.selectedTeam) return;
+      this.editDescriptionText = this.selectedTeam.description || '';
+      if (!this.editDescModalInstance) {
+        this.editDescModalInstance = new Modal(this.$refs.editDescriptionModal);
+      }
+      this.editDescModalInstance.show();
+    },
+    closeEditDescriptionModal() {
+      if (this.editDescModalInstance) this.editDescModalInstance.hide();
+    },
+    async saveDescription() {
+      if (!this.selectedTeam) return;
+      this.savingDescription = true;
+      try {
+        const res = await axios.post('/api-digital/qi/update_team_description.php', {
+          id: this.selectedTeam.id,
+          description: this.editDescriptionText
+        });
+        if (res.data.status === 'success') {
+          this.selectedTeam.description = this.editDescriptionText;
+          Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'บันทึกบทบาทหน้าที่เรียบร้อยแล้ว', timer: 1500, showConfirmButton: false });
+          this.closeEditDescriptionModal();
+          this.fetchCommittees(); // Refresh main list to persist data
+        } else {
+          throw new Error(res.data.message);
+        }
+      } catch (error) {
+        console.error(error);
+        Swal.fire('ข้อผิดพลาด', error.message || 'ไม่สามารถบันทึกได้', 'error');
+      } finally {
+        this.savingDescription = false;
+      }
+    },
     async removeMember(id, name) {
       const confirm = await Swal.fire({
         title: 'ยืนยันการลบ',
@@ -345,6 +506,69 @@ export default {
           console.error(e);
           Swal.fire('ข้อผิดพลาด', 'ไม่สามารถลบข้อมูลได้', 'error');
         }
+      }
+    },
+    async generatePdf() {
+      // Step 1: Open the modal and load data
+      try {
+        Swal.fire({
+          title: 'กำลังดึงข้อมูล...',
+          text: 'กรุณารอสักครู่',
+          allowOutsideClick: false,
+          didOpen: () => Swal.showLoading()
+        });
+
+        const res = await axios.get('/api-digital/qi/get_all_teams_for_pdf.php');
+        if (res.data.status !== 'success') throw new Error('ไม่สามารถดึงข้อมูลได้');
+        
+        this.allTeamsData = res.data.data;
+        
+        Swal.close();
+
+        // Show the preview modal
+        if (!this.pdfPreviewModalInstance) {
+          this.pdfPreviewModalInstance = new Modal(this.$refs.pdfPreviewModal);
+        }
+        this.pdfPreviewModalInstance.show();
+        
+      } catch (err) {
+        console.error(err);
+        Swal.fire('ข้อผิดพลาด', 'ไม่สามารถโหลดตัวอย่างก่อนพิมพ์ได้: ' + err.message, 'error');
+      }
+    },
+    closePdfPreview() {
+      if (this.pdfPreviewModalInstance) this.pdfPreviewModalInstance.hide();
+    },
+    async confirmGeneratePdf() {
+      this.generatingPdf = true;
+      try {
+        Swal.fire({
+          title: 'กำลังสร้าง PDF...',
+          text: 'ระบบกำลังดาวน์โหลดไฟล์ กรุณารอสักครู่',
+          allowOutsideClick: false,
+          didOpen: () => Swal.showLoading()
+        });
+
+        // 2. Generate PDF
+        const element = document.getElementById('pdf-container');
+        const opt = {
+          margin:       0,
+          filename:     'HA-Appointment-Order.pdf',
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 2, useCORS: true },
+          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        
+        await html2pdf().from(element).set(opt).save();
+        
+        Swal.close();
+        this.closePdfPreview();
+        Swal.fire({ icon: 'success', title: 'ดาวน์โหลดสำเร็จ', text: 'ไฟล์ถูกบันทึกลงในเครื่องของคุณแล้ว', timer: 1500, showConfirmButton: false });
+      } catch (err) {
+        console.error(err);
+        Swal.fire('ข้อผิดพลาด', 'ไม่สามารถสร้าง PDF ได้: ' + err.message, 'error');
+      } finally {
+        this.generatingPdf = false;
       }
     },
     // Close dropdown when clicking outside

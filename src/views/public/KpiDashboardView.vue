@@ -509,7 +509,7 @@ export default {
       exportPreviewModalInstance: null,
       exportPreviewData: null,
       isExportingAll: false,
-      isExportingPdfFile: false,
+      isExportingWord: false,
       batchExportData: [],
       batchExportPreviewModalInstance: null,
       selectedYear: null,
@@ -1485,6 +1485,184 @@ export default {
         Swal.fire('Error', 'Network error or API issue', 'error');
       } finally {
         this.loading = false;
+      }
+    },
+    async confirmBatchExportWord() {
+      if (!this.batchExportData || this.batchExportData.length === 0) return;
+      
+      this.isExportingWord = true;
+      try {
+        Swal.fire({
+          title: 'กำลังสร้างไฟล์ Word...',
+          text: 'กรุณารอสักครู่ ระบบกำลังประมวลผลข้อมูล',
+          allowOutsideClick: false,
+          didOpen: () => Swal.showLoading()
+        });
+
+        const children = [];
+        
+        // Document Title
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: `รายงานรวมตัวชี้วัด (${this.selectedLevel || 'ทุกระดับ'})`, bold: true, size: 36, font: 'Sarabun' })
+            ],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 400 }
+          })
+        );
+
+        // Loop through all KPIs in batchExportData
+        this.batchExportData.forEach((kpiItem, index) => {
+          // Add page break before every KPI except the first one
+          if (index > 0) {
+            children.push(
+              new Paragraph({
+                children: [new TextRun({ text: '' })],
+                pageBreakBefore: true
+              })
+            );
+          }
+
+          // Category & KPI Name Headers
+          children.push(
+            new Paragraph({
+              children: [new TextRun({ text: kpiItem.categoryName, bold: true, size: 28, font: 'Sarabun' })],
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 200, after: 100 }
+            })
+          );
+          children.push(
+            new Paragraph({
+              children: [new TextRun({ text: kpiItem.kpiName, bold: true, size: 24, font: 'Sarabun' })],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 300 }
+            })
+          );
+
+          // Build History Table Headers
+          const headers = ['ลำดับ', 'ข้อมูล/ตัวชี้วัด', 'เป้าหมาย ปีปัจจุบัน', ...kpiItem.periods.map(String)];
+          const tableHeaders = headers.map(h => 
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, font: 'Sarabun' })], alignment: AlignmentType.CENTER })],
+              verticalAlign: VerticalAlign.CENTER,
+              shading: { fill: 'E0E0E0' },
+              margins: { top: 100, bottom: 100, left: 100, right: 100 }
+            })
+          );
+          
+          // Data Row
+          const dataRow = [String(index + 1), kpiItem.kpiName, kpiItem.targetStr, ...kpiItem.actuals.map(String)];
+          const tableCells = dataRow.map((d, i) => 
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: d, font: 'Sarabun' })], alignment: i === 1 ? AlignmentType.LEFT : AlignmentType.CENTER })],
+              verticalAlign: VerticalAlign.CENTER,
+              margins: { top: 100, bottom: 100, left: 100, right: 100 }
+            })
+          );
+
+          // Chart Image Row
+          let chartCell;
+          if (kpiItem.base64Data) {
+            // Convert base64 string back to uint8 array
+            const byteString = atob(kpiItem.base64Data);
+            const ia = new Uint8Array(byteString.length);
+            for (let i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+            
+            chartCell = new TableCell({
+              columnSpan: 3,
+              children: [
+                new Paragraph({
+                  children: [
+                    new ImageRun({
+                      data: ia,
+                      transformation: { width: 500, height: 250 }
+                    })
+                  ],
+                  alignment: AlignmentType.CENTER
+                })
+              ],
+              verticalAlign: VerticalAlign.CENTER,
+              margins: { top: 100, bottom: 100, left: 100, right: 100 }
+            });
+          } else {
+            chartCell = new TableCell({
+              columnSpan: 3,
+              children: [
+                new Paragraph({
+                  children: [new TextRun({ text: 'No Chart Data', font: 'Sarabun', color: '808080' })],
+                  alignment: AlignmentType.CENTER
+                })
+              ],
+              verticalAlign: VerticalAlign.CENTER,
+              margins: { top: 100, bottom: 100, left: 100, right: 100 }
+            });
+          }
+
+          // Analysis Cell
+          const analysisParagraphs = [
+            new Paragraph({
+              children: [new TextRun({ text: 'ผลการวิเคราะห์:', bold: true, underline: { type: 'single' }, font: 'Sarabun' })],
+              spacing: { after: 100 }
+            })
+          ];
+          
+          if (kpiItem.analysisLines && kpiItem.analysisLines.length > 0) {
+            kpiItem.analysisLines.forEach(line => {
+              analysisParagraphs.push(
+                new Paragraph({
+                  children: [new TextRun({ text: line, font: 'Sarabun' })],
+                  spacing: { after: 50 }
+                })
+              );
+            });
+          } else {
+            analysisParagraphs.push(
+              new Paragraph({
+                children: [new TextRun({ text: 'ไม่มีข้อมูลการวิเคราะห์', font: 'Sarabun', italics: true, color: '808080' })]
+              })
+            );
+          }
+
+          const analysisCell = new TableCell({
+            columnSpan: kpiItem.periods.length,
+            children: analysisParagraphs,
+            verticalAlign: VerticalAlign.TOP,
+            margins: { top: 100, bottom: 100, left: 100, right: 100 }
+          });
+
+          // Create the main KPI Table
+          children.push(
+            new Table({
+              rows: [
+                new TableRow({ children: tableHeaders }),
+                new TableRow({ children: tableCells }),
+                new TableRow({ children: [chartCell, analysisCell] })
+              ],
+              width: { size: 100, type: WidthType.PERCENTAGE }
+            })
+          );
+        });
+
+        const doc = new Document({
+          sections: [{ properties: {}, children: children }]
+        });
+
+        const blob = await Packer.toBlob(doc);
+        saveAs(blob, `All_KPIs_${this.selectedLevel || 'Trend'}.docx`);
+        
+        if (this.batchExportPreviewModalInstance) {
+          this.batchExportPreviewModalInstance.hide();
+        }
+        Swal.fire({ icon: 'success', title: 'ดาวน์โหลด Word สำเร็จ', timer: 1500, showConfirmButton: false });
+        
+      } catch (err) {
+        console.error('Error generating Word document:', err);
+        Swal.fire('Error', 'เกิดข้อผิดพลาดในการสร้างไฟล์ Word', 'error');
+      } finally {
+        this.isExportingWord = false;
       }
     },
     checkStatus(kpi) {
