@@ -345,7 +345,7 @@
             <div class="card shadow-sm border-0 mb-3" v-if="exportPreviewData">
               <div class="card-body p-4 bg-white" style="font-family: 'Sarabun', 'Sarabun New', sans-serif;">
                 <div class="text-center mb-4">
-                  <h4 class="fw-bold">รายงานตัวชี้วัดสำคัญ</h4>
+                  <h4 class="fw-bold">รายงานตัวชี้วัด</h4>
                   <h5 class="fw-bold">{{ exportPreviewData.kpiName }}</h5>
                 </div>
                 
@@ -418,9 +418,9 @@
           <div class="modal-body p-0 bg-light" id="batchExportModalBody" style="overflow-x: auto;">
             <div style="min-width: 1200px; padding: 20px; display: flex; justify-content: center;">
               <div id="batchExportContainer" class="bg-white shadow-sm" style="width: 1200px; font-family: 'Sarabun', sans-serif;" v-if="batchExportData.length > 0">
-                <div v-for="(kpiItem, index) in batchExportData" :key="index" class="kpi-export-page p-4" :style="{'page-break-after': index < batchExportData.length - 1 ? 'always' : 'auto', 'background': 'white'}">
+                <div v-for="(kpiItem, index) in batchExportData" :key="index" class="kpi-export-page p-4" style="background: white;">
                   <div class="text-center mb-4">
-                    <h4 class="fw-bold">รายงานตัวชี้วัดสำคัญ ({{ selectedLevel || 'ทุกระดับ' }})</h4>
+                    <h4 class="fw-bold">{{ kpiItem.categoryName }}</h4>
                     <h5 class="fw-bold">{{ kpiItem.kpiName }}</h5>
                   </div>
                   <table class="table table-bordered border-dark text-center align-middle" style="width: 100%; margin-bottom: 20px;">
@@ -441,7 +441,7 @@
                       </tr>
                       <tr>
                         <td colspan="3" class="p-3 text-center bg-white">
-                          <img v-if="kpiItem.base64Data" :src="'data:image/png;base64,' + kpiItem.base64Data" class="img-fluid border" style="max-height: 300px;">
+                          <img v-if="kpiItem.base64Data" :src="'data:image/png;base64,' + kpiItem.base64Data" class="img-fluid border" style="max-height: 250px;">
                           <div v-else class="text-muted">No Chart Data</div>
                         </td>
                         <td :colspan="kpiItem.periods.length" class="text-start p-3 bg-white" style="vertical-align: top;">
@@ -454,6 +454,7 @@
                       </tr>
                     </tbody>
                   </table>
+                  <div class="html2pdf__page-break" v-if="index < batchExportData.length - 1"></div>
                 </div>
               </div>
             </div>
@@ -1170,7 +1171,8 @@ export default {
       let allKpis = [];
       this.filteredCategories.forEach(cat => {
         if (cat.kpis && cat.kpis.length > 0) {
-          allKpis = allKpis.concat(cat.kpis);
+          const kpisWithCat = cat.kpis.map(k => ({ ...k, categoryName: cat.name }));
+          allKpis = allKpis.concat(kpisWithCat);
         }
       });
       
@@ -1230,6 +1232,7 @@ export default {
           this.batchExportData.push({
             kpiName: kpi.name || '',
             kpiCode: kpi.code || 'Export',
+            categoryName: kpi.categoryName || '',
             targetStr: targetStr,
             periods: years,
             actuals: actuals,
@@ -1288,7 +1291,7 @@ export default {
           image:        { type: 'jpeg', quality: 0.98 },
           html2canvas:  { scale: 2, useCORS: true, windowWidth: 1250 },
           jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
-          pagebreak:    { mode: 'css' }
+          pagebreak:    { mode: ['css', 'legacy'] }
         };
         
         await html2pdf().set(opt).from(element).save();

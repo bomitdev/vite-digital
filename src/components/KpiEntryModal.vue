@@ -253,32 +253,32 @@ export default {
       };
 
       if (type === 'quarter') {
-        const allQuarters = [
+        this.periodOptions = [
           { id: 1, name: 'ไตรมาสที่ 1 (ต.ค. - ธ.ค.)' },
           { id: 2, name: 'ไตรมาสที่ 2 (ม.ค. - มี.ค.)' },
           { id: 3, name: 'ไตรมาสที่ 3 (เม.ย. - มิ.ย.)' },
           { id: 4, name: 'ไตรมาสที่ 4 (ก.ค. - ก.ย.)' }
         ];
-        this.periodOptions = allQuarters.filter(q => isArrived(q.id, 'quarter'));
-        if (this.periodOptions.length > 0) {
-          this.form.period_number = this.periodOptions[this.periodOptions.length - 1].id;
+        const arrived = this.periodOptions.filter(q => isArrived(q.id, 'quarter'));
+        if (arrived.length > 0) {
+          this.form.period_number = arrived[arrived.length - 1].id;
+        } else {
+          this.form.period_number = 1;
         }
       } else if (type === 'Semiannual report') {
-        const allHalves = [
+        this.periodOptions = [
           { id: 1, name: 'ครึ่งปีแรก (ต.ค. - มี.ค.)' },
           { id: 2, name: 'ครึ่งปีหลัง (เม.ย. - ก.ย.)' }
         ];
-        this.periodOptions = allHalves.filter(h => isArrived(h.id, 'half'));
-        if (this.periodOptions.length > 0) {
-          this.form.period_number = this.periodOptions[this.periodOptions.length - 1].id;
+        const arrived = this.periodOptions.filter(h => isArrived(h.id, 'half'));
+        if (arrived.length > 0) {
+          this.form.period_number = arrived[arrived.length - 1].id;
+        } else {
+          this.form.period_number = 1;
         }
       } else if (type === 'year') {
         this.periodOptions = [{ id: 1, name: 'ปีงบประมาณ' }];
-        if (isArrived(1, 'year')) {
-          this.form.period_number = 1;
-        } else {
-          this.periodOptions = [];
-        }
+        this.form.period_number = 1;
       } else {
         // Month
         const thaiMonths = [
@@ -293,19 +293,14 @@ export default {
           return { id, name: m, fiscalIndex };
         });
         
-        this.periodOptions = allMonths
-          .filter(m => isArrived(m.fiscalIndex, 'month'))
-          .map(m => ({ id: m.id, name: m.name }));
-
-        if (this.periodOptions.length > 0) {
-          if (selectedYear === currentFiscalYear) {
-            // Find current calendar month in the options, or fallback to the last valid one
-            const currentOpt = this.periodOptions.find(p => p.id === currentCalendarMonth);
-            this.form.period_number = currentOpt ? currentOpt.id : this.periodOptions[this.periodOptions.length - 1].id;
-          } else {
-            // For past years, usually September (id 9) is the last fiscal month
-            this.form.period_number = 9;
-          }
+        this.periodOptions = allMonths.map(m => ({ id: m.id, name: m.name }));
+        
+        const arrived = allMonths.filter(m => isArrived(m.fiscalIndex, 'month'));
+        if (arrived.length > 0) {
+            arrived.sort((a,b) => a.fiscalIndex - b.fiscalIndex);
+            this.form.period_number = arrived[arrived.length - 1].id;
+        } else {
+            this.form.period_number = 10; // Oct
         }
       }
     },
