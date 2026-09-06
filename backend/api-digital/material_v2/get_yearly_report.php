@@ -66,18 +66,18 @@ try {
             }
         }
 
-        // Get past transactions to calculate correct beginning balance (before this year)
-        $stmtPast = $pdo2->prepare("
+        // Get all transactions on or after the start date to reverse calculate the correct beginning balance
+        $stmtFuture = $pdo2->prepare("
             SELECT 
-                SUM(CASE WHEN action_type = 'IN' THEN quantity ELSE 0 END) as past_in,
-                SUM(CASE WHEN action_type = 'OUT' THEN quantity ELSE 0 END) as past_out
+                SUM(CASE WHEN action_type = 'IN' THEN quantity ELSE 0 END) as future_in,
+                SUM(CASE WHEN action_type = 'OUT' THEN quantity ELSE 0 END) as future_out
             FROM mt_transactions 
-            WHERE material_id = :id AND action_date < :start_date
+            WHERE material_id = :id AND action_date >= :start_date
         ");
-        $stmtPast->execute([':id' => $mat_id, ':start_date' => $start_date]);
-        $pastTx = $stmtPast->fetch(PDO::FETCH_ASSOC);
-        $past_in = intval($pastTx['past_in'] ?? 0);
-        $past_out = intval($pastTx['past_out'] ?? 0);
+        $stmtFuture->execute([':id' => $mat_id, ':start_date' => $start_date]);
+        $futureTx = $stmtFuture->fetch(PDO::FETCH_ASSOC);
+        $future_in = intval($futureTx['future_in'] ?? 0);
+        $future_out = intval($futureTx['future_out'] ?? 0);
 
         // Get latest vendor
         $stmtVendor = $pdo2->prepare("
@@ -90,8 +90,9 @@ try {
         $vendorRow = $stmtVendor->fetch(PDO::FETCH_ASSOC);
         $vendor = $vendorRow ? $vendorRow['reference_dest'] : '';
 
-        // Calculate balances forward from past transactions
-        $begin_bal = $past_in - $past_out;
+        // Calculate balances forward by reversing all transactions from the current exact balance
+        $current_bal = intval($mat['current_balance']);
+        $begin_bal = $current_bal - $future_in + $future_out;
         if ($begin_bal < 0) $begin_bal = 0; // Prevent negative stock from bad manual data
 
         $end_bal = $begin_bal + $year_in - $year_out;

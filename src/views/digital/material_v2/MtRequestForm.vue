@@ -14,12 +14,21 @@
           </li>
         </ol>
       </nav>
-      <router-link
-        to="/home-backoffice"
-        class="btn btn-light shadow-sm border rounded-pill px-4 hover-lift"
-      >
-        <i class="bi bi-arrow-left me-2 text-primary"></i>กลับหน้าหลัก
-      </router-link>
+      <div class="d-flex gap-2">
+        <router-link
+          v-if="isAdmin"
+          to="/material-v2/requests"
+          class="btn btn-primary shadow-sm border rounded-pill px-4 hover-lift"
+        >
+          <i class="bi bi-ui-checks-grid me-2"></i>จัดการคำขอ (Admin)
+        </router-link>
+        <router-link
+          to="/home-backoffice"
+          class="btn btn-light shadow-sm border rounded-pill px-4 hover-lift"
+        >
+          <i class="bi bi-arrow-left me-2 text-primary"></i>กลับหน้าหลัก
+        </router-link>
+      </div>
     </div>
 
     <!-- Centered Header Section -->
