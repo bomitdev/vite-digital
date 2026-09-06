@@ -54,7 +54,7 @@
                     required
                   >
                     <option value="">-- กรุณาเลือก KPI --</option>
-                    <option v-for="kpi in kpis" :key="kpi.id" :value="kpi.id">
+                    <option v-for="kpi in filteredKpis" :key="kpi.id" :value="kpi.id">
                       {{ kpi.name }} (Target: {{ kpi.target_operator }} {{ kpi.target_value }}
                       {{ kpi.unit }})
                     </option>
@@ -184,6 +184,10 @@ export default {
   data() {
     return {
       kpis: [],
+      userDepartment: '',
+      userFullname: '',
+      userAccess: [],
+      userTeams: [],
       periods: {
         month: [
           { id: 1, name: 'มกราคม' },
@@ -225,6 +229,26 @@ export default {
     };
   },
   computed: {
+    isAdmin() {
+      return (
+        this.userAccess.includes('administrator') ||
+        this.userAccess.includes('menu_kpi_admin') ||
+        this.userDepartment.includes('กลุ่มงานสุขภาพดิจิทัล') ||
+        this.userDepartment.includes('ประกัน') ||
+        this.userDepartment === 'admin'
+      );
+    },
+    filteredKpis() {
+      if (this.isAdmin) return this.kpis;
+      
+      if (!this.userFullname) return [];
+      
+      return this.kpis.filter(kpi => {
+        const isPerson = kpi.responsible_person && kpi.responsible_person.toLowerCase().includes(this.userFullname.toLowerCase());
+        const isTeam = kpi.responsible_unit && this.userTeams.some(team => kpi.responsible_unit.toLowerCase().includes(team.toLowerCase()));
+        return isPerson || isTeam;
+      });
+    },
     selectedKpiDetail() {
       return this.kpis.find((k) => k.id === this.form.kpi_id) || null;
     },
@@ -317,6 +341,35 @@ export default {
         }
       }
     },
+    async fetchUserProfile() {
+      try {
+        const token = localStorage.getItem('user_token');
+        if (!token) return;
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        const response = await axios.get('/api-hosoffice/get_user_profile.php', config);
+        if (response.data.status === 'success') {
+          this.userDepartment = response.data.department || '';
+          this.userFullname = response.data.fullname || '';
+          this.userAccess = response.data.access_user ? response.data.access_user.split(':') : [];
+          
+          if (this.userFullname) {
+            this.fetchUserTeams(this.userFullname);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load user profile', e);
+      }
+    },
+    async fetchUserTeams(fullname) {
+      try {
+        const response = await axios.get(`/api-digital/qi/get_user_teams.php?fullname=${encodeURIComponent(fullname)}`);
+        if (response.data.status === 'success') {
+          this.userTeams = response.data.data || [];
+        }
+      } catch (e) {
+        console.error('Failed to load user teams', e);
+      }
+    },
     async fetchKPIs() {
       try {
         const res = await axios.get('/api-digital/kpi/get_kpis.php');
@@ -357,6 +410,7 @@ export default {
     }
   },
   async mounted() {
+    await this.fetchUserProfile();
     await this.fetchKPIs();
 
     // Check for query param

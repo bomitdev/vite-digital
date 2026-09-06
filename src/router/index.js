@@ -54,6 +54,7 @@ const routes = [
   //KPI
   { path: '/kpi-setup', component: () => import('../views/kpi/KpiSetup.vue'), meta: { requiresAuth: true } },
   { path: '/kpi-result', component: () => import('../views/kpi/KpiResult.vue'), meta: { requiresAuth: true } },
+  { path: '/qi-committees', component: () => import('../views/kpi/QiCommittees.vue'), meta: { requiresAuth: true } },
 
   { path: '/login', component: () => import('../views/auth/LoginView.vue'), meta: { hideNavbar: true } },
 

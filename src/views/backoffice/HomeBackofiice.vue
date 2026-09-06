@@ -667,6 +667,40 @@
                   </div>
                 </div>
               </div>
+              
+              <!-- QI Committees -->
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_kpi_admin') || isAdmin">
+                <div
+                  class="nav-card h-100 bg-gradient-teal text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
+                  @click="goToQiCommittees"
+                >
+                  <div
+                    class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
+                  ></div>
+                  <div class="position-relative z-1 d-flex flex-column h-100">
+                    <div
+                      class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
+                    >
+                      <i class="bi bi-people-fill fs-4"></i>
+                    </div>
+                    <h6 class="fw-bold text-white mb-1 text-truncate" title="คณะกรรมการ HA">
+                      คณะกรรมการ HA
+                    </h6>
+                    <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
+                      จัดการรายชื่อทีมพัฒนาคุณภาพ
+                    </p>
+                    <div
+                      class="d-flex align-items-center text-white fw-bold small mt-auto"
+                      style="font-size: 0.75rem"
+                    >
+                      เข้าใช้งาน
+                      <i
+                        class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
+                      ></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <!-- IT Manager Schedule -->
               <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_it_schedule')">
                 <div
@@ -969,6 +1003,9 @@ export default {
     },
     async goToKpiDashboard() {
       await this.checkAdminAccessAndGo('/kpi-setup');
+    },
+    async goToQiCommittees() {
+      await this.checkAdminAccessAndGo('/qi-committees');
     },
 
     goToRevenueResult() {

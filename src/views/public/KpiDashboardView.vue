@@ -38,12 +38,12 @@
           <div class="col-md-6 mb-3 mb-md-0">
             <div class="card bg-warning text-dark h-100 shadow-sm border-0"
                  style="cursor: pointer"
-                 :class="{'ring-active': statusFilter === 'warning'}"
-                 @click="setStatusFilter('warning')">
+                 :class="{'ring-active': statusFilter === 'nodata'}"
+                 @click="setStatusFilter('nodata')">
               <div class="card-body p-3">
-                <h6 class="card-title fw-bold text-uppercase mb-1"><i class="bi bi-exclamation-triangle me-1"></i>Warning</h6>
-                <h2 class="display-6 fw-bold mb-0">{{ summary.warning }}</h2>
-                <small class="opacity-75">Close to target</small>
+                <h6 class="card-title fw-bold text-uppercase mb-1"><i class="bi bi-hourglass-split me-1"></i>รอรายงานผล</h6>
+                <h2 class="display-6 fw-bold mb-0">{{ summary.nodata }}</h2>
+                <small class="opacity-75">ตัวชี้วัดที่ยังไม่มีผลงาน</small>
               </div>
             </div>
           </div>
@@ -104,8 +104,12 @@
       <button class="btn btn-outline-primary shadow-sm fw-bold" @click="fetchData">
         <i class="bi bi-arrow-clockwise me-1"></i> Refresh
       </button>
+      <button class="btn btn-danger shadow-sm fw-bold" @click="openBatchExportPreview" :disabled="isExportingAll">
+        <span v-if="isExportingAll" class="spinner-border spinner-border-sm me-2"></span>
+        <i class="bi bi-file-earmark-pdf-fill me-1" v-else></i> Export All (PDF)
+      </button>
       <button class="btn btn-success shadow-sm fw-bold" @click="exportDashboardExcel">
-        <i class="bi bi-file-earmark-excel me-1"></i> Export
+        <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
       </button>
       <router-link to="/kpi-setup" class="btn btn-dark shadow-sm fw-bold" v-if="isAdmin || hasResponsibleKpi">
         <i class="bi bi-gear-fill me-1"></i> ตั้งค่า KPI
@@ -382,10 +386,16 @@
             </div>
             
           </div>
-          <div class="modal-footer bg-white">
-            <button type="button" class="btn btn-light border fw-bold px-4" data-bs-dismiss="modal">ยกเลิก</button>
-            <button type="button" class="btn btn-success fw-bold px-4 shadow-sm" @click="confirmExportTrendExcel">
-              <i class="bi bi-download me-2"></i> ยืนยันการ Export เป็น Excel
+          <div class="modal-footer bg-white d-flex justify-content-end">
+            <button type="button" class="btn btn-light border fw-bold px-4 me-auto" data-bs-dismiss="modal">ยกเลิก</button>
+            <button type="button" class="btn btn-primary fw-bold px-3 shadow-sm" @click="confirmExportTrendWord">
+              <i class="bi bi-file-earmark-word me-1"></i> Word
+            </button>
+            <button type="button" class="btn btn-danger fw-bold px-3 shadow-sm" @click="confirmExportTrendPdf">
+              <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+            </button>
+            <button type="button" class="btn btn-success fw-bold px-3 shadow-sm" @click="confirmExportTrendExcel">
+              <i class="bi bi-file-earmark-excel me-1"></i> Excel
             </button>
           </div>
         </div>
@@ -394,6 +404,70 @@
 
     <!-- KPI Entry Modal -->
     <KpiEntryModal ref="entryModal" @saved="fetchData" />
+    
+    <!-- Batch Export Preview Modal -->
+    <div class="modal fade" id="batchExportPreviewModal" tabindex="-1" aria-labelledby="batchExportPreviewModalLabel" aria-hidden="true" data-bs-backdrop="static">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+          <div class="modal-header bg-danger text-white border-0">
+            <h5 class="modal-title fw-bold" id="batchExportPreviewModalLabel">
+              <i class="bi bi-file-earmark-pdf me-2"></i> ตัวอย่างรายงาน PDF รวมตัวชี้วัด ({{ selectedLevel || 'ทุกระดับ' }})
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-0 bg-light" id="batchExportModalBody" style="overflow-x: auto;">
+            <div style="min-width: 1200px; padding: 20px; display: flex; justify-content: center;">
+              <div id="batchExportContainer" class="bg-white shadow-sm" style="width: 1200px; font-family: 'Sarabun', sans-serif;" v-if="batchExportData.length > 0">
+                <div v-for="(kpiItem, index) in batchExportData" :key="index" class="kpi-export-page p-4" :style="{'page-break-after': index < batchExportData.length - 1 ? 'always' : 'auto', 'background': 'white'}">
+                  <div class="text-center mb-4">
+                    <h4 class="fw-bold">รายงานตัวชี้วัดสำคัญ ({{ selectedLevel || 'ทุกระดับ' }})</h4>
+                    <h5 class="fw-bold">{{ kpiItem.kpiName }}</h5>
+                  </div>
+                  <table class="table table-bordered border-dark text-center align-middle" style="width: 100%; margin-bottom: 20px;">
+                    <thead class="table-light border-dark">
+                      <tr>
+                        <th width="5%">ลำดับ</th>
+                        <th width="30%">ข้อมูล/ตัวชี้วัด</th>
+                        <th width="15%">เป้าหมาย<br>ปีปัจจุบัน</th>
+                        <th v-for="(p, idx) in kpiItem.periods" :key="'bh'+idx">{{ p }}</th>
+                      </tr>
+                    </thead>
+                    <tbody class="border-dark">
+                      <tr>
+                        <td>{{ index + 1 }}</td>
+                        <td class="text-start">{{ kpiItem.kpiName }}</td>
+                        <td>{{ kpiItem.targetStr }}</td>
+                        <td v-for="(a, idx) in kpiItem.actuals" :key="'bd'+idx">{{ a }}</td>
+                      </tr>
+                      <tr>
+                        <td colspan="3" class="p-3 text-center bg-white">
+                          <img v-if="kpiItem.base64Data" :src="'data:image/png;base64,' + kpiItem.base64Data" class="img-fluid border" style="max-height: 300px;">
+                          <div v-else class="text-muted">No Chart Data</div>
+                        </td>
+                        <td :colspan="kpiItem.periods.length" class="text-start p-3 bg-white" style="vertical-align: top;">
+                          <h6 class="fw-bold text-decoration-underline mb-2">ผลการวิเคราะห์:</h6>
+                          <div v-for="(line, aIdx) in kpiItem.analysisLines" :key="'ba'+aIdx" class="mb-1">
+                            {{ line }}
+                          </div>
+                          <div v-if="!kpiItem.analysisLines.length" class="text-muted fst-italic">ไม่มีข้อมูลการวิเคราะห์</div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bg-white d-flex justify-content-end">
+            <button type="button" class="btn btn-light border fw-bold px-4 me-auto" data-bs-dismiss="modal">ยกเลิก</button>
+            <button type="button" class="btn btn-danger fw-bold px-4 shadow-sm" @click="confirmBatchExportPdf" :disabled="isExportingPdfFile">
+              <span v-if="isExportingPdfFile" class="spinner-border spinner-border-sm me-2"></span>
+              <i class="bi bi-file-earmark-pdf-fill me-1" v-else></i> ยืนยันการ Export เป็น PDF
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -402,16 +476,18 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 import { Modal } from 'bootstrap';
 import { Doughnut } from 'vue-chartjs';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { ArcElement, Tooltip, Legend } from 'chart.js';
 import KpiTrendChart from '../../components/KpiTrendChart.vue';
 import KpiEntryModal from '../../components/KpiEntryModal.vue';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, BorderStyle, WidthType, ImageRun, AlignmentType, HeadingLevel, VerticalAlign } from 'docx';
 import saveAs from 'file-saver';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import html2pdf from 'html2pdf.js';
+import { Chart as ChartJS, registerables } from 'chart.js';
 
-
-// Register specific compenents for Doughnut
-ChartJS.register(ArcElement, Tooltip, Legend);
+// Register specific compenents for Doughnut and Line charts
+ChartJS.register(...registerables);
 
 export default {
   name: 'KpiDashboardView',
@@ -424,14 +500,6 @@ export default {
     return {
       loading: true,
       categories: [],
-      summary: {
-        total: 0,
-        passed: 0,
-        failed: 0,
-        warning: 0,
-        passedPercent: 0,
-        failedPercent: 0
-      },
       selectedKpi: null,
       historyLoading: false,
       historyList: [],
@@ -439,6 +507,10 @@ export default {
       historyModalInstance: null,
       exportPreviewModalInstance: null,
       exportPreviewData: null,
+      isExportingAll: false,
+      isExportingPdfFile: false,
+      batchExportData: [],
+      batchExportPreviewModalInstance: null,
       selectedYear: null,
       analysisText: '',
       savingAnalysis: false,
@@ -501,7 +573,7 @@ export default {
       }
       return result;
     },
-    filteredCategories() {
+    filteredCategoriesForSummary() {
       let result = this.baseCategories;
 
       // Filter by selected level
@@ -535,6 +607,38 @@ export default {
           return { ...cat, kpis: matchedKpis };
         });
       }
+
+      return result.filter(cat => cat.kpis && cat.kpis.length > 0);
+    },
+    summary() {
+      let total = 0;
+      let passed = 0;
+      let failed = 0;
+      let nodata = 0;
+
+      this.filteredCategoriesForSummary.forEach((cat) => {
+        if (cat.kpis) {
+          cat.kpis.forEach((kpi) => {
+            total++;
+            const status = this.checkStatus(kpi);
+            if (status === 'pass') passed++;
+            else if (status === 'fail') failed++;
+            else if (status === 'nodata') nodata++;
+          });
+        }
+      });
+
+      return {
+        total,
+        passed,
+        failed,
+        nodata,
+        passedPercent: total > 0 ? Math.round((passed / total) * 100) : 0,
+        failedPercent: total > 0 ? Math.round((failed / total) * 100) : 0
+      };
+    },
+    filteredCategories() {
+      let result = this.filteredCategoriesForSummary;
 
       // Filter by status filter
       if (this.statusFilter !== 'all') {
@@ -574,12 +678,12 @@ export default {
     },
     doughnutChartData() {
       return {
-        labels: ['Passed', 'Failed', 'Warning'],
+        labels: ['Passed', 'Failed', 'No Data'],
         datasets: [
           {
             backgroundColor: ['#198754', '#dc3545', '#ffc107'],
             borderWidth: 0,
-            data: [this.summary.passed || 0, this.summary.failed || 0, this.summary.warning || 0]
+            data: [this.summary.passed || 0, this.summary.failed || 0, this.summary.nodata || 0]
           }
         ]
       };
@@ -770,6 +874,7 @@ export default {
         this.trendModalInstance.show();
       }
       const data = await this.fetchHistoryData(kpi.id);
+      this.historyList = data;
       this.prepareChart(data);
     },
     async openHistoryModal(kpi) {
@@ -887,10 +992,33 @@ export default {
       const dataUrl = canvas.toDataURL('image/png');
       const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
       
-      const recentData = this.historyList.slice(0, 5).reverse();
-      const periods = recentData.map(h => this.formatDate(h.period_date));
-      const actuals = recentData.map(h => h.actual_value);
-      const targetStr = `${this.selectedKpi.target_operator || ''} ${this.selectedKpi.target_value || ''} ${this.selectedKpi.unit || ''}`;
+      const currentYear = this.selectedYear || new Date().getFullYear() + 543;
+      const years = [];
+      const actuals = [];
+      
+      for(let i = 4; i >= 0; i--) {
+        const targetFy = currentYear - i;
+        years.push(targetFy);
+        
+        // Find latest entry for this fiscal year
+        const entriesInFy = this.historyList.filter(h => {
+           const parts = h.period_date.split('-');
+           const y = parseInt(parts[0]);
+           const m = parseInt(parts[1]);
+           const fy = m >= 10 ? y + 1 + 543 : y + 543;
+           return fy === targetFy;
+        });
+        
+        if (entriesInFy.length > 0) {
+           // sort descending by date
+           entriesInFy.sort((a,b) => b.period_date.localeCompare(a.period_date));
+           actuals.push(entriesInFy[0].actual_value !== null ? entriesInFy[0].actual_value : '');
+        } else {
+           actuals.push('');
+        }
+      }
+      
+      const targetStr = `${this.selectedKpi.target_operator || ''} ${this.selectedKpi.target_value || ''} ${this.selectedKpi.unit || ''}`.trim();
       
       const analysisLines = (this.analysisText || '').split('\n').filter(line => line.trim() !== '');
 
@@ -898,7 +1026,7 @@ export default {
         kpiName: this.selectedKpi.name || '',
         kpiCode: this.selectedKpi.code || 'Export',
         targetStr: targetStr,
-        periods: periods,
+        periods: years,
         actuals: actuals,
         base64Data: base64Data,
         analysisLines: analysisLines
@@ -915,45 +1043,65 @@ export default {
       if (!this.exportPreviewData) return;
       
       const data = this.exportPreviewData;
-      const exportData = [];
-
-      // Title & Target
-      exportData.push(['ตัวชี้วัด:', data.kpiName]);
-      exportData.push(['เป้าหมาย:', data.targetStr]);
-      exportData.push([]);
-
-      // Headers (Periods)
-      const headerRow = ['รอบการประเมิน'];
-      data.periods.forEach(p => headerRow.push(p));
-      exportData.push(headerRow);
-
-      // Data (Actuals)
-      const dataRow = ['ผลงาน'];
-      data.actuals.forEach(a => dataRow.push(String(a)));
-      exportData.push(dataRow);
       
-      exportData.push([]);
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Trend Analysis');
+
+      // Set columns
+      const columns = [
+        { header: 'ลำดับ', key: 'no', width: 10 },
+        { header: 'ข้อมูล/ตัวชี้วัด', key: 'name', width: 50 },
+        { header: 'เป้าหมาย ปีปัจจุบัน', key: 'target', width: 25 }
+      ];
+      data.periods.forEach((p, i) => {
+        columns.push({ header: String(p), key: 'p' + i, width: 15 });
+      });
+      sheet.columns = columns;
+
+      // Data Row
+      const rowData = {
+        no: 1,
+        name: data.kpiName,
+        target: data.targetStr
+      };
+      data.periods.forEach((p, i) => {
+        rowData['p' + i] = data.actuals[i] !== undefined && data.actuals[i] !== '' ? String(data.actuals[i]) : '';
+      });
+      sheet.addRow(rowData);
       
-      // Analysis
-      exportData.push(['ผลการวิเคราะห์:']);
+      // Empty row
+      sheet.addRow([]);
+      
+      // Analysis Row
+      sheet.addRow(['', '', 'ผลการวิเคราะห์:']);
       if (data.analysisLines.length > 0) {
-        data.analysisLines.forEach(line => exportData.push([line]));
+        data.analysisLines.forEach(line => sheet.addRow(['', '', line]));
       } else {
-        exportData.push(['- ไม่มีข้อมูลการวิเคราะห์ -']);
+        sheet.addRow(['', '', '- ไม่มีข้อมูลการวิเคราะห์ -']);
+      }
+      
+      // Add Chart Image
+      if (data.base64Data) {
+        const imageId = workbook.addImage({
+          base64: 'data:image/png;base64,' + data.base64Data,
+          extension: 'png',
+        });
+        
+        sheet.addImage(imageId, {
+          tl: { col: 0, row: 3 },
+          ext: { width: 500, height: 250 }
+        });
       }
 
-      const ws = XLSX.utils.aoa_to_sheet(exportData);
-      
-      // Auto-fit columns
-      const colWidths = [{ wch: 15 }];
-      for (let i = 0; i < data.periods.length; i++) colWidths.push({ wch: 20 });
-      ws['!cols'] = colWidths;
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Trend Analysis");
+      // Style headers
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).alignment = { horizontal: 'center' };
       
       try {
-        XLSX.writeFile(wb, `KPI_Trend_${data.kpiCode}.xlsx`);
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `KPI_Trend_${data.kpiCode}.xlsx`);
+        
         if (this.exportPreviewModalInstance) {
           this.exportPreviewModalInstance.hide();
         }
@@ -962,6 +1110,307 @@ export default {
         console.error(e);
         Swal.fire('Error', 'เกิดข้อผิดพลาดในการสร้างไฟล์ Excel', 'error');
       }
+    },
+    async generateOffscreenChartDataUrl(history) {
+      if (!history || history.length === 0) return '';
+      const sorted = [...history].reverse();
+      const data = {
+        labels: sorted.map((h) => this.formatDate(h.period_date)),
+        datasets: [
+          {
+            label: 'Actual',
+            data: sorted.map((h) => h.actual_value),
+            borderColor: '#304ffe',
+            backgroundColor: 'rgba(48, 79, 254, 0.1)',
+            tension: 0.3,
+            fill: true
+          },
+          {
+            label: 'Target',
+            data: sorted.map((h) => h.target_value_snapshot),
+            borderColor: '#f44336',
+            borderDash: [5, 5],
+            fill: false
+          }
+        ]
+      };
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = 600;
+      canvas.height = 300;
+      canvas.style.display = 'none';
+      document.body.appendChild(canvas);
+      
+      const chartOptions = Object.assign({}, this.chartOptions, {
+        animation: false,
+        responsive: false,
+        maintainAspectRatio: false
+      });
+      
+      const chart = new ChartJS(canvas, {
+         type: 'line',
+         data: data,
+         options: chartOptions
+      });
+      
+      await new Promise(r => setTimeout(r, 50));
+      const dataUrl = chart.toBase64Image();
+      
+      chart.destroy();
+      document.body.removeChild(canvas);
+      
+      return dataUrl.replace(/^data:image\/png;base64,/, '');
+    },
+    async openBatchExportPreview() {
+      if (!this.selectedLevel) {
+        Swal.fire('ข้อควรระวัง', 'กรุณาเลือก "ระดับตัวชี้วัด" (Level) จากตัวกรองด้านบนก่อนทำการ Export All PDF', 'warning');
+        return;
+      }
+      
+      let allKpis = [];
+      this.filteredCategories.forEach(cat => {
+        if (cat.kpis && cat.kpis.length > 0) {
+          allKpis = allKpis.concat(cat.kpis);
+        }
+      });
+      
+      if (allKpis.length === 0) {
+        Swal.fire('Warning', 'ไม่มีตัวชี้วัดในระดับที่เลือก', 'warning');
+        return;
+      }
+      
+      this.isExportingAll = true;
+      this.batchExportData = [];
+      
+      Swal.fire({
+        title: 'กำลังเตรียมตัวอย่าง PDF...',
+        text: 'ระบบกำลังดึงข้อมูลและประมวลผลกราฟ โปรดรอสักครู่',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+      
+      try {
+        const currentYear = this.selectedYear || new Date().getFullYear() + 543;
+        const years = [];
+        for(let i = 4; i >= 0; i--) {
+          years.push(currentYear - i);
+        }
+        
+        for (const kpi of allKpis) {
+          const history = await this.fetchHistoryData(kpi.id);
+          const base64Data = await this.generateOffscreenChartDataUrl(history);
+          
+          const actuals = [];
+          for (const targetFy of years) {
+            const entriesInFy = history.filter(h => {
+               const parts = h.period_date.split('-');
+               const y = parseInt(parts[0]);
+               const m = parseInt(parts[1]);
+               const fy = m >= 10 ? y + 1 + 543 : y + 543;
+               return fy === targetFy;
+            });
+            if (entriesInFy.length > 0) {
+               entriesInFy.sort((a,b) => b.period_date.localeCompare(a.period_date));
+               actuals.push(entriesInFy[0].actual_value !== null ? entriesInFy[0].actual_value : '');
+            } else {
+               actuals.push('');
+            }
+          }
+          
+          const targetStr = `${kpi.target_operator || ''} ${kpi.target_value || ''} ${kpi.unit || ''}`.trim();
+          const analysisLines = (kpi.analysis || '').split('\n').filter(line => line.trim() !== '');
+          
+          const hasData = actuals.some(a => a !== '');
+          if (!hasData) {
+            continue;
+          }
+          
+          this.batchExportData.push({
+            kpiName: kpi.name || '',
+            kpiCode: kpi.code || 'Export',
+            targetStr: targetStr,
+            periods: years,
+            actuals: actuals,
+            base64Data: base64Data,
+            analysisLines: analysisLines
+          });
+        }
+        
+        Swal.close();
+        
+        if (this.batchExportData.length === 0) {
+           Swal.fire('แจ้งเตือน', 'ไม่พบตัวชี้วัดที่มีผลงานในระยะเวลา 5 ปีงบประมาณนี้', 'info');
+           return;
+        }
+        
+        if (!this.batchExportPreviewModalInstance) {
+           const el = document.getElementById('batchExportPreviewModal');
+           if (el) {
+              this.batchExportPreviewModalInstance = new Modal(el);
+              el.addEventListener('hidden.bs.modal', () => {
+                this.batchExportData = [];
+              });
+           }
+        }
+        
+        if (this.batchExportPreviewModalInstance) {
+           this.batchExportPreviewModalInstance.show();
+        }
+        
+      } catch (e) {
+        console.error(e);
+        Swal.fire('Error', 'เกิดข้อผิดพลาดในการดึงข้อมูลตัวชี้วัด', 'error');
+      } finally {
+        this.isExportingAll = false;
+      }
+    },
+    async confirmBatchExportPdf() {
+      this.isExportingPdfFile = true;
+      try {
+        const element = document.getElementById('batchExportContainer');
+        if (!element) {
+          throw new Error('ไม่พบข้อมูลสำหรับ Export');
+        }
+        
+        // Temporarily change modal body overflow to visible so html2canvas captures everything
+        const modalBody = document.getElementById('batchExportModalBody');
+        const originalOverflow = modalBody.style.overflowX;
+        modalBody.style.overflow = 'visible';
+        
+        // Wait a tiny bit for DOM update
+        await new Promise(r => setTimeout(r, 100));
+        
+        const opt = {
+          margin:       10,
+          filename:     `All_KPIs_${this.selectedLevel}_Trend.pdf`,
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 2, useCORS: true, windowWidth: 1250 },
+          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
+          pagebreak:    { mode: 'css' }
+        };
+        
+        await html2pdf().set(opt).from(element).save();
+        
+        // Restore overflow
+        modalBody.style.overflowX = originalOverflow;
+        modalBody.style.overflowY = 'auto';
+        
+        if (this.batchExportPreviewModalInstance) {
+          this.batchExportPreviewModalInstance.hide();
+        }
+        Swal.fire({ icon: 'success', title: 'Export PDF สำเร็จ', timer: 1500, showConfirmButton: false });
+        
+      } catch (e) {
+        console.error(e);
+        Swal.fire('Error', 'เกิดข้อผิดพลาดในการสร้างไฟล์ PDF', 'error');
+      } finally {
+        this.isExportingPdfFile = false;
+      }
+    },
+    async confirmExportTrendPdf() {
+      if (!this.exportPreviewData) return;
+      
+      const element = document.querySelector('#exportPreviewModal .card-body');
+      if (!element) return;
+      
+      const opt = {
+        margin:       10,
+        filename:     `KPI_Trend_${this.exportPreviewData.kpiCode}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      };
+      
+      html2pdf().set(opt).from(element).save();
+    },
+    async confirmExportTrendWord() {
+      if (!this.exportPreviewData) return;
+      
+      const data = this.exportPreviewData;
+      
+      // Build headers
+      const headers = ['ลำดับ', 'ข้อมูล/ตัวชี้วัด', 'เป้าหมาย ปีปัจจุบัน', ...data.periods.map(String)];
+      const tableHeaders = headers.map(h => 
+        new TableCell({
+          children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, font: 'Sarabun' })], alignment: AlignmentType.CENTER })],
+          verticalAlign: VerticalAlign.CENTER,
+        })
+      );
+      
+      // Data Row
+      const dataRow = ['1', data.kpiName, data.targetStr, ...data.actuals.map(String)];
+      const tableCells = dataRow.map(d => 
+        new TableCell({
+          children: [new Paragraph({ children: [new TextRun({ text: d, font: 'Sarabun' })], alignment: d === data.kpiName ? AlignmentType.LEFT : AlignmentType.CENTER })],
+          verticalAlign: VerticalAlign.CENTER,
+        })
+      );
+
+      // Convert base64 image to Uint8Array
+      const byteString = atob(data.base64Data);
+      const ia = new Uint8Array(byteString.length);
+      for (let i = 0; i < byteString.length; i++) {
+          ia[i] = byteString.charCodeAt(i);
+      }
+      const imageBuffer = ia;
+      
+      const children = [
+        new Paragraph({
+          children: [new TextRun({ text: 'รายงานตัวชี้วัดสำคัญ', bold: true, size: 32, font: 'Sarabun' })],
+          alignment: AlignmentType.CENTER,
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: data.kpiName, bold: true, size: 28, font: 'Sarabun' })],
+          alignment: AlignmentType.CENTER,
+        }),
+        new Paragraph({ text: '' }),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({ children: tableHeaders }),
+            new TableRow({ children: tableCells }),
+          ],
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [
+            new ImageRun({
+              data: imageBuffer,
+              transformation: { width: 500, height: 250 }
+            })
+          ],
+          alignment: AlignmentType.CENTER,
+        }),
+        new Paragraph({ text: '' }),
+        new Paragraph({
+          children: [new TextRun({ text: 'ผลการวิเคราะห์:', bold: true, font: 'Sarabun' })]
+        })
+      ];
+      
+      if (data.analysisLines.length > 0) {
+        data.analysisLines.forEach(line => {
+          children.push(new Paragraph({ children: [new TextRun({ text: line, font: 'Sarabun' })] }));
+        });
+      } else {
+        children.push(new Paragraph({ children: [new TextRun({ text: '- ไม่มีข้อมูลการวิเคราะห์ -', font: 'Sarabun', italics: true })] }));
+      }
+      
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: children,
+        }]
+      });
+      
+      Packer.toBlob(doc).then(blob => {
+        saveAs(blob, `KPI_Trend_${data.kpiCode}.docx`);
+        if (this.exportPreviewModalInstance) {
+          this.exportPreviewModalInstance.hide();
+        }
+        Swal.fire({ icon: 'success', title: 'Export Word สำเร็จ', timer: 1500, showConfirmButton: false });
+      });
     },
     prepareChart(history) {
       const sorted = [...history].reverse();
@@ -1025,7 +1474,6 @@ export default {
         );
         if (response.data.status === 'success') {
           this.categories = response.data.data;
-          this.calculateSummary();
         } else {
           Swal.fire('Error', response.data.message || 'Failed to fetch data', 'error');
         }
@@ -1154,30 +1602,6 @@ export default {
         confirmButtonColor: '#304ffe',
         confirmButtonText: 'ปิดหน้าต่าง'
       });
-    },
-    calculateSummary() {
-      let total = 0;
-      let passed = 0;
-      let failed = 0;
-
-      this.categories.forEach((cat) => {
-        if (cat.kpis) {
-          cat.kpis.forEach((kpi) => {
-            total++;
-            const status = this.checkStatus(kpi);
-            if (status === 'pass') passed++;
-            else if (status === 'fail') failed++;
-          });
-        }
-      });
-
-      this.summary.total = total;
-      this.summary.passed = passed;
-      this.summary.failed = failed;
-      this.summary.warning = 0; // Logic for warning can be added (e.g. within 5% of target)
-
-      this.summary.passedPercent = total > 0 ? Math.round((passed / total) * 100) : 0;
-      this.summary.failedPercent = total > 0 ? Math.round((failed / total) * 100) : 0;
     },
     openEntryModal(kpi) {
       this.$refs.entryModal.open(kpi);

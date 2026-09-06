@@ -27,10 +27,31 @@
           >
             <i class="bi bi-file-earmark-excel-fill me-1"></i> นำเข้าไฟล์ KPI
           </button>
+          <button
+            class="btn btn-outline-success rounded-pill px-3 fw-bold me-2"
+            @click="downloadResultTemplate"
+            v-if="isAdmin"
+          >
+            <i class="bi bi-file-spreadsheet me-1"></i> Template ผลงาน
+          </button>
+          <button
+            class="btn btn-outline-success rounded-pill px-3 fw-bold me-2"
+            @click="$refs.resultFileInput.click()"
+            v-if="isAdmin"
+          >
+            <i class="bi bi-upload me-1"></i> นำเข้าผลงาน
+          </button>
           <input
             type="file"
             ref="fileInput"
             @change="handleFileUpload"
+            accept=".xlsx, .xls"
+            class="d-none"
+          />
+          <input
+            type="file"
+            ref="resultFileInput"
+            @change="handleResultFileUpload"
             accept=".xlsx, .xls"
             class="d-none"
           />
@@ -296,6 +317,10 @@
             <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
             <input type="text" class="form-control border-start-0 ps-0 bg-light" placeholder="ค้นหา KPI, รหัส, ผู้รับผิดชอบ..." v-model="searchQuery">
           </div>
+          <button class="btn btn-warning fw-bold text-dark" style="white-space: nowrap;" @click="sendBulkNotification" :disabled="isBulkNotifying || filteredKpis.length === 0" v-if="isAdmin">
+            <i class="bi" :class="isBulkNotifying ? 'bi-hourglass-split' : 'bi-bell-fill'"></i> 
+            {{ isBulkNotifying ? 'กำลังส่ง...' : 'แจ้งเตือนทั้งหมด' }}
+          </button>
         </div>
       </div>
       <div class="card-body p-0">
@@ -341,6 +366,15 @@
                   <div class="small">{{ kpi.responsible_person }}</div>
                 </td>
                 <td class="pe-3 text-end">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-light border me-1"
+                    @click.stop="sendNotification(kpi)"
+                    title="Send Notification"
+                    v-if="isAdmin"
+                  >
+                    <i class="bi bi-bell text-primary"></i>
+                  </button>
                   <button
                     type="button"
                     class="btn btn-sm btn-light border me-1"
@@ -462,6 +496,7 @@ export default {
       userDepartment: '',
       userFullname: '',
       userAccess: [],
+      userTeams: [],
       searchQuery: '',
       selectedCategoryFilter: '',
       selectedLevelFilter: '',
@@ -495,7 +530,8 @@ export default {
         calculation_types: [],
         categories: []
       },
-      selectedKpiLevels: []
+      selectedKpiLevels: [],
+      isBulkNotifying: false
     };
   },
   computed: {
@@ -516,7 +552,11 @@ export default {
     filteredKpis() {
       let baseList = this.isAdmin 
         ? this.kpis 
-        : (this.userFullname ? this.kpis.filter(kpi => kpi.responsible_person && kpi.responsible_person.includes(this.userFullname)) : []);
+        : (this.userFullname ? this.kpis.filter(kpi => {
+            const isPerson = kpi.responsible_person && kpi.responsible_person.toLowerCase().includes(this.userFullname.toLowerCase());
+            const isTeam = kpi.responsible_unit && this.userTeams.some(team => kpi.responsible_unit.toLowerCase().includes(team.toLowerCase()));
+            return isPerson || isTeam;
+          }) : []);
       
       if (this.selectedCategoryFilter) {
         baseList = baseList.filter(kpi => kpi.category_id == this.selectedCategoryFilter);
@@ -554,9 +594,23 @@ export default {
           this.userDepartment = response.data.department || '';
           this.userFullname = response.data.fullname || '';
           this.userAccess = response.data.access_user ? response.data.access_user.split(':') : [];
+          
+          if (this.userFullname) {
+            this.fetchUserTeams(this.userFullname);
+          }
         }
       } catch (e) {
         console.error('Failed to load user profile', e);
+      }
+    },
+    async fetchUserTeams(fullname) {
+      try {
+        const response = await axios.get(`/api-digital/qi/get_user_teams.php?fullname=${encodeURIComponent(fullname)}`);
+        if (response.data.status === 'success') {
+          this.userTeams = response.data.data || [];
+        }
+      } catch (e) {
+        console.error('Failed to load user teams', e);
       }
     },
     async handleFileUpload(event) {
@@ -647,6 +701,65 @@ export default {
       };
       reader.readAsArrayBuffer(file);
     },
+    async handleResultFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+          if (!json || json.length === 0) {
+            Swal.fire('ข้อผิดพลาด', 'ไม่พบข้อมูลในไฟล์ Excel', 'error');
+            return;
+          }
+
+          const confirm = await Swal.fire({
+            title: 'ยืนยันการนำเข้าข้อมูลผลงานย้อนหลัง?',
+            text: `พบข้อมูลจำนวน ${json.length} รายการ ต้องการดำเนินการต่อหรือไม่?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'ตกลง',
+            cancelButtonText: 'ยกเลิก'
+          });
+
+          if (confirm.isConfirmed) {
+            Swal.fire({
+              title: 'กำลังนำเข้าข้อมูล',
+              allowOutsideClick: false,
+              didOpen: () => {
+                Swal.showLoading();
+              }
+            });
+
+            const res = await axios.post('/api-digital/kpi/import_kpi_results.php', json);
+            if (res.data.status === 'success') {
+              let msg = res.data.message;
+              if (res.data.errors && res.data.errors.length > 0) {
+                msg += `<br><small class="text-danger mt-2 d-block">ข้อผิดพลาดบางส่วน:<br>${res.data.errors.slice(0,5).join('<br>')}${res.data.errors.length > 5 ? '<br>...' : ''}</small>`;
+              }
+              Swal.fire('นำเข้าสำเร็จ', msg, 'success');
+              // Optionally refresh some views if needed
+            } else {
+              Swal.fire('ข้อผิดพลาด', res.data.message || 'ไม่สามารถนำเข้าได้', 'error');
+            }
+          }
+        } catch (error) {
+          console.error('Error importing Excel:', error);
+          Swal.fire('ข้อผิดพลาด', 'รูปแบบไฟล์ไม่ถูกต้อง หรือเกิดปัญหาในการอ่านไฟล์', 'error');
+        } finally {
+          if (this.$refs.resultFileInput) {
+            this.$refs.resultFileInput.value = null;
+          }
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    },
     downloadTemplate() {
       const templateData = [
         {
@@ -675,6 +788,30 @@ export default {
       XLSX.utils.book_append_sheet(wb, ws, 'Template');
 
       XLSX.writeFile(wb, 'KPI_Import_Template.xlsx');
+    },
+    downloadResultTemplate() {
+      const templateData = [
+        {
+          KPI_Code: 'KPI-001',
+          Fiscal_Year: new Date().getFullYear() + 543,
+          Period_Number: 1,
+          Numerator: 85,
+          Denominator: 100,
+          Actual_Value: 85.00,
+          Target_Snapshot: 80.00,
+          Note: 'ข้อความวิเคราะห์ หรือสาเหตุ'
+        }
+      ];
+
+      const ws = XLSX.utils.json_to_sheet(templateData);
+      
+      const colWidths = Object.keys(templateData[0]).map(key => ({ wch: Math.max(key.length, 15) }));
+      ws['!cols'] = colWidths;
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Result_Template');
+
+      XLSX.writeFile(wb, 'KPI_Results_Import_Template.xlsx');
     },
     async fetchMasterData() {
       try {
@@ -940,6 +1077,104 @@ export default {
         } catch (err) {
           console.error(err);
           Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error');
+        }
+      }
+    },
+    async sendNotification(kpi) {
+      if (!kpi.responsible_person) {
+        Swal.fire('ไม่สามารถแจ้งเตือนได้', 'ยังไม่ได้ระบุผู้รับผิดชอบสำหรับตัวชี้วัดนี้', 'warning');
+        return;
+      }
+
+      const confirm = await Swal.fire({
+        title: 'ส่งการแจ้งเตือน?',
+        html: `คุณต้องการส่งแจ้งเตือนผ่าน MOPH Notify<br>ถึง <b>${kpi.responsible_person}</b> หรือไม่?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        confirmButtonText: 'ใช่, ส่งเลย',
+        cancelButtonText: 'ยกเลิก'
+      });
+
+      if (confirm.isConfirmed) {
+        Swal.fire({
+          title: 'กำลังส่งแจ้งเตือน...',
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+
+        try {
+          const res = await axios.post('/api-digital/kpi/send_notification.php', { kpi_id: kpi.id });
+          if (res.data.status === 'success') {
+            let msg = res.data.message;
+            if (res.data.missing_tokens) {
+              msg += `<br><small class="text-danger mt-2 d-block">ไม่พบ Token ของ: ${res.data.missing_tokens}</small>`;
+            }
+            Swal.fire({
+              title: 'สำเร็จ!',
+              html: msg,
+              icon: 'success'
+            });
+          } else {
+            Swal.fire('ข้อผิดพลาด', res.data.message || 'การส่งแจ้งเตือนล้มเหลว', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+        }
+      }
+    },
+    async sendBulkNotification() {
+      const kpiIds = this.filteredKpis.map(k => k.id);
+      if (kpiIds.length === 0) return;
+
+      const confirm = await Swal.fire({
+        title: 'แจ้งเตือนทั้งหมด?',
+        html: `คุณต้องการส่งแจ้งเตือนให้ผู้รับผิดชอบ<br>จากรายการ KPI ที่แสดงอยู่ทั้ง <b>${kpiIds.length}</b> รายการ หรือไม่?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        confirmButtonText: 'ใช่, ส่งทั้งหมด',
+        cancelButtonText: 'ยกเลิก'
+      });
+
+      if (confirm.isConfirmed) {
+        this.isBulkNotifying = true;
+        Swal.fire({
+          title: 'กำลังส่งแจ้งเตือน...',
+          html: 'ระบบกำลังดำเนินการส่งแจ้งเตือน MOPH Notify<br>โปรดรอสักครู่...',
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+
+        try {
+          const res = await axios.post('/api-digital/kpi/send_bulk_notification.php', { kpi_ids: kpiIds });
+          if (res.data.status === 'success') {
+            let msg = res.data.message;
+            if (res.data.missing_tokens) {
+              msg += `<br><small class="text-danger mt-2 d-block">ส่งไม่สำเร็จ/ไม่พบ Token ของ: ${res.data.missing_tokens}</small>`;
+            }
+            Swal.fire({
+              title: 'สำเร็จ!',
+              html: msg,
+              icon: 'success'
+            });
+          } else {
+            let msg = res.data.message || 'การส่งแจ้งเตือนล้มเหลว';
+            if (res.data.missing_tokens) {
+              msg += `<br><small class="text-danger mt-2 d-block">ไม่พบ Token ของ: ${res.data.missing_tokens}</small>`;
+            }
+            Swal.fire('ข้อผิดพลาด', msg, 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+        } finally {
+          this.isBulkNotifying = false;
         }
       }
     },

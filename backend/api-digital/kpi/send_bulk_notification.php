@@ -1,0 +1,202 @@
+<?php
+header("Access-Control-Allow-Origin: *");
+header("Content-Type: application/json; charset=UTF-8");
+header("Access-Control-Allow-Methods: POST");
+header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+
+require_once __DIR__ . '/../../config.php';
+
+function sendMophNotify(string $clientKey, string $secretKey, array $payload): ?array {
+    $url = "https://morpromt2f.moph.go.th/api/notify/send";
+    $headers = [
+        "Content-Type: application/json",
+        "client-key: {$clientKey}",
+        "secret-key: {$secretKey}"
+    ];
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload, JSON_UNESCAPED_UNICODE));
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+
+    $result = curl_exec($ch);
+    return json_decode((string)$result, true);
+}
+
+$data = json_decode(file_get_contents("php://input"));
+$kpi_ids = $data->kpi_ids ?? [];
+
+if (empty($kpi_ids) || !is_array($kpi_ids)) {
+    echo json_encode(['status' => 'error', 'message' => 'KPI IDs array is required']);
+    exit;
+}
+
+try {
+    $success_count = 0;
+    $not_found_tokens = [];
+    $sent_names = [];
+
+    foreach ($kpi_ids as $kpi_id) {
+        $stmt = $pdo2->prepare("SELECT * FROM kpi_definitions WHERE id = :id");
+        $stmt->execute([':id' => $kpi_id]);
+        $kpi = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$kpi || empty($kpi['responsible_person'])) {
+            continue;
+        }
+
+        $responsible_person = $kpi['responsible_person'];
+        $persons = array_map('trim', explode(',', $responsible_person));
+        
+        foreach ($persons as $person_name) {
+            if (empty($person_name)) continue;
+
+            $clean_name = str_replace(' ', '', $person_name);
+            $clean_name = str_replace('สราวุฒิ', 'ศราวุฒิ', $clean_name);
+
+            $sql = "SELECT p.MOPH_CLIENT_KEY, p.MOPH_SECRET_KEY, CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) as FULLNAME 
+                    FROM hr_person p
+                    LEFT JOIN hr_prefix pf ON p.HR_PREFIX_ID = pf.HR_PREFIX_ID
+                    WHERE REPLACE(CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, p.HR_LNAME), ' ', '') LIKE :name1 
+                    OR REPLACE(CONCAT(p.HR_FNAME, p.HR_LNAME), ' ', '') LIKE :name2
+                    LIMIT 1";
+            
+            $stmt_person = $pdo3->prepare($sql);
+            $stmt_person->execute([
+                ':name1' => '%' . $clean_name . '%',
+                ':name2' => '%' . $clean_name . '%'
+            ]);
+            $hr_person = $stmt_person->fetch(PDO::FETCH_ASSOC);
+
+            $clientKey = $hr_person ? trim($hr_person['MOPH_CLIENT_KEY']) : '';
+            $secretKey = $hr_person ? trim($hr_person['MOPH_SECRET_KEY']) : '';
+
+            if (!empty($clientKey) && !empty($secretKey)) {
+                $kpiCode = $kpi['code'] ? $kpi['code'] : '-';
+                $kpiName = $kpi['name'];
+                
+                $payload = [
+                    "messages" => [
+                        [
+                            "type" => "flex",
+                            "altText" => "แจ้งเตือนรายงานผล KPI: $kpiCode",
+                            "contents" => [
+                                "type" => "bubble",
+                                "direction" => "ltr",
+                                "header" => [
+                                    "type" => "box",
+                                    "layout" => "vertical",
+                                    "backgroundColor" => "#1a3e6f",
+                                    "contents" => [
+                                        [
+                                            "type" => "text",
+                                            "text" => "🔔 แจ้งเตือนส่งผลตัวชี้วัด",
+                                            "weight" => "bold",
+                                            "size" => "lg",
+                                            "color" => "#ffffff",
+                                            "align" => "center"
+                                        ]
+                                    ]
+                                ],
+                                "body" => [
+                                    "type" => "box",
+                                    "layout" => "vertical",
+                                    "contents" => [
+                                        [
+                                            "type" => "text",
+                                            "text" => $kpiCode,
+                                            "weight" => "bold",
+                                            "size" => "xl",
+                                            "color" => "#1a3e6f",
+                                            "align" => "center",
+                                            "margin" => "md"
+                                        ],
+                                        [
+                                            "type" => "separator",
+                                            "margin" => "md"
+                                        ],
+                                        [
+                                            "type" => "box",
+                                            "layout" => "vertical",
+                                            "margin" => "md",
+                                            "spacing" => "sm",
+                                            "contents" => [
+                                                [
+                                                    "type" => "box",
+                                                    "layout" => "baseline",
+                                                    "spacing" => "sm",
+                                                    "contents" => [
+                                                        ["type" => "text", "text" => "เรียน", "color" => "#aaaaaa", "size" => "sm", "flex" => 2],
+                                                        ["type" => "text", "text" => $person_name, "wrap" => true, "color" => "#666666", "size" => "sm", "flex" => 4]
+                                                    ]
+                                                ],
+                                                [
+                                                    "type" => "box",
+                                                    "layout" => "baseline",
+                                                    "spacing" => "sm",
+                                                    "contents" => [
+                                                        ["type" => "text", "text" => "ตัวชี้วัด", "color" => "#aaaaaa", "size" => "sm", "flex" => 2],
+                                                        ["type" => "text", "text" => $kpiName, "wrap" => true, "color" => "#666666", "size" => "sm", "flex" => 4]
+                                                    ]
+                                                ],
+                                                [
+                                                    "type" => "box",
+                                                    "layout" => "baseline",
+                                                    "spacing" => "sm",
+                                                    "contents" => [
+                                                        ["type" => "text", "text" => "เรื่อง", "color" => "#aaaaaa", "size" => "sm", "flex" => 2],
+                                                        ["type" => "text", "text" => "กรุณารายงานผลการดำเนินงาน", "wrap" => true, "color" => "#28a745", "size" => "sm", "weight" => "bold", "flex" => 4]
+                                                    ]
+                                                ]
+                                            ]
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+                ];
+                
+                $res = sendMophNotify($clientKey, $secretKey, $payload);
+                
+                if (isset($res['status']) && ($res['status'] == 200 || $res['status'] == 'success' || strtolower($res['status']) == 'ok')) {
+                    $success_count++;
+                    if (!in_array($person_name, $sent_names)) {
+                        $sent_names[] = $person_name;
+                    }
+                } else {
+                    $error_msg = $person_name . " (KPI: {$kpiCode})";
+                    if (!in_array($error_msg, $not_found_tokens)) {
+                        $not_found_tokens[] = $error_msg;
+                    }
+                }
+            } else {
+                $error_msg = $person_name . " (ไม่พบ MOPH Key)";
+                if (!in_array($error_msg, $not_found_tokens)) {
+                    $not_found_tokens[] = $error_msg;
+                }
+            }
+        }
+    }
+
+    if ($success_count > 0) {
+        echo json_encode([
+            'status' => 'success', 
+            'message' => 'ส่งการแจ้งเตือนสำเร็จทั้งหมด ' . $success_count . ' ข้อความ',
+            'sent_to' => implode(', ', $sent_names),
+            'missing_tokens' => implode(', ', array_unique($not_found_tokens))
+        ]);
+    } else {
+        echo json_encode([
+            'status' => 'error', 
+            'message' => 'ไม่สามารถส่งแจ้งเตือนได้เลย โปรดตรวจสอบข้อมูลผู้รับผิดชอบ',
+            'missing_tokens' => implode(', ', array_unique($not_found_tokens))
+        ]);
+    }
+
+} catch (PDOException $e) {
+    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+}

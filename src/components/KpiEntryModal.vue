@@ -74,16 +74,17 @@
             <!-- Criteria Input (Pass/Fail) -->
             <div class="row g-3 mb-4" v-else>
               <div class="col-12">
-                <label class="form-label fw-bold text-muted small">ผลการประเมิน (เกณฑ์ประเมิน)</label>
-                <div class="d-flex gap-3">
-                  <div class="form-check form-check-inline form-control d-flex align-items-center justify-content-center p-3 m-0 rounded-2 border shadow-sm" :class="{'border-success bg-success bg-opacity-10': form.actual_value === 1 || form.actual_value === '1'}" @click="form.actual_value = 1" style="cursor: pointer;">
-                    <input class="form-check-input d-none" type="radio" :value="1" v-model="form.actual_value">
-                    <label class="form-check-label fw-bold fs-5 text-success mb-0" style="cursor: pointer;"><i class="bi bi-check-circle-fill me-2"></i>ผ่าน</label>
-                  </div>
-                  <div class="form-check form-check-inline form-control d-flex align-items-center justify-content-center p-3 m-0 rounded-2 border shadow-sm" :class="{'border-danger bg-danger bg-opacity-10': form.actual_value === 0 || form.actual_value === '0'}" @click="form.actual_value = 0" style="cursor: pointer;">
-                    <input class="form-check-input d-none" type="radio" :value="0" v-model="form.actual_value">
-                    <label class="form-check-label fw-bold fs-5 text-danger mb-0" style="cursor: pointer;"><i class="bi bi-x-circle-fill me-2"></i>ไม่ผ่าน</label>
-                  </div>
+                <label class="form-label fw-bold text-muted small mb-3">ผลการประเมิน (เกณฑ์ประเมิน)</label>
+                <div class="btn-group w-100 shadow-sm rounded-3" role="group">
+                  <input type="radio" class="btn-check" name="criteriaResult" id="criteriaPass" autocomplete="off" :value="1" v-model="form.actual_value">
+                  <label class="btn btn-outline-success p-3 fw-bold fs-5 d-flex align-items-center justify-content-center" for="criteriaPass">
+                    <i class="bi bi-check-circle-fill me-2 fs-4"></i>ผ่าน
+                  </label>
+
+                  <input type="radio" class="btn-check" name="criteriaResult" id="criteriaFail" autocomplete="off" :value="0" v-model="form.actual_value">
+                  <label class="btn btn-outline-danger p-3 fw-bold fs-5 d-flex align-items-center justify-content-center" for="criteriaFail">
+                    <i class="bi bi-x-circle-fill me-2 fs-4"></i>ไม่ผ่าน
+                  </label>
                 </div>
               </div>
             </div>
@@ -110,8 +111,8 @@
                   <thead class="text-muted small">
                     <tr>
                       <th class="py-3">รอบการรายงาน</th>
-                      <th class="py-3">ตัวตั้ง</th>
-                      <th class="py-3">ตัวหาร</th>
+                      <th class="py-3">ตัวตั้ง(ผลงานที่ทำได้)</th>
+                      <th class="py-3">ตัวหาร(จำนวนทั้งหมด)</th>
                       <th class="py-3">ตัวคูณ</th>
                       <th class="py-3">ผลลัพธ์</th>
                     </tr>
@@ -182,10 +183,10 @@ export default {
       return 'เดือน';
     },
     numeratorLabel() {
-      return this.selectedKpi?.numerator_label || 'ตัวตั้ง';
+      return this.selectedKpi?.numerator_label || 'ตัวตั้ง(ผลงานที่ทำได้)';
     },
     denominatorLabel() {
-      return this.selectedKpi?.denominator_label || 'ตัวหาร';
+      return this.selectedKpi?.denominator_label || 'ตัวหาร(จำนวนทั้งหมด)';
     },
     isCriteria() {
       const unit = this.selectedKpi?.unit || '';
@@ -347,7 +348,12 @@ export default {
     hide() {
       this.bsModal.hide();
     },
+    setCriteriaValue(val) {
+      this.form.actual_value = val;
+    },
     calculateActual() {
+      if (this.isCriteria) return; // Safeguard: don't auto-calculate for criteria inputs
+      
       const num = parseFloat(this.form.numerator);
       const den = parseFloat(this.form.denominator);
       const mult = parseFloat(this.form.multiplier);
