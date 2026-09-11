@@ -157,17 +157,22 @@
         <button class="btn btn-outline-primary shadow-sm fw-bold" @click="fetchData">
           <i class="bi bi-arrow-clockwise me-1"></i> Refresh
         </button>
-        <button class="btn btn-danger shadow-sm fw-bold" @click="openBatchExportPreview('pdf')" :disabled="isExportingAll">
-          <span v-if="isExportingAll" class="spinner-border spinner-border-sm me-2"></span>
-          <i class="bi bi-file-earmark-pdf-fill me-1" v-else></i> Export All (PDF)
-        </button>
-        <button class="btn btn-primary shadow-sm fw-bold" @click="openBatchExportPreview('word')" :disabled="isExportingAll">
-          <span v-if="isExportingAll" class="spinner-border spinner-border-sm me-2"></span>
-          <i class="bi bi-file-earmark-word-fill me-1" v-else></i> Export All (Word)
-        </button>
-        <button class="btn btn-success shadow-sm fw-bold" @click="exportDashboardExcel">
-          <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
-        </button>
+        <div class="dropdown">
+          <button class="btn btn-primary shadow-sm fw-bold dropdown-toggle" type="button" @click="isExportDropdownOpen = !isExportDropdownOpen" :disabled="isExportingAll" style="position: relative; z-index: 1050;">
+            <span v-if="isExportingAll" class="spinner-border spinner-border-sm me-2"></span>
+            <i class="bi bi-download me-1" v-else></i> 📤 Export Data
+          </button>
+          
+          <!-- Click away backdrop -->
+          <div v-if="isExportDropdownOpen" @click="isExportDropdownOpen = false" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1040;"></div>
+          
+          <ul class="dropdown-menu shadow" :class="{ 'show': isExportDropdownOpen }" style="position: absolute; top: 100%; right: 0; z-index: 1050; min-width: 200px; display: block;" v-if="isExportDropdownOpen">
+            <li><a class="dropdown-item text-danger fw-bold py-2" href="#" @click.prevent="openBatchExportPreview('pdf'); isExportDropdownOpen = false;"><i class="bi bi-file-earmark-pdf-fill me-2"></i>Export All (PDF)</a></li>
+            <li><a class="dropdown-item text-primary fw-bold py-2" href="#" @click.prevent="openBatchExportPreview('word'); isExportDropdownOpen = false;"><i class="bi bi-file-earmark-word-fill me-2"></i>Export All (Word)</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-success fw-bold py-2" href="#" @click.prevent="exportDashboardExcel(); isExportDropdownOpen = false;"><i class="bi bi-file-earmark-excel-fill me-2"></i>Export Excel</a></li>
+          </ul>
+        </div>
         <router-link to="/kpi-setup" class="btn btn-dark shadow-sm fw-bold" v-if="isAdmin || hasResponsibleKpi">
           <i class="bi bi-gear-fill me-1"></i> ตั้งค่า KPI
         </router-link>
@@ -181,20 +186,25 @@
       </div>
     </div>
 
-    <div v-else>
+    <div v-else class="accordion" id="kpiAccordion">
       <div
-        v-for="category in filteredCategories"
+        v-for="(category, catIndex) in filteredCategories"
         :key="category.id"
-        class="card mb-4 border-0 shadow-sm"
+        class="accordion-item mb-4 border-0 shadow-sm"
+        style="border-radius: 12px; overflow: hidden;"
       >
-        <div class="card-header bg-white border-bottom-0 py-3">
-          <h4 class="mb-0 text-dark fw-bold border-start border-4 border-primary ps-3">
-            {{ category.name }}
-            <span class="text-muted fs-6 fw-normal">({{ category.description }})</span>
-          </h4>
-        </div>
-        <div class="card-body p-4" style="background-color: #eef2f6; border-bottom-left-radius: inherit; border-bottom-right-radius: inherit;">
-          <div class="row g-4">
+        <h2 class="accordion-header" :id="'heading' + category.id">
+          <button class="accordion-button" :class="{ 'collapsed': catIndex !== 0 }" type="button" data-bs-toggle="collapse" :data-bs-target="'#collapse' + category.id" :aria-expanded="catIndex === 0 ? 'true' : 'false'" :aria-controls="'collapse' + category.id" style="background-color: white; box-shadow: none;">
+            <h4 class="mb-0 text-dark fw-bold border-start border-4 border-primary ps-3">
+              {{ category.name }}
+              <span class="text-muted fs-6 fw-normal">({{ category.description }})</span>
+              <span class="badge bg-primary rounded-pill ms-2 fw-normal" style="font-size: 0.8rem">{{ category.kpis.length }} KPIs</span>
+            </h4>
+          </button>
+        </h2>
+        <div :id="'collapse' + category.id" class="accordion-collapse collapse" :class="{ 'show': catIndex === 0 }" :aria-labelledby="'heading' + category.id">
+          <div class="accordion-body p-4" style="background-color: #eef2f6;">
+            <div class="row g-4">
             <div class="col-12 col-md-6 col-xl-3" v-for="kpi in category.kpis" :key="kpi.id">
               <div class="card border border-top border-4 rounded-4 shadow h-100 kpi-card bg-white overflow-hidden"
                    :class="kpi.actual_value === null ? 'border-secondary' : (checkStatus(kpi) === 'pass' ? 'border-success' : 'border-danger')"
@@ -243,15 +253,15 @@
                     </div>
 
                     <div class="d-flex flex-column gap-1 mb-2">
-                         <span v-if="kpi.actual_value === null" class="badge bg-secondary w-100 py-2">No Data</span>
+                         <span v-if="kpi.actual_value === null" class="badge bg-light text-secondary border border-secondary w-100 py-2">No Data</span>
                          <span v-else-if="checkStatus(kpi) === 'pass'" class="badge bg-success w-100 py-2">Pass</span>
-                         <span v-else class="badge bg-danger w-100 py-2">Fail</span>
+                         <span v-else class="badge bg-danger w-100 py-2 fw-bold" style="font-size: 0.95rem;">Fail</span>
                          
                          <span v-if="getMissingPeriods(kpi).length > 0" 
-                               class="badge bg-warning text-dark border border-warning w-100 py-2" 
+                               class="badge bg-warning bg-opacity-10 text-dark border border-warning w-100 py-2" 
                                style="cursor: pointer; transition: 0.2s;"
                                @click="showMissingPeriodsDetails(kpi)">
-                            <i class="bi bi-exclamation-triangle-fill me-1"></i>ค้างรายงาน {{ getMissingPeriods(kpi).length }} รอบ
+                            <i class="bi bi-exclamation-triangle text-warning me-1"></i>ค้างรายงาน <b class="text-danger">{{ getMissingPeriods(kpi).length }}</b> รอบ
                          </span>
                     </div>
                   </div>
@@ -298,10 +308,11 @@
                 </div>
               </div>
             </div>
-          </div>
-          
-          <div v-if="!category.kpis || category.kpis.length === 0" class="text-center text-muted py-3">
-             No KPIs defined for this dimension.
+            </div> <!-- Close row g-4 -->
+            
+            <div v-if="!category.kpis || category.kpis.length === 0" class="text-center text-muted py-3">
+               No KPIs defined for this dimension.
+            </div>
           </div>
         </div>
       </div>
@@ -570,6 +581,7 @@
         </div>
       </div>
     </div>
+    
   </div>
 </template>
 
@@ -619,6 +631,7 @@ export default {
       analysisText: '',
       savingAnalysis: false,
       isLevelDropdownOpen: false,
+      isExportDropdownOpen: false,
       selectedLevels: [],
       selectedFrequency: '',
       userDepartment: '',

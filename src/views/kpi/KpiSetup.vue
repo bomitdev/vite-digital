@@ -705,7 +705,17 @@ export default {
 
             const res = await axios.post('/api-digital/kpi/import_kpi.php', kpisToImport);
             if (res.data.status === 'success') {
-              Swal.fire('นำเข้าสำเร็จ', res.data.message, 'success');
+              let htmlContent = `<div class="text-start">${res.data.message}</div>`;
+              if (res.data.errors && res.data.errors.length > 0) {
+                const errorList = res.data.errors.map(err => `<li>${err}</li>`).join('');
+                htmlContent += `<hr><div class="text-start text-danger" style="max-height: 200px; overflow-y: auto; font-size: 0.85rem;"><b>ข้อผิดพลาดที่พบ (ถูกข้ามการนำเข้า):</b><ul class="mb-0 ps-3 mt-1">${errorList}</ul></div>`;
+              }
+              Swal.fire({
+                title: 'ผลการนำเข้าข้อมูล',
+                html: htmlContent,
+                icon: res.data.errors && res.data.errors.length > 0 ? 'warning' : 'success',
+                confirmButtonText: 'ตกลง'
+              });
               this.fetchKPIs();
             } else {
               Swal.fire('ข้อผิดพลาด', res.data.message || 'ไม่สามารถนำเข้าได้', 'error');
@@ -760,11 +770,17 @@ export default {
 
             const res = await axios.post('/api-digital/kpi/import_kpi_results.php', json);
             if (res.data.status === 'success') {
-              let msg = res.data.message;
+              let htmlContent = `<div class="text-start">${res.data.message}</div>`;
               if (res.data.errors && res.data.errors.length > 0) {
-                msg += `<br><small class="text-danger mt-2 d-block">ข้อผิดพลาดบางส่วน:<br>${res.data.errors.slice(0,5).join('<br>')}${res.data.errors.length > 5 ? '<br>...' : ''}</small>`;
+                const errorList = res.data.errors.map(err => `<li>${err}</li>`).join('');
+                htmlContent += `<hr><div class="text-start text-danger" style="max-height: 200px; overflow-y: auto; font-size: 0.85rem;"><b>ข้อผิดพลาดที่พบ (ถูกข้ามการนำเข้า):</b><ul class="mb-0 ps-3 mt-1">${errorList}</ul></div>`;
               }
-              Swal.fire('นำเข้าสำเร็จ', msg, 'success');
+              Swal.fire({
+                title: 'ผลการนำเข้าผลงาน',
+                html: htmlContent,
+                icon: res.data.errors && res.data.errors.length > 0 ? 'warning' : 'success',
+                confirmButtonText: 'ตกลง'
+              });
               // Optionally refresh some views if needed
             } else {
               Swal.fire('ข้อผิดพลาด', res.data.message || 'ไม่สามารถนำเข้าได้', 'error');
