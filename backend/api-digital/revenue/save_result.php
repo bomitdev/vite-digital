@@ -20,6 +20,65 @@ $collected_amount = isset($data['collected_amount']) && $data['collected_amount'
 $report_date = $data['report_date'] ?? date('Y-m-d');
 $remark = $data['remark'] ?? '';
 
+// Check user authorization
+$isAdmin = false;
+$fullname = '';
+$shortName = '';
+
+try {
+    $stmtUser = $pdo3->prepare("
+        SELECT 
+            CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) as FULLNAME,
+            CONCAT(p.HR_FNAME, ' ', p.HR_LNAME) as SHORTNAME,
+            d.HR_DEPARTMENT_NAME,
+            hds.HR_DEPARTMENT_SUB_NAME
+        FROM hr_person p
+        LEFT JOIN hr_prefix pf ON p.HR_PREFIX_ID = pf.HR_PREFIX_ID
+        LEFT JOIN hr_department d ON p.HR_DEPARTMENT_ID = d.HR_DEPARTMENT_ID
+        LEFT JOIN hr_department_sub hds ON p.HR_DEPARTMENT_SUB_ID = hds.HR_DEPARTMENT_SUB_ID
+        WHERE p.ID = ?
+    ");
+    $stmtUser->execute([$user['uid']]);
+    $uData = $stmtUser->fetch(PDO::FETCH_ASSOC);
+    if ($uData) {
+        $fullname = trim($uData['FULLNAME']);
+        $shortName = trim($uData['SHORTNAME']);
+        $deptName = trim($uData['HR_DEPARTMENT_NAME'] ?? '');
+        $subDeptName = trim($uData['HR_DEPARTMENT_SUB_NAME'] ?? '');
+        if (strpos($deptName, 'สุขภาพดิจิทัล') !== false || strpos($subDeptName, 'สุขภาพดิจิทัล') !== false ||
+            strpos($deptName, 'บริหาร') !== false || strpos($subDeptName, 'บริหาร') !== false ||
+            strpos($deptName, 'ประกัน') !== false || strpos($subDeptName, 'ประกัน') !== false) {
+            $isAdmin = true;
+        }
+    }
+} catch (PDOException $e) {}
+
+// Check target
+$stmtTarget = $pdo2->prepare("SELECT id, responsible_person FROM revenue_targets WHERE id = ?");
+$stmtTarget->execute([$target_id]);
+$targetRow = $stmtTarget->fetch(PDO::FETCH_ASSOC);
+
+if (!$targetRow) {
+    echo json_encode(['status' => 'error', 'message' => 'ไม่พบข้อมูลเป้าหมายรายได้']);
+    exit;
+}
+
+if (!$isAdmin) {
+    $resp = $targetRow['responsible_person'] ?? '';
+    $canReport = false;
+    if (!empty($resp)) {
+        if (!empty($fullname) && stripos($resp, $fullname) !== false) {
+            $canReport = true;
+        } elseif (!empty($shortName) && stripos($resp, $shortName) !== false) {
+            $canReport = true;
+        }
+    }
+    if (!$canReport) {
+        echo json_encode(['status' => 'error', 'message' => 'คุณไม่มีสิทธิ์บันทึกผลงานรายการนี้ (สามารถดูได้อย่างเดียว เฉพาะผู้รับผิดชอบเท่านั้นที่กรอกข้อมูลได้)']);
+        exit;
+    }
+}
+
 try {
     if ($id) {
         $stmt = $pdo2->prepare("UPDATE revenue_results SET 

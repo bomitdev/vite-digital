@@ -11,7 +11,24 @@
               <p class="mb-0 opacity-75">Revenue Collection Result Entry</p>
             </div>
             <div class="card-body p-4 p-md-5">
-              <form @submit.prevent="submitResult">
+              <div v-if="isLoaded && availableTargets.length === 0" class="alert alert-info border-0 rounded-4 p-4 text-center my-3">
+                <div class="fs-1 text-info mb-2"><i class="bi bi-info-circle-fill"></i></div>
+                <h5 class="fw-bold text-dark">ท่านสามารถดูข้อมูลได้อย่างเดียว</h5>
+                <p class="text-muted mb-3">
+                  ท่านไม่มีรายการเป้าหมายที่ต้องกรอกผลงานในฐานะผู้รับผิดชอบ 
+                  (เฉพาะผู้รับผิดชอบหรือผู้ดูแลระบบเท่านั้นที่สามารถส่งยอดผลงานได้)
+                </p>
+                <div class="d-flex justify-content-center gap-2">
+                  <button class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm" @click="$router.push('/revenue-dashboard')">
+                    <i class="bi bi-graph-up-arrow me-2"></i> ไปที่แดชบอร์ดศูนย์จัดเก็บรายได้
+                  </button>
+                  <button class="btn btn-outline-secondary rounded-pill px-4" @click="$router.push('/home-backoffice')">
+                    กลับหน้าหลัก
+                  </button>
+                </div>
+              </div>
+
+              <form v-else @submit.prevent="submitResult">
                 <!-- Month & Year -->
                 <div class="row g-4 mb-4">
                   <div class="col-md-6">
@@ -50,17 +67,17 @@
                   <label class="form-label fw-semibold text-secondary"
                     >เลือกรายการเป้าหมายจัดเก็บ</label
                   >
-                  <select
-                    v-model="form.target_id"
-                    class="form-select form-select-lg shadow-sm border-secondary-subtle"
-                    required
-                  >
-                    <option value="" disabled>-- กรุณาเลือกรายการ --</option>
-                    <option v-for="t in targets" :key="t.id" :value="t.id">
-                      {{ t.revenue_name }}
-                      (เป้าหมาย: {{ formatCurrency(t.target_amount) }} บาท)
-                    </option>
-                  </select>
+                    <select
+                      v-model="form.target_id"
+                      class="form-select form-select-lg shadow-sm border-secondary-subtle"
+                      required
+                    >
+                      <option value="" disabled>-- กรุณาเลือกรายการ --</option>
+                      <option v-for="t in availableTargets" :key="t.id" :value="t.id">
+                        {{ t.revenue_name }}
+                        (เป้าหมาย: {{ formatCurrency(t.target_amount) }} บาท)
+                      </option>
+                    </select>
                   <div
                     v-if="selectedTarget"
                     class="alert alert-warning mt-3 border-0 bg-warning-subtle text-dark rounded-3"
@@ -167,6 +184,9 @@ export default {
         { value: 9, label: 'กันยายน' }
       ],
       targets: [],
+      userDepartment: '',
+      userFullname: '',
+      isLoaded: false,
       form: {
         target_id: '',
         year_thai: new Date().getFullYear() + 543 + (new Date().getMonth() >= 9 ? 1 : 0),
@@ -178,11 +198,44 @@ export default {
     };
   },
   computed: {
+    isAdmin() {
+      return (
+        this.userDepartment.includes('กลุ่มงานสุขภาพดิจิทัล') ||
+        this.userDepartment.includes('บริหาร') ||
+        this.userDepartment.includes('ประกัน') ||
+        this.userDepartment === 'admin'
+      );
+    },
+    availableTargets() {
+      return this.targets.filter(t => this.canReport(t));
+    },
     selectedTarget() {
-      return this.targets.find((t) => t.id === this.form.target_id) || null;
+      return this.availableTargets.find((t) => t.id === this.form.target_id) || null;
     }
   },
   methods: {
+    canReport(target) {
+      if (!target) return false;
+      if (this.isAdmin) return true;
+      if (!this.userFullname) return false;
+      const resp = (target.responsible_person || '').trim().toLowerCase();
+      const cleanUser = this.userFullname.replace(/^(นาย|นาง|นางสาว|ดร\.|นพ\.|พญ\.)\s*/, '').trim().toLowerCase();
+      return resp.includes(this.userFullname.toLowerCase()) || (cleanUser && resp.includes(cleanUser));
+    },
+    async fetchUserProfile() {
+      try {
+        const token = localStorage.getItem('user_token');
+        if (!token) return;
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        const response = await axios.get('/api-hosoffice/get_user_profile.php', config);
+        if (response.data.status === 'success') {
+          this.userDepartment = response.data.department || '';
+          this.userFullname = response.data.fullname || '';
+        }
+      } catch (e) {
+        console.error('Failed to load user profile', e);
+      }
+    },
     formatCurrency(value) {
       if (!value) return '0.00';
       return parseFloat(value).toLocaleString('th-TH', {
@@ -215,6 +268,10 @@ export default {
       }
     },
     async submitResult() {
+      if (!this.canReport(this.selectedTarget)) {
+        Swal.fire('ไม่มีสิทธิ์', 'คุณสามารถดูข้อมูลได้อย่างเดียว เฉพาะผู้รับผิดชอบเท่านั้นที่กรอกข้อมูลได้', 'warning');
+        return;
+      }
       try {
         const token = localStorage.getItem('user_token');
         const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -240,8 +297,10 @@ export default {
       }
     }
   },
-  mounted() {
-    this.fetchTargets();
+  async mounted() {
+    await this.fetchUserProfile();
+    await this.fetchTargets();
+    this.isLoaded = true;
   }
 };
 </script>

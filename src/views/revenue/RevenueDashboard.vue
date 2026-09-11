@@ -21,49 +21,20 @@
           </div>
         </div>
 
-        <div class="d-flex align-items-center flex-wrap gap-3">
-          <div class="d-flex align-items-center bg-white border rounded-pill px-3 py-1 shadow-sm">
-            <label class="me-2 fw-bold text-muted small"><i class="bi bi-calendar-event me-1"></i> ปีงบประมาณ:</label>
-            <select
-              v-model="selectedYear"
-              class="form-select form-select-sm border-0 bg-transparent fw-bold text-dark p-0"
-              style="width: 70px; cursor: pointer; box-shadow: none;"
-              @change="onYearChange"
-            >
-              <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
-            </select>
-          </div>
-
-          <div class="d-flex align-items-center bg-white border rounded-pill px-3 py-1 shadow-sm d-none d-md-flex">
-            <label class="me-2 fw-bold text-muted small"><i class="bi bi-funnel me-1"></i> รายการ:</label>
-            <select
-              v-model="selectedTargetFilter"
-              class="form-select form-select-sm border-0 bg-transparent fw-bold text-dark p-0 text-truncate"
-              style="max-width: 200px; cursor: pointer; box-shadow: none;"
-              @change="fetchDashboardData"
-            >
-              <option value="">ทั้งหมด</option>
-              <option v-for="t in availableTargets" :key="t.target_id" :value="t.target_id">
-                {{ t.revenue_name }}
-              </option>
-            </select>
-          </div>
-
-          <div class="d-flex gap-2">
-            <button
-              v-if="isAdmin || hasResponsibleTarget"
-              class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center"
-              @click="$router.push('/revenue-setup')"
-            >
-              <i class="bi bi-gear-fill me-2"></i> ตั้งค่าจัดเก็บ
-            </button>
-            <button
-              class="btn btn-outline-secondary rounded-pill px-4 fw-bold d-flex align-items-center bg-white"
-              @click="$router.push('/home-backoffice')"
-            >
-              <i class="bi bi-box-arrow-left me-2"></i> หน้าหลัก
-            </button>
-          </div>
+        <div class="d-flex align-items-center gap-2">
+          <button
+            v-if="isAdmin || hasResponsibleTarget"
+            class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center"
+            @click="$router.push('/revenue-setup')"
+          >
+            <i class="bi bi-gear-fill me-2"></i> ตั้งค่าจัดเก็บ
+          </button>
+          <button
+            class="btn btn-outline-secondary rounded-pill px-4 fw-bold d-flex align-items-center bg-white"
+            @click="$router.push('/home-backoffice')"
+          >
+            <i class="bi bi-box-arrow-left me-2"></i> หน้าหลัก
+          </button>
         </div>
       </div>
     </div>
@@ -224,10 +195,66 @@
 
     <!-- Details Table -->
     <div class="card shadow-sm rounded-4 border-0 mb-5 overflow-hidden">
-      <div class="card-header bg-white py-4 border-bottom d-flex justify-content-between align-items-center">
-        <h5 class="mb-0 fw-bolder text-dark">
+      <div class="card-header bg-white py-3 py-md-4 border-bottom d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+        <h5 class="mb-0 fw-bolder text-dark d-flex align-items-center">
           <i class="bi bi-table text-success me-2"></i> รายละเอียดแต่ละเป้าหมาย
         </h5>
+
+        <div class="d-flex align-items-center flex-wrap gap-2">
+          <!-- Button ศูนย์จัดเก็บของฉัน -->
+          <button
+            type="button"
+            class="btn rounded-pill px-3 py-1 fw-bold shadow-sm d-flex align-items-center transition-all"
+            :class="onlyMyTargets ? 'btn-success text-white shadow' : 'btn-white bg-white text-dark border'"
+            @click="toggleMyTargets"
+            :title="onlyMyTargets ? 'คลิกเพื่อแสดงศูนย์จัดเก็บทั้งหมด' : 'คลิกเพื่อกรองเฉพาะศูนย์จัดเก็บของฉัน'"
+          >
+            <i class="bi me-2 fs-6" :class="onlyMyTargets ? 'bi-check-circle-fill' : 'bi-person-check-fill text-success'"></i>
+            <span>ศูนย์จัดเก็บของฉัน</span>
+            <span
+              class="badge rounded-pill ms-2"
+              :class="onlyMyTargets ? 'bg-white text-success fw-bolder' : 'bg-success bg-opacity-10 text-success border border-success border-opacity-25'"
+            >
+              {{ myTargetsCount }}
+            </span>
+          </button>
+
+          <button
+            v-if="onlyMyTargets"
+            type="button"
+            class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1"
+            @click="toggleMyTargets"
+          >
+            <i class="bi bi-x-circle me-1"></i>ดูทั้งหมด
+          </button>
+
+          <div class="d-flex align-items-center bg-white border rounded-pill px-3 py-1 shadow-sm">
+            <label class="me-2 fw-bold text-muted small"><i class="bi bi-calendar-event me-1"></i> ปีงบประมาณ:</label>
+            <select
+              v-model="selectedYear"
+              class="form-select form-select-sm border-0 bg-transparent fw-bold text-dark p-0"
+              style="width: 70px; cursor: pointer; box-shadow: none;"
+              @change="onYearChange"
+            >
+              <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
+            </select>
+          </div>
+
+          <div class="d-flex align-items-center bg-white border rounded-pill px-3 py-1 shadow-sm">
+            <label class="me-2 fw-bold text-muted small"><i class="bi bi-funnel me-1"></i> รายการ:</label>
+            <select
+              v-model="selectedTargetFilter"
+              class="form-select form-select-sm border-0 bg-transparent fw-bold text-dark p-0 text-truncate"
+              style="max-width: 200px; cursor: pointer; box-shadow: none;"
+              @change="fetchDashboardData"
+            >
+              <option value="">ทั้งหมด</option>
+              <option v-for="t in sortedAvailableTargets" :key="t.target_id" :value="t.target_id">
+                {{ isMyTarget(t) ? '★ ' : '' }}{{ t.revenue_name }}
+              </option>
+            </select>
+          </div>
+        </div>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
@@ -244,8 +271,24 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in summaryData" :key="item.target_id" class="border-bottom">
-                <td class="ps-4 fw-bold text-dark">{{ item.revenue_name }}</td>
+              <tr
+                v-for="item in sortedSummaryData"
+                :key="item.target_id"
+                class="border-bottom"
+                :style="canReport(item) && !isAdmin ? 'background-color: #f4fbf6;' : ''"
+              >
+                <td class="ps-4 fw-bold text-dark">
+                  <div class="d-flex align-items-center flex-wrap gap-1">
+                    <span>{{ item.revenue_name }}</span>
+                    <span
+                      v-if="canReport(item) && !isAdmin"
+                      class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill small fw-semibold"
+                      style="font-size: 0.72rem;"
+                    >
+                      <i class="bi bi-person-check-fill me-1"></i>งานของฉัน
+                    </span>
+                  </div>
+                </td>
                 <td class="text-end text-muted">{{ formatCurrency(item.target_amount) }}</td>
                 <td class="text-end text-success fw-bold">
                   {{ formatCurrency(item.total_collected) }}
@@ -272,11 +315,20 @@
                   <div class="d-flex flex-column align-items-end gap-1">
                     <div>
                       <button
+                        v-if="canReport(item)"
                         class="btn btn-sm btn-light border text-success fw-bold shadow-sm rounded-3 me-2"
                         @click="openHistoryModal(item)"
                         title="บันทึกผลจัดเก็บ"
                       >
                         <i class="bi bi-journal-plus"></i> บันทึกผล
+                      </button>
+                      <button
+                        v-else
+                        class="btn btn-sm btn-light border text-secondary fw-semibold shadow-sm rounded-3 me-2"
+                        @click="openHistoryModal(item)"
+                        title="ดูผลงานจัดเก็บ (สิทธิ์ดูอย่างเดียว)"
+                      >
+                        <i class="bi bi-eye"></i> ดูผลงาน
                       </button>
                       <button
                         v-if="isAdmin"
@@ -295,10 +347,16 @@
                   </div>
                 </td>
               </tr>
-              <tr v-if="summaryData.length === 0">
+              <tr v-if="sortedSummaryData.length === 0">
                 <td colspan="7" class="text-center py-5 text-muted">
-                  <div class="fs-1 text-light mb-3"><i class="bi bi-inbox"></i></div>
-                  <h6 class="fw-bold">ไม่พบข้อมูลปีงบประมาณ {{ selectedYear }}</h6>
+                  <div class="fs-1 text-muted mb-2"><i class="bi bi-inbox"></i></div>
+                  <h6 class="fw-bold text-dark">
+                    {{ onlyMyTargets ? 'ท่านไม่มีศูนย์จัดเก็บรายได้ที่รับผิดชอบในปีงบประมาณ ' + selectedYear : 'ไม่พบข้อมูลปีงบประมาณ ' + selectedYear }}
+                  </h6>
+                  <p class="small text-muted mb-3" v-if="onlyMyTargets">คลิกปุ่มด้านล่างเพื่อแสดงศูนย์จัดเก็บทั้งหมด</p>
+                  <button v-if="onlyMyTargets" class="btn btn-sm btn-outline-primary rounded-pill px-3" @click="toggleMyTargets">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> แสดงศูนย์จัดเก็บทั้งหมด
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -319,7 +377,8 @@
         <div class="modal-content border-0 shadow-lg">
           <div class="modal-header bg-success text-white">
             <h5 class="modal-title fw-bold">
-              <i class="bi bi-journal-plus me-2"></i> บันทึกผลและประวัติ:
+              <i class="bi me-2" :class="canReport(selectedTarget) ? 'bi-journal-plus' : 'bi-eye'"></i>
+              {{ canReport(selectedTarget) ? 'บันทึกผลและประวัติ:' : 'ประวัติผลงาน (ดูอย่างเดียว):' }}
               {{ selectedTarget?.revenue_name }}
             </h5>
             <button
@@ -330,7 +389,20 @@
             ></button>
           </div>
           <div class="modal-body p-4 bg-light">
+            <!-- Alert for View-Only members -->
+            <div
+              v-if="!canReport(selectedTarget)"
+              class="alert alert-info border-0 rounded-3 d-flex align-items-center mb-3 shadow-sm py-2"
+            >
+              <i class="bi bi-info-circle-fill fs-5 text-info me-2"></i>
+              <div class="small">
+                ท่านสามารถ<strong>ดูข้อมูลได้อย่างเดียว</strong>
+                (สิทธิ์บันทึกหรือแก้ไขข้อมูลเฉพาะผู้รับผิดชอบ: <strong class="text-dark">{{ selectedTarget?.responsible_person || 'ไม่ระบุ' }}</strong>)
+              </div>
+            </div>
+
             <form
+              v-if="canReport(selectedTarget)"
               @submit.prevent="submitResultForm"
               class="mb-4 bg-white p-3 rounded shadow-sm border"
             >
@@ -390,7 +462,7 @@
                     <th class="py-3">จำนวนผลงาน</th>
                     <th class="py-3">ยอดจัดเก็บ</th>
                     <th class="py-3">หมายเหตุ</th>
-                    <th class="py-3">จัดการ</th>
+                    <th class="py-3" v-if="canReport(selectedTarget)">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -401,7 +473,7 @@
                     </td>
                     <td class="text-success fw-bold">{{ formatCurrency(r.collected_amount) }}</td>
                     <td>{{ r.remark || '-' }}</td>
-                    <td>
+                    <td v-if="canReport(selectedTarget)">
                       <button
                         class="btn btn-sm btn-outline-warning me-2 border-0"
                         @click="editResult(r)"
@@ -419,7 +491,7 @@
                     </td>
                   </tr>
                   <tr v-if="resultsData.length === 0">
-                    <td colspan="5" class="text-center py-4 text-muted">ยังไม่มีข้อมูลการบันทึก</td>
+                    <td :colspan="canReport(selectedTarget) ? 5 : 4" class="text-center py-4 text-muted">ยังไม่มีข้อมูลการบันทึก</td>
                   </tr>
                 </tbody>
               </table>
@@ -545,6 +617,8 @@ export default {
       statementData: [],
       statementModalInstance: null,
       userFullname: '',
+      onlyMyTargets: false,
+      serverMyTargetsCount: null,
       fiscalMonths: [
         { value: 10, label: 'ตุลาคม' },
         { value: 11, label: 'พฤศจิกายน' },
@@ -596,10 +670,61 @@ export default {
     },
     hasResponsibleTarget() {
       if (!this.userFullname) return false;
-      return this.summaryData.some(item => item.responsible_person && item.responsible_person.includes(this.userFullname));
+      return this.summaryData.some(item => this.isMyTarget(item));
+    },
+    myTargetsCount() {
+      if (this.serverMyTargetsCount !== null) {
+        return this.serverMyTargetsCount;
+      }
+      if (!this.userFullname) return 0;
+      const list = this.availableTargets.length > 0 ? this.availableTargets : this.summaryData;
+      return list.filter(t => this.isMyTarget(t)).length;
+    },
+    sortedSummaryData() {
+      if (!this.summaryData) return [];
+      return [...this.summaryData].sort((a, b) => {
+        const aMine = this.isMyTarget(a) ? 1 : 0;
+        const bMine = this.isMyTarget(b) ? 1 : 0;
+        if (aMine !== bMine) {
+          return bMine - aMine;
+        }
+        return (a.revenue_name || '').localeCompare(b.revenue_name || '', 'th');
+      });
+    },
+    sortedAvailableTargets() {
+      if (!this.availableTargets) return [];
+      let list = this.availableTargets;
+      if (this.onlyMyTargets) {
+        list = list.filter(t => this.isMyTarget(t));
+      }
+      return [...list].sort((a, b) => {
+        const aMine = this.isMyTarget(a) ? 1 : 0;
+        const bMine = this.isMyTarget(b) ? 1 : 0;
+        if (aMine !== bMine) {
+          return bMine - aMine;
+        }
+        return (a.revenue_name || '').localeCompare(b.revenue_name || '', 'th');
+      });
     }
   },
   methods: {
+    isMyTarget(item) {
+      if (!item || !this.userFullname) return false;
+      const resp = (item.responsible_person || '').trim().toLowerCase();
+      const cleanUser = this.userFullname.replace(/^(นาย|นาง|นางสาว|ดร\.|นพ\.|พญ\.)\s*/, '').trim().toLowerCase();
+      return resp.includes(this.userFullname.toLowerCase()) || (cleanUser && resp.includes(cleanUser));
+    },
+    toggleMyTargets() {
+      this.onlyMyTargets = !this.onlyMyTargets;
+      this.selectedTargetFilter = '';
+      this.fetchDashboardData();
+    },
+    canReport(item) {
+      if (!item) return false;
+      if (this.isAdmin) return true;
+      if (!this.userFullname) return false;
+      return this.isMyTarget(item);
+    },
     formatCurrency(value) {
       if (!value) return '0.00';
       return parseFloat(value).toLocaleString('th-TH', {
@@ -648,12 +773,13 @@ export default {
       try {
         const token = localStorage.getItem('user_token');
         const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+        const onlyMyParam = this.onlyMyTargets ? '&only_my_targets=1' : '';
         const res = await axios.get(
-          `/api-digital/revenue/get_dashboard_summary.php?fiscal_year=${this.selectedYear}&target_id=${this.selectedTargetFilter}`,
+          `/api-digital/revenue/get_dashboard_summary.php?fiscal_year=${this.selectedYear}&target_id=${this.selectedTargetFilter}${onlyMyParam}`,
           config
         );
         const resPrev = await axios.get(
-          `/api-digital/revenue/get_dashboard_summary.php?fiscal_year=${this.selectedYear - 1}&target_id=${this.selectedTargetFilter}`,
+          `/api-digital/revenue/get_dashboard_summary.php?fiscal_year=${this.selectedYear - 1}&target_id=${this.selectedTargetFilter}${onlyMyParam}`,
           config
         );
 
@@ -666,7 +792,10 @@ export default {
         if (res.data.status === 'success') {
           this.summaryData = res.data.data.summary;
           this.monthlyData = res.data.data.monthly;
-          if (!this.selectedTargetFilter) {
+          if (res.data.data.my_targets_count !== undefined) {
+            this.serverMyTargetsCount = res.data.data.my_targets_count;
+          }
+          if (!this.selectedTargetFilter && !this.onlyMyTargets) {
             this.availableTargets = [...this.summaryData];
           }
           this.renderCharts();
@@ -680,14 +809,15 @@ export default {
       try {
         const token = localStorage.getItem('user_token');
         const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+        const onlyMyParam = this.onlyMyTargets ? '&only_my_targets=1' : '';
 
         const [res1, res2] = await Promise.all([
           axios.get(
-            `/api-digital/revenue/get_dashboard_summary.php?fiscal_year=${this.compareYear1}&target_id=${this.selectedTargetFilter}`,
+            `/api-digital/revenue/get_dashboard_summary.php?fiscal_year=${this.compareYear1}&target_id=${this.selectedTargetFilter}${onlyMyParam}`,
             config
           ),
           axios.get(
-            `/api-digital/revenue/get_dashboard_summary.php?fiscal_year=${this.compareYear2}&target_id=${this.selectedTargetFilter}`,
+            `/api-digital/revenue/get_dashboard_summary.php?fiscal_year=${this.compareYear2}&target_id=${this.selectedTargetFilter}${onlyMyParam}`,
             config
           )
         ]);
@@ -729,6 +859,10 @@ export default {
       }
     },
     async submitResultForm() {
+      if (!this.canReport(this.selectedTarget)) {
+        Swal.fire('ไม่มีสิทธิ์', 'คุณสามารถดูข้อมูลได้อย่างเดียว เฉพาะผู้รับผิดชอบเท่านั้นที่บันทึกผลงานได้', 'warning');
+        return;
+      }
       try {
         const token = localStorage.getItem('user_token');
         const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -795,6 +929,10 @@ export default {
       }
     },
     async editResult(r) {
+      if (!this.canReport(this.selectedTarget)) {
+        Swal.fire('ไม่มีสิทธิ์', 'คุณสามารถดูข้อมูลได้อย่างเดียว เฉพาะผู้รับผิดชอบเท่านั้นที่แก้ไขข้อมูลได้', 'warning');
+        return;
+      }
       const { value: formValues } = await Swal.fire({
         target: document.getElementById('historyModal'),
         title: 'แก้ไขผลงาน',
@@ -845,6 +983,10 @@ export default {
       }
     },
     async deleteResult(id) {
+      if (!this.canReport(this.selectedTarget)) {
+        Swal.fire('ไม่มีสิทธิ์', 'คุณสามารถดูข้อมูลได้อย่างเดียว เฉพาะผู้รับผิดชอบเท่านั้นที่ลบข้อมูลได้', 'warning');
+        return;
+      }
       const confirm = await Swal.fire({
         target: document.getElementById('historyModal'),
         title: 'ยืนยันการลบ?',
@@ -1283,8 +1425,8 @@ export default {
       }
     }
   },
-  mounted() {
-    this.fetchUserProfile();
+  async mounted() {
+    await this.fetchUserProfile();
     this.fetchDashboardData();
   }
 };

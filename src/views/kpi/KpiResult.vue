@@ -239,14 +239,18 @@ export default {
       );
     },
     filteredKpis() {
-      if (this.isAdmin) return this.kpis;
-      
-      if (!this.userFullname) return [];
-      
-      return this.kpis.filter(kpi => {
-        const isPerson = kpi.responsible_person && kpi.responsible_person.toLowerCase().includes(this.userFullname.toLowerCase());
-        const isTeam = kpi.responsible_unit && this.userTeams.some(team => kpi.responsible_unit.toLowerCase().includes(team.toLowerCase()));
-        return isPerson || isTeam;
+      let list = this.kpis;
+      if (!this.isAdmin) {
+        if (!this.userFullname) return [];
+        list = this.kpis.filter(kpi => this.isMyKpi(kpi));
+      }
+      return [...list].sort((a, b) => {
+        const aMine = this.isMyKpi(a) ? 1 : 0;
+        const bMine = this.isMyKpi(b) ? 1 : 0;
+        if (aMine !== bMine) {
+          return bMine - aMine;
+        }
+        return (a.code || '').localeCompare(b.code || '', 'th', { numeric: true });
       });
     },
     selectedKpiDetail() {
@@ -340,6 +344,12 @@ export default {
           this.form.actual_value = ((num / den) * 100).toFixed(2);
         }
       }
+    },
+    isMyKpi(kpi) {
+      if (!kpi || !this.userFullname) return false;
+      const resp = (kpi.responsible_person || '').trim().toLowerCase();
+      const cleanUser = this.userFullname.replace(/^(นาย|นาง|นางสาว|ดร\.|นพ\.|พญ\.)\s*/, '').trim().toLowerCase();
+      return resp.includes(this.userFullname.toLowerCase()) || (cleanUser && resp.includes(cleanUser));
     },
     async fetchUserProfile() {
       try {

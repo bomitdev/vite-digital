@@ -344,9 +344,16 @@
                   }}</span>
                 </td>
                 <td>
-                  <div class="fw-bold">
+                  <div class="fw-bold d-flex align-items-center flex-wrap gap-1">
                     <span class="text-muted me-1" v-if="kpi.code">[{{ kpi.code }}]</span>
-                    {{ kpi.name }}
+                    <span>{{ kpi.name }}</span>
+                    <span
+                      v-if="isMyKpi(kpi)"
+                      class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill ms-1 small fw-semibold"
+                      style="font-size: 0.72rem;"
+                    >
+                      <i class="bi bi-person-check-fill me-1"></i>ตัวชี้วัดของฉัน
+                    </span>
                   </div>
                   <small class="text-muted d-block text-truncate" style="max-width: 300px">{{
                     kpi.description
@@ -572,17 +579,31 @@ export default {
 
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();
-        return baseList.filter(kpi => {
+        baseList = baseList.filter(kpi => {
           const name = kpi.name ? kpi.name.toLowerCase() : '';
           const code = kpi.code ? kpi.code.toLowerCase() : '';
           const person = kpi.responsible_person ? kpi.responsible_person.toLowerCase() : '';
           return name.includes(query) || code.includes(query) || person.includes(query);
         });
       }
-      return baseList;
+
+      return baseList.sort((a, b) => {
+        const aMine = this.isMyKpi(a) ? 1 : 0;
+        const bMine = this.isMyKpi(b) ? 1 : 0;
+        if (aMine !== bMine) {
+          return bMine - aMine;
+        }
+        return (a.code || '').localeCompare(b.code || '', 'th', { numeric: true });
+      });
     }
   },
   methods: {
+    isMyKpi(kpi) {
+      if (!kpi || !this.userFullname) return false;
+      const resp = (kpi.responsible_person || '').trim().toLowerCase();
+      const cleanUser = this.userFullname.replace(/^(นาย|นาง|นางสาว|ดร\.|นพ\.|พญ\.)\s*/, '').trim().toLowerCase();
+      return resp.includes(this.userFullname.toLowerCase()) || (cleanUser && resp.includes(cleanUser));
+    },
 
     async fetchUserProfile() {
       try {

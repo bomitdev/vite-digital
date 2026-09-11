@@ -80,40 +80,98 @@
     </div>
 
     <!-- Filters Section -->
-    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-4" data-html2canvas-ignore="true">
-      <div class="input-group shadow-sm" style="width: 280px">
-        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-        <input
-          type="text"
-          class="form-control border-start-0 ps-0"
-          placeholder="ค้นหา KPI หรือ ผู้รับผิดชอบ..."
-          v-model="searchQuery"
-        />
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4" data-html2canvas-ignore="true">
+      <!-- Left side: Toggle My KPIs -->
+      <div class="d-flex align-items-center flex-wrap gap-2">
+        <button
+          type="button"
+          class="btn rounded-pill px-3 py-2 fw-bold shadow-sm d-flex align-items-center transition-all"
+          :class="onlyMyKpis ? 'btn-success text-white shadow' : 'btn-white bg-white text-dark border'"
+          @click="toggleMyKpis"
+          :title="onlyMyKpis ? 'คลิกเพื่อแสดงตัวชี้วัดทั้งหมด' : 'คลิกเพื่อกรองเฉพาะตัวชี้วัดที่ฉันรับผิดชอบ'"
+        >
+          <i class="bi me-2 fs-6" :class="onlyMyKpis ? 'bi-check-circle-fill' : 'bi-person-check-fill text-success'"></i>
+          <span>ตัวชี้วัดของฉัน</span>
+          <span
+            class="badge rounded-pill ms-2"
+            :class="onlyMyKpis ? 'bg-white text-success fw-bolder' : 'bg-success bg-opacity-10 text-success border border-success border-opacity-25'"
+          >
+            {{ myKpisCount }}
+          </span>
+        </button>
+
+        <button
+          v-if="onlyMyKpis"
+          type="button"
+          class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1"
+          @click="onlyMyKpis = false"
+        >
+          <i class="bi bi-x-circle me-1"></i>ดูทั้งหมด
+        </button>
       </div>
-      <select class="form-select w-auto shadow-sm" v-model="selectedLevel" v-if="availableLevels.length > 0">
-        <option value="">ทุกระดับ (All Levels)</option>
-        <option v-for="level in availableLevels" :key="level" :value="level">{{ level }}</option>
-      </select>
-      <select class="form-select w-auto shadow-sm" v-model="selectedFrequency" v-if="availableFrequencies.length > 0">
-        <option value="">ความถี่ (All Freq)</option>
-        <option v-for="freq in availableFrequencies" :key="freq" :value="freq">{{ getFrequencyLabel(freq) }}</option>
-      </select>
-      <select class="form-select w-auto shadow-sm" v-model="selectedYear" @change="fetchData">
-        <option v-for="y in yearList" :key="y" :value="y">ปีงบประมาณ {{ y }}</option>
-      </select>
-      <button class="btn btn-outline-primary shadow-sm fw-bold" @click="fetchData">
-        <i class="bi bi-arrow-clockwise me-1"></i> Refresh
-      </button>
-      <button class="btn btn-danger shadow-sm fw-bold" @click="openBatchExportPreview" :disabled="isExportingAll">
-        <span v-if="isExportingAll" class="spinner-border spinner-border-sm me-2"></span>
-        <i class="bi bi-file-earmark-pdf-fill me-1" v-else></i> Export All (PDF)
-      </button>
-      <button class="btn btn-success shadow-sm fw-bold" @click="exportDashboardExcel">
-        <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
-      </button>
-      <router-link to="/kpi-setup" class="btn btn-dark shadow-sm fw-bold" v-if="isAdmin || hasResponsibleKpi">
-        <i class="bi bi-gear-fill me-1"></i> ตั้งค่า KPI
-      </router-link>
+
+      <!-- Right side: Search, Filters, Refresh, Export, Setup -->
+      <div class="d-flex align-items-center flex-wrap gap-2">
+        <div class="input-group shadow-sm" style="width: 280px">
+          <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+          <input
+            type="text"
+            class="form-control border-start-0 ps-0"
+            placeholder="ค้นหา KPI หรือ ผู้รับผิดชอบ..."
+            v-model="searchQuery"
+          />
+        </div>
+        <div class="dropdown" v-if="availableLevels.length > 0">
+          <button class="btn btn-white border shadow-sm dropdown-toggle text-start" type="button" @click="isLevelDropdownOpen = !isLevelDropdownOpen" style="min-width: 180px; background-color: #fff; position: relative; z-index: 1050;">
+            <span v-if="selectedLevels.length === 0" class="text-dark">ทุกระดับ (All Levels)</span>
+            <span v-else-if="selectedLevels.length === 1" class="text-dark">{{ selectedLevels[0] }}</span>
+            <span v-else class="text-dark">เลือกแล้ว {{ selectedLevels.length }} ระดับ</span>
+          </button>
+          
+          <!-- Click away backdrop -->
+          <div v-if="isLevelDropdownOpen" @click="isLevelDropdownOpen = false" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1040;"></div>
+          
+          <div class="dropdown-menu shadow p-2" :class="{ 'show': isLevelDropdownOpen }" style="max-height: 300px; overflow-y: auto; min-width: 200px; position: absolute; top: 100%; left: 0; z-index: 1050;">
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="level_all" :checked="selectedLevels.length === 0" @change="toggleAllLevels">
+              <label class="form-check-label fw-bold text-primary" for="level_all">
+                ทุกระดับ (All Levels)
+              </label>
+            </div>
+            <hr class="dropdown-divider">
+            <div class="form-check mb-1" v-for="level in availableLevels" :key="level">
+              <input class="form-check-input" type="checkbox" :id="'level_' + level" :value="level" v-model="selectedLevels">
+              <label class="form-check-label" :for="'level_' + level">
+                {{ level }}
+              </label>
+            </div>
+          </div>
+        </div>
+        <select class="form-select w-auto shadow-sm" v-model="selectedFrequency" v-if="availableFrequencies.length > 0">
+          <option value="">ความถี่ (All Freq)</option>
+          <option v-for="freq in availableFrequencies" :key="freq" :value="freq">{{ getFrequencyLabel(freq) }}</option>
+        </select>
+        <select class="form-select w-auto shadow-sm" v-model="selectedYear" @change="fetchData">
+          <option v-for="y in yearList" :key="y" :value="y">ปีงบประมาณ {{ y }}</option>
+        </select>
+        <button class="btn btn-outline-primary shadow-sm fw-bold" @click="fetchData">
+          <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+        </button>
+        <button class="btn btn-danger shadow-sm fw-bold" @click="openBatchExportPreview('pdf')" :disabled="isExportingAll">
+          <span v-if="isExportingAll" class="spinner-border spinner-border-sm me-2"></span>
+          <i class="bi bi-file-earmark-pdf-fill me-1" v-else></i> Export All (PDF)
+        </button>
+        <button class="btn btn-primary shadow-sm fw-bold" @click="openBatchExportPreview('word')" :disabled="isExportingAll">
+          <span v-if="isExportingAll" class="spinner-border spinner-border-sm me-2"></span>
+          <i class="bi bi-file-earmark-word-fill me-1" v-else></i> Export All (Word)
+        </button>
+        <button class="btn btn-success shadow-sm fw-bold" @click="exportDashboardExcel">
+          <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
+        </button>
+        <router-link to="/kpi-setup" class="btn btn-dark shadow-sm fw-bold" v-if="isAdmin || hasResponsibleKpi">
+          <i class="bi bi-gear-fill me-1"></i> ตั้งค่า KPI
+        </router-link>
+      </div>
     </div>
 
     <!-- Dimension Sections -->
@@ -139,21 +197,33 @@
           <div class="row g-4">
             <div class="col-12 col-md-6 col-xl-3" v-for="kpi in category.kpis" :key="kpi.id">
               <div class="card border border-top border-4 rounded-4 shadow h-100 kpi-card bg-white overflow-hidden"
-                   :class="kpi.actual_value === null ? 'border-secondary' : (checkStatus(kpi) === 'pass' ? 'border-success' : 'border-danger')">
-                <div class="card-body p-3 d-flex flex-column">
+                   :class="kpi.actual_value === null ? 'border-secondary' : (checkStatus(kpi) === 'pass' ? 'border-success' : 'border-danger')"
+                   :style="isMyKpi(kpi) ? 'box-shadow: 0 0.5rem 1.25rem rgba(25, 135, 84, 0.22) !important; border-top-color: #198754 !important;' : ''">
+                <div class="card-body p-3 d-flex flex-column" :style="isMyKpi(kpi) ? 'background-color: #fafffb;' : ''">
                   
                   <div class="mb-2 flex-grow-1">
                     <div class="mb-2 d-flex flex-wrap gap-1">
+                      <span class="badge bg-success text-white shadow-sm" v-if="isMyKpi(kpi)" style="font-size: 0.72rem;">
+                        <i class="bi bi-person-check-fill me-1"></i>ตัวชี้วัดของฉัน
+                      </span>
                       <span class="badge bg-primary bg-opacity-10 text-primary" v-if="kpi.code" style="font-size: 0.7rem;">{{ kpi.code }}</span>
                       <span class="badge bg-secondary text-white" v-if="kpi.kpi_level" style="font-size: 0.7rem;">
                         <i class="bi bi-diagram-3-fill me-1"></i>{{ kpi.kpi_level }}
+                      </span>
+                      <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25" v-if="kpi.responsible_unit" style="font-size: 0.7rem;">
+                        <i class="bi bi-building me-1"></i>{{ kpi.responsible_unit }}
                       </span>
                     </div>
                     
                     <h6 class="fw-bold mb-2 lh-base text-dark" style="font-size: 0.95rem; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">{{ kpi.name }}</h6>
                     
-                    <div class="badge bg-light text-secondary border w-100 text-start text-truncate fw-normal py-2 mb-3" style="font-size: 0.8rem;">
-                      <i class="bi bi-person-fill me-1"></i> {{ kpi.responsible_person || 'ยังไม่ระบุ' }}
+                    <div
+                      class="badge border w-100 text-start text-truncate fw-normal py-2 mb-3"
+                      :class="isMyKpi(kpi) ? 'bg-success bg-opacity-10 text-success border-success border-opacity-25 fw-bold' : 'bg-light text-secondary'"
+                      style="font-size: 0.8rem;"
+                    >
+                      <i class="bi me-1" :class="isMyKpi(kpi) ? 'bi-person-check-fill' : 'bi-person-fill'"></i>
+                      {{ kpi.responsible_person || 'ยังไม่ระบุ' }}
                     </div>
 
                     <div class="row g-2 mb-3 text-center">
@@ -187,8 +257,22 @@
                   </div>
                   
                   <div class="d-flex align-items-center mb-3 mt-auto justify-content-between">
-                    <button class="btn btn-sm btn-outline-primary rounded-pill flex-grow-1 me-2 fw-bold" style="font-size: 0.8rem;" @click.stop="openEntryModal(kpi)">
+                    <button 
+                      v-if="canReport(kpi)"
+                      class="btn btn-sm btn-outline-primary rounded-pill flex-grow-1 me-2 fw-bold" 
+                      style="font-size: 0.8rem;" 
+                      @click.stop="openEntryModal(kpi)"
+                    >
                       <i class="bi bi-pencil-square"></i> รายงาน
+                    </button>
+                    <button 
+                      v-else
+                      class="btn btn-sm btn-light text-muted border rounded-pill flex-grow-1 me-2 fw-semibold" 
+                      style="font-size: 0.8rem; cursor: not-allowed; opacity: 0.85;" 
+                      disabled
+                      title="ดูได้อย่างเดียว (เฉพาะผู้รับผิดชอบเท่านั้นที่สามารถกรอกได้)"
+                    >
+                      <i class="bi bi-eye me-1"></i> ดูได้อย่างเดียว
                     </button>
                     <div class="d-flex gap-1">
                       <button class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" @click.stop="openTrendModal(kpi)" title="กราฟแนวโน้ม">
@@ -219,6 +303,19 @@
           <div v-if="!category.kpis || category.kpis.length === 0" class="text-center text-muted py-3">
              No KPIs defined for this dimension.
           </div>
+        </div>
+      </div>
+
+      <div v-if="filteredCategories.length === 0" class="card border-0 shadow-sm rounded-4 text-center py-5 my-4 bg-white">
+        <div class="fs-1 text-muted mb-2"><i class="bi bi-inbox"></i></div>
+        <h5 class="fw-bold text-dark">ไม่พบข้อมูลตัวชี้วัดตามเงื่อนไขที่เลือก</h5>
+        <p class="text-muted small mb-3" v-if="onlyMyKpis">
+          ท่านไม่มีตัวชี้วัดที่รับผิดชอบตามเงื่อนไขหรือปีงบประมาณนี้
+        </p>
+        <div v-if="onlyMyKpis">
+          <button class="btn btn-outline-primary rounded-pill px-4" @click="onlyMyKpis = false">
+            <i class="bi bi-arrow-counterclockwise me-1"></i> แสดงตัวชี้วัดทั้งหมด
+          </button>
         </div>
       </div>
     </div>
@@ -259,9 +356,9 @@
                 v-model="analysisText"
                 placeholder="พิมพ์ผลการวิเคราะห์ตัวชี้วัด เพื่อใช้อ้างอิงและติดตามผล..."
                 style="resize: none;"
-                :readonly="!isAdmin && !hasResponsibleKpi"
+                :readonly="!canReport(selectedKpi)"
               ></textarea>
-              <div class="d-flex justify-content-end" v-if="isAdmin || hasResponsibleKpi">
+              <div class="d-flex justify-content-end" v-if="canReport(selectedKpi)">
                 <button class="btn btn-primary fw-bold px-4 shadow-sm" @click="saveAnalysis" :disabled="savingAnalysis">
                   <span v-if="savingAnalysis" class="spinner-border spinner-border-sm me-2"></span>
                   <i class="bi bi-save me-1" v-else></i> บันทึกผลวิเคราะห์
@@ -297,7 +394,7 @@
                     <th>Actual</th>
                     <th>Status</th>
                     <th>วันที่บันทึก</th>
-                    <th>Action</th>
+                    <th v-if="canReport(selectedKpi)">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -310,7 +407,7 @@
                       <span v-else class="badge bg-danger">Fail</span>
                     </td>
                     <td>{{ formatDateTime(h.created_at) }}</td>
-                    <td>
+                    <td v-if="canReport(selectedKpi)">
                       <button class="btn btn-sm btn-outline-primary me-2" @click="editHistory(h)" title="แก้ไข">
                         <i class="bi bi-pencil"></i>
                       </button>
@@ -320,7 +417,7 @@
                     </td>
                   </tr>
                   <tr v-if="historyList.length === 0">
-                    <td colspan="6" class="text-muted">No history data found.</td>
+                    <td :colspan="canReport(selectedKpi) ? 6 : 5" class="text-muted">No history data found.</td>
                   </tr>
                 </tbody>
               </table>
@@ -411,7 +508,7 @@
         <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
           <div class="modal-header bg-danger text-white border-0">
             <h5 class="modal-title fw-bold" id="batchExportPreviewModalLabel">
-              <i class="bi bi-file-earmark-pdf me-2"></i> ตัวอย่างรายงาน PDF รวมตัวชี้วัด ({{ selectedLevel || 'ทุกระดับ' }})
+              <i class="bi me-2" :class="exportAllMode === 'word' ? 'bi-file-earmark-word' : 'bi-file-earmark-pdf'"></i> ตัวอย่างรายงาน {{ exportAllMode === 'word' ? 'Word' : 'PDF' }} รวมตัวชี้วัด ({{ selectedLevels.length > 0 ? selectedLevels.join(', ') : 'ทุกระดับ' }})
             </h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
@@ -461,9 +558,13 @@
           </div>
           <div class="modal-footer bg-white d-flex justify-content-end">
             <button type="button" class="btn btn-light border fw-bold px-4 me-auto" data-bs-dismiss="modal">ยกเลิก</button>
-            <button type="button" class="btn btn-danger fw-bold px-4 shadow-sm" @click="confirmBatchExportPdf" :disabled="isExportingPdfFile">
+            <button v-if="exportAllMode === 'pdf'" type="button" class="btn btn-danger fw-bold px-4 shadow-sm" @click="confirmBatchExportPdf" :disabled="isExportingPdfFile">
               <span v-if="isExportingPdfFile" class="spinner-border spinner-border-sm me-2"></span>
               <i class="bi bi-file-earmark-pdf-fill me-1" v-else></i> ยืนยันการ Export เป็น PDF
+            </button>
+            <button v-if="exportAllMode === 'word'" type="button" class="btn btn-primary fw-bold px-4 shadow-sm" @click="confirmBatchExportWord" :disabled="isExportingWord">
+              <span v-if="isExportingWord" class="spinner-border spinner-border-sm me-2"></span>
+              <i class="bi bi-file-earmark-word-fill me-1" v-else></i> ยืนยันการ Export เป็น Word
             </button>
           </div>
         </div>
@@ -509,20 +610,25 @@ export default {
       exportPreviewModalInstance: null,
       exportPreviewData: null,
       isExportingAll: false,
+      exportAllMode: 'pdf',
       isExportingWord: false,
+      isExportingPdfFile: false,
       batchExportData: [],
       batchExportPreviewModalInstance: null,
       selectedYear: null,
       analysisText: '',
       savingAnalysis: false,
-      selectedLevel: '',
+      isLevelDropdownOpen: false,
+      selectedLevels: [],
       selectedFrequency: '',
       userDepartment: '',
       userFullname: '',
       userAccess: [],
+      userTeams: [],
       yearList: [],
       searchQuery: '',
       statusFilter: 'all',
+      onlyMyKpis: false,
       chartData: {},
       chartOptions: {
         responsive: true,
@@ -555,7 +661,7 @@ export default {
       for (const cat of this.categories) {
         if (cat.kpis) {
           for (const kpi of cat.kpis) {
-            if (kpi.responsible_person && kpi.responsible_person.includes(this.userFullname)) {
+            if (this.canReport(kpi)) {
               return true;
             }
           }
@@ -568,20 +674,46 @@ export default {
       if (!this.isAdmin && this.userFullname) {
         result = result.map(cat => {
           if (!cat.kpis) return cat;
-          return { ...cat, kpis: cat.kpis.filter(kpi => kpi.responsible_person && kpi.responsible_person.includes(this.userFullname)) };
+          return { ...cat, kpis: cat.kpis.filter(kpi => this.canViewKpi(kpi)) };
         });
         result = result.filter(cat => cat.kpis && cat.kpis.length > 0);
       }
       return result;
     },
+    myKpisCount() {
+      let count = 0;
+      this.baseCategories.forEach(cat => {
+        if (cat.kpis) {
+          cat.kpis.forEach(kpi => {
+            if (this.isMyKpi(kpi)) {
+              count++;
+            }
+          });
+        }
+      });
+      return count;
+    },
     filteredCategoriesForSummary() {
       let result = this.baseCategories;
 
-      // Filter by selected level
-      if (this.selectedLevel) {
+      // Filter by onlyMyKpis
+      if (this.onlyMyKpis) {
         result = result.map(cat => {
           if (!cat.kpis) return cat;
-          return { ...cat, kpis: cat.kpis.filter(kpi => kpi.kpi_level === this.selectedLevel) };
+          return { ...cat, kpis: cat.kpis.filter(kpi => this.isMyKpi(kpi)) };
+        });
+        result = result.filter(cat => cat.kpis && cat.kpis.length > 0);
+      }
+
+      // Filter by selected level
+      if (this.selectedLevels && this.selectedLevels.length > 0) {
+        result = result.map(cat => {
+          if (!cat.kpis) return cat;
+          return { ...cat, kpis: cat.kpis.filter(kpi => {
+            if (!kpi.kpi_level) return false;
+            const kpiLevels = kpi.kpi_level.split(',').map(s => s.trim());
+            return kpiLevels.some(l => this.selectedLevels.includes(l));
+          }) };
         });
       }
       
@@ -649,7 +781,33 @@ export default {
         });
       }
 
-      return result.filter(cat => cat.kpis && cat.kpis.length > 0);
+      result = result.filter(cat => cat.kpis && cat.kpis.length > 0);
+
+      // Sort KPIs inside each category: user's responsible KPIs (isMyKpi) FIRST!
+      result = result.map(cat => {
+        if (!cat.kpis) return cat;
+        const sortedKpis = [...cat.kpis].sort((a, b) => {
+          const aMine = this.isMyKpi(a) ? 1 : 0;
+          const bMine = this.isMyKpi(b) ? 1 : 0;
+          if (aMine !== bMine) {
+            return bMine - aMine; // 1 before 0
+          }
+          return (a.code || '').localeCompare(b.code || '', 'th', { numeric: true });
+        });
+        return { ...cat, kpis: sortedKpis };
+      });
+
+      // Sort categories so that categories containing user's responsible KPIs come first!
+      result.sort((a, b) => {
+        const aHasMine = (a.kpis || []).some(k => this.isMyKpi(k)) ? 1 : 0;
+        const bHasMine = (b.kpis || []).some(k => this.isMyKpi(k)) ? 1 : 0;
+        if (aHasMine !== bHasMine) {
+          return bHasMine - aHasMine;
+        }
+        return 0;
+      });
+
+      return result;
     },
     availableLevels() {
       const levels = new Set();
@@ -657,7 +815,11 @@ export default {
         if (cat.kpis) {
           cat.kpis.forEach(kpi => {
             if (kpi.kpi_level) {
-              levels.add(kpi.kpi_level);
+              const parts = kpi.kpi_level.split(',');
+              parts.forEach(p => {
+                const trimmed = p.trim();
+                if (trimmed) levels.add(trimmed);
+              });
             }
           });
         }
@@ -733,6 +895,11 @@ export default {
     this.fetchData();
   },
   methods: {
+    toggleAllLevels(e) {
+      if (e.target.checked) {
+        this.selectedLevels = [];
+      }
+    },
     getFrequencyBlocks(kpi) {
       const freq = kpi.kpi_periodicity;
       let blocks = [];
@@ -829,10 +996,69 @@ export default {
           this.userDepartment = response.data.department || '';
           this.userFullname = response.data.fullname || '';
           this.userAccess = response.data.access_user ? response.data.access_user.split(':') : [];
+          if (this.userFullname) {
+            await this.fetchUserTeams(this.userFullname);
+          }
         }
       } catch (e) {
         console.error('Failed to load user profile', e);
       }
+    },
+    async fetchUserTeams(fullname) {
+      try {
+        const response = await axios.get(`/api-digital/qi/get_user_teams.php?fullname=${encodeURIComponent(fullname)}`);
+        if (response.data.status === 'success') {
+          this.userTeams = response.data.data || [];
+        }
+      } catch (e) {
+        console.error('Failed to load user teams', e);
+      }
+    },
+    toggleMyKpis() {
+      this.onlyMyKpis = !this.onlyMyKpis;
+    },
+    isMyKpi(kpi) {
+      if (!kpi || !this.userFullname) return false;
+      const resp = (kpi.responsible_person || '').trim().toLowerCase();
+      const cleanUser = this.userFullname.replace(/^(นาย|นาง|นางสาว|ดร\.|นพ\.|พญ\.)\s*/, '').trim().toLowerCase();
+      return resp.includes(this.userFullname.toLowerCase()) || (cleanUser && resp.includes(cleanUser));
+    },
+    canReport(kpi) {
+      if (!kpi) return false;
+      if (this.isAdmin) return true;
+      if (!this.userFullname) return false;
+      return !!(kpi.responsible_person && kpi.responsible_person.toLowerCase().includes(this.userFullname.toLowerCase()));
+    },
+    canViewKpi(kpi) {
+      if (!kpi) return false;
+      if (this.isAdmin) return true;
+      if (!this.userFullname) return true; // public view if not logged in
+      
+      // 1. Can report means can definitely view
+      if (this.canReport(kpi)) return true;
+      
+      // 2. Belongs to the same department / unit / team
+      const kpiUnit = (kpi.responsible_unit || '').trim().toLowerCase();
+      if (!kpiUnit) return false;
+      
+      const units = kpiUnit.split(',').map(u => u.trim().toLowerCase()).filter(Boolean);
+      
+      // Match against userDepartment
+      const userDept = (this.userDepartment || '').trim().toLowerCase();
+      if (userDept && units.some(u => u.includes(userDept) || userDept.includes(u))) {
+        return true;
+      }
+      
+      // Match against userTeams
+      if (this.userTeams && this.userTeams.length > 0) {
+        const matchTeam = this.userTeams.some(team => {
+          const t = team.trim().toLowerCase();
+          return t && units.some(u => u.includes(t) || t.includes(u));
+        });
+        if (matchTeam) return true;
+      }
+      
+      return false;
     },
     setStatusFilter(status) {
       this.statusFilter = status;
@@ -889,6 +1115,10 @@ export default {
       this.historyList = await this.fetchHistoryData(kpi.id);
     },
     editHistory(h) {
+      if (!this.canReport(this.selectedKpi)) {
+        Swal.fire('ข้อความแจ้งเตือน', 'คุณไม่มีสิทธิ์แก้ไขข้อมูลตัวชี้วัดนี้ (เฉพาะผู้รับผิดชอบเท่านั้นที่สามารถแก้ไขได้)', 'warning');
+        return;
+      }
       if (this.historyModalInstance) {
         this.historyModalInstance.hide();
       }
@@ -931,6 +1161,10 @@ export default {
       });
     },
     async deleteHistory(h) {
+      if (!this.canReport(this.selectedKpi)) {
+        Swal.fire('ข้อความแจ้งเตือน', 'คุณไม่มีสิทธิ์ลบข้อมูลตัวชี้วัดนี้ (เฉพาะผู้รับผิดชอบเท่านั้นที่สามารถลบได้)', 'warning');
+        return;
+      }
       const confirm = await Swal.fire({
         title: 'ยืนยันการลบ?',
         text: 'คุณต้องการลบข้อมูลผลการดำเนินงานนี้ใช่หรือไม่?',
@@ -959,6 +1193,10 @@ export default {
     },
     async saveAnalysis() {
       if (!this.selectedKpi) return;
+      if (!this.canReport(this.selectedKpi)) {
+        Swal.fire('ข้อความแจ้งเตือน', 'คุณไม่มีสิทธิ์บันทึกผลการวิเคราะห์ตัวชี้วัดนี้ (เฉพาะผู้รับผิดชอบเท่านั้นที่สามารถบันทึกได้)', 'warning');
+        return;
+      }
       this.savingAnalysis = true;
       try {
         const res = await axios.post('/api-digital/kpi/save_kpi_analysis.php', {
@@ -984,25 +1222,17 @@ export default {
         return;
       }
       
-      const canvas = document.querySelector('#trendModal canvas');
-      if (!canvas) {
-        Swal.fire('Error', 'ไม่พบกราฟสำหรับ Export', 'error');
-        return;
-      }
-      
-      const dataUrl = canvas.toDataURL('image/png');
-      const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
-      
       const currentYear = this.selectedYear || new Date().getFullYear() + 543;
       const years = [];
       const actuals = [];
+      const targets = [];
       
       for(let i = 4; i >= 0; i--) {
         const targetFy = currentYear - i;
         years.push(targetFy);
         
         // Find latest entry for this fiscal year
-        const entriesInFy = this.historyList.filter(h => {
+        const entriesInFy = (this.historyList || []).filter(h => {
            const parts = h.period_date.split('-');
            const y = parseInt(parts[0]);
            const m = parseInt(parts[1]);
@@ -1013,11 +1243,25 @@ export default {
         if (entriesInFy.length > 0) {
            // sort descending by date
            entriesInFy.sort((a,b) => b.period_date.localeCompare(a.period_date));
-           actuals.push(entriesInFy[0].actual_value !== null ? entriesInFy[0].actual_value : '');
+           actuals.push(entriesInFy[0].actual_value !== null && entriesInFy[0].actual_value !== undefined ? entriesInFy[0].actual_value : '');
+           if (entriesInFy[0].target_value_snapshot !== null && entriesInFy[0].target_value_snapshot !== undefined && entriesInFy[0].target_value_snapshot !== '') {
+             targets.push(entriesInFy[0].target_value_snapshot);
+           } else if (this.selectedKpi.target_value !== null && this.selectedKpi.target_value !== undefined && this.selectedKpi.target_value !== '') {
+             targets.push(this.selectedKpi.target_value);
+           } else {
+             targets.push(null);
+           }
         } else {
            actuals.push('');
+           if (this.selectedKpi.target_value !== null && this.selectedKpi.target_value !== undefined && this.selectedKpi.target_value !== '') {
+             targets.push(this.selectedKpi.target_value);
+           } else {
+             targets.push(null);
+           }
         }
       }
+      
+      const base64Data = await this.generateOffscreenChartDataUrl(years, actuals, targets);
       
       const targetStr = `${this.selectedKpi.target_operator || ''} ${this.selectedKpi.target_value || ''} ${this.selectedKpi.unit || ''}`.trim();
       
@@ -1112,26 +1356,60 @@ export default {
         Swal.fire('Error', 'เกิดข้อผิดพลาดในการสร้างไฟล์ Excel', 'error');
       }
     },
-    async generateOffscreenChartDataUrl(history) {
-      if (!history || history.length === 0) return '';
-      const sorted = [...history].reverse();
+    async generateOffscreenChartDataUrl(years, actuals, targets) {
+      if (!years || years.length === 0) return '';
+
+      // Backward compatibility if called with history array
+      if (typeof years[0] === 'object' && years[0] !== null && 'period_date' in years[0]) {
+        const history = years;
+        const currentYear = this.selectedYear || new Date().getFullYear() + 543;
+        const fyList = [];
+        for (let i = 4; i >= 0; i--) {
+          fyList.push(currentYear - i);
+        }
+        const actList = [];
+        const tgtList = [];
+        for (const targetFy of fyList) {
+          const entriesInFy = history.filter(h => {
+            const parts = h.period_date.split('-');
+            const y = parseInt(parts[0]);
+            const m = parseInt(parts[1]);
+            const fy = m >= 10 ? y + 1 + 543 : y + 543;
+            return fy === targetFy;
+          });
+          if (entriesInFy.length > 0) {
+            entriesInFy.sort((a, b) => b.period_date.localeCompare(a.period_date));
+            actList.push(entriesInFy[0].actual_value);
+            tgtList.push(entriesInFy[0].target_value_snapshot);
+          } else {
+            actList.push(null);
+            tgtList.push(null);
+          }
+        }
+        years = fyList;
+        actuals = actList;
+        targets = tgtList;
+      }
+
       const data = {
-        labels: sorted.map((h) => this.formatDate(h.period_date)),
+        labels: years.map(y => String(y)),
         datasets: [
           {
             label: 'Actual',
-            data: sorted.map((h) => h.actual_value),
+            data: (actuals || []).map(a => (a !== '' && a !== null && a !== undefined && !isNaN(a)) ? parseFloat(a) : null),
             borderColor: '#304ffe',
             backgroundColor: 'rgba(48, 79, 254, 0.1)',
             tension: 0.3,
-            fill: true
+            fill: true,
+            spanGaps: true
           },
           {
             label: 'Target',
-            data: sorted.map((h) => h.target_value_snapshot),
+            data: (targets || []).map(t => (t !== '' && t !== null && t !== undefined && !isNaN(t)) ? parseFloat(t) : null),
             borderColor: '#f44336',
             borderDash: [5, 5],
-            fill: false
+            fill: false,
+            spanGaps: true
           }
         ]
       };
@@ -1162,9 +1440,10 @@ export default {
       
       return dataUrl.replace(/^data:image\/png;base64,/, '');
     },
-    async openBatchExportPreview() {
-      if (!this.selectedLevel) {
-        Swal.fire('ข้อควรระวัง', 'กรุณาเลือก "ระดับตัวชี้วัด" (Level) จากตัวกรองด้านบนก่อนทำการ Export All PDF', 'warning');
+    async openBatchExportPreview(type = 'pdf') {
+      this.exportAllMode = type;
+      if (this.selectedLevels.length === 0) {
+        Swal.fire('ข้อควรระวัง', `กรุณาเลือก "ระดับตัวชี้วัด" (Level) อย่างน้อย 1 ระดับจากตัวกรองด้านบนก่อนทำการ Export All ${type.toUpperCase()}`, 'warning');
         return;
       }
       
@@ -1185,7 +1464,7 @@ export default {
       this.batchExportData = [];
       
       Swal.fire({
-        title: 'กำลังเตรียมตัวอย่าง PDF...',
+        title: `กำลังเตรียมตัวอย่าง ${type === 'word' ? 'Word' : 'PDF'}...`,
         text: 'ระบบกำลังดึงข้อมูลและประมวลผลกราฟ โปรดรอสักครู่',
         allowOutsideClick: false,
         didOpen: () => {
@@ -1202,9 +1481,9 @@ export default {
         
         for (const kpi of allKpis) {
           const history = await this.fetchHistoryData(kpi.id);
-          const base64Data = await this.generateOffscreenChartDataUrl(history);
           
           const actuals = [];
+          const targets = [];
           for (const targetFy of years) {
             const entriesInFy = history.filter(h => {
                const parts = h.period_date.split('-');
@@ -1215,19 +1494,30 @@ export default {
             });
             if (entriesInFy.length > 0) {
                entriesInFy.sort((a,b) => b.period_date.localeCompare(a.period_date));
-               actuals.push(entriesInFy[0].actual_value !== null ? entriesInFy[0].actual_value : '');
+               actuals.push(entriesInFy[0].actual_value !== null && entriesInFy[0].actual_value !== undefined ? entriesInFy[0].actual_value : '');
+               if (entriesInFy[0].target_value_snapshot !== null && entriesInFy[0].target_value_snapshot !== undefined && entriesInFy[0].target_value_snapshot !== '') {
+                 targets.push(entriesInFy[0].target_value_snapshot);
+               } else if (kpi.target_value !== null && kpi.target_value !== undefined && kpi.target_value !== '') {
+                 targets.push(kpi.target_value);
+               } else {
+                 targets.push(null);
+               }
             } else {
                actuals.push('');
+               if (kpi.target_value !== null && kpi.target_value !== undefined && kpi.target_value !== '') {
+                 targets.push(kpi.target_value);
+               } else {
+                 targets.push(null);
+               }
             }
           }
           
           const targetStr = `${kpi.target_operator || ''} ${kpi.target_value || ''} ${kpi.unit || ''}`.trim();
           const analysisLines = (kpi.analysis || '').split('\n').filter(line => line.trim() !== '');
           
-          const hasData = actuals.some(a => a !== '');
-          if (!hasData) {
-            continue;
-          }
+          // Removed hasData check so KPIs without actuals are still exported
+          
+          const base64Data = await this.generateOffscreenChartDataUrl(years, actuals, targets);
           
           this.batchExportData.push({
             kpiName: kpi.name || '',
@@ -1287,7 +1577,7 @@ export default {
         
         const opt = {
           margin:       10,
-          filename:     `All_KPIs_${this.selectedLevel}_Trend.pdf`,
+          filename:     `All_KPIs_${this.selectedLevels.length > 0 ? this.selectedLevels.join('_') : 'Trend'}.pdf`,
           image:        { type: 'jpeg', quality: 0.98 },
           html2canvas:  { scale: 2, useCORS: true, windowWidth: 1250 },
           jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
@@ -1418,7 +1708,7 @@ export default {
     prepareChart(history) {
       const sorted = [...history].reverse();
       this.chartData = {
-        labels: sorted.map((h) => this.formatDate(h.period_date)),
+        labels: sorted.map((h) => this.formatHistoryLabel(h)),
         datasets: [
           {
             label: 'Actual',
@@ -1437,6 +1727,19 @@ export default {
           }
         ]
       };
+    },
+    formatHistoryLabel(h) {
+      if (!h || !h.period_date) return '-';
+      const parts = h.period_date.split('-');
+      const y = parseInt(parts[0]);
+      const m = parseInt(parts[1]);
+      const fy = m >= 10 ? y + 1 + 543 : y + 543;
+      
+      const periodicity = this.selectedKpi?.kpi_periodicity;
+      if (periodicity === 'year') {
+        return String(fy);
+      }
+      return this.formatDate(h.period_date);
     },
     formatDate(d) {
       if (!d) return '-';
@@ -1505,7 +1808,7 @@ export default {
         children.push(
           new Paragraph({
             children: [
-              new TextRun({ text: `รายงานรวมตัวชี้วัด (${this.selectedLevel || 'ทุกระดับ'})`, bold: true, size: 36, font: 'Sarabun' })
+              new TextRun({ text: `รายงานรวมตัวชี้วัด (${this.selectedLevels.length > 0 ? this.selectedLevels.join(', ') : 'ทุกระดับ'})`, bold: true, size: 36, font: 'Sarabun' })
             ],
             alignment: AlignmentType.CENTER,
             spacing: { after: 400 }
@@ -1651,7 +1954,7 @@ export default {
         });
 
         const blob = await Packer.toBlob(doc);
-        saveAs(blob, `All_KPIs_${this.selectedLevel || 'Trend'}.docx`);
+        saveAs(blob, `All_KPIs_${this.selectedLevels.length > 0 ? this.selectedLevels.join('_') : 'Trend'}.docx`);
         
         if (this.batchExportPreviewModalInstance) {
           this.batchExportPreviewModalInstance.hide();
@@ -1785,6 +2088,10 @@ export default {
       });
     },
     openEntryModal(kpi) {
+      if (!this.canReport(kpi)) {
+        Swal.fire('ข้อความแจ้งเตือน', 'คุณไม่มีสิทธิ์กรอกข้อมูลตัวชี้วัดนี้ (เฉพาะผู้รับผิดชอบเท่านั้นที่สามารถกรอกได้)', 'warning');
+        return;
+      }
       this.$refs.entryModal.open(kpi);
     },
     // Removed goToEntry as it's replaced by modal

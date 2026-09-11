@@ -180,7 +180,34 @@
         <h5 class="mb-0 fw-bolder text-dark d-flex align-items-center">
           <i class="bi bi-table text-primary me-2"></i> รายการเป้าหมายรายได้ทั้งหมด
         </h5>
-        <div class="d-flex flex-wrap gap-2">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <!-- Button ศูนย์จัดเก็บของฉัน -->
+          <button
+            type="button"
+            class="btn rounded-pill px-3 py-1 fw-bold shadow-sm d-flex align-items-center transition-all"
+            :class="onlyMyTargets ? 'btn-success text-white shadow' : 'btn-white bg-white text-dark border'"
+            @click="onlyMyTargets = !onlyMyTargets"
+            :title="onlyMyTargets ? 'คลิกเพื่อแสดงศูนย์จัดเก็บทั้งหมด' : 'คลิกเพื่อกรองเฉพาะศูนย์จัดเก็บของฉัน'"
+          >
+            <i class="bi me-2 fs-6" :class="onlyMyTargets ? 'bi-check-circle-fill' : 'bi-person-check-fill text-success'"></i>
+            <span>ศูนย์จัดเก็บของฉัน</span>
+            <span
+              class="badge rounded-pill ms-2"
+              :class="onlyMyTargets ? 'bg-white text-success fw-bolder' : 'bg-success bg-opacity-10 text-success border border-success border-opacity-25'"
+            >
+              {{ myTargetsCount }}
+            </span>
+          </button>
+
+          <button
+            v-if="onlyMyTargets"
+            type="button"
+            class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1"
+            @click="onlyMyTargets = false"
+          >
+            <i class="bi bi-x-circle me-1"></i>ดูทั้งหมด
+          </button>
+
           <div class="input-group shadow-sm rounded-pill overflow-hidden border bg-white" style="max-width: 300px">
             <span class="input-group-text bg-transparent border-0 text-muted ps-3"><i class="bi bi-search"></i></span>
             <input
@@ -209,14 +236,34 @@
             </thead>
             <tbody>
               <tr v-if="filteredTargets.length === 0">
-                <td colspan="5" class="text-center text-muted py-4">ไม่พบรายการที่ค้นหา</td>
+                <td colspan="5" class="text-center text-muted py-4">
+                  <div class="fs-1 text-muted mb-2"><i class="bi bi-inbox"></i></div>
+                  <div>{{ onlyMyTargets ? 'ไม่พบศูนย์จัดเก็บรายได้ที่ท่านรับผิดชอบ' : 'ไม่พบรายการที่ค้นหา' }}</div>
+                  <button v-if="onlyMyTargets" class="btn btn-sm btn-outline-primary rounded-pill mt-2" @click="onlyMyTargets = false">
+                    แสดงทั้งหมด
+                  </button>
+                </td>
               </tr>
-              <tr v-for="target in filteredTargets" :key="target.id" class="border-bottom">
+              <tr
+                v-for="target in filteredTargets"
+                :key="target.id"
+                class="border-bottom"
+                :style="isMyTarget(target) ? 'background-color: #f4fbf6;' : ''"
+              >
                 <td class="ps-4">
                   <span class="badge bg-light text-dark border rounded-pill px-3 py-2 fw-bold shadow-sm">{{ target.fiscal_year }}</span>
                 </td>
                 <td>
-                  <div class="fw-bolder text-dark fs-6">{{ target.revenue_name }}</div>
+                  <div class="fw-bolder text-dark fs-6 d-flex align-items-center flex-wrap gap-1">
+                    <span>{{ target.revenue_name }}</span>
+                    <span
+                      v-if="isMyTarget(target)"
+                      class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill small fw-semibold"
+                      style="font-size: 0.72rem;"
+                    >
+                      <i class="bi bi-person-check-fill me-1"></i> ศูนย์จัดเก็บของฉัน
+                    </span>
+                  </div>
                   <div class="small text-muted mt-1" v-if="target.unit_price">
                     เงิน/ครั้ง: <span class="badge bg-info bg-opacity-10 text-info border-info border rounded-pill">{{ target.unit_price }}</span>
                   </div>
@@ -238,6 +285,7 @@
                 <td class="pe-4 text-end">
                   <div class="d-inline-flex gap-1">
                     <button
+                      v-if="canReport(target)"
                       type="button"
                       class="btn btn-sm btn-light border text-primary fw-bold rounded-3 shadow-sm"
                       @click="openResultModal(target)"
@@ -245,7 +293,21 @@
                     >
                       <i class="bi bi-journal-plus me-1"></i> บันทึกผล
                     </button>
-                    <button class="btn btn-sm btn-light border text-warning fw-bold rounded-3 shadow-sm" @click="editTarget(target)" title="แก้ไข">
+                    <button
+                      v-else
+                      type="button"
+                      class="btn btn-sm btn-light border text-secondary fw-semibold rounded-3 shadow-sm"
+                      @click="openResultModal(target)"
+                      title="ดูผลงานจัดเก็บ (สิทธิ์ดูอย่างเดียว)"
+                    >
+                      <i class="bi bi-eye me-1"></i> ดูผลงาน
+                    </button>
+                    <button
+                      v-if="isAdmin || canReport(target)"
+                      class="btn btn-sm btn-light border text-warning fw-bold rounded-3 shadow-sm"
+                      @click="editTarget(target)"
+                      title="แก้ไข"
+                    >
                       <i class="bi bi-pencil-square"></i>
                     </button>
                     <button class="btn btn-sm btn-light border text-danger fw-bold rounded-3 shadow-sm" @click="deleteTarget(target.id)" v-if="isAdmin" title="ลบ">
@@ -272,7 +334,9 @@
         <div class="modal-content">
           <div class="modal-header bg-primary text-white">
             <h5 class="modal-title">
-              บันทึกผลการจัดเก็บรายได้: {{ selectedTarget?.revenue_name }}
+              <i class="bi me-2" :class="canReport(selectedTarget) ? 'bi-journal-plus' : 'bi-eye'"></i>
+              {{ canReport(selectedTarget) ? 'บันทึกผลการจัดเก็บรายได้:' : 'ประวัติผลงาน (ดูอย่างเดียว):' }}
+              {{ selectedTarget?.revenue_name }}
             </h5>
             <button
               type="button"
@@ -282,7 +346,19 @@
             ></button>
           </div>
           <div class="modal-body">
-            <form @submit.prevent="submitResultForm" class="mb-4 bg-light p-3 rounded border">
+            <!-- Alert for View-Only members -->
+            <div
+              v-if="!canReport(selectedTarget)"
+              class="alert alert-info border-0 rounded-3 d-flex align-items-center mb-3 shadow-sm py-2"
+            >
+              <i class="bi bi-info-circle-fill fs-5 text-info me-2"></i>
+              <div class="small">
+                ท่านสามารถ<strong>ดูข้อมูลได้อย่างเดียว</strong>
+                (สิทธิ์บันทึกหรือแก้ไขข้อมูลเฉพาะผู้รับผิดชอบ: <strong class="text-dark">{{ selectedTarget?.responsible_person || 'ไม่ระบุ' }}</strong>)
+              </div>
+            </div>
+
+            <form v-if="canReport(selectedTarget)" @submit.prevent="submitResultForm" class="mb-4 bg-light p-3 rounded border">
               <h6 class="fw-bold mb-3">เพิ่ม/แก้ไขผลงานรายเดือน</h6>
               <div class="row g-2 align-items-end">
                 <div class="col-md-3">
@@ -327,7 +403,7 @@
                     <th>จำนวนผลงาน</th>
                     <th>ยอดจัดเก็บได้จริง</th>
                     <th>หมายเหตุ</th>
-                    <th>จัดการ</th>
+                    <th v-if="canReport(selectedTarget)">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -338,7 +414,7 @@
                     </td>
                     <td class="text-success fw-bold">{{ formatCurrency(r.collected_amount) }}</td>
                     <td>{{ r.remark || '-' }}</td>
-                    <td>
+                    <td v-if="canReport(selectedTarget)">
                       <button
                         class="btn btn-sm btn-outline-warning me-2 border-0"
                         @click="editResult(r)"
@@ -356,7 +432,7 @@
                     </td>
                   </tr>
                   <tr v-if="resultsData.length === 0">
-                    <td colspan="5" class="text-center text-muted">ยังไม่มีข้อมูล</td>
+                    <td :colspan="canReport(selectedTarget) ? 5 : 4" class="text-center text-muted">ยังไม่มีข้อมูล</td>
                   </tr>
                 </tbody>
               </table>
@@ -421,7 +497,8 @@ export default {
         remark: ''
       },
       userDepartment: '',
-      userFullname: ''
+      userFullname: '',
+      onlyMyTargets: false
     };
   },
   computed: {
@@ -433,24 +510,54 @@ export default {
         this.userDepartment === 'admin'
       );
     },
+    myTargetsCount() {
+      if (!this.userFullname || !this.targets) return 0;
+      return this.targets.filter(t => this.isMyTarget(t)).length;
+    },
     filteredTargets() {
-      let baseList = this.isAdmin 
-        ? this.targets 
-        : (this.userFullname ? this.targets.filter(t => t.responsible_person && t.responsible_person.includes(this.userFullname)) : []);
+      let baseList = [...this.targets];
       
-      if (!this.searchQuery) return baseList;
-      const q = this.searchQuery.toLowerCase();
-      return baseList.filter((target) => {
-        return (
-          (target.revenue_name && target.revenue_name.toLowerCase().includes(q)) ||
-          (target.responsible_person && target.responsible_person.toLowerCase().includes(q)) ||
-          (target.fiscal_year && String(target.fiscal_year).includes(q)) ||
-          (target.claim_program && target.claim_program.toLowerCase().includes(q))
-        );
+      if (this.onlyMyTargets) {
+        baseList = baseList.filter((target) => this.isMyTarget(target));
+      }
+
+      if (this.searchQuery) {
+        const q = this.searchQuery.toLowerCase();
+        baseList = baseList.filter((target) => {
+          return (
+            (target.revenue_name && target.revenue_name.toLowerCase().includes(q)) ||
+            (target.responsible_person && target.responsible_person.toLowerCase().includes(q)) ||
+            (target.fiscal_year && String(target.fiscal_year).includes(q)) ||
+            (target.claim_program && target.claim_program.toLowerCase().includes(q))
+          );
+        });
+      }
+
+      return baseList.sort((a, b) => {
+        const aMine = this.isMyTarget(a) ? 1 : 0;
+        const bMine = this.isMyTarget(b) ? 1 : 0;
+        if (aMine !== bMine) {
+          return bMine - aMine;
+        }
+        return (a.revenue_name || '').localeCompare(b.revenue_name || '', 'th');
       });
     }
   },
   methods: {
+    isMyTarget(target) {
+      if (!target || !this.userFullname) return false;
+      const resp = (target.responsible_person || '').trim().toLowerCase();
+      const cleanUser = this.userFullname.replace(/^(นาย|นาง|นางสาว|ดร\.|นพ\.|พญ\.)\s*/, '').trim().toLowerCase();
+      return resp.includes(this.userFullname.toLowerCase()) || (cleanUser && resp.includes(cleanUser));
+    },
+    canReport(target) {
+      if (!target) return false;
+      if (this.isAdmin) return true;
+      if (!this.userFullname) return false;
+      const resp = (target.responsible_person || '').trim().toLowerCase();
+      const cleanUser = this.userFullname.replace(/^(นาย|นาง|นางสาว|ดร\.|นพ\.|พญ\.)\s*/, '').trim().toLowerCase();
+      return resp.includes(this.userFullname.toLowerCase()) || (cleanUser && resp.includes(cleanUser));
+    },
     async fetchUserProfile() {
       try {
         const token = localStorage.getItem('user_token');
@@ -558,6 +665,10 @@ export default {
       }
     },
     editTarget(t) {
+      if (!this.isAdmin && !this.canReport(t)) {
+        Swal.fire('ไม่มีสิทธิ์', 'คุณสามารถดูข้อมูลได้อย่างเดียว เฉพาะผู้รับผิดชอบเท่านั้นที่แก้ไขข้อมูลเป้าหมายได้', 'warning');
+        return;
+      }
       this.isEdit = true;
       this.form = { ...t };
       this.selectedPersons = t.responsible_person
@@ -669,6 +780,10 @@ export default {
       }
     },
     async submitResultForm() {
+      if (!this.canReport(this.selectedTarget)) {
+        Swal.fire('ไม่มีสิทธิ์', 'คุณสามารถดูข้อมูลได้อย่างเดียว เฉพาะผู้รับผิดชอบเท่านั้นที่บันทึกผลงานได้', 'warning');
+        return;
+      }
       try {
         const token = localStorage.getItem('user_token');
         const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -699,6 +814,10 @@ export default {
       }
     },
     async editResult(r) {
+      if (!this.canReport(this.selectedTarget)) {
+        Swal.fire('ไม่มีสิทธิ์', 'คุณสามารถดูข้อมูลได้อย่างเดียว เฉพาะผู้รับผิดชอบเท่านั้นที่แก้ไขข้อมูลได้', 'warning');
+        return;
+      }
       const { value: formValues } = await Swal.fire({
         title: 'แก้ไขผลงาน',
         html:
@@ -748,6 +867,10 @@ export default {
       }
     },
     async deleteResult(id) {
+      if (!this.canReport(this.selectedTarget)) {
+        Swal.fire('ไม่มีสิทธิ์', 'คุณสามารถดูข้อมูลได้อย่างเดียว เฉพาะผู้รับผิดชอบเท่านั้นที่ลบข้อมูลได้', 'warning');
+        return;
+      }
       const confirm = await Swal.fire({
         title: 'ยืนยันการลบ?',
         text: 'คุณต้องการลบประวัติการจัดเก็บนี้ใช่หรือไม่?',
