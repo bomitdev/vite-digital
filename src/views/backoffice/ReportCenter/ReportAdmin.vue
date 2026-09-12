@@ -129,6 +129,8 @@
                   filtering.
                 </small>
               </div>
+              
+
 
               <!-- Preview Section inside Modal -->
               <div class="col-12">
@@ -136,23 +138,35 @@
                   <label class="form-label fw-bold mb-0">Result Preview</label>
                   <div class="bg-light p-3 rounded-3 border mb-2">
                     <div class="row g-2 align-items-end">
-                      <div class="col-md-4">
-                        <label class="form-label small text-muted fw-bold mb-1">Start</label>
-                        <input
-                          type="date"
-                          class="form-control form-control-sm"
-                          v-model="testStartDate"
-                        />
-                      </div>
-                      <div class="col-md-4">
-                        <label class="form-label small text-muted fw-bold mb-1">End</label>
-                        <input
-                          type="date"
-                          class="form-control form-control-sm"
-                          v-model="testEndDate"
-                        />
-                      </div>
-                      <div class="col-md-4">
+                      <template v-if="testParameters.length > 0">
+                        <div class="col-md-3" v-for="param in testParameters" :key="param.name">
+                          <label class="form-label small text-muted fw-bold mb-1">{{ param.label }}</label>
+                          <input v-if="param.type === 'date'" type="date" class="form-control form-control-sm" v-model="testFormValues[param.name]" />
+                          <input v-else-if="param.type === 'text' || param.type === 'number'" :type="param.type" class="form-control form-control-sm" v-model="testFormValues[param.name]" />
+                          
+                          <select v-else-if="param.type === 'query_select'" class="form-select form-select-sm" v-model="testFormValues[param.name]" :disabled="testIsFetchingOptions[param.name]">
+                            <option value="" disabled>-- Select --</option>
+                            <option v-for="opt in testDynamicOptions[param.name]" 
+                                    :key="opt.id || opt.value || (typeof opt === 'object' ? Object.values(opt)[0] : opt)" 
+                                    :value="opt.id || opt.value || (typeof opt === 'object' ? Object.values(opt)[0] : opt)">
+                              {{ opt.name || opt.label || (typeof opt === 'object' ? (Object.values(opt)[1] || Object.values(opt)[0]) : opt) }}
+                            </option>
+                          </select>
+                          <div v-if="testIsFetchingOptions[param.name]" class="small text-muted mt-1" style="font-size: 0.7rem;">กำลังโหลด...</div>
+                        </div>
+                      </template>
+                      <template v-else>
+                        <div class="col-md-4">
+                          <label class="form-label small text-muted fw-bold mb-1">Start</label>
+                          <input type="date" class="form-control form-control-sm" v-model="testStartDate" />
+                        </div>
+                        <div class="col-md-4">
+                          <label class="form-label small text-muted fw-bold mb-1">End</label>
+                          <input type="date" class="form-control form-control-sm" v-model="testEndDate" />
+                        </div>
+                      </template>
+                      
+                      <div class="col-md-2 ms-auto">
                         <button
                           @click="testRun"
                           class="btn btn-sm btn-primary w-100"
@@ -219,7 +233,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { useRouter } from 'vue-router';
@@ -237,7 +251,8 @@ const form = ref({
   description: '',
   db_connection: 1,
   department_id: null,
-  sql_query: ''
+  sql_query: '',
+  parameters: ''
 });
 
 const previewResult = ref(null);
@@ -302,7 +317,10 @@ const openModal = (report = null) => {
   
   if (report) {
     isEdit.value = true;
-    form.value = { ...report };
+    form.value = { 
+      ...report,
+      parameters: report.parameters ? JSON.stringify(report.parameters, null, 2) : ''
+    };
   } else {
     isEdit.value = false;
     form.value = {
@@ -311,7 +329,8 @@ const openModal = (report = null) => {
       description: '',
       db_connection: 1,
       department_id: null,
-      sql_query: ''
+      sql_query: '',
+      parameters: ''
     };
   }
   showModal.value = true;
@@ -324,6 +343,62 @@ const closeModal = () => {
 const testStartDate = ref('');
 const testEndDate = ref('');
 const testDepartment = ref('ALL');
+const testFormValues = ref({});
+const testDynamicOptions = ref({});
+const testIsFetchingOptions = ref({});
+
+const testParameters = computed(() => {
+  const params = [];
+  if (!form.value.sql_query) return params;
+  
+  if (form.value.sql_query.includes(':start_date')) {
+    params.push({ name: 'start_date', type: 'date', label: 'Start Date' });
+  }
+  if (form.value.sql_query.includes(':end_date')) {
+    params.push({ name: 'end_date', type: 'date', label: 'End Date' });
+  }
+  
+  const lines = form.value.sql_query.split('\n');
+  for (const line of lines) {
+    const match = line.trim().match(/^:([a-zA-Z0-9_]+)\s*=\s*(SELECT\s+.*)/i);
+    if (match) {
+      params.push({
+        name: match[1],
+        type: 'query_select',
+        label: match[1],
+        query: match[2]
+      });
+    }
+  }
+  return params;
+});
+
+let debounceTimer = null;
+watch(() => form.value.sql_query, () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    testParameters.value.forEach(async (param) => {
+      if (param.type === 'query_select' && param.query) {
+        if (!testDynamicOptions.value[param.name]) {
+          testIsFetchingOptions.value[param.name] = true;
+          try {
+            const res = await axios.post(`${import.meta.env.VITE_API_URL || ''}/api-digital/report-center/execute_raw_sql.php`, {
+              sql_query: param.query,
+              db_connection: form.value.db_connection
+            });
+            if (res.data.success && res.data.data) {
+              testDynamicOptions.value[param.name] = res.data.data;
+            }
+          } catch (e) {
+            console.error(e);
+          } finally {
+            testIsFetchingOptions.value[param.name] = false;
+          }
+        }
+      }
+    });
+  }, 500);
+});
 
 const testRun = async () => {
   if (!form.value.sql_query) {
@@ -336,9 +411,10 @@ const testRun = async () => {
       {
         sql_query: form.value.sql_query,
         db_connection: form.value.db_connection,
-        start_date: testStartDate.value || null,
-        end_date: testEndDate.value || null,
-        department_id: testDepartment.value
+        start_date: testFormValues.value['start_date'] || testStartDate.value || null,
+        end_date: testFormValues.value['end_date'] || testEndDate.value || null,
+        department_id: testDepartment.value,
+        parameters: testFormValues.value
       }
     );
     previewResult.value = res.data;

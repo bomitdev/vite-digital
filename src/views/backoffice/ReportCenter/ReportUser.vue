@@ -48,7 +48,11 @@
             
             <div class="list-group list-group-flush">
               
-              <div v-if="!filterDepartment && !searchQuery" class="text-center text-muted p-4">
+              <div v-if="loadingReports" class="text-center py-4">
+                <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+                <div class="small mt-2 text-muted">กำลังโหลดรายงาน...</div>
+              </div>
+              <div v-else-if="!filterDepartment && !searchQuery" class="text-center text-muted p-4">
                 <i class="bi bi-arrow-up-circle fs-1 d-block mb-2 text-primary opacity-50"></i>
                 กรุณาเลือกกลุ่มงานด้านบนเพื่อดูรายงาน
               </div>
@@ -100,19 +104,50 @@
                 <div class="card calm-card calm-bg-lavender mb-2">
                   <div class="card-body p-4">
                     <div class="row g-3 align-items-end">
-                      <div class="col-md-5">
-                        <label class="form-label small text-dark fw-bold mb-1">
-                          <i class="bi bi-calendar-check calm-text-navy me-1"></i> วันที่เริ่มต้น
-                        </label>
-                        <input type="date" class="form-control form-control-lg calm-input px-4" v-model="startDate" />
-                      </div>
-                      <div class="col-md-5">
-                        <label class="form-label small text-dark fw-bold mb-1">
-                          <i class="bi bi-calendar-check-fill calm-text-navy me-1"></i> วันที่สิ้นสุด
-                        </label>
-                        <input type="date" class="form-control form-control-lg calm-input px-4" v-model="endDate" />
-                      </div>
-                      <div class="col-md-2">
+                      
+                      <!-- Legacy Support: No parameters defined -->
+                      <template v-if="!selectedReport.parameters || selectedReport.parameters.length === 0">
+                        <div class="col-md-5">
+                          <label class="form-label small text-dark fw-bold mb-1">
+                            <i class="bi bi-calendar-check calm-text-navy me-1"></i> วันที่เริ่มต้น
+                          </label>
+                          <input type="date" class="form-control form-control-lg calm-input px-4" v-model="startDate" />
+                        </div>
+                        <div class="col-md-5">
+                          <label class="form-label small text-dark fw-bold mb-1">
+                            <i class="bi bi-calendar-check-fill calm-text-navy me-1"></i> วันที่สิ้นสุด
+                          </label>
+                          <input type="date" class="form-control form-control-lg calm-input px-4" v-model="endDate" />
+                        </div>
+                      </template>
+
+                      <!-- Dynamic Parameters -->
+                      <template v-else>
+                        <div class="col-md-3" v-for="param in selectedReport.parameters" :key="param.name">
+                          <label class="form-label small text-dark fw-bold mb-1">
+                            {{ param.label || param.name }}
+                          </label>
+                          
+                          <input v-if="param.type === 'date'" type="date" class="form-control form-control-lg calm-input px-3" v-model="formValues[param.name]" />
+                          <input v-else-if="param.type === 'text' || param.type === 'number'" :type="param.type" class="form-control form-control-lg calm-input px-3" v-model="formValues[param.name]" :placeholder="param.placeholder || ''" />
+                          
+                          <select v-else-if="param.type === 'dynamic_select' || param.type === 'select' || param.type === 'query_select'" class="form-select form-select-lg calm-input px-3" v-model="formValues[param.name]" :disabled="isFetchingOptions[param.name]">
+                            <option value="" disabled>-- เลือก --</option>
+                            <option v-for="opt in dynamicOptions[param.name]" 
+                                    :key="opt.id || opt.value || (typeof opt === 'object' ? Object.values(opt)[0] : opt)" 
+                                    :value="opt.id || opt.value || (typeof opt === 'object' ? Object.values(opt)[0] : opt)">
+                              {{ opt.name || opt.label || (typeof opt === 'object' ? (Object.values(opt)[1] || Object.values(opt)[0]) : opt) }}
+                            </option>
+                          </select>
+                          
+                          <div v-if="isFetchingOptions[param.name]" class="small text-muted mt-1">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status" style="width: 12px; height: 12px;"></div> <span style="font-size: 0.75rem;">กำลังโหลด...</span>
+                          </div>
+                        </div>
+                      </template>
+
+                      <!-- Submit Button -->
+                      <div class="col-md-2" :class="{'ms-auto': selectedReport.parameters && selectedReport.parameters.length > 0}">
                         <button
                           class="btn calm-btn-primary btn-lg w-100 fw-bold rounded-pill"
                           @click="runReport"
@@ -216,10 +251,6 @@ import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { useRouter, useRoute } from 'vue-router';
-import * as XLSX from 'xlsx'; // Need to insure XLSX is installed or use CDN?
-// The user project has `node_modules`, so I should hope `xlsx` is there or I use a simple csv export if not.
-// "xlsx" is common. If not, I can create a simple CSV function.
-// Let's assume standard dependencies or I will use a simple CSV export function as backup or just verify later.
 
 const router = useRouter();
 const route = useRoute();
@@ -229,6 +260,11 @@ const selectedReport = ref(null);
 const resultData = ref(null);
 const columns = ref([]);
 const loading = ref(false);
+const loadingReports = ref(true);
+
+const formValues = ref({});
+const dynamicOptions = ref({});
+const isFetchingOptions = ref({});
 
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
@@ -363,6 +399,7 @@ const fetchDepartments = async () => {
 };
 
 const fetchReports = async () => {
+  loadingReports.value = true;
   try {
     const res = await axios.get(
       `${import.meta.env.VITE_API_URL || ''}/api-digital/report-center/get_reports.php`
@@ -378,15 +415,113 @@ const fetchReports = async () => {
     }
   } catch (e) {
     console.error(e);
+  } finally {
+    loadingReports.value = false;
   }
 };
 
-const selectReport = (rep) => {
+const selectReport = async (rep) => {
   selectedReport.value = rep;
   resultData.value = null;
   columns.value = [];
   currentPage.value = 1;
+  formValues.value = {};
+  dynamicOptions.value = {};
+  isFetchingOptions.value = {};
   
+  // --- Smart SQL Parser ---
+  let parsedParams = [];
+  if (rep.sql_query) {
+    if (rep.sql_query.includes(':start_date')) {
+      parsedParams.push({ name: 'start_date', type: 'date', label: 'วันที่เริ่มต้น' });
+    }
+    if (rep.sql_query.includes(':end_date')) {
+      parsedParams.push({ name: 'end_date', type: 'date', label: 'วันที่สิ้นสุด' });
+    }
+    
+    const lines = rep.sql_query.split('\n');
+    for (const line of lines) {
+      const match = line.trim().match(/^:([a-zA-Z0-9_]+)\s*=\s*(SELECT\s+.*)/i);
+      if (match) {
+        parsedParams.push({
+          name: match[1],
+          type: 'query_select',
+          label: match[1], // User can override label in JSON if they want
+          query: match[2]
+        });
+      }
+    }
+  }
+
+  // Merge with JSON parameters (JSON takes precedence if duplicates exist)
+  let finalParams = [...parsedParams];
+  if (rep.parameters && Array.isArray(rep.parameters)) {
+    for (const p of rep.parameters) {
+      const existingIdx = finalParams.findIndex(x => x.name === p.name);
+      if (existingIdx !== -1) {
+        finalParams[existingIdx] = { ...finalParams[existingIdx], ...p };
+      } else {
+        finalParams.push(p);
+      }
+    }
+  }
+  
+  // Assign back so template can render it
+  rep.parameters = finalParams;
+
+  if (rep.parameters && Array.isArray(rep.parameters)) {
+    for (const param of rep.parameters) {
+      if (param.type === 'date') {
+        formValues.value[param.name] = param.name === 'start_date' ? startDate.value : (param.name === 'end_date' ? endDate.value : '');
+      } else {
+        formValues.value[param.name] = param.default !== undefined ? param.default : '';
+      }
+
+      if (param.type === 'dynamic_select' && param.api_endpoint) {
+        isFetchingOptions.value[param.name] = true;
+        try {
+          const endpoint = param.api_endpoint.startsWith('http') ? param.api_endpoint : `${import.meta.env.VITE_API_URL || ''}${param.api_endpoint.startsWith('/') ? '' : '/'}${param.api_endpoint}`;
+          const res = await axios.get(endpoint);
+          
+          let options = [];
+          if (Array.isArray(res.data)) {
+            options = res.data;
+          } else if (res.data && Array.isArray(res.data.data)) {
+            options = res.data.data;
+          }
+          dynamicOptions.value[param.name] = options;
+        } catch (e) {
+          console.error(`Failed to fetch options for ${param.name}`, e);
+          dynamicOptions.value[param.name] = [];
+        } finally {
+          isFetchingOptions.value[param.name] = false;
+        }
+      } else if (param.type === 'query_select' && param.query) {
+        // --- NEW: Handle query_select ---
+        isFetchingOptions.value[param.name] = true;
+        try {
+          const endpoint = `${import.meta.env.VITE_API_URL || ''}/api-digital/report-center/get_dynamic_options.php?report_id=${rep.id}&param_name=${param.name}`;
+          const res = await axios.get(endpoint);
+          
+          let options = [];
+          if (Array.isArray(res.data)) {
+            options = res.data;
+          } else if (res.data && Array.isArray(res.data.data)) {
+            options = res.data.data;
+          }
+          dynamicOptions.value[param.name] = options;
+        } catch (e) {
+          console.error(`Failed to fetch options for ${param.name}`, e);
+          dynamicOptions.value[param.name] = [];
+        } finally {
+          isFetchingOptions.value[param.name] = false;
+        }
+      } else if (param.type === 'select' && param.options) {
+         dynamicOptions.value[param.name] = param.options;
+      }
+    }
+  }
+
   // เลื่อนหน้าจอขึ้นไปที่ส่วนค้นหาข้อมูลเมื่อเลือกรายงาน
   setTimeout(() => {
     const el = document.getElementById('report-filter-section');
@@ -409,7 +544,8 @@ const runReport = async () => {
         report_id: selectedReport.value.id,
         start_date: startDate.value || null,
         end_date: endDate.value || null,
-        department_id: selectedDepartment.value
+        department_id: selectedDepartment.value,
+        parameters: formValues.value
       }
     );
 
@@ -426,11 +562,11 @@ const runReport = async () => {
   }
 };
 
-const exportExcel = () => {
+const exportExcel = async () => {
   if (!resultData.value || resultData.value.length === 0) return;
 
-  // Check if XLSX is available
-  if (typeof XLSX !== 'undefined') {
+  try {
+    const XLSX = await import('xlsx');
     // สร้างแผ่นงานเปล่าก่อน
     const ws = XLSX.utils.json_to_sheet([]);
     
@@ -446,9 +582,9 @@ const exportExcel = () => {
       wb,
       `${selectedReport.value.title}_${new Date().toISOString().slice(0, 10)}.xlsx`
     );
-  } else {
+  } catch (error) {
     // Fallback to CSV
-    console.warn('XLSX lib not found, falling back to CSV');
+    console.warn('XLSX lib not found or failed to load, falling back to CSV', error);
     exportCSV();
   }
 };
@@ -488,10 +624,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
 
 * {
-  font-family: 'Figtree', sans-serif;
+  font-family: 'Sarabun', sans-serif;
 }
 
 .calm-text-navy {

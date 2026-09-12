@@ -36,6 +36,17 @@ if (empty($sql_query)) {
 }
 
 try {
+    // --- Strip Custom DSL Lines from SQL Query ---
+    $sql_lines = explode("\n", $sql_query);
+    $actual_sql = [];
+    foreach ($sql_lines as $line) {
+        if (preg_match('/^:[a-zA-Z0-9_]+\s*=\s*SELECT/i', trim($line))) {
+            continue; // Skip this line as it is a DSL parameter definition
+        }
+        $actual_sql[] = $line;
+    }
+    $sql_query = implode("\n", $actual_sql);
+
     $target_pdo = null;
     if ($db_connection == 1) $target_pdo = $pdo1;
     elseif ($db_connection == 2) $target_pdo = $pdo2;
@@ -47,7 +58,7 @@ try {
     $end_date = $data['end_date'] ?? date('Y-m-d');     // Default to today for testing
     $department_id = $data['department_id'] ?? 'ALL';
 
-    // Check parameters
+    // Check default parameters
     if (strpos($sql_query, ':start_date') !== false) {
         $params[':start_date'] = $start_date;
     }
@@ -56,6 +67,28 @@ try {
     }
     if (strpos($sql_query, ':department') !== false) {
         $params[':department'] = $department_id;
+    }
+
+    // Bind any dynamic parameters passed from the admin UI
+    $dynamic_params = $data['parameters'] ?? [];
+    if (is_array($dynamic_params)) {
+        foreach ($dynamic_params as $key => $value) {
+            if (strpos($sql_query, ':' . $key) !== false) {
+                if (!array_key_exists(':' . $key, $params)) {
+                    $params[':' . $key] = $value;
+                }
+            }
+        }
+    }
+
+    // Auto-bind any other custom placeholders with a dummy value to prevent crash during test
+    if (preg_match_all('/:([a-zA-Z0-9_]+)/', $sql_query, $matches)) {
+        foreach ($matches[1] as $param_name) {
+            $placeholder = ':' . $param_name;
+            if (!array_key_exists($placeholder, $params)) {
+                $params[$placeholder] = 'TEST'; // Dummy value
+            }
+        }
     }
 
     $target_pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);

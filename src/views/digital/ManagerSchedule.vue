@@ -1,5 +1,5 @@
 <template>
-  <div class="container-fluid p-0 vh-100 d-flex flex-column flex-md-row overflow-hidden bg-light">
+  <div v-if="hasAccess" class="container-fluid p-0 vh-100 d-flex flex-column flex-md-row overflow-hidden bg-light">
     <aside
       class="d-none d-md-flex flex-column p-3 bg-white border-end shadow-sm"
       style="width: 280px"
@@ -651,6 +651,7 @@ export default {
   },
   data() {
     return {
+      hasAccess: false,
       currentTab: 'card',
       selectedMonth: new Date().getMonth() + 1,
       currentYear: new Date().getFullYear(),
@@ -1231,13 +1232,15 @@ export default {
           'สุขภาพดิจิทัล',
           'กลุ่มงานประกันสุขภาพ ยุทธศาสตร์' // Explicitly added per error message
         ];
-        const hasAccess = allowedDepts.some((d) => dept.includes(d));
+        const hasPermission = allowedDepts.some((d) => dept.includes(d));
 
-        if (!hasAccess) {
+        if (!hasPermission) {
           alert(`คุณไม่มีสิทธิ์เข้าถึงหน้านี้ \n(หน่วยงาน: "${dept}")\n(Length: ${dept.length})`);
           this.$router.push('/home-backoffice');
           return;
         }
+
+        this.hasAccess = true;
       } else {
         alert('ไม่สามารถตรวจสอบสิทธิ์ได้');
         this.$router.push('/home-backoffice');

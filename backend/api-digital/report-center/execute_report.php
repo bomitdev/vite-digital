@@ -35,6 +35,17 @@ try {
     $sql_query = $report['sql_query'];
     $db_conn_id = $report['db_connection'];
 
+    // --- Strip Custom DSL Lines from SQL Query ---
+    $sql_lines = explode("\n", $sql_query);
+    $actual_sql = [];
+    foreach ($sql_lines as $line) {
+        if (preg_match('/^:[a-zA-Z0-9_]+\s*=\s*SELECT/i', trim($line))) {
+            continue; // Skip this line as it is a DSL parameter definition
+        }
+        $actual_sql[] = $line;
+    }
+    $sql_query = implode("\n", $actual_sql);
+
     // 2. Select the target database connection
     $target_pdo = null;
     if ($db_conn_id == 1) $target_pdo = $pdo1;
@@ -68,12 +79,20 @@ try {
 
     $department_id = $data['department_id'] ?? 'ALL';
     if (strpos($sql_query, ':department') !== false) {
-        // We bind the ID (e.g. 15, 20) or 'ALL' string if that's what user passed
-        // The SQL should be: WHERE (dept_id = :department OR :department = 'ALL')
-        // So we bind it twice essentially? No, named params can be reused in PDO if emulation is ON, 
-        // but if emulation is OFF, we might need to be careful.
-        // Let's assume standard PDO execution where one param name binds to all instances.
         $params[':department'] = $department_id;
+    }
+
+    // Bind Dynamic Parameters
+    $dynamic_params = $data['parameters'] ?? [];
+    if (is_array($dynamic_params)) {
+        foreach ($dynamic_params as $key => $value) {
+            if (strpos($sql_query, ':' . $key) !== false) {
+                // Only bind if it isn't already bound (e.g., start_date)
+                if (!array_key_exists(':' . $key, $params)) {
+                    $params[':' . $key] = $value;
+                }
+            }
+        }
     }
 
     $target_pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);

@@ -18,6 +18,18 @@ $title = $data['title'] ?? '';
 $description = $data['description'] ?? '';
 $sql_query = $data['sql_query'] ?? '';
 $db_connection = $data['db_connection'] ?? 1;
+$parameters = $data['parameters'] ?? null;
+
+// Validate JSON if provided
+if (!empty($parameters)) {
+    json_decode($parameters);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        http_response_code(400);
+        echo json_encode(["success" => false, "message" => "Parameters must be valid JSON."]);
+        exit;
+    }
+}
+
 // You should get created_by from session/token technically, but for now we might skip or pass it.
 $created_by = $data['created_by'] ?? 0;
 
@@ -30,7 +42,7 @@ if (empty($title) || empty($sql_query)) {
 try {
     if ($id) {
         // Update
-        $sql = "UPDATE report_queries SET title = :title, description = :description, sql_query = :sql_query, db_connection = :db_connection, department_id = :department_id WHERE id = :id";
+        $sql = "UPDATE report_queries SET title = :title, description = :description, sql_query = :sql_query, db_connection = :db_connection, department_id = :department_id, parameters = :parameters WHERE id = :id";
         $stmt = $pdo2->prepare($sql);
         $stmt->execute([
             ':title' => $title,
@@ -38,12 +50,13 @@ try {
             ':sql_query' => $sql_query,
             ':db_connection' => $db_connection,
             ':department_id' => $data['department_id'] ?? null,
+            ':parameters' => empty($parameters) ? null : $parameters,
             ':id' => $id
         ]);
         echo json_encode(["success" => true, "message" => "Report updated successfully."]);
     } else {
         // Insert
-        $sql = "INSERT INTO report_queries (title, description, sql_query, db_connection, created_by, department_id) VALUES (:title, :description, :sql_query, :db_connection, :created_by, :department_id)";
+        $sql = "INSERT INTO report_queries (title, description, sql_query, db_connection, created_by, department_id, parameters) VALUES (:title, :description, :sql_query, :db_connection, :created_by, :department_id, :parameters)";
         $stmt = $pdo2->prepare($sql);
         $stmt->execute([
             ':title' => $title,
@@ -51,7 +64,8 @@ try {
             ':sql_query' => $sql_query,
             ':db_connection' => $db_connection,
             ':created_by' => $created_by,
-            ':department_id' => $data['department_id'] ?? null
+            ':department_id' => $data['department_id'] ?? null,
+            ':parameters' => empty($parameters) ? null : $parameters
         ]);
         echo json_encode(["success" => true, "message" => "Report created successfully.", "id" => $pdo2->lastInsertId()]);
     }

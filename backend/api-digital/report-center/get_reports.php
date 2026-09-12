@@ -12,9 +12,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require '../../config.php';
 
 try {
-    $sql = "SELECT id, title, description, db_connection, created_at, sql_query, department_id FROM report_queries ORDER BY created_at DESC";
-    $stmt = $pdo2->query($sql); // Always read metadata from pdo2 (Digital)
-    $reports = $stmt->fetchAll();
+    $sql = "SELECT id, title, description, db_connection, created_at, sql_query, department_id, parameters FROM report_queries ORDER BY created_at DESC";
+    $stmt = $pdo2->query($sql);
+    $reports = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Decode parameters from JSON string to array
+    foreach ($reports as &$report) {
+        if (!empty($report['parameters'])) {
+            $report['parameters'] = json_decode($report['parameters'], true);
+        } else {
+            $report['parameters'] = [];
+        }
+    }
+    unset($report);
 
     echo json_encode($reports);
 } catch (PDOException $e) {
