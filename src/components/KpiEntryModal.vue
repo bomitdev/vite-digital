@@ -56,6 +56,19 @@
             </div>
 
             <!-- Row 3: Inputs (Table style) -->
+            <div class="d-flex justify-content-between align-items-end mb-2" v-if="!isCriteria">
+              <label class="form-label fw-bold text-muted small m-0">ข้อมูลผลงาน</label>
+              <button
+                v-if="selectedKpi?.sql_query"
+                type="button"
+                class="btn btn-warning btn-sm fw-bold rounded-pill shadow-sm"
+                @click="autoFetchData"
+                :disabled="isFetching"
+              >
+                <i class="bi" :class="isFetching ? 'bi-hourglass-split' : 'bi-magic'"></i>
+                {{ isFetching ? 'กำลังดึงข้อมูล...' : 'ดึงข้อมูลอัตโนมัติ' }}
+              </button>
+            </div>
             <div class="row g-0 mb-4 border rounded-2 overflow-hidden shadow-sm" v-if="!isCriteria">
               <div class="col-4 border-end">
                 <div class="p-2 text-center bg-white text-muted small fw-bold">{{ numeratorLabel }}</div>
@@ -171,7 +184,8 @@ export default {
         numerator: '',
         denominator: '',
         multiplier: '' // Now an input
-      }
+      },
+      isFetching: false
     };
   },
   computed: {
@@ -395,6 +409,75 @@ export default {
       if (!d) return '-';
       const dateObj = typeof d === 'string' ? new Date(d) : d;
       return dateObj.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+    },
+    async autoFetchData() {
+      if (!this.form.kpi_id || !this.form.period_number) {
+        Swal.fire('Warning', 'กรุณาเลือกรอบการรายงานผลก่อนดึงข้อมูล', 'warning');
+        return;
+      }
+      
+      this.isFetching = true;
+      try {
+        const yearAD = parseInt(this.form.year_thai) - 543;
+        const periodType = this.selectedKpi?.kpi_periodicity || 'month';
+        const pNum = parseInt(this.form.period_number);
+        
+        let startMonth, endMonth, startYear = yearAD, endYear = yearAD;
+
+        if (periodType === 'month') {
+          startMonth = pNum; endMonth = pNum;
+          if (pNum >= 10) {
+            startYear = yearAD - 1;
+            endYear = yearAD - 1;
+          }
+        } else if (periodType === 'quarter') {
+          if (pNum === 1) { startMonth = 10; endMonth = 12; startYear = yearAD - 1; endYear = yearAD - 1; }
+          else if (pNum === 2) { startMonth = 1; endMonth = 3; }
+          else if (pNum === 3) { startMonth = 4; endMonth = 6; }
+          else if (pNum === 4) { startMonth = 7; endMonth = 9; }
+        } else if (periodType === 'half' || periodType === 'Semiannual report') {
+          if (pNum === 1) { startMonth = 10; endMonth = 3; startYear = yearAD - 1; }
+          else { startMonth = 4; endMonth = 9; }
+        } else if (periodType === 'year') {
+          startMonth = 10; endMonth = 9; startYear = yearAD - 1;
+        }
+
+        const startDate = `${startYear}-${String(startMonth).padStart(2, '0')}-01`;
+        const endDateObj = new Date(endYear, endMonth, 0); 
+        const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-${String(endDateObj.getDate()).padStart(2, '0')}`;
+
+        const payload = {
+          kpi_id: this.form.kpi_id,
+          start_date: startDate,
+          end_date: endDate,
+          department_id: 'ALL'
+        };
+
+        const res = await axios.post('/api-digital/kpi/execute_kpi_query.php', payload);
+        if (res.data.status === 'success') {
+          const data = res.data.data;
+          if (data && Object.keys(data).length > 0) {
+            if (data.numerator !== undefined) this.form.numerator = data.numerator;
+            if (data.denominator !== undefined) this.form.denominator = data.denominator;
+            if (data.actual_value !== undefined) {
+               this.form.actual_value = data.actual_value;
+            } else if (data.numerator !== undefined && data.denominator !== undefined && data.denominator != 0) {
+               const mult = parseFloat(this.form.multiplier) || 1;
+               this.form.actual_value = ((data.numerator / data.denominator) * mult).toFixed(2);
+            }
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'ดึงข้อมูลสำเร็จ', showConfirmButton: false, timer: 2000 });
+          } else {
+            Swal.fire('ข้อมูลว่างเปล่า', 'Query ทำงานสำเร็จแต่ไม่พบข้อมูล (No rows returned)', 'info');
+          }
+        } else {
+          Swal.fire('ดึงข้อมูลไม่สำเร็จ', res.data.message || 'เกิดข้อผิดพลาด', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        Swal.fire('Error', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+      } finally {
+        this.isFetching = false;
+      }
     },
     async submitResults() {
       if (!this.selectedKpi) return;

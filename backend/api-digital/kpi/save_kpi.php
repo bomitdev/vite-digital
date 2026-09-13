@@ -70,7 +70,9 @@ try {
                     numerator_label = :num_label,
                     denominator_label = :den_label,
                     multiplier = :multiplier,
-                    fiscal_year = :fiscal_year
+                    fiscal_year = :fiscal_year,
+                    sql_query = :sql_query,
+                    db_connection = :db_connection
                 WHERE id = :id";
         $stmt = $pdo2->prepare($sql);
         $stmt->execute([
@@ -90,13 +92,15 @@ try {
             ':den_label' => $data['denominator_label'] ?? null,
             ':multiplier' => $data['multiplier'] ?? null,
             ':fiscal_year' => $data['fiscal_year'] ?? null,
+            ':sql_query' => $data['sql_query'] ?? null,
+            ':db_connection' => $data['db_connection'] ?? 1,
             ':id' => $data['id']
         ]);
     } else {
         $sql = "INSERT INTO kpi_definitions 
-                    (code, category_id, name, description, calculation_type, kpi_level, kpi_periodicity, target_value, target_operator, unit, responsible_person, responsible_unit, numerator_label, denominator_label, multiplier, fiscal_year) 
+                    (code, category_id, name, description, calculation_type, kpi_level, kpi_periodicity, target_value, target_operator, unit, responsible_person, responsible_unit, numerator_label, denominator_label, multiplier, fiscal_year, sql_query, db_connection) 
                 VALUES 
-                    (:code, :cat_id, :name, :desc, :calc_type, :kpi_level, :periodicity, :target, :op, :unit, :resp_person, :resp_unit, :num_label, :den_label, :multiplier, :fiscal_year)";
+                    (:code, :cat_id, :name, :desc, :calc_type, :kpi_level, :periodicity, :target, :op, :unit, :resp_person, :resp_unit, :num_label, :den_label, :multiplier, :fiscal_year, :sql_query, :db_connection)";
         $stmt = $pdo2->prepare($sql);
         $stmt->execute([
             ':code' => $data['kpi_code'] ?? null,
@@ -114,7 +118,9 @@ try {
             ':num_label' => $data['numerator_label'] ?? null,
             ':den_label' => $data['denominator_label'] ?? null,
             ':multiplier' => $data['multiplier'] ?? null,
-            ':fiscal_year' => $data['fiscal_year'] ?? null
+            ':fiscal_year' => $data['fiscal_year'] ?? null,
+            ':sql_query' => $data['sql_query'] ?? null,
+            ':db_connection' => $data['db_connection'] ?? 1
         ]);
     }
 

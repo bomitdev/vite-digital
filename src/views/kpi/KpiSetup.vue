@@ -265,6 +265,33 @@
             </div>
           </div>
 
+          <hr class="text-muted" />
+
+          <!-- Row 5: Auto-Fetch (SQL Query) -->
+          <h6 class="fw-bold calm-text-navy mb-3"><i class="bi bi-robot me-2"></i>ดึงข้อมูลอัตโนมัติ (Auto-Fetch KPI)</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <label class="form-label fw-bold text-dark">ฐานข้อมูลที่ใช้ดึง</label>
+              <select v-model="form.db_connection" class="form-select calm-input">
+                <option value="1">HOSxP (Database 1)</option>
+                <option value="2">Data Center (Database 2)</option>
+                <option value="3">Other (Database 3)</option>
+              </select>
+            </div>
+            <div class="col-md-9">
+              <label class="form-label fw-bold text-dark">SQL Query (ตัวชี้วัด)</label>
+              <textarea
+                v-model="form.sql_query"
+                class="form-control calm-input font-monospace"
+                rows="4"
+                placeholder="SELECT count(*) AS actual_value FROM ..."
+              ></textarea>
+              <small class="text-muted mt-1 d-block">
+                รองรับพารามิเตอร์ <code>:start_date</code>, <code>:end_date</code>, <code>:department</code> และคอลัมน์ผลลัพธ์ต้องตั้งชื่อเป็น <code>actual_value</code>, <code>numerator</code> หรือ <code>denominator</code>
+              </small>
+            </div>
+          </div>
+
           <!-- Custom Formula Settings (Collapsible or just standard) -->
 
           <!-- Submit Button -->
@@ -523,7 +550,9 @@ export default {
         unit: 'เปอร์เซนต์',
         responsible_person: '',
         responsible_unit: '',
-        fiscal_year: new Date().getFullYear() + 543
+        fiscal_year: new Date().getFullYear() + 543,
+        sql_query: '',
+        db_connection: 1
       },
       staffList: [],
       responsiblePersonList: [],
@@ -1074,7 +1103,9 @@ export default {
         unit: kpi.unit,
         responsible_person: kpi.responsible_person,
         responsible_unit: kpi.responsible_unit,
-        fiscal_year: kpi.fiscal_year || new Date().getFullYear() + 543
+        fiscal_year: kpi.fiscal_year || new Date().getFullYear() + 543,
+        sql_query: kpi.sql_query || '',
+        db_connection: kpi.db_connection || 1
       };
 
       this.selectedKpiLevels = kpi.kpi_level ? kpi.kpi_level.split(',').map(s => s.trim()).filter(s => s) : [];
@@ -1232,7 +1263,9 @@ export default {
         unit: '%',
         responsible_person: '',
         responsible_unit: '',
-        fiscal_year: new Date().getFullYear() + 543
+        fiscal_year: new Date().getFullYear() + 543,
+        sql_query: '',
+        db_connection: 1
       };
       this.responsiblePersonList = [];
       this.staffInput = '';

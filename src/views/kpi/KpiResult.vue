@@ -81,9 +81,19 @@
                 <div class="card bg-light border-0 rounded-4 mb-4">
                   <div class="card-body p-4">
                     <div class="mb-3">
-                      <label class="form-label fw-bold h5 text-dark"
-                        >ค่าผลลัพธ์ (Actual Value)</label
-                      >
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label fw-bold h5 text-dark m-0">ค่าผลลัพธ์ (Actual Value)</label>
+                        <button
+                          v-if="selectedKpiDetail && selectedKpiDetail.sql_query"
+                          type="button"
+                          class="btn btn-warning btn-sm fw-bold rounded-pill shadow-sm"
+                          @click="autoFetchData"
+                          :disabled="isFetching"
+                        >
+                          <i class="bi" :class="isFetching ? 'bi-hourglass-split' : 'bi-magic'"></i>
+                          {{ isFetching ? 'กำลังดึงข้อมูล...' : 'ดึงข้อมูลอัตโนมัติ' }}
+                        </button>
+                      </div>
                       <div class="input-group input-group-lg">
                         <input
                           type="number"
@@ -225,7 +235,8 @@ export default {
         actual_value: '',
         numerator: '',
         denominator: ''
-      }
+      },
+      isFetching: false
     };
   },
   computed: {
@@ -386,6 +397,76 @@ export default {
         this.kpis = res.data;
       } catch (err) {
         console.error('Error fetching KPIs:', err);
+      }
+    },
+    async autoFetchData() {
+      if (!this.form.kpi_id || !this.form.period_number) {
+        Swal.fire('Warning', 'กรุณาเลือก KPI และรอบการรายงานก่อนดึงข้อมูล', 'warning');
+        return;
+      }
+      
+      this.isFetching = true;
+      try {
+        // Calculate start and end date based on period and year
+        const yearAD = parseInt(this.form.year_thai) - 543;
+        const periodType = this.selectedKpiDetail?.kpi_periodicity || 'month';
+        const pNum = parseInt(this.form.period_number);
+        
+        let startMonth, endMonth, startYear = yearAD, endYear = yearAD;
+
+        if (periodType === 'month') {
+          // pNum is calendar month 1=Jan, 12=Dec
+          startMonth = pNum; endMonth = pNum;
+          if (pNum >= 10) {
+            startYear = yearAD - 1;
+            endYear = yearAD - 1;
+          }
+        } else if (periodType === 'quarter') {
+          if (pNum === 1) { startMonth = 10; endMonth = 12; startYear = yearAD - 1; endYear = yearAD - 1; }
+          else if (pNum === 2) { startMonth = 1; endMonth = 3; }
+          else if (pNum === 3) { startMonth = 4; endMonth = 6; }
+          else if (pNum === 4) { startMonth = 7; endMonth = 9; }
+        } else if (periodType === 'Semiannual report') {
+          if (pNum === 1) { startMonth = 10; endMonth = 3; startYear = yearAD - 1; }
+          else { startMonth = 4; endMonth = 9; }
+        } else if (periodType === 'year') {
+          startMonth = 10; endMonth = 9; startYear = yearAD - 1;
+        }
+
+        const startDate = `${startYear}-${String(startMonth).padStart(2, '0')}-01`;
+        const endDateObj = new Date(endYear, endMonth, 0); // last day of endMonth
+        const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-${String(endDateObj.getDate()).padStart(2, '0')}`;
+
+        const payload = {
+          kpi_id: this.form.kpi_id,
+          start_date: startDate,
+          end_date: endDate,
+          department_id: this.userDepartment || 'ALL'
+        };
+
+        const res = await axios.post('/api-digital/kpi/execute_kpi_query.php', payload);
+        if (res.data.status === 'success') {
+          const data = res.data.data;
+          if (data && Object.keys(data).length > 0) {
+            if (data.numerator !== undefined) this.form.numerator = data.numerator;
+            if (data.denominator !== undefined) this.form.denominator = data.denominator;
+            if (data.actual_value !== undefined) {
+               this.form.actual_value = data.actual_value;
+            } else if (data.numerator !== undefined && data.denominator !== undefined && data.denominator != 0) {
+               this.form.actual_value = ((data.numerator / data.denominator) * (this.selectedKpiDetail.calculation_type === 'percentage' ? 100 : 1)).toFixed(2);
+            }
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'ดึงข้อมูลสำเร็จ', showConfirmButton: false, timer: 2000 });
+          } else {
+            Swal.fire('ข้อมูลว่างเปล่า', 'Query ทำงานสำเร็จแต่ไม่พบข้อมูล (No rows returned)', 'info');
+          }
+        } else {
+          Swal.fire('ดึงข้อมูลไม่สำเร็จ', res.data.message || 'เกิดข้อผิดพลาด', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        Swal.fire('Error', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+      } finally {
+        this.isFetching = false;
       }
     },
     async submitResults() {
