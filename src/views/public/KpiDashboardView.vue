@@ -124,7 +124,7 @@
         <div class="dropdown" v-if="availableLevels.length > 0">
           <button class="btn btn-white border shadow-sm dropdown-toggle text-start" type="button" @click="isLevelDropdownOpen = !isLevelDropdownOpen" style="min-width: 180px; background-color: #fff; position: relative; z-index: 1050;">
             <span v-if="selectedLevels.length === 0" class="text-dark">ทุกระดับ (All Levels)</span>
-            <span v-else-if="selectedLevels.length === 1" class="text-dark">{{ selectedLevels[0] }}</span>
+            <span v-else-if="selectedLevels.length === 1" class="text-dark">{{ getLevelName(selectedLevels[0]) }}</span>
             <span v-else class="text-dark">เลือกแล้ว {{ selectedLevels.length }} ระดับ</span>
           </button>
           
@@ -142,7 +142,7 @@
             <div class="form-check mb-1" v-for="level in availableLevels" :key="level">
               <input class="form-check-input" type="checkbox" :id="'level_' + level" :value="level" v-model="selectedLevels">
               <label class="form-check-label" :for="'level_' + level">
-                {{ level }}
+                {{ getLevelName(level) }}
               </label>
             </div>
           </div>
@@ -218,7 +218,7 @@
                       </span>
                       <span class="badge bg-primary bg-opacity-10 text-primary" v-if="kpi.code" style="font-size: 0.7rem;">{{ kpi.code }}</span>
                       <span class="badge bg-secondary text-white" v-if="kpi.kpi_level" style="font-size: 0.7rem;">
-                        <i class="bi bi-diagram-3-fill me-1"></i>{{ kpi.kpi_level }}
+                        <i class="bi bi-diagram-3-fill me-1"></i>{{ getLevelNames(kpi.kpi_level) }}
                       </span>
                       <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25" v-if="kpi.responsible_unit" style="font-size: 0.7rem;">
                         <i class="bi bi-building me-1"></i>{{ kpi.responsible_unit }}
@@ -519,7 +519,7 @@
         <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
           <div class="modal-header bg-danger text-white border-0">
             <h5 class="modal-title fw-bold" id="batchExportPreviewModalLabel">
-              <i class="bi me-2" :class="exportAllMode === 'word' ? 'bi-file-earmark-word' : 'bi-file-earmark-pdf'"></i> ตัวอย่างรายงาน {{ exportAllMode === 'word' ? 'Word' : 'PDF' }} รวมตัวชี้วัด ({{ selectedLevels.length > 0 ? selectedLevels.join(', ') : 'ทุกระดับ' }})
+              <i class="bi me-2" :class="exportAllMode === 'word' ? 'bi-file-earmark-word' : 'bi-file-earmark-pdf'"></i> ตัวอย่างรายงาน {{ exportAllMode === 'word' ? 'Word' : 'PDF' }} รวมตัวชี้วัด ({{ selectedLevels.length > 0 ? selectedLevels.map(l => getLevelName(l)).join(', ') : 'ทุกระดับ' }})
             </h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
@@ -642,6 +642,7 @@ export default {
       searchQuery: '',
       statusFilter: 'all',
       onlyMyKpis: false,
+      masterData: { levels: [] },
       chartData: {},
       chartOptions: {
         responsive: true,
@@ -745,10 +746,11 @@ export default {
           if (!cat.kpis) return cat;
           const matchedKpis = cat.kpis.filter((kpi) => {
             const name = kpi.name ? kpi.name.toLowerCase() : '';
+            const code = kpi.code ? kpi.code.toLowerCase() : '';
             const person = kpi.responsible_person ? kpi.responsible_person.toLowerCase() : '';
             const desc = kpi.description ? kpi.description.toLowerCase() : '';
             const level = kpi.kpi_level ? kpi.kpi_level.toLowerCase() : '';
-            return name.includes(query) || person.includes(query) || desc.includes(query) || level.includes(query);
+            return name.includes(query) || code.includes(query) || person.includes(query) || desc.includes(query) || level.includes(query);
           });
           return { ...cat, kpis: matchedKpis };
         });
@@ -897,6 +899,7 @@ export default {
   },
   async mounted() {
     await this.fetchUserProfile();
+    await this.fetchMasterData();
     this.generateYearList();
     // Fiscal Year Logic: Oct (9) onwards is next year
     const d = new Date();
@@ -908,6 +911,27 @@ export default {
     this.fetchData();
   },
   methods: {
+    async fetchMasterData() {
+      try {
+        const res = await axios.get('/api-digital/kpi/get_master_data.php');
+        if (res.data.status === 'success') {
+          this.masterData = res.data.data;
+        }
+      } catch (err) {
+        console.error('Fetch Master Data Error:', err);
+      }
+    },
+    getLevelName(level_id) {
+      if (!this.masterData.levels) return level_id;
+      const level = this.masterData.levels.find(l => String(l.id) === String(level_id));
+      return level ? level.name : level_id;
+    },
+    getLevelNames(kpi_level) {
+      if (!kpi_level || !this.masterData.levels) return '-';
+      const ids = kpi_level.split(',').map(id => id.trim());
+      const names = ids.map(id => this.getLevelName(id));
+      return names.join(', ');
+    },
     toggleAllLevels(e) {
       if (e.target.checked) {
         this.selectedLevels = [];
@@ -1821,7 +1845,7 @@ export default {
         children.push(
           new Paragraph({
             children: [
-              new TextRun({ text: `รายงานรวมตัวชี้วัด (${this.selectedLevels.length > 0 ? this.selectedLevels.join(', ') : 'ทุกระดับ'})`, bold: true, size: 36, font: 'Sarabun' })
+              new TextRun({ text: `รายงานรวมตัวชี้วัด (${this.selectedLevels.length > 0 ? this.selectedLevels.map(l => this.getLevelName(l)).join(', ') : 'ทุกระดับ'})`, bold: true, size: 36, font: 'Sarabun' })
             ],
             alignment: AlignmentType.CENTER,
             spacing: { after: 400 }

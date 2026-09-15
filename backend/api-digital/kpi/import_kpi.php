@@ -35,7 +35,6 @@ if (!$user_id) {
 
 // Allowed enum values mapping
 $allowed_calc_types = ['percentage', 'ratio', 'rate', 'boolean', 'count', 'amount'];
-$allowed_kpi_levels = ['กระทรวง', 'เขต', 'จังหวัด', 'โรงพยาบาล'];
 $allowed_periodicities = ['month', 'quarter', 'Semiannual report', 'year'];
 
 try {
@@ -53,6 +52,13 @@ try {
     // Pre-fetch valid categories for validation
     $stmtCats = $pdo2->query("SELECT id FROM kpi_categories");
     $validCategories = $stmtCats->fetchAll(PDO::FETCH_COLUMN);
+
+    // Pre-fetch kpi_levels for mapping
+    $stmtLevels = $pdo2->query("SELECT id, name FROM kpi_levels");
+    $validLevelsMap = [];
+    while ($row = $stmtLevels->fetch(PDO::FETCH_ASSOC)) {
+        $validLevelsMap[trim(mb_strtolower($row['name']))] = $row['id'];
+    }
 
     foreach ($data as $index => $item) {
         $rowNum = $index + 2; // Assume Excel row 1 is header
@@ -79,10 +85,23 @@ try {
             continue;
         }
 
-        $kpi_level = $item['kpi_level'] ?? 'โรงพยาบาล';
-        if (!in_array($kpi_level, $allowed_kpi_levels)) {
-            $errors[] = "แถว $rowNum: ระดับตัวชี้วัดไม่ถูกต้อง ('$kpi_level')";
-            continue;
+        $kpi_level_input = $item['kpi_level'] ?? '';
+        $kpi_level_ids = [];
+        if (!empty($kpi_level_input)) {
+            $parts = explode(',', $kpi_level_input);
+            foreach ($parts as $part) {
+                $cleaned = trim($part);
+                if (empty($cleaned)) continue;
+                $key = mb_strtolower($cleaned);
+                if (isset($validLevelsMap[$key])) {
+                    $kpi_level_ids[] = $validLevelsMap[$key];
+                }
+            }
+        }
+        if (empty($kpi_level_ids)) {
+            // We will handle default fallback during insert/update logic
+        } else {
+            $kpi_level = implode(',', array_unique($kpi_level_ids));
         }
 
         $periodicity = $item['kpi_periodicity'] ?? 'month';
@@ -118,6 +137,34 @@ try {
             }
 
             if ($existingId) {
+                // Preserve existing code if not provided in the import
+                if (empty($code)) {
+                    $getCodeStmt = $pdo2->prepare("SELECT code FROM kpi_definitions WHERE id = ?");
+                    $getCodeStmt->execute([$existingId]);
+                    $existingCode = $getCodeStmt->fetchColumn();
+                    if (!empty($existingCode)) {
+                        $code = $existingCode;
+                    }
+                }
+                
+                // Preserve existing level if not provided
+                if (empty($kpi_level)) {
+                    $getLevelStmt = $pdo2->prepare("SELECT kpi_level FROM kpi_definitions WHERE id = ?");
+                    $getLevelStmt->execute([$existingId]);
+                    $existingLevel = $getLevelStmt->fetchColumn();
+                    if (!empty($existingLevel)) {
+                        $kpi_level = $existingLevel;
+                    } else {
+                        // fallback to default if absolutely empty
+                        $key = mb_strtolower('โรงพยาบาล');
+                        if (isset($validLevelsMap[$key])) {
+                            $kpi_level = $validLevelsMap[$key];
+                        } else {
+                            $kpi_level = '4'; // fallback ID
+                        }
+                    }
+                }
+
                 // Update
                 $sql = "UPDATE kpi_definitions SET 
                         code = :code, category_id = :cat_id, description = :desc, 
@@ -144,6 +191,15 @@ try {
                 $updatedCount++;
             } else {
                 // Insert
+                if (empty($kpi_level)) {
+                    $key = mb_strtolower('โรงพยาบาล');
+                    if (isset($validLevelsMap[$key])) {
+                        $kpi_level = $validLevelsMap[$key];
+                    } else {
+                        $kpi_level = '4';
+                    }
+                }
+                
                 $sql = "INSERT INTO kpi_definitions 
                             (code, category_id, name, description, calculation_type, kpi_level, kpi_periodicity, target_value, target_operator, unit, responsible_person, responsible_unit, fiscal_year) 
                         VALUES 

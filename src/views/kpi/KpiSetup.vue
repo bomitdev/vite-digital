@@ -148,7 +148,7 @@
               <label class="form-label fw-bold calm-text-navy">ระดับตัวชี้วัด</label>
               <div class="d-flex flex-wrap gap-2 mt-2">
                 <div class="form-check form-check-inline m-0" v-for="l in masterData.levels" :key="l.id">
-                  <input class="form-check-input border-dark" type="checkbox" :id="'level-'+l.id" :value="l.name" v-model="selectedKpiLevels">
+                  <input class="form-check-input border-dark" type="checkbox" :id="'level-'+l.id" :value="l.id" v-model="selectedKpiLevels">
                   <label class="form-check-label" :for="'level-'+l.id">{{ l.name }}</label>
                 </div>
               </div>
@@ -330,7 +330,7 @@
           </select>
           <select class="form-select bg-light" style="min-width: 130px; max-width: 130px;" v-model="selectedLevelFilter">
             <option value="">-- ทุกระดับ --</option>
-            <option v-for="l in masterData.levels" :key="l.id" :value="l.name">
+            <option v-for="l in masterData.levels" :key="l.id" :value="l.id">
               {{ l.name }}
             </option>
           </select>
@@ -387,7 +387,7 @@
                   }}</small>
                 </td>
                 <td>
-                  <span class="badge calm-bg-lavender text-dark border" v-if="kpi.kpi_level">{{ kpi.kpi_level }}</span>
+                  <span class="badge calm-bg-lavender text-dark border" v-if="kpi.kpi_level">{{ getLevelNames(kpi.kpi_level) }}</span>
                   <span class="text-muted small" v-else>-</span>
                 </td>
                 <td>
@@ -542,7 +542,7 @@ export default {
         new_category_name: '',
         kpi_name: '',
         calculation_type: 'percentage',
-        kpi_level: 'โรงพยาบาล',
+        kpi_level: '4',
         kpi_periodicity: 'month',
         description: '',
         target_value: '',
@@ -599,7 +599,11 @@ export default {
       }
 
       if (this.selectedLevelFilter) {
-        baseList = baseList.filter(kpi => kpi.kpi_level && kpi.kpi_level.includes(this.selectedLevelFilter));
+        baseList = baseList.filter(kpi => {
+           if (!kpi.kpi_level) return false;
+           const ids = kpi.kpi_level.split(',').map(s => s.trim());
+           return ids.includes(String(this.selectedLevelFilter));
+        });
       }
 
       if (this.selectedYearFilter) {
@@ -627,6 +631,15 @@ export default {
     }
   },
   methods: {
+    getLevelNames(kpi_level) {
+      if (!kpi_level || !this.masterData.levels) return '-';
+      const ids = kpi_level.split(',').map(id => id.trim());
+      const names = ids.map(id => {
+        const level = this.masterData.levels.find(l => String(l.id) === String(id));
+        return level ? level.name : id;
+      });
+      return names.join(', ');
+    },
     isMyKpi(kpi) {
       if (!kpi || !this.userFullname) return false;
       const resp = (kpi.responsible_person || '').trim().toLowerCase();
@@ -698,13 +711,13 @@ export default {
             }
 
             return {
-              kpi_code: row['code'] || '',
+              kpi_code: row['code'] || row['kpi_code'] || row['KPI_Code'] || row['รหัส'] || row['รหัสตัวชี้วัด'] || '',
               category_id: category_id,
-              fiscal_year: row['fiscal_year'] || new Date().getFullYear() + 543,
-              kpi_name: row['name'] || '',
-              description: row['description'] || '',
+              fiscal_year: row['fiscal_year'] || row['ปีงบประมาณ'] || new Date().getFullYear() + 543,
+              kpi_name: row['name'] || row['ชื่อตัวชี้วัด'] || '',
+              description: row['description'] || row['คำอธิบาย'] || '',
               calculation_type: row['calculation_type'] || 'percentage',
-              kpi_level: row['kpi_level'] || 'โรงพยาบาล',
+              kpi_level: row['kpi_level'] || row['ระดับ'] || row['ระดับตัวชี้วัด'] || '',
               kpi_periodicity: row['kpi_periodicity'] || 'month',
               target_value: row['target_value'] || 0,
               target_operator: row['target_operator'] || '>=',
@@ -1096,7 +1109,7 @@ export default {
         kpi_name: kpi.name,
         description: kpi.description,
         calculation_type: kpi.calculation_type || 'percentage',
-        kpi_level: kpi.kpi_level || 'โรงพยาบาล',
+        kpi_level: kpi.kpi_level || '4',
         kpi_periodicity: kpi.kpi_periodicity || 'month',
         target_value: kpi.target_value,
         target_operator: kpi.target_operator,
@@ -1108,7 +1121,7 @@ export default {
         db_connection: kpi.db_connection || 1
       };
 
-      this.selectedKpiLevels = kpi.kpi_level ? kpi.kpi_level.split(',').map(s => s.trim()).filter(s => s) : [];
+      this.selectedKpiLevels = kpi.kpi_level ? kpi.kpi_level.split(',').map(s => Number(s.trim())).filter(s => s) : [];
 
       // Load tags
       if (kpi.responsible_person) {
@@ -1255,7 +1268,7 @@ export default {
         new_category_name: '',
         kpi_name: '',
         calculation_type: 'percentage',
-        kpi_level: 'โรงพยาบาล',
+        kpi_level: '4',
         kpi_periodicity: 'month',
         description: '',
         target_value: '',

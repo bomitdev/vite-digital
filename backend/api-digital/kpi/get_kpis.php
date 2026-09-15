@@ -35,7 +35,6 @@ try {
     // Let's overwrite them with the normalized source of truth if available, 
     // to ensure we are actually using the relational data.
     foreach ($rows as &$row) {
-        if ($row['kpi_level_name']) $row['kpi_level'] = $row['kpi_level_name'];
         if ($row['periodicity_code']) $row['kpi_periodicity'] = $row['periodicity_code'];
         if ($row['unit_name']) $row['unit'] = $row['unit_name'];
         if ($row['calc_type_code']) $row['calculation_type'] = $row['calc_type_code'];
