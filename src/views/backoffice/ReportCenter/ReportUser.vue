@@ -537,13 +537,18 @@ const runReport = async () => {
   if (!selectedReport.value) return;
   loading.value = true;
   currentPage.value = 1;
+
+  // Use formValues if dynamic parameters are used, otherwise fallback to legacy refs
+  const finalStartDate = formValues.value.start_date !== undefined ? formValues.value.start_date : startDate.value;
+  const finalEndDate = formValues.value.end_date !== undefined ? formValues.value.end_date : endDate.value;
+
   try {
     const res = await axios.post(
       `${import.meta.env.VITE_API_URL || ''}/api-digital/report-center/execute_report.php`,
       {
         report_id: selectedReport.value.id,
-        start_date: startDate.value || null,
-        end_date: endDate.value || null,
+        start_date: finalStartDate || null,
+        end_date: finalEndDate || null,
         department_id: selectedDepartment.value,
         parameters: formValues.value
       }
