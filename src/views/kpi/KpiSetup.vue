@@ -152,6 +152,14 @@
                   <label class="form-check-label" :for="'level-'+l.id">{{ l.name }}</label>
                 </div>
               </div>
+              
+              <div v-if="selectedKpiLevels.length > 0" class="mt-3 p-2 bg-light border rounded">
+                <label class="form-label fw-bold text-muted small mb-2">รหัสอ้างอิงเพิ่มเติมแต่ละระดับ (ไม่บังคับ)</label>
+                <div v-for="lId in selectedKpiLevels" :key="'lc-'+lId" class="mb-2 d-flex align-items-center">
+                  <span class="me-2 text-dark small" style="min-width: 80px;">{{ getLevelNameById(lId) }}:</span>
+                  <input type="text" v-model="form.level_codes[lId]" class="form-control form-control-sm calm-input" :placeholder="'รหัสสำหรับ ' + getLevelNameById(lId)" />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -552,7 +560,8 @@ export default {
         responsible_unit: '',
         fiscal_year: new Date().getFullYear() + 543,
         sql_query: '',
-        db_connection: 1
+        db_connection: 1,
+        level_codes: {}
       },
       staffList: [],
       responsiblePersonList: [],
@@ -640,6 +649,11 @@ export default {
       });
       return names.join(', ');
     },
+    getLevelNameById(id) {
+      if (!this.masterData.levels) return id;
+      const level = this.masterData.levels.find(l => String(l.id) === String(id));
+      return level ? level.name : id;
+    },
     isMyKpi(kpi) {
       if (!kpi || !this.userFullname) return false;
       const resp = (kpi.responsible_person || '').trim().toLowerCase();
@@ -723,7 +737,8 @@ export default {
               target_operator: row['target_operator'] || '>=',
               unit: row['unit'] || 'เปอร์เซนต์',
               responsible_person: row['responsible_person'] || '',
-              responsible_unit: row['responsible_unit'] || ''
+              responsible_unit: row['responsible_unit'] || '',
+              level_codes: row['level_codes'] || row['รหัสอ้างอิงแต่ละระดับ'] || ''
             };
           });
 
@@ -840,31 +855,65 @@ export default {
       reader.readAsArrayBuffer(file);
     },
     downloadTemplate() {
+      const buildList = (arr, idKey = 'id', nameKey = 'name') => {
+        if (!arr || !Array.isArray(arr)) return '';
+        return arr.map(item => `${item[idKey]}=${item[nameKey]}`).join(', ');
+      };
+
+      const categoryHelp = buildList(this.masterData.categories);
+      const calcTypeHelp = buildList(this.masterData.calculation_types, 'id', 'name');
+      const levelHelp = buildList(this.masterData.levels);
+      const periodHelp = buildList(this.masterData.periodicities, 'id', 'name');
+      const unitHelp = buildList(this.masterData.units, 'id', 'name');
+
       const templateData = [
         {
           code: 'KPI-001',
           name: 'ตัวอย่าง KPI 1',
           description: 'คำอธิบายตัวชี้วัด',
-          category_name: 'ด้านการดูแลผู้ป่วย',
+          category_id: 1,
           fiscal_year: new Date().getFullYear() + 543,
-          calculation_type: 'percentage',
-          kpi_level: 'โรงพยาบาล, กลุ่มงาน',
-          kpi_periodicity: 'month',
+          calculation_type: 1,
+          kpi_level: '1, 4',
+          kpi_periodicity: 1,
           target_value: 80,
           target_operator: '>=',
-          unit: 'เปอร์เซนต์',
+          unit: 1,
           responsible_person: 'ชื่อ นามสกุล',
-          responsible_unit: 'หน่วยงาน'
+          responsible_unit: 'หน่วยงาน',
+          level_codes: '{"1":"CODE-LV1", "4":"CODE-LV4"}'
         }
       ];
 
-      const ws = XLSX.utils.json_to_sheet(templateData);
+      const instructionsData = [
+        { 'ชื่อคอลัมน์ (Column)': 'code', 'คำอธิบาย (Description)': 'รหัสตัวชี้วัดหลัก (ห้ามซ้ำในปีงบเดียวกัน)' },
+        { 'ชื่อคอลัมน์ (Column)': 'name', 'คำอธิบาย (Description)': 'ชื่อตัวชี้วัด' },
+        { 'ชื่อคอลัมน์ (Column)': 'description', 'คำอธิบาย (Description)': 'รายละเอียดเพิ่มเติมของตัวชี้วัด' },
+        { 'ชื่อคอลัมน์ (Column)': 'category_id', 'คำอธิบาย (Description)': `รหัสหมวดหมู่ (${categoryHelp})` },
+        { 'ชื่อคอลัมน์ (Column)': 'fiscal_year', 'คำอธิบาย (Description)': 'ปีงบประมาณ (เช่น 2567)' },
+        { 'ชื่อคอลัมน์ (Column)': 'calculation_type', 'คำอธิบาย (Description)': `รหัสประเภทการคำนวณ (${calcTypeHelp})` },
+        { 'ชื่อคอลัมน์ (Column)': 'kpi_level', 'คำอธิบาย (Description)': `รหัสระดับตัวชี้วัด คั่นด้วยลูกน้ำ (${levelHelp})` },
+        { 'ชื่อคอลัมน์ (Column)': 'kpi_periodicity', 'คำอธิบาย (Description)': `รหัสความถี่ในการรายงาน (${periodHelp})` },
+        { 'ชื่อคอลัมน์ (Column)': 'target_value', 'คำอธิบาย (Description)': 'ค่าเป้าหมาย (ตัวเลขเท่านั้น)' },
+        { 'ชื่อคอลัมน์ (Column)': 'target_operator', 'คำอธิบาย (Description)': 'เครื่องหมายเป้าหมาย (>=, <=, >, <, =)' },
+        { 'ชื่อคอลัมน์ (Column)': 'unit', 'คำอธิบาย (Description)': `รหัสหน่วยนับ (${unitHelp}) หรือระบุข้อความเอง` },
+        { 'ชื่อคอลัมน์ (Column)': 'responsible_person', 'คำอธิบาย (Description)': 'ชื่อ-นามสกุลผู้รับผิดชอบ (คั่นหลายคนด้วยลูกน้ำ)' },
+        { 'ชื่อคอลัมน์ (Column)': 'responsible_unit', 'คำอธิบาย (Description)': 'หน่วยงานที่รับผิดชอบ' },
+        { 'ชื่อคอลัมน์ (Column)': 'level_codes', 'คำอธิบาย (Description)': 'รหัสอ้างอิงแต่ละระดับ ในรูปแบบ JSON (เช่น {"1":"CODE-LV1", "2":"CODE-LV2"})' }
+      ];
+
+      const ws1 = XLSX.utils.json_to_sheet(templateData);
+      const ws2 = XLSX.utils.json_to_sheet(instructionsData);
       
-      const colWidths = Object.keys(templateData[0]).map(key => ({ wch: Math.max(key.length, 15) }));
-      ws['!cols'] = colWidths;
+      const colWidths1 = Object.keys(templateData[0]).map(key => ({ wch: Math.max(key.length, 15) }));
+      ws1['!cols'] = colWidths1;
+
+      const colWidths2 = [{ wch: 25 }, { wch: 90 }];
+      ws2['!cols'] = colWidths2;
 
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Template');
+      XLSX.utils.book_append_sheet(wb, ws1, 'Template');
+      XLSX.utils.book_append_sheet(wb, ws2, 'คำแนะนำ (Instructions)');
 
       XLSX.writeFile(wb, 'KPI_Import_Template.xlsx');
     },
@@ -1102,6 +1151,16 @@ export default {
     },
     editKpi(kpi) {
       this.isEdit = true;
+
+      let levelCodesObj = {};
+      if (kpi.level_codes) {
+        try {
+          levelCodesObj = typeof kpi.level_codes === 'string' ? JSON.parse(kpi.level_codes) : kpi.level_codes;
+        } catch(e) {
+          console.error("Failed to parse level_codes", e);
+        }
+      }
+
       this.form = {
         id: kpi.id,
         kpi_code: kpi.code || '',
@@ -1118,7 +1177,8 @@ export default {
         responsible_unit: kpi.responsible_unit,
         fiscal_year: kpi.fiscal_year || new Date().getFullYear() + 543,
         sql_query: kpi.sql_query || '',
-        db_connection: kpi.db_connection || 1
+        db_connection: kpi.db_connection || 1,
+        level_codes: levelCodesObj || {}
       };
 
       this.selectedKpiLevels = kpi.kpi_level ? kpi.kpi_level.split(',').map(s => Number(s.trim())).filter(s => s) : [];
@@ -1278,7 +1338,8 @@ export default {
         responsible_unit: '',
         fiscal_year: new Date().getFullYear() + 543,
         sql_query: '',
-        db_connection: 1
+        db_connection: 1,
+        level_codes: {}
       };
       this.responsiblePersonList = [];
       this.staffInput = '';

@@ -33,9 +33,7 @@ if (!$user_id) {
     exit();
 }
 
-// Allowed enum values mapping
-$allowed_calc_types = ['percentage', 'ratio', 'rate', 'boolean', 'count', 'amount'];
-$allowed_periodicities = ['month', 'quarter', 'Semiannual report', 'year'];
+// Maps will be built from DB
 
 try {
     $data = json_decode(file_get_contents("php://input"), true);
@@ -60,6 +58,33 @@ try {
         $validLevelsMap[trim(mb_strtolower($row['name']))] = $row['id'];
     }
 
+    // Pre-fetch kpi_periodicities
+    $stmtPeriod = $pdo2->query("SELECT id, code FROM kpi_periodicities");
+    $validPeriodMap = [];
+    $validPeriodCodeMap = [];
+    while ($row = $stmtPeriod->fetch(PDO::FETCH_ASSOC)) {
+        $validPeriodMap[$row['id']] = $row['code'];
+        $validPeriodCodeMap[$row['code']] = $row['code'];
+    }
+
+    // Pre-fetch kpi_calculation_types
+    $stmtCalc = $pdo2->query("SELECT id, code FROM kpi_calculation_types");
+    $validCalcMap = [];
+    $validCalcCodeMap = [];
+    while ($row = $stmtCalc->fetch(PDO::FETCH_ASSOC)) {
+        $validCalcMap[$row['id']] = $row['code'];
+        $validCalcCodeMap[$row['code']] = $row['code'];
+    }
+
+    // Pre-fetch kpi_units
+    $stmtUnit = $pdo2->query("SELECT id, name FROM kpi_units");
+    $validUnitMap = [];
+    $validUnitNameMap = [];
+    while ($row = $stmtUnit->fetch(PDO::FETCH_ASSOC)) {
+        $validUnitMap[$row['id']] = $row['name'];
+        $validUnitNameMap[trim(mb_strtolower($row['name']))] = $row['name'];
+    }
+
     foreach ($data as $index => $item) {
         $rowNum = $index + 2; // Assume Excel row 1 is header
         $name = trim($item['kpi_name'] ?? '');
@@ -79,10 +104,17 @@ try {
         $fiscal_year = intval($item['fiscal_year'] ?? 0);
         $desc = $item['description'] ?? '';
         
-        $calc_type = $item['calculation_type'] ?? 'percentage';
-        if (!in_array($calc_type, $allowed_calc_types)) {
-            $errors[] = "แถว $rowNum: ประเภทการคำนวณไม่ถูกต้อง ('$calc_type')";
-            continue;
+        $calc_type_input = $item['calculation_type'] ?? '';
+        $calc_type = 'percentage';
+        if (!empty($calc_type_input)) {
+            if (isset($validCalcMap[$calc_type_input])) {
+                $calc_type = $validCalcMap[$calc_type_input];
+            } elseif (isset($validCalcCodeMap[$calc_type_input])) {
+                $calc_type = $validCalcCodeMap[$calc_type_input];
+            } else {
+                $errors[] = "แถว $rowNum: ประเภทการคำนวณไม่ถูกต้อง ('$calc_type_input')";
+                continue;
+            }
         }
 
         $kpi_level_input = $item['kpi_level'] ?? '';
@@ -95,6 +127,11 @@ try {
                 $key = mb_strtolower($cleaned);
                 if (isset($validLevelsMap[$key])) {
                     $kpi_level_ids[] = $validLevelsMap[$key];
+                } elseif (is_numeric($cleaned) && in_array((int)$cleaned, $validLevelsMap, true)) {
+                    $kpi_level_ids[] = (int)$cleaned;
+                } elseif (is_numeric($cleaned)) {
+                    // Accept anyway if they forced a numeric ID
+                    $kpi_level_ids[] = (int)$cleaned;
                 }
             }
         }
@@ -104,10 +141,17 @@ try {
             $kpi_level = implode(',', array_unique($kpi_level_ids));
         }
 
-        $periodicity = $item['kpi_periodicity'] ?? 'month';
-        if (!in_array($periodicity, $allowed_periodicities)) {
-            $errors[] = "แถว $rowNum: รอบการประเมินไม่ถูกต้อง ('$periodicity')";
-            continue;
+        $periodicity_input = $item['kpi_periodicity'] ?? '';
+        $periodicity = 'month';
+        if (!empty($periodicity_input)) {
+            if (isset($validPeriodMap[$periodicity_input])) {
+                $periodicity = $validPeriodMap[$periodicity_input];
+            } elseif (isset($validPeriodCodeMap[$periodicity_input])) {
+                $periodicity = $validPeriodCodeMap[$periodicity_input];
+            } else {
+                $errors[] = "แถว $rowNum: รอบการประเมินไม่ถูกต้อง ('$periodicity_input')";
+                continue;
+            }
         }
 
         $target = $item['target_value'] ?? 0;
@@ -117,9 +161,39 @@ try {
         }
 
         $op = $item['target_operator'] ?? '>=';
-        $unit = $item['unit'] ?? '%';
+        
+        $unit_input = $item['unit'] ?? '';
+        $unit = '%';
+        if (!empty($unit_input)) {
+            $key = mb_strtolower(trim($unit_input));
+            if (isset($validUnitMap[$unit_input])) {
+                $unit = $validUnitMap[$unit_input];
+            } elseif (isset($validUnitNameMap[$key])) {
+                $unit = $validUnitNameMap[$key];
+            } else {
+                $unit = $unit_input; // Allow custom string
+            }
+        }
+
         $resp_person = $item['responsible_person'] ?? '';
         $resp_unit = $item['responsible_unit'] ?? '';
+        $level_codes_raw = $item['level_codes'] ?? '';
+        
+        $clean_level_codes = null;
+        if (!empty($level_codes_raw)) {
+            $decoded = json_decode($level_codes_raw, true);
+            if (is_array($decoded)) {
+                $cleaned = [];
+                foreach ($decoded as $k => $v) {
+                    if ($v !== null && trim($v) !== '') {
+                        $cleaned[(string)$k] = trim($v);
+                    }
+                }
+                if (!empty($cleaned)) {
+                    $clean_level_codes = json_encode($cleaned, JSON_FORCE_OBJECT);
+                }
+            }
+        }
 
         try {
             // Check for existing KPI
@@ -171,7 +245,7 @@ try {
                         calculation_type = :calc_type, kpi_level = :kpi_level, 
                         kpi_periodicity = :periodicity, target_value = :target, 
                         target_operator = :op, unit = :unit, responsible_person = :resp_person, 
-                        responsible_unit = :resp_unit
+                        responsible_unit = :resp_unit, level_codes = :level_codes
                     WHERE id = :id";
                 $stmt = $pdo2->prepare($sql);
                 $stmt->execute([
@@ -186,6 +260,7 @@ try {
                     ':unit' => $unit,
                     ':resp_person' => $resp_person,
                     ':resp_unit' => $resp_unit,
+                    ':level_codes' => $clean_level_codes,
                     ':id' => $existingId
                 ]);
                 $updatedCount++;
@@ -201,9 +276,9 @@ try {
                 }
                 
                 $sql = "INSERT INTO kpi_definitions 
-                            (code, category_id, name, description, calculation_type, kpi_level, kpi_periodicity, target_value, target_operator, unit, responsible_person, responsible_unit, fiscal_year) 
+                            (code, category_id, name, description, calculation_type, kpi_level, kpi_periodicity, target_value, target_operator, unit, responsible_person, responsible_unit, fiscal_year, level_codes) 
                         VALUES 
-                            (:code, :cat_id, :name, :desc, :calc_type, :kpi_level, :periodicity, :target, :op, :unit, :resp_person, :resp_unit, :fiscal_year)";
+                            (:code, :cat_id, :name, :desc, :calc_type, :kpi_level, :periodicity, :target, :op, :unit, :resp_person, :resp_unit, :fiscal_year, :level_codes)";
                 $stmt = $pdo2->prepare($sql);
                 $stmt->execute([
                     ':code' => $code,
@@ -218,7 +293,8 @@ try {
                     ':unit' => $unit,
                     ':resp_person' => $resp_person,
                     ':resp_unit' => $resp_unit,
-                    ':fiscal_year' => $fiscal_year
+                    ':fiscal_year' => $fiscal_year,
+                    ':level_codes' => $clean_level_codes
                 ]);
                 $importedCount++;
             }

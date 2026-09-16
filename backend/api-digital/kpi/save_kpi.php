@@ -52,6 +52,19 @@ try {
         throw new Exception("Missing required field (category_id)");
     }
 
+    $clean_level_codes = null;
+    if (!empty($data['level_codes']) && is_array($data['level_codes'])) {
+        $cleaned = [];
+        foreach ($data['level_codes'] as $k => $v) {
+            if ($v !== null && trim($v) !== '') {
+                $cleaned[(string)$k] = trim($v);
+            }
+        }
+        if (!empty($cleaned)) {
+            $clean_level_codes = json_encode($cleaned, JSON_FORCE_OBJECT);
+        }
+    }
+
     // Check if ID exists (Update) or not (Insert)
     if (!empty($data['id'])) {
         $sql = "UPDATE kpi_definitions SET 
@@ -72,7 +85,8 @@ try {
                     multiplier = :multiplier,
                     fiscal_year = :fiscal_year,
                     sql_query = :sql_query,
-                    db_connection = :db_connection
+                    db_connection = :db_connection,
+                    level_codes = :level_codes
                 WHERE id = :id";
         $stmt = $pdo2->prepare($sql);
         $stmt->execute([
@@ -94,13 +108,14 @@ try {
             ':fiscal_year' => $data['fiscal_year'] ?? null,
             ':sql_query' => $data['sql_query'] ?? null,
             ':db_connection' => $data['db_connection'] ?? 1,
+            ':level_codes' => $clean_level_codes,
             ':id' => $data['id']
         ]);
     } else {
         $sql = "INSERT INTO kpi_definitions 
-                    (code, category_id, name, description, calculation_type, kpi_level, kpi_periodicity, target_value, target_operator, unit, responsible_person, responsible_unit, numerator_label, denominator_label, multiplier, fiscal_year, sql_query, db_connection) 
+                    (code, category_id, name, description, calculation_type, kpi_level, kpi_periodicity, target_value, target_operator, unit, responsible_person, responsible_unit, numerator_label, denominator_label, multiplier, fiscal_year, sql_query, db_connection, level_codes) 
                 VALUES 
-                    (:code, :cat_id, :name, :desc, :calc_type, :kpi_level, :periodicity, :target, :op, :unit, :resp_person, :resp_unit, :num_label, :den_label, :multiplier, :fiscal_year, :sql_query, :db_connection)";
+                    (:code, :cat_id, :name, :desc, :calc_type, :kpi_level, :periodicity, :target, :op, :unit, :resp_person, :resp_unit, :num_label, :den_label, :multiplier, :fiscal_year, :sql_query, :db_connection, :level_codes)";
         $stmt = $pdo2->prepare($sql);
         $stmt->execute([
             ':code' => $data['kpi_code'] ?? null,
@@ -120,7 +135,8 @@ try {
             ':multiplier' => $data['multiplier'] ?? null,
             ':fiscal_year' => $data['fiscal_year'] ?? null,
             ':sql_query' => $data['sql_query'] ?? null,
-            ':db_connection' => $data['db_connection'] ?? 1
+            ':db_connection' => $data['db_connection'] ?? 1,
+            ':level_codes' => $clean_level_codes
         ]);
     }
 

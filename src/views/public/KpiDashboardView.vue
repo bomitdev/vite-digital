@@ -217,6 +217,11 @@
                         <i class="bi bi-person-check-fill me-1"></i>ตัวชี้วัดของฉัน
                       </span>
                       <span class="badge bg-primary bg-opacity-10 text-primary" v-if="kpi.code" style="font-size: 0.7rem;">{{ kpi.code }}</span>
+                      
+                      <span v-for="lc in getFormattedLevelCodes(kpi)" :key="lc.code" class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25" style="font-size: 0.7rem;">
+                        {{ lc.name }}: {{ lc.code }}
+                      </span>
+
                       <span class="badge bg-secondary text-white" v-if="kpi.kpi_level" style="font-size: 0.7rem;">
                         <i class="bi bi-diagram-3-fill me-1"></i>{{ getLevelNames(kpi.kpi_level) }}
                       </span>
@@ -750,7 +755,8 @@ export default {
             const person = kpi.responsible_person ? kpi.responsible_person.toLowerCase() : '';
             const desc = kpi.description ? kpi.description.toLowerCase() : '';
             const level = kpi.kpi_level ? kpi.kpi_level.toLowerCase() : '';
-            return name.includes(query) || code.includes(query) || person.includes(query) || desc.includes(query) || level.includes(query);
+            const level_codes = kpi.level_codes ? kpi.level_codes.toLowerCase() : '';
+            return name.includes(query) || code.includes(query) || person.includes(query) || desc.includes(query) || level.includes(query) || level_codes.includes(query);
           });
           return { ...cat, kpis: matchedKpis };
         });
@@ -931,6 +937,22 @@ export default {
       const ids = kpi_level.split(',').map(id => id.trim());
       const names = ids.map(id => this.getLevelName(id));
       return names.join(', ');
+    },
+    getFormattedLevelCodes(kpi) {
+      if (!kpi.level_codes) return [];
+      try {
+        const parsed = JSON.parse(kpi.level_codes);
+        const codes = [];
+        for (const [lvlId, code] of Object.entries(parsed)) {
+          if (code) {
+             const lvlName = this.getLevelName(lvlId) || `ระดับ ${lvlId}`;
+             codes.push({ name: lvlName, code: code });
+          }
+        }
+        return codes;
+      } catch (e) {
+        return [];
+      }
     },
     toggleAllLevels(e) {
       if (e.target.checked) {
