@@ -666,13 +666,9 @@ export default {
   },
   computed: {
     isAdmin() {
-      // Basic check for admin departments
       return (
         this.userAccess.includes('administrator') ||
-        this.userAccess.includes('menu_kpi_admin') ||
-        this.userDepartment.includes('กลุ่มงานสุขภาพดิจิทัล') ||
-        this.userDepartment.includes('ประกัน') ||
-        this.userDepartment === 'admin'
+        this.userAccess.includes('menu_kpi_admin')
       );
     },
     hasResponsibleKpi() {
@@ -1091,6 +1087,7 @@ export default {
     canViewKpi(kpi) {
       if (!kpi) return false;
       if (this.isAdmin) return true;
+      if (this.userAccess && this.userAccess.includes('menu_dashboard_kpi')) return true;
       if (!this.userFullname) return true; // public view if not logged in
       
       // 1. Can report means can definitely view

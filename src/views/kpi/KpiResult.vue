@@ -243,10 +243,7 @@ export default {
     isAdmin() {
       return (
         this.userAccess.includes('administrator') ||
-        this.userAccess.includes('menu_kpi_admin') ||
-        this.userDepartment.includes('กลุ่มงานสุขภาพดิจิทัล') ||
-        this.userDepartment.includes('ประกัน') ||
-        this.userDepartment === 'admin'
+        this.userAccess.includes('menu_kpi_admin')
       );
     },
     filteredKpis() {
