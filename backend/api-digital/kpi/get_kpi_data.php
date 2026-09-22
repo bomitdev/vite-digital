@@ -31,7 +31,7 @@ try {
 
         $sql = "SELECT 
                     k.id, k.code, k.name, k.description, k.target_value, k.target_operator, k.unit, k.category_id,
-                    k.kpi_periodicity, k.numerator_label, k.denominator_label, k.calculation_type, k.multiplier, k.responsible_person, k.responsible_unit, k.kpi_level, k.analysis,
+                    k.kpi_periodicity, k.numerator_label, k.denominator_label, k.calculation_type, k.multiplier, k.responsible_person, k.responsible_unit, k.kpi_level, k.level_codes, k.analysis,
                     k.sql_query, k.db_connection,
                     e.actual_value, e.period_date, e.target_value_snapshot,
                     (SELECT GROUP_CONCAT(period_date) FROM kpi_entries WHERE kpi_id = k.id $yearFilter) as reported_periods,

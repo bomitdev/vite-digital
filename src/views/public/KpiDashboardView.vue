@@ -194,7 +194,7 @@
         style="border-radius: 12px; overflow: hidden;"
       >
         <h2 class="accordion-header" :id="'heading' + category.id">
-          <button class="accordion-button" :class="{ 'collapsed': catIndex !== 0 }" type="button" data-bs-toggle="collapse" :data-bs-target="'#collapse' + category.id" :aria-expanded="catIndex === 0 ? 'true' : 'false'" :aria-controls="'collapse' + category.id" style="background-color: white; box-shadow: none;">
+          <button class="accordion-button" :class="{ 'collapsed': !openCategoryIds.includes(category.id) }" type="button" @click="toggleCategory(category.id)" style="background-color: white; box-shadow: none;">
             <h4 class="mb-0 text-dark fw-bold border-start border-4 border-primary ps-3">
               {{ category.name }}
               <span class="text-muted fs-6 fw-normal">({{ category.description }})</span>
@@ -202,7 +202,7 @@
             </h4>
           </button>
         </h2>
-        <div :id="'collapse' + category.id" class="accordion-collapse collapse" :class="{ 'show': catIndex === 0 }" :aria-labelledby="'heading' + category.id">
+        <div :id="'collapse' + category.id" class="accordion-collapse collapse" :class="{ 'show': openCategoryIds.includes(category.id) }" :style="openCategoryIds.includes(category.id) ? 'display: block;' : 'display: none;'" :aria-labelledby="'heading' + category.id">
           <div class="accordion-body p-4" style="background-color: #eef2f6;">
             <div class="row g-4">
             <div class="col-12 col-md-6 col-xl-3" v-for="kpi in category.kpis" :key="kpi.id">
@@ -617,6 +617,7 @@ export default {
   },
   data() {
     return {
+      openCategoryIds: [],
       loading: true,
       categories: [],
       selectedKpi: null,
@@ -937,17 +938,25 @@ export default {
     getFormattedLevelCodes(kpi) {
       if (!kpi.level_codes) return [];
       try {
-        const parsed = JSON.parse(kpi.level_codes);
+        const parsed = typeof kpi.level_codes === 'string' ? JSON.parse(kpi.level_codes) : kpi.level_codes;
         const codes = [];
         for (const [lvlId, code] of Object.entries(parsed)) {
-          if (code) {
+          if (code && String(code).trim() !== '') {
              const lvlName = this.getLevelName(lvlId) || `ระดับ ${lvlId}`;
-             codes.push({ name: lvlName, code: code });
+             codes.push({ id: lvlId, name: lvlName, code: code });
           }
         }
         return codes;
       } catch (e) {
         return [];
+      }
+    },
+    toggleCategory(id) {
+      const index = this.openCategoryIds.indexOf(id);
+      if (index > -1) {
+        this.openCategoryIds.splice(index, 1);
+      } else {
+        this.openCategoryIds.push(id);
       }
     },
     toggleAllLevels(e) {
@@ -2165,6 +2174,7 @@ export default {
       data.push([
         'หมวดหมู่ (Dimension)', 
         'รหัส KPI', 
+        'รหัสอ้างอิง',
         'ระดับ', 
         'ชื่อตัวชี้วัด', 
         'ผู้รับผิดชอบ', 
@@ -2184,10 +2194,28 @@ export default {
             const targetStr = `${kpi.target_operator || ''} ${kpi.target_value || ''} ${kpi.unit || ''}`.trim();
             const actualStr = kpi.actual_value !== null ? kpi.actual_value : 'รอการบันทึก';
 
+            const levelCodesArr = this.getFormattedLevelCodes(kpi);
+            let filteredLevelCodesArr = levelCodesArr;
+            if (this.selectedLevels && this.selectedLevels.length > 0) {
+              filteredLevelCodesArr = levelCodesArr.filter(lc => this.selectedLevels.includes(String(lc.id)));
+            } else if (this.searchQuery) {
+              const query = this.searchQuery.toLowerCase();
+              const matchedLevels = levelCodesArr.filter(lc => lc.name.toLowerCase().includes(query));
+              if (matchedLevels.length > 0) {
+                filteredLevelCodesArr = matchedLevels;
+              }
+            }
+            
+            // If there's only one level selected, maybe just output the code? 
+            // Better to keep prefix for clarity, but if they strictly want just the code:
+            // "รหัสอ้างอิงควรออกแต่ kpi-thip" -> meaning it should ONLY output the one for kpi-thip
+            const levelCodesStr = filteredLevelCodesArr.map(lc => `${lc.name}: ${lc.code}`).join(', ');
+
             data.push([
               cat.name || '',
               kpi.code || '-',
-              kpi.kpi_level || '-',
+              levelCodesStr || '-',
+              kpi.kpi_level ? this.getLevelNames(kpi.kpi_level) : '-',
               kpi.name || '',
               kpi.responsible_person || 'ยังไม่ระบุ',
               targetStr,
@@ -2203,6 +2231,7 @@ export default {
       const colWidths = [
         { wch: 30 },
         { wch: 15 },
+        { wch: 30 },
         { wch: 20 },
         { wch: 60 },
         { wch: 25 },

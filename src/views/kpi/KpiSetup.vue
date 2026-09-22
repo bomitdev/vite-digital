@@ -363,17 +363,20 @@
           <table class="table table-hover align-middle mb-0">
             <thead class="calm-bg-lavender calm-text-navy">
               <tr>
-                <th class="py-3 ps-3">Category</th>
+                <th class="py-3 ps-3 text-center" style="width: 50px;">#</th>
+                <th class="py-3">Category</th>
                 <th class="py-3">ชื่อ KPI</th>
                 <th class="py-3">ระดับ</th>
+                <th class="py-3">รหัสอ้างอิง</th>
                 <th class="py-3">Target</th>
                 <th class="py-3">ผู้รับผิดชอบ</th>
                 <th class="py-3 pe-3 text-end">Action</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="kpi in filteredKpis" :key="kpi.id">
-                <td class="ps-3">
+              <tr v-for="(kpi, index) in filteredKpis" :key="kpi.id">
+                <td class="ps-3 text-center text-muted fw-bold">{{ index + 1 }}</td>
+                <td>
                   <span class="badge bg-light text-dark border">{{
                     kpi.category_name || 'Uncategorized'
                   }}</span>
@@ -397,6 +400,9 @@
                 <td>
                   <span class="badge calm-bg-lavender text-dark border" v-if="kpi.kpi_level">{{ getLevelNames(kpi.kpi_level) }}</span>
                   <span class="text-muted small" v-else>-</span>
+                </td>
+                <td>
+                  <div class="small text-muted" v-html="formatLevelCodes(kpi.level_codes)"></div>
                 </td>
                 <td>
                   <span class="fw-bold calm-text-navy"
@@ -650,6 +656,21 @@ export default {
       if (!this.masterData.levels) return id;
       const level = this.masterData.levels.find(l => String(l.id) === String(id));
       return level ? level.name : id;
+    },
+    formatLevelCodes(levelCodes) {
+      if (!levelCodes) return '-';
+      try {
+        const parsed = typeof levelCodes === 'string' ? JSON.parse(levelCodes) : levelCodes;
+        const codes = [];
+        for (const [key, value] of Object.entries(parsed)) {
+          if (value && String(value).trim() !== '') {
+            codes.push(`<b>${this.getLevelNameById(key)}:</b> ${value}`);
+          }
+        }
+        return codes.length > 0 ? codes.join('<br>') : '-';
+      } catch (e) {
+        return levelCodes;
+      }
     },
     isMyKpi(kpi) {
       if (!kpi || !this.userFullname) return false;
