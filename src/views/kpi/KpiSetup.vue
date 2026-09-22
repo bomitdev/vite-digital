@@ -401,6 +401,12 @@
               {{ l.name }}
             </option>
           </select>
+          <select class="form-select bg-light" style="min-width: 150px; max-width: 180px;" v-model="selectedUnitFilter">
+            <option value="">-- ทุกหน่วยงาน --</option>
+            <option v-for="unit in availableUnits" :key="unit" :value="unit">
+              {{ unit }}
+            </option>
+          </select>
           <select class="form-select bg-light" style="min-width: 150px; max-width: 180px;" v-model="selectedCategoryFilter">
             <option value="">-- ทุกหมวดหมู่ --</option>
             <option v-for="cat in masterData.categories" :key="cat.id" :value="cat.id">
@@ -608,6 +614,7 @@ export default {
       selectedCategoryFilter: '',
       selectedLevelFilter: '',
       selectedYearFilter: '',
+      selectedUnitFilter: '',
       form: {
         id: null,
         kpi_code: '',
@@ -698,6 +705,19 @@ export default {
         this.userAccess.includes('menu_kpi_admin')
       );
     },
+    availableUnits() {
+      const units = new Set();
+      this.kpis.forEach(kpi => {
+        if (kpi.responsible_unit) {
+          const parts = kpi.responsible_unit.split(',');
+          parts.forEach(p => {
+            const trimmed = p.trim();
+            if (trimmed) units.add(trimmed);
+          });
+        }
+      });
+      return Array.from(units).sort();
+    },
     filteredKpis() {
       let baseList = this.isAdmin 
         ? this.kpis 
@@ -709,6 +729,14 @@ export default {
       
       if (this.selectedCategoryFilter) {
         baseList = baseList.filter(kpi => kpi.category_id == this.selectedCategoryFilter);
+      }
+
+      if (this.selectedUnitFilter) {
+        baseList = baseList.filter(kpi => {
+          if (!kpi.responsible_unit) return false;
+          const units = kpi.responsible_unit.split(',').map(u => u.trim());
+          return units.includes(this.selectedUnitFilter);
+        });
       }
 
       if (this.selectedLevelFilter) {

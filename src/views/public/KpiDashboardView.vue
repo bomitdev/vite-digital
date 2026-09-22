@@ -147,6 +147,32 @@
             </div>
           </div>
         </div>
+        <div class="dropdown" v-if="availableUnits.length > 0">
+          <button class="btn btn-white border shadow-sm dropdown-toggle text-start" type="button" @click="isUnitDropdownOpen = !isUnitDropdownOpen" style="min-width: 180px; background-color: #fff; position: relative; z-index: 1050;">
+            <span v-if="selectedUnits.length === 0" class="text-dark">ทุกหน่วยงาน (All Units)</span>
+            <span v-else-if="selectedUnits.length === 1" class="text-dark">{{ selectedUnits[0] }}</span>
+            <span v-else class="text-dark">เลือกแล้ว {{ selectedUnits.length }} หน่วยงาน</span>
+          </button>
+          
+          <!-- Click away backdrop -->
+          <div v-if="isUnitDropdownOpen" @click="isUnitDropdownOpen = false" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1040;"></div>
+          
+          <div class="dropdown-menu shadow p-2" :class="{ 'show': isUnitDropdownOpen }" style="max-height: 300px; overflow-y: auto; min-width: 200px; position: absolute; top: 100%; left: 0; z-index: 1050;">
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="unit_all" :checked="selectedUnits.length === 0" @change="toggleAllUnits">
+              <label class="form-check-label fw-bold text-primary" for="unit_all">
+                ทุกหน่วยงาน (All Units)
+              </label>
+            </div>
+            <hr class="dropdown-divider">
+            <div class="form-check mb-1" v-for="unit in availableUnits" :key="unit">
+              <input class="form-check-input" type="checkbox" :id="'unit_' + unit" :value="unit" v-model="selectedUnits">
+              <label class="form-check-label" :for="'unit_' + unit">
+                {{ unit }}
+              </label>
+            </div>
+          </div>
+        </div>
         <select class="form-select w-auto shadow-sm" v-model="selectedFrequency" v-if="availableFrequencies.length > 0">
           <option value="">ความถี่ (All Freq)</option>
           <option v-for="freq in availableFrequencies" :key="freq" :value="freq">{{ getFrequencyLabel(freq) }}</option>
@@ -637,8 +663,10 @@ export default {
       analysisText: '',
       savingAnalysis: false,
       isLevelDropdownOpen: false,
+      isUnitDropdownOpen: false,
       isExportDropdownOpen: false,
       selectedLevels: [],
+      selectedUnits: [],
       selectedFrequency: '',
       userDepartment: '',
       userFullname: '',
@@ -738,6 +766,21 @@ export default {
         result = result.map(cat => {
           if (!cat.kpis) return cat;
           return { ...cat, kpis: cat.kpis.filter(kpi => kpi.kpi_periodicity === this.selectedFrequency) };
+        });
+      }
+
+      // Filter by selected unit
+      if (this.selectedUnits && this.selectedUnits.length > 0) {
+        result = result.map(cat => {
+          if (!cat.kpis) return cat;
+          return { 
+            ...cat, 
+            kpis: cat.kpis.filter(kpi => {
+              if (!kpi.responsible_unit) return false;
+              const units = kpi.responsible_unit.split(',').map(u => u.trim());
+              return units.some(u => this.selectedUnits.includes(u));
+            }) 
+          };
         });
       }
 
@@ -858,6 +901,23 @@ export default {
       });
       return Array.from(freqs);
     },
+    availableUnits() {
+      const units = new Set();
+      this.baseCategories.forEach(cat => {
+        if (cat.kpis) {
+          cat.kpis.forEach(kpi => {
+            if (kpi.responsible_unit) {
+              const parts = kpi.responsible_unit.split(',');
+              parts.forEach(p => {
+                const trimmed = p.trim();
+                if (trimmed) units.add(trimmed);
+              });
+            }
+          });
+        }
+      });
+      return Array.from(units).sort();
+    },
     doughnutChartData() {
       return {
         labels: ['Passed', 'Failed', 'No Data'],
@@ -963,6 +1023,11 @@ export default {
     toggleAllLevels(e) {
       if (e.target.checked) {
         this.selectedLevels = [];
+      }
+    },
+    toggleAllUnits(e) {
+      if (e.target.checked) {
+        this.selectedUnits = [];
       }
     },
     getFrequencyBlocks(kpi) {
