@@ -13,20 +13,20 @@
           >
             <i class="bi bi-plus-circle-fill me-1"></i> เพิ่มตัวชี้วัดใหม่
           </button>
-          <button
+          <!-- <button
             class="btn calm-btn-secondary rounded-pill px-3 fw-bold me-2"
             @click="downloadTemplate"
             v-if="isAdmin"
           >
             <i class="bi bi-download me-1"></i> โหลด Template
-          </button>
-          <button
+          </button> -->
+          <!-- <button
             class="btn calm-btn-secondary rounded-pill px-3 fw-bold me-2"
             @click="$refs.fileInput.click()"
             v-if="isAdmin"
           >
             <i class="bi bi-file-earmark-excel-fill me-1"></i> นำเข้าไฟล์ KPI
-          </button>
+          </button> -->
           <button
             class="btn btn-outline-success rounded-pill px-3 fw-bold me-2"
             @click="downloadResultTemplate"
@@ -325,6 +325,65 @@
     </div>
   </div>
 
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4" v-if="kpis.length > 0">
+      <div class="col-md-4">
+        <div class="card bg-white shadow-sm border-0 border-start border-4 border-primary rounded-3 h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-circle me-3">
+                <i class="bi bi-bar-chart-fill fs-4"></i>
+              </div>
+              <div>
+                <p class="text-muted mb-0 small fw-bold">จำนวนตัวชี้วัดทั้งหมด</p>
+                <h3 class="mb-0 fw-bold text-dark">{{ filteredKpis.length }} <span class="fs-6 text-muted fw-normal">รายการ</span></h3>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card bg-white shadow-sm border-0 border-start border-4 border-success rounded-3 h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-success bg-opacity-10 text-success p-3 rounded-circle me-3">
+                <i class="bi bi-tags-fill fs-4"></i>
+              </div>
+              <div>
+                <p class="text-muted mb-0 small fw-bold">จำนวนหมวดหมู่</p>
+                <h3 class="mb-0 fw-bold text-dark">{{ summaryCategoriesCount }} <span class="fs-6 text-muted fw-normal">หมวดหมู่</span></h3>
+              </div>
+            </div>
+            <div class="d-flex flex-wrap gap-1 mt-auto">
+              <span v-for="item in summaryCategoryBreakdown" :key="item.name" class="badge bg-light text-dark border fw-normal" style="font-size: 0.75rem;">
+                {{ item.name }}: <strong class="text-success">{{ item.count }}</strong>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card bg-white shadow-sm border-0 border-start border-4 border-info rounded-3 h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-info bg-opacity-10 text-info p-3 rounded-circle me-3">
+                <i class="bi bi-diagram-3-fill fs-4"></i>
+              </div>
+              <div>
+                <p class="text-muted mb-0 small fw-bold">จำนวนระดับ (Levels)</p>
+                <h3 class="mb-0 fw-bold text-dark">{{ summaryLevelsCount }} <span class="fs-6 text-muted fw-normal">ระดับ</span></h3>
+              </div>
+            </div>
+            <div class="d-flex flex-wrap gap-1 mt-auto">
+              <span v-for="item in summaryLevelBreakdown" :key="item.name" class="badge bg-light text-dark border fw-normal" style="font-size: 0.75rem;">
+                {{ item.name }}: <strong class="text-info">{{ item.count }}</strong>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ตารางข้อมูล KPI -->
     <div class="card calm-card" v-if="kpis.length > 0">
       <div class="card-header calm-bg-lavender py-3 border-bottom-0 d-flex justify-content-between align-items-center flex-wrap gap-2 calm-card">
@@ -350,7 +409,7 @@
           </select>
           <div class="input-group" style="min-width: 250px; max-width: 300px;">
             <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
-            <input type="text" class="form-control border-start-0 ps-0 bg-light" placeholder="ค้นหา KPI, รหัส, ผู้รับผิดชอบ..." v-model="searchQuery">
+            <input type="text" class="form-control border-start-0 ps-0 bg-light" placeholder="ค้นหา KPI, รหัส, ผู้รับผิดชอบ, หน่วยงาน..." v-model="searchQuery">
           </div>
           <button class="btn btn-warning fw-bold text-dark" style="white-space: nowrap;" @click="sendBulkNotification" :disabled="isBulkNotifying || filteredKpis.length === 0" v-if="isAdmin">
             <i class="bi" :class="isBulkNotifying ? 'bi-hourglass-split' : 'bi-bell-fill'"></i> 
@@ -591,6 +650,48 @@ export default {
       const query = this.staffInput.toLowerCase();
       return this.staffList.filter((staff) => staff.FULLNAME.toLowerCase().includes(query));
     },
+    summaryCategoriesCount() {
+      const cats = new Set();
+      this.filteredKpis.forEach(k => {
+        if (k.category_id) cats.add(k.category_id);
+      });
+      return cats.size;
+    },
+    summaryCategoryBreakdown() {
+      const map = {};
+      this.filteredKpis.forEach(k => {
+        const catName = k.category_name || 'Uncategorized';
+        map[catName] = (map[catName] || 0) + 1;
+      });
+      return Object.entries(map).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+    },
+    summaryLevelsCount() {
+      const levels = new Set();
+      this.filteredKpis.forEach(k => {
+        if (k.kpi_level) {
+          const ids = k.kpi_level.split(',').map(s => s.trim());
+          ids.forEach(id => {
+            if (id) levels.add(id);
+          });
+        }
+      });
+      return levels.size;
+    },
+    summaryLevelBreakdown() {
+      const map = {};
+      this.filteredKpis.forEach(k => {
+        if (k.kpi_level) {
+          const ids = k.kpi_level.split(',').map(s => s.trim());
+          ids.forEach(id => {
+            if (id) {
+              const lvlName = this.getLevelNameById(id);
+              map[lvlName] = (map[lvlName] || 0) + 1;
+            }
+          });
+        }
+      });
+      return Object.entries(map).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+    },
     isAdmin() {
       return (
         this.userAccess.includes('administrator') ||
@@ -628,7 +729,8 @@ export default {
           const name = kpi.name ? kpi.name.toLowerCase() : '';
           const code = kpi.code ? kpi.code.toLowerCase() : '';
           const person = kpi.responsible_person ? kpi.responsible_person.toLowerCase() : '';
-          return name.includes(query) || code.includes(query) || person.includes(query);
+          const unit = kpi.responsible_unit ? kpi.responsible_unit.toLowerCase() : '';
+          return name.includes(query) || code.includes(query) || person.includes(query) || unit.includes(query);
         });
       }
 

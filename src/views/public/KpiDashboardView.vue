@@ -117,7 +117,7 @@
           <input
             type="text"
             class="form-control border-start-0 ps-0"
-            placeholder="ค้นหา KPI หรือ ผู้รับผิดชอบ..."
+            placeholder="ค้นหา KPI, ผู้รับผิดชอบ, หน่วยงาน..."
             v-model="searchQuery"
           />
         </div>
@@ -750,10 +750,11 @@ export default {
             const name = kpi.name ? kpi.name.toLowerCase() : '';
             const code = kpi.code ? kpi.code.toLowerCase() : '';
             const person = kpi.responsible_person ? kpi.responsible_person.toLowerCase() : '';
+            const unit = kpi.responsible_unit ? kpi.responsible_unit.toLowerCase() : '';
             const desc = kpi.description ? kpi.description.toLowerCase() : '';
             const level = kpi.kpi_level ? kpi.kpi_level.toLowerCase() : '';
             const level_codes = kpi.level_codes ? kpi.level_codes.toLowerCase() : '';
-            return name.includes(query) || code.includes(query) || person.includes(query) || desc.includes(query) || level.includes(query) || level_codes.includes(query);
+            return name.includes(query) || code.includes(query) || person.includes(query) || unit.includes(query) || desc.includes(query) || level.includes(query) || level_codes.includes(query);
           });
           return { ...cat, kpis: matchedKpis };
         });
