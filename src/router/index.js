@@ -55,6 +55,7 @@ const routes = [
   { path: '/kpi-setup', component: () => import('../views/kpi/KpiSetup.vue'), meta: { requiresAuth: true } },
   { path: '/kpi-result', component: () => import('../views/kpi/KpiResult.vue'), meta: { requiresAuth: true } },
   { path: '/qi-committees', component: () => import('../views/kpi/QiCommittees.vue'), meta: { requiresAuth: true } },
+  { path: '/qi-dashboard', component: () => import('../views/kpi/QiDashboard.vue'), meta: { requiresAuth: true } },
 
   { path: '/login', component: () => import('../views/auth/LoginView.vue'), meta: { hideNavbar: true } },
 
@@ -150,6 +151,12 @@ const routes = [
   {
     path: '/room-schedule',
     component: () => import('../views/digital/room/RoomCalendar.vue')
+  },
+
+  // Meeting Schedule
+  {
+    path: '/meeting-summary',
+    component: () => import('../views/digital/meeting/MeetingSummaryCalendar.vue')
   },
 
 

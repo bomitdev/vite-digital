@@ -13,6 +13,8 @@ require __DIR__ . '/../../config.php';
 
 try {
     $sql = "SELECT k.*, 
+                   COALESCE(kt.budget_year, k.fiscal_year) as fiscal_year,
+                   COALESCE(kt.target_value, k.target_value) as target_value,
                    c.name as category_name,
                    l.name as kpi_level_name,
                    p.code as periodicity_code,
@@ -21,6 +23,7 @@ try {
                    ct.code as calc_type_code,
                    ct.name as calc_type_name
             FROM kpi_definitions k 
+            LEFT JOIN kpi_targets kt ON k.id = kt.kpi_id
             LEFT JOIN kpi_categories c ON k.category_id = c.id 
             LEFT JOIN kpi_levels l ON k.kpi_level_id = l.id
             LEFT JOIN kpi_periodicities p ON k.kpi_periodicity_id = p.id

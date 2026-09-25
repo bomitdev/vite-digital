@@ -90,11 +90,20 @@ try {
         throw new Exception("Missing value data");
     }
 
-    // Get current target snapshot
-    $stmt = $pdo2->prepare("SELECT target_value FROM kpi_definitions WHERE id = ?");
-    $stmt->execute([$data['kpi_id']]);
-    $kpi = $stmt->fetch();
-    $targetSnapshot = $kpi ? $kpi['target_value'] : 0;
+    // Get current target snapshot based on year
+    $yearThai = intval($data['year_thai']);
+    $stmt = $pdo2->prepare("SELECT target_value FROM kpi_targets WHERE kpi_id = ? AND budget_year = ?");
+    $stmt->execute([$data['kpi_id'], $yearThai]);
+    $kpiTarget = $stmt->fetch();
+    
+    if ($kpiTarget) {
+        $targetSnapshot = $kpiTarget['target_value'];
+    } else {
+        $stmt = $pdo2->prepare("SELECT target_value FROM kpi_definitions WHERE id = ?");
+        $stmt->execute([$data['kpi_id']]);
+        $kpi = $stmt->fetch();
+        $targetSnapshot = $kpi ? $kpi['target_value'] : 0;
+    }
 
     $sql = "INSERT INTO kpi_entries (kpi_id, period_date, actual_value, target_value_snapshot) 
             VALUES (:kpi_id, :period_date, :actual, :target)

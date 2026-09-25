@@ -29,19 +29,32 @@
         </div>
 
         <div v-else class="table-responsive">
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <div class="input-group shadow-sm">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" class="form-control border-start-0" placeholder="ค้นหารายงาน..." v-model="searchQuery">
+              </div>
+            </div>
+          </div>
           <table class="table table-hover align-middle">
             <thead class="table-light">
               <tr>
                 <th scope="col">Title</th>
                 <th scope="col">Description</th>
+                <th scope="col">แผนก</th>
                 <th scope="col">DB Connection</th>
                 <th scope="col" style="width: 150px">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="report in reports" :key="report.id">
+              <tr v-for="report in filteredReports" :key="report.id">
                 <td class="fw-bold">{{ report.title }}</td>
                 <td>{{ report.description }}</td>
+                <td>
+                  <span class="badge bg-secondary rounded-pill" v-if="!report.department_id">ทั่วไป</span>
+                  <span class="badge bg-primary rounded-pill" v-else>{{ getDepartmentName(report.department_id) }}</span>
+                </td>
                 <td>
                   <span class="badge bg-info text-dark">DB{{ report.db_connection }}</span>
                 </td>
@@ -54,8 +67,8 @@
                   </button>
                 </td>
               </tr>
-              <tr v-if="reports.length === 0">
-                <td colspan="4" class="text-center text-muted py-4">ไม่พบรายงาน</td>
+              <tr v-if="filteredReports.length === 0">
+                <td colspan="5" class="text-center text-muted py-4">ไม่พบรายงาน</td>
               </tr>
             </tbody>
           </table>
@@ -244,6 +257,23 @@ const departments = ref([]);
 const loading = ref(false);
 const showModal = ref(false);
 const isEdit = ref(false);
+const searchQuery = ref('');
+
+const getDepartmentName = (deptId) => {
+  if (!deptId) return 'ทั่วไป';
+  const dept = departments.value.find(d => String(d.HR_DEPARTMENT_SUB_ID) === String(deptId));
+  return dept ? dept.HR_DEPARTMENT_SUB_NAME : 'ทั่วไป';
+};
+
+const filteredReports = computed(() => {
+  if (!searchQuery.value) return reports.value;
+  const q = searchQuery.value.toLowerCase();
+  return reports.value.filter(r => 
+    (r.title && r.title.toLowerCase().includes(q)) || 
+    (r.description && r.description.toLowerCase().includes(q)) ||
+    (getDepartmentName(r.department_id).toLowerCase().includes(q))
+  );
+});
 
 const form = ref({
   id: null,

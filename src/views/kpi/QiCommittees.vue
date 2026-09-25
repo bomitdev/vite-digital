@@ -1,9 +1,12 @@
 <template>
-  <div class="container mt-5">
+  <div class="container-fluid mt-5 px-4">
     <div class="card calm-card mb-4">
       <div class="card-header calm-bg-lavender calm-text-navy py-3 d-flex justify-content-between align-items-center border-bottom-0">
         <h4 class="mb-0 fw-bold">คณะกรรมการพัฒนาคุณภาพโรงพยาบาล (HA)</h4>
         <div>
+          <button class="btn btn-warning rounded-pill px-3 fw-bold me-2" @click="$router.push('/qi-dashboard')">
+            <i class="bi bi-speedometer2 me-1"></i> Dashboard ความก้าวหน้า
+          </button>
           <button class="btn btn-danger rounded-pill px-3 fw-bold me-2" @click="generatePdf" :disabled="generatingPdf">
             <span v-if="generatingPdf" class="spinner-border spinner-border-sm me-1"></span>
             <i class="bi bi-file-earmark-pdf-fill me-1" v-else></i> สร้างคำสั่งแต่งตั้ง (PDF)
@@ -17,7 +20,7 @@
 
     <div class="row">
       <!-- Sidebar / Tabs for Committees -->
-      <div class="col-md-3 mb-4">
+      <div class="col-md-2 mb-4">
         <div class="list-group calm-card shadow-sm">
           <button 
             v-for="team in committees" 
@@ -38,67 +41,159 @@
       </div>
 
       <!-- Main Content for Selected Committee -->
-      <div class="col-md-9">
+      <div class="col-md-10">
         <div class="card calm-card shadow-sm h-100" v-if="selectedTeam">
-          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
-            <h5 class="mb-0 fw-bold text-primary">รายชื่อคณะกรรมการ: {{ selectedTeam.name }}</h5>
-            <button class="btn btn-success fw-bold rounded-pill px-3" @click="openAddModal">
-              <i class="bi bi-person-plus-fill me-1"></i> เพิ่มรายชื่อ
-            </button>
-          </div>
-          <div class="card-body p-0 border-bottom">
-            <div class="table-responsive">
-              <table class="table table-hover align-middle mb-0">
-                <thead class="calm-bg-lavender calm-text-navy">
-                  <tr>
-                    <th class="ps-4 py-3" style="width: 50px;">#</th>
-                    <th class="py-3">ชื่อ-นามสกุล</th>
-                    <th class="py-3">บทบาท</th>
-                    <th class="py-3 text-end pe-4">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-if="members.length === 0">
-                    <td colspan="4" class="text-center py-5 text-muted">
-                      <i class="bi bi-person-x fs-1 d-block mb-2"></i>
-                      ยังไม่มีรายชื่อในทีมนี้
-                    </td>
-                  </tr>
-                  <tr v-for="(member, index) in members" :key="member.id">
-                    <td class="ps-4">{{ index + 1 }}</td>
-                    <td class="fw-bold">{{ member.officer_name }}</td>
-                    <td>
-                      <span class="badge" :class="getRoleBadgeClass(member.role)">
-                        {{ member.role }}
-                      </span>
-                    </td>
-                    <td class="text-end pe-4">
-                      <button class="btn btn-sm btn-outline-warning me-2" @click="openEditModal(member)">
-                        <i class="bi bi-pencil-square"></i> แก้ไข
-                      </button>
-                      <button class="btn btn-sm btn-outline-danger" @click="removeMember(member.id, member.officer_name)">
-                        <i class="bi bi-trash-fill"></i> ลบ
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+          <div class="card-header bg-white py-2 border-bottom">
+            <ul class="nav nav-tabs card-header-tabs m-0">
+              <li class="nav-item">
+                <a class="nav-link fw-bold" :class="{ 'active text-primary': activeTab === 'members', 'text-muted': activeTab !== 'members' }" href="#" @click.prevent="activeTab = 'members'">
+                  <i class="bi bi-people-fill me-1"></i> รายชื่อคณะกรรมการ
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link fw-bold" :class="{ 'active text-primary': activeTab === 'plans', 'text-muted': activeTab !== 'plans' }" href="#" @click.prevent="activeTab = 'plans'">
+                  <i class="bi bi-journal-text me-1"></i> แผนพัฒนาคุณภาพ (ข้อเสนอแนะ)
+                </a>
+              </li>
+            </ul>
           </div>
           
-          <!-- Moved description block here -->
-          <div class="card-body p-4 bg-light mt-auto rounded-bottom">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h6 class="fw-bold text-dark m-0"><i class="bi bi-card-text text-primary me-2"></i>บทบาทหน้าที่ (Roles and Responsibilities)</h6>
-              <button class="btn btn-sm btn-outline-primary rounded-pill px-3" @click="openEditDescriptionModal">
-                <i class="bi bi-pencil-square"></i> แก้ไขบทบาทหน้าที่
+          <!-- Members Tab -->
+          <div v-if="activeTab === 'members'" class="d-flex flex-column h-100">
+            <div class="p-3 d-flex justify-content-between align-items-center border-bottom">
+              <h5 class="mb-0 fw-bold text-primary">ทีม: {{ selectedTeam.name }}</h5>
+              <button class="btn btn-success fw-bold rounded-pill px-3" @click="openAddModal">
+                <i class="bi bi-person-plus-fill me-1"></i> เพิ่มรายชื่อ
               </button>
             </div>
-            <div class="p-3 bg-white rounded border shadow-sm text-dark" style="white-space: pre-wrap; font-size: 0.95rem; min-height: 80px;" v-if="selectedTeam.description">
-              {{ selectedTeam.description }}
+            <div class="card-body p-0 border-bottom">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="calm-bg-lavender calm-text-navy">
+                    <tr>
+                      <th class="ps-4 py-3" style="width: 50px;">#</th>
+                      <th class="py-3">ชื่อ-นามสกุล</th>
+                      <th class="py-3">บทบาท</th>
+                      <th class="py-3 text-end pe-4">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-if="members.length === 0">
+                      <td colspan="4" class="text-center py-5 text-muted">
+                        <i class="bi bi-person-x fs-1 d-block mb-2"></i>
+                        ยังไม่มีรายชื่อในทีมนี้
+                      </td>
+                    </tr>
+                    <tr v-for="(member, index) in members" :key="member.id">
+                      <td class="ps-4">{{ index + 1 }}</td>
+                      <td class="fw-bold">{{ member.officer_name }}</td>
+                      <td>
+                        <span class="badge" :class="getRoleBadgeClass(member.role)">
+                          {{ member.role }}
+                        </span>
+                      </td>
+                      <td class="text-end pe-4">
+                        <button class="btn btn-sm btn-outline-warning me-2" @click="openEditModal(member)">
+                          <i class="bi bi-pencil-square"></i> แก้ไข
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" @click="removeMember(member.id, member.officer_name)">
+                          <i class="bi bi-trash-fill"></i> ลบ
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div class="p-3 bg-white rounded border shadow-sm text-muted fst-italic text-center py-4" v-else>
-              ยังไม่มีข้อมูลบทบาทหน้าที่ของคณะกรรมการชุดนี้
+            
+            <div class="card-body p-4 bg-light mt-auto rounded-bottom">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold text-dark m-0"><i class="bi bi-card-text text-primary me-2"></i>บทบาทหน้าที่ (Roles and Responsibilities)</h6>
+                <button class="btn btn-sm btn-outline-primary rounded-pill px-3" @click="openEditDescriptionModal">
+                  <i class="bi bi-pencil-square"></i> แก้ไขบทบาทหน้าที่
+                </button>
+              </div>
+              <div class="p-3 bg-white rounded border shadow-sm text-dark" style="white-space: pre-wrap; font-size: 0.95rem; min-height: 80px;" v-if="selectedTeam.description">
+                {{ selectedTeam.description }}
+              </div>
+              <div class="p-3 bg-white rounded border shadow-sm text-muted fst-italic text-center py-4" v-else>
+                ยังไม่มีข้อมูลบทบาทหน้าที่ของคณะกรรมการชุดนี้
+              </div>
+            </div>
+          </div>
+
+          <!-- Plans Tab -->
+          <div v-if="activeTab === 'plans'" class="d-flex flex-column h-100">
+            <div class="p-3 d-flex justify-content-between align-items-center border-bottom">
+              <h5 class="mb-0 fw-bold text-primary">แผนพัฒนาคุณภาพตามข้อเสนอแนะ: {{ selectedTeam.name }}</h5>
+              <button class="btn btn-success fw-bold rounded-pill px-3" @click="openPlanModal()">
+                <i class="bi bi-plus-circle-fill me-1"></i> เพิ่มแผนพัฒนา
+              </button>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive" style="max-height: 700px;">
+                <table class="table table-bordered table-hover align-middle mb-0" style="min-width: 1500px; font-size: 0.85rem;">
+                  <thead class="calm-bg-lavender calm-text-navy text-center align-middle sticky-top">
+                    <tr>
+                      <th rowspan="2" style="width: 40px;">#</th>
+                      <th rowspan="2" style="width: 100px;">มาตรฐาน</th>
+                      <th rowspan="2" style="width: 250px;">ข้อเสนอแนะ</th>
+                      <th rowspan="2" style="width: 250px;">แผนพัฒนาคุณภาพ</th>
+                      <th colspan="4">ระยะเวลาดำเนินการ</th>
+                      <th rowspan="2" style="width: 150px;">ตัวชี้วัด</th>
+                      <th rowspan="2" style="width: 100px;">เป้าหมาย</th>
+                      <th rowspan="2" style="width: 120px;">ผู้รับผิดชอบ</th>
+                      <th rowspan="2" style="width: 100px;">ระยะเวลาการติดตาม</th>
+                      <th colspan="4">ผลการดำเนินงาน</th>
+                      <th rowspan="2" style="width: 100px;">จัดการ</th>
+                    </tr>
+                    <tr>
+                      <th style="width: 70px;">ปี 2568</th>
+                      <th style="width: 70px;">ปี 2569</th>
+                      <th style="width: 70px;">ปี 2570</th>
+                      <th style="width: 70px;">ปี 2571</th>
+                      <th style="width: 70px;">ปี 2568</th>
+                      <th style="width: 70px;">ปี 2569</th>
+                      <th style="width: 70px;">ปี 2570</th>
+                      <th style="width: 70px;">ปี 2571</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-if="plans.length === 0">
+                      <td colspan="17" class="text-center py-5 text-muted">
+                        <i class="bi bi-journal-x fs-1 d-block mb-2"></i>
+                        ยังไม่มีข้อมูลแผนพัฒนาคุณภาพ
+                      </td>
+                    </tr>
+                    <tr v-for="(plan, index) in plans" :key="plan.id">
+                      <td class="text-center">{{ index + 1 }}</td>
+                      <td>{{ plan.standard }}</td>
+                      <td style="white-space: pre-wrap; background-color: #fdf5e6;">{{ plan.recommendation }}</td>
+                      <td style="white-space: pre-wrap;">{{ plan.plan }}</td>
+                      <td class="text-center">{{ plan.period_2568 }}</td>
+                      <td class="text-center">{{ plan.period_2569 }}</td>
+                      <td class="text-center">{{ plan.period_2570 }}</td>
+                      <td class="text-center">{{ plan.period_2571 }}</td>
+                      <td>{{ plan.indicator }}</td>
+                      <td class="text-center">{{ plan.target }}</td>
+                      <td class="text-center">{{ plan.responsible }}</td>
+                      <td class="text-center">{{ plan.monitoring_period }}</td>
+                      <td class="text-center">{{ plan.result_2568 }}</td>
+                      <td class="text-center">{{ plan.result_2569 }}</td>
+                      <td class="text-center">{{ plan.result_2570 }}</td>
+                      <td class="text-center">{{ plan.result_2571 }}</td>
+                      <td class="text-center">
+                        <button class="btn btn-sm btn-outline-warning mb-1 w-100" @click="openPlanModal(plan)">
+                          <i class="bi bi-pencil-square"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger w-100" @click="deletePlan(plan.id)">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -196,6 +291,103 @@
       </div>
     </div>
 
+    <!-- Plan Modal (Add/Edit) -->
+    <div class="modal fade" id="planModal" tabindex="-1" ref="planModal">
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content calm-card">
+          <div class="modal-header calm-bg-lavender calm-text-navy border-0">
+            <h5 class="modal-title fw-bold" v-if="!planForm.id">เพิ่มแผนพัฒนาคุณภาพ {{ selectedTeam?.name }}</h5>
+            <h5 class="modal-title fw-bold" v-else>แก้ไขแผนพัฒนาคุณภาพ</h5>
+            <button type="button" class="btn-close" @click="closePlanModal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <form @submit.prevent="submitPlan">
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <label class="form-label fw-bold">มาตรฐาน</label>
+                  <input type="text" class="form-control" v-model="planForm.standard">
+                </div>
+                <div class="col-md-9">
+                  <label class="form-label fw-bold">ตัวชี้วัด</label>
+                  <input type="text" class="form-control" v-model="planForm.indicator">
+                </div>
+                
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">ข้อเสนอแนะ</label>
+                  <textarea class="form-control" rows="4" v-model="planForm.recommendation" style="background-color: #fdf5e6;"></textarea>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">แผนพัฒนาคุณภาพ</label>
+                  <textarea class="form-control" rows="4" v-model="planForm.plan"></textarea>
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label fw-bold">เป้าหมาย</label>
+                  <input type="text" class="form-control" v-model="planForm.target">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-bold">ผู้รับผิดชอบ</label>
+                  <input type="text" class="form-control" v-model="planForm.responsible">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-bold">ระยะเวลาการติดตาม</label>
+                  <input type="text" class="form-control" v-model="planForm.monitoring_period" placeholder="เช่น ทุก 1 เดือน">
+                </div>
+              </div>
+
+              <hr class="my-4">
+              <h6 class="fw-bold text-primary mb-3">ระยะเวลาดำเนินการ</h6>
+              <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                  <label class="form-label small text-muted">ปี 2568</label>
+                  <input type="text" class="form-control form-control-sm" v-model="planForm.period_2568" placeholder="เช่น พ.ค. - ก.ย. 68">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small text-muted">ปี 2569</label>
+                  <input type="text" class="form-control form-control-sm" v-model="planForm.period_2569">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small text-muted">ปี 2570</label>
+                  <input type="text" class="form-control form-control-sm" v-model="planForm.period_2570">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small text-muted">ปี 2571</label>
+                  <input type="text" class="form-control form-control-sm" v-model="planForm.period_2571">
+                </div>
+              </div>
+
+              <h6 class="fw-bold text-success mb-3">ผลการดำเนินงาน</h6>
+              <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                  <label class="form-label small text-muted">ปี 2568</label>
+                  <input type="text" class="form-control form-control-sm" v-model="planForm.result_2568">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small text-muted">ปี 2569</label>
+                  <input type="text" class="form-control form-control-sm" v-model="planForm.result_2569">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small text-muted">ปี 2570</label>
+                  <input type="text" class="form-control form-control-sm" v-model="planForm.result_2570">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small text-muted">ปี 2571</label>
+                  <input type="text" class="form-control form-control-sm" v-model="planForm.result_2571">
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-end gap-2 border-top pt-3">
+                <button type="button" class="btn btn-light px-4 rounded-pill" @click="closePlanModal">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary px-4 rounded-pill fw-bold">
+                  <i class="bi bi-save me-1"></i> บันทึกข้อมูล
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- PDF Preview Modal -->
     <div class="modal fade" id="pdfPreviewModal" tabindex="-1" ref="pdfPreviewModal">
       <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -279,10 +471,12 @@ export default {
   name: 'QiCommittees',
   data() {
     return {
+      activeTab: 'plans', // Default to plans per user preference or keep members. Set to plans since they requested it.
       committees: [],
       roles: [],
       selectedTeam: null,
       members: [],
+      plans: [],
       allStaff: [],
       staffSearch: '',
       showStaffDropdown: false,
@@ -291,7 +485,20 @@ export default {
         officer_name: '',
         role: 'กรรมการ'
       },
+      planForm: {
+        id: null,
+        standard: '',
+        recommendation: '',
+        plan: '',
+        indicator: '',
+        target: '',
+        responsible: '',
+        monitoring_period: '',
+        period_2568: '', period_2569: '', period_2570: '', period_2571: '',
+        result_2568: '', result_2569: '', result_2570: '', result_2571: ''
+      },
       addModalInstance: null,
+      planModalInstance: null,
       editDescriptionText: '',
       savingDescription: false,
       editDescModalInstance: null,
@@ -353,10 +560,6 @@ export default {
         const res = await axios.get('/api-digital/qi/get_roles.php');
         if (res.data.status === 'success') {
           this.roles = res.data.data;
-          // Set default role if available
-          if (this.roles.length > 0) {
-            this.form.role = this.roles[this.roles.findIndex(r => r.name === 'กรรมการ') !== -1 ? this.roles.findIndex(r => r.name === 'กรรมการ') : 0].name;
-          }
         }
       } catch (e) {
         console.error(e);
@@ -365,6 +568,7 @@ export default {
     selectTeam(team) {
       this.selectedTeam = team;
       this.fetchMembers();
+      this.fetchPlans();
     },
     async fetchMembers() {
       if (!this.selectedTeam) return;
@@ -377,11 +581,21 @@ export default {
         console.error(e);
       }
     },
+    async fetchPlans() {
+      if (!this.selectedTeam) return;
+      try {
+        const res = await axios.get(`/api-digital/qi/get_plans.php?committee_id=${this.selectedTeam.id}`);
+        if (res.data.status === 'success') {
+          this.plans = res.data.data;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    },
     openAddModal() {
       this.staffSearch = '';
       this.form.id = null;
       this.form.officer_name = '';
-      // Set default role if available
       if (this.roles.length > 0) {
         this.form.role = this.roles[this.roles.findIndex(r => r.name === 'กรรมการ') !== -1 ? this.roles.findIndex(r => r.name === 'กรรมการ') : 0].name;
       } else {
@@ -408,14 +622,12 @@ export default {
     },
     async submitAddMember() {
       if (!this.form.officer_name) return;
-      
       try {
         const payload = {
           committee_id: this.selectedTeam.id,
           officer_name: this.form.officer_name,
           role: this.form.role
         };
-        
         let url = '/api-digital/qi/add_member.php';
         let successMsg = 'เพิ่มรายชื่อสำเร็จ';
         
@@ -426,25 +638,83 @@ export default {
         }
         
         const res = await axios.post(url, payload);
-        
         if (res.data.status === 'success') {
-          Swal.fire({
-            icon: 'success',
-            title: successMsg,
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 1500
-          });
+          Swal.fire({ icon: 'success', title: successMsg, toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
           this.closeAddModal();
           this.fetchMembers();
-          if (!this.form.id) this.fetchCommittees(); // Update count only when adding
+          if (!this.form.id) this.fetchCommittees();
         } else {
           Swal.fire('ข้อผิดพลาด', res.data.message, 'error');
         }
       } catch (e) {
         console.error(e);
         Swal.fire('ข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+      }
+    },
+    openPlanModal(plan = null) {
+      if (plan) {
+        this.planForm = { ...plan };
+      } else {
+        this.planForm = {
+          id: null,
+          standard: '',
+          recommendation: '',
+          plan: '',
+          indicator: '',
+          target: '',
+          responsible: '',
+          monitoring_period: '',
+          period_2568: '', period_2569: '', period_2570: '', period_2571: '',
+          result_2568: '', result_2569: '', result_2570: '', result_2571: ''
+        };
+      }
+      this.planModalInstance.show();
+    },
+    closePlanModal() {
+      this.planModalInstance.hide();
+    },
+    async submitPlan() {
+      try {
+        const payload = { ...this.planForm, committee_id: this.selectedTeam.id };
+        const res = await axios.post('/api-digital/qi/save_plan.php', payload);
+        
+        if (res.data.status === 'success') {
+          Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+          this.closePlanModal();
+          this.fetchPlans();
+        } else {
+          Swal.fire('ข้อผิดพลาด', res.data.message, 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        Swal.fire('ข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+      }
+    },
+    async deletePlan(id) {
+      const confirm = await Swal.fire({
+        title: 'ยืนยันการลบ',
+        text: 'คุณต้องการลบแผนพัฒนานี้หรือไม่?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'ใช่, ลบ',
+        cancelButtonText: 'ยกเลิก'
+      });
+
+      if (confirm.isConfirmed) {
+        try {
+          const res = await axios.post('/api-digital/qi/delete_plan.php', { id });
+          if (res.data.status === 'success') {
+            this.fetchPlans();
+            Swal.fire({ icon: 'success', title: 'ลบสำเร็จ', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+          } else {
+            Swal.fire('ข้อผิดพลาด', res.data.message, 'error');
+          }
+        } catch (e) {
+          console.error(e);
+          Swal.fire('ข้อผิดพลาด', 'ไม่สามารถลบข้อมูลได้', 'error');
+        }
       }
     },
     openEditDescriptionModal() {
@@ -470,7 +740,7 @@ export default {
           this.selectedTeam.description = this.editDescriptionText;
           Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'บันทึกบทบาทหน้าที่เรียบร้อยแล้ว', timer: 1500, showConfirmButton: false });
           this.closeEditDescriptionModal();
-          this.fetchCommittees(); // Refresh main list to persist data
+          this.fetchCommittees();
         } else {
           throw new Error(res.data.message);
         }
@@ -498,7 +768,7 @@ export default {
           const res = await axios.post('/api-digital/qi/remove_member.php', { id });
           if (res.data.status === 'success') {
             this.fetchMembers();
-            this.fetchCommittees(); // Update count
+            this.fetchCommittees();
           } else {
             Swal.fire('ข้อผิดพลาด', res.data.message, 'error');
           }
@@ -509,7 +779,6 @@ export default {
       }
     },
     async generatePdf() {
-      // Step 1: Open the modal and load data
       try {
         Swal.fire({
           title: 'กำลังดึงข้อมูล...',
@@ -522,15 +791,12 @@ export default {
         if (res.data.status !== 'success') throw new Error('ไม่สามารถดึงข้อมูลได้');
         
         this.allTeamsData = res.data.data;
-        
         Swal.close();
 
-        // Show the preview modal
         if (!this.pdfPreviewModalInstance) {
           this.pdfPreviewModalInstance = new Modal(this.$refs.pdfPreviewModal);
         }
         this.pdfPreviewModalInstance.show();
-        
       } catch (err) {
         console.error(err);
         Swal.fire('ข้อผิดพลาด', 'ไม่สามารถโหลดตัวอย่างก่อนพิมพ์ได้: ' + err.message, 'error');
@@ -549,7 +815,6 @@ export default {
           didOpen: () => Swal.showLoading()
         });
 
-        // 2. Generate PDF
         const element = document.getElementById('pdf-container');
         const opt = {
           margin:       0,
@@ -571,7 +836,6 @@ export default {
         this.generatingPdf = false;
       }
     },
-    // Close dropdown when clicking outside
     handleClickOutside(e) {
       if (!e.target.closest('.position-relative')) {
         this.showStaffDropdown = false;
@@ -580,6 +844,7 @@ export default {
   },
   mounted() {
     this.addModalInstance = new Modal(this.$refs.addMemberModal);
+    this.planModalInstance = new Modal(this.$refs.planModal);
     this.fetchCommittees();
     this.fetchRoles();
     this.fetchStaff();
@@ -605,5 +870,14 @@ export default {
   border: none;
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+.nav-tabs .nav-link {
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.75rem 1.5rem;
+}
+.nav-tabs .nav-link.active {
+  border-bottom: 2px solid #0d6efd;
+  background-color: transparent;
 }
 </style>

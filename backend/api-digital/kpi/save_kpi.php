@@ -138,7 +138,25 @@ try {
             ':db_connection' => $data['db_connection'] ?? 1,
             ':level_codes' => $clean_level_codes
         ]);
+        $kpi_id = $pdo2->lastInsertId();
     }
+
+    // Handle target_value and fiscal_year using kpi_targets table
+    $fiscalYear = $data['fiscal_year'] ?? (date('Y') + 543);
+    $targetValue = $data['target_value'] ?? 0;
+    
+    // We update kpi_id if it's an update, else we use the newly inserted ID
+    $target_kpi_id = !empty($data['id']) ? $data['id'] : $kpi_id;
+    
+    $sqlTarget = "INSERT INTO kpi_targets (kpi_id, budget_year, target_value) 
+                  VALUES (:kpi_id, :budget_year, :target_value)
+                  ON DUPLICATE KEY UPDATE target_value = VALUES(target_value)";
+    $stmtTarget = $pdo2->prepare($sqlTarget);
+    $stmtTarget->execute([
+        ':kpi_id' => $target_kpi_id,
+        ':budget_year' => $fiscalYear,
+        ':target_value' => $targetValue
+    ]);
 
     echo json_encode(['status' => 'success']);
 } catch (Exception $e) {

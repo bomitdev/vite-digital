@@ -60,6 +60,11 @@
                   <i class="bi bi-display me-2"></i>ปฏิทินห้องประชุม
                 </RouterLink>
               </li>
+              <li>
+                <RouterLink class="dropdown-item" to="/meeting-summary" @click="closeNavbar">
+                  <i class="bi bi-journal-check me-2"></i>ความรู้ที่ได้จากการประชุม/อบรม/สัมนา
+                </RouterLink>
+              </li>
             </ul>
           </li>
 

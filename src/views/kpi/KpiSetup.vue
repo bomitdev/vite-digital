@@ -439,7 +439,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(kpi, index) in filteredKpis" :key="kpi.id">
+              <tr v-for="(kpi, index) in filteredKpis" :key="`${kpi.id}-${kpi.fiscal_year}`">
                 <td class="ps-3 text-center text-muted fw-bold">{{ index + 1 }}</td>
                 <td>
                   <span class="badge bg-light text-dark border">{{
