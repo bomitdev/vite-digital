@@ -18,6 +18,16 @@ try {
         throw new Exception("Missing KPI ID");
     }
 
+    $id = intval($data['id']);
+
+    // Check if locked
+    $checkLock = $pdo2->prepare("SELECT is_locked FROM kpi_definitions WHERE id = ?");
+    $checkLock->execute([$id]);
+    $lockStatus = $checkLock->fetchColumn();
+    if ($lockStatus == 1) {
+        throw new Exception("ไม่สามารถลบได้เนื่องจากตัวชี้วัดถูกล็อคอยู่");
+    }
+
     // Optional: Check constraint if entries exist, maybe CASCADE or Block. 
     // For now, let's just delete the definition.
     // If foreign key constraint is active without cascade, this might fail if entries exist.

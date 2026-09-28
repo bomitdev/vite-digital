@@ -1,5 +1,5 @@
 <template>
-  <div class="container mt-5">
+  <div class="container-fluid px-4 mt-4">
     <div class="card calm-card mb-5">
       <div
         class="card-header calm-bg-lavender calm-text-navy py-3 d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom-0 calm-card"
@@ -386,41 +386,54 @@
 
     <!-- ตารางข้อมูล KPI -->
     <div class="card calm-card" v-if="kpis.length > 0">
-      <div class="card-header calm-bg-lavender py-3 border-bottom-0 d-flex justify-content-between align-items-center flex-wrap gap-2 calm-card">
-        <h5 class="mb-0 fw-bold calm-text-navy">รายการ KPI ทั้งหมด</h5>
-        <div class="d-flex flex-nowrap align-items-center gap-2 overflow-auto" style="padding-bottom: 2px;">
-          <select class="form-select bg-light" style="min-width: 150px; max-width: 150px;" v-model="selectedYearFilter">
-            <option value="">-- ทุกปีงบประมาณ --</option>
-            <option v-for="y in fiscalYearList" :key="y" :value="y">
-              ปีงบประมาณ {{ y }}
-            </option>
-          </select>
-          <select class="form-select bg-light" style="min-width: 130px; max-width: 130px;" v-model="selectedLevelFilter">
-            <option value="">-- ทุกระดับ --</option>
-            <option v-for="l in masterData.levels" :key="l.id" :value="l.id">
-              {{ l.name }}
-            </option>
-          </select>
-          <select class="form-select bg-light" style="min-width: 150px; max-width: 180px;" v-model="selectedUnitFilter">
-            <option value="">-- ทุกหน่วยงาน --</option>
-            <option v-for="unit in availableUnits" :key="unit" :value="unit">
-              {{ unit }}
-            </option>
-          </select>
-          <select class="form-select bg-light" style="min-width: 150px; max-width: 180px;" v-model="selectedCategoryFilter">
-            <option value="">-- ทุกหมวดหมู่ --</option>
-            <option v-for="cat in masterData.categories" :key="cat.id" :value="cat.id">
-              {{ cat.name }}
-            </option>
-          </select>
-          <div class="input-group" style="min-width: 250px; max-width: 300px;">
-            <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
-            <input type="text" class="form-control border-start-0 ps-0 bg-light" placeholder="ค้นหา KPI, รหัส, ผู้รับผิดชอบ, หน่วยงาน..." v-model="searchQuery">
+      <div class="card-header calm-bg-lavender py-3 border-bottom-0 calm-card">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+          <h5 class="mb-0 fw-bold calm-text-navy">
+            <i class="bi bi-list-task me-2"></i>รายการ KPI ทั้งหมด
+          </h5>
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-warning rounded-pill px-3 fw-bold text-dark shadow-sm" @click="sendBulkNotification" :disabled="isBulkNotifying || filteredKpis.length === 0" v-if="isAdmin">
+              <i class="bi" :class="isBulkNotifying ? 'bi-hourglass-split' : 'bi-bell-fill'"></i> 
+              {{ isBulkNotifying ? 'กำลังส่ง...' : 'แจ้งเตือนทั้งหมด' }}
+            </button>
+            <button class="btn rounded-pill px-4 fw-bold text-white shadow-sm" :class="isAllLocked ? 'btn-danger' : 'btn-success'" @click="toggleAllLocks" v-if="isAdmin" style="transition: all 0.3s ease;">
+              <i class="bi" :class="isAllLocked ? 'bi-lock-fill' : 'bi-unlock-fill'"></i> 
+              {{ isAllLocked ? 'ปลดล็อคทั้งหมด' : 'ปิดการแก้ไขทั้งหมด' }}
+            </button>
           </div>
-          <button class="btn btn-warning fw-bold text-dark" style="white-space: nowrap;" @click="sendBulkNotification" :disabled="isBulkNotifying || filteredKpis.length === 0" v-if="isAdmin">
-            <i class="bi" :class="isBulkNotifying ? 'bi-hourglass-split' : 'bi-bell-fill'"></i> 
-            {{ isBulkNotifying ? 'กำลังส่ง...' : 'แจ้งเตือนทั้งหมด' }}
-          </button>
+        </div>
+        
+        <div class="row g-2 align-items-center">
+          <div class="col-md-2 col-sm-6">
+            <select class="form-select bg-white border-0 shadow-sm text-muted" v-model="selectedYearFilter">
+              <option value="">-- ทุกปีงบประมาณ --</option>
+              <option v-for="y in fiscalYearList" :key="y" :value="y">ปีงบประมาณ {{ y }}</option>
+            </select>
+          </div>
+          <div class="col-md-2 col-sm-6">
+            <select class="form-select bg-white border-0 shadow-sm text-muted" v-model="selectedLevelFilter">
+              <option value="">-- ทุกระดับ --</option>
+              <option v-for="l in masterData.levels" :key="l.id" :value="l.id">{{ l.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-2 col-sm-6">
+            <select class="form-select bg-white border-0 shadow-sm text-muted" v-model="selectedUnitFilter">
+              <option value="">-- ทุกหน่วยงาน --</option>
+              <option v-for="unit in availableUnits" :key="unit" :value="unit">{{ unit }}</option>
+            </select>
+          </div>
+          <div class="col-md-3 col-sm-6">
+            <select class="form-select bg-white border-0 shadow-sm text-muted" v-model="selectedCategoryFilter">
+              <option value="">-- ทุกหมวดหมู่ --</option>
+              <option v-for="cat in masterData.categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-3 col-12">
+            <div class="input-group shadow-sm rounded">
+              <span class="input-group-text bg-white border-0"><i class="bi bi-search text-muted"></i></span>
+              <input type="text" class="form-control border-0 bg-white ps-0" placeholder="ค้นหา KPI, รหัส, ผู้รับผิดชอบ..." v-model="searchQuery">
+            </div>
+          </div>
         </div>
       </div>
       <div class="card-body p-0">
@@ -429,13 +442,13 @@
             <thead class="calm-bg-lavender calm-text-navy">
               <tr>
                 <th class="py-3 ps-3 text-center" style="width: 50px;">#</th>
-                <th class="py-3">Category</th>
-                <th class="py-3">ชื่อ KPI</th>
-                <th class="py-3">ระดับ</th>
-                <th class="py-3">รหัสอ้างอิง</th>
-                <th class="py-3">Target</th>
-                <th class="py-3">ผู้รับผิดชอบ</th>
-                <th class="py-3 pe-3 text-end">Action</th>
+                <th class="py-3 text-nowrap" style="min-width: 110px;">Category</th>
+                <th class="py-3" style="min-width: 250px;">ชื่อ KPI</th>
+                <th class="py-3 text-nowrap" style="min-width: 100px;">ระดับ</th>
+                <th class="py-3 text-nowrap" style="min-width: 100px;">รหัสอ้างอิง</th>
+                <th class="py-3 text-nowrap" style="min-width: 100px;">Target</th>
+                <th class="py-3" style="min-width: 150px;">ผู้รับผิดชอบ</th>
+                <th class="py-3 pe-3 text-end text-nowrap" style="min-width: 150px;">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -476,9 +489,19 @@
                   <span class="small text-muted ms-1">{{ kpi.unit }}</span>
                 </td>
                 <td>
-                  <div class="small">{{ kpi.responsible_person }}</div>
+                  <div class="d-flex flex-wrap gap-1">
+                    <span 
+                      v-for="(person, pIdx) in (kpi.responsible_person ? kpi.responsible_person.split(',').map(s=>s.trim()).filter(s=>s) : [])" 
+                      :key="pIdx" 
+                      class="badge bg-secondary bg-opacity-10 text-secondary border fw-normal text-start text-wrap" 
+                      style="font-size: 0.75rem; line-height: 1.4;"
+                    >
+                      <i class="bi bi-person me-1"></i>{{ person }}
+                    </span>
+                    <span v-if="!kpi.responsible_person" class="text-muted small">-</span>
+                  </div>
                 </td>
-                <td class="pe-3 text-end">
+                <td class="pe-3 text-end text-nowrap">
                   <button
                     type="button"
                     class="btn btn-sm btn-light border me-1"
@@ -504,11 +527,11 @@
                   >
                     <i class="bi bi-clock-history text-secondary"></i>
                   </button>
-                  <button class="btn btn-sm btn-light border me-1" @click="editKpi(kpi)">
-                    <i class="bi bi-pencil text-warning"></i>
+                  <button class="btn btn-sm btn-light border me-1" @click="editKpi(kpi)" :disabled="kpi.is_locked == 1" title="แก้ไขตัวชี้วัด">
+                    <i class="bi bi-pencil" :class="kpi.is_locked == 1 ? 'text-muted' : 'text-warning'"></i>
                   </button>
-                  <button class="btn btn-sm btn-light border" @click="deleteKpi(kpi.id)">
-                    <i class="bi bi-trash text-danger"></i>
+                  <button class="btn btn-sm btn-light border" @click="deleteKpi(kpi.id)" :disabled="kpi.is_locked == 1" title="ลบตัวชี้วัด">
+                    <i class="bi bi-trash" :class="kpi.is_locked == 1 ? 'text-muted' : 'text-danger'"></i>
                   </button>
                 </td>
               </tr>
@@ -652,6 +675,10 @@ export default {
     };
   },
   computed: {
+    isAllLocked() {
+      if (this.kpis.length === 0) return false;
+      return this.kpis.every(kpi => kpi.is_locked == 1);
+    },
     filteredStaff() {
       if (!this.staffInput) return [];
       const query = this.staffInput.toLowerCase();
@@ -1366,6 +1393,69 @@ export default {
         } catch (err) {
           console.error(err);
           Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error');
+        }
+      }
+    },
+    async toggleLock(kpi) {
+      try {
+        const newStatus = kpi.is_locked == 1 ? 0 : 1;
+        const res = await axios.post('/api-digital/kpi/toggle_kpi_lock.php', {
+          id: kpi.id,
+          is_locked: newStatus
+        });
+        if (res.data.status === 'success') {
+          kpi.is_locked = newStatus;
+          Swal.fire({
+            icon: 'success',
+            title: newStatus == 1 ? 'ล็อคตัวชี้วัดเรียบร้อย' : 'ปลดล็อคเรียบร้อย',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 1500
+          });
+        } else {
+          Swal.fire('ข้อผิดพลาด', res.data.message || 'ไม่สามารถอัปเดตสถานะได้', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+      }
+    },
+    async toggleAllLocks() {
+      const newStatus = this.isAllLocked ? 0 : 1;
+      const titleText = newStatus === 1 ? 'ยืนยันปิดการแก้ไขทั้งหมด?' : 'ยืนยันปลดล็อคการแก้ไขทั้งหมด?';
+      
+      const confirm = await Swal.fire({
+        title: titleText,
+        text: 'การเปลี่ยนแปลงนี้จะส่งผลกับ KPI ทุกตัว',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: newStatus === 1 ? '#d33' : '#28a745',
+        confirmButtonText: 'ยืนยัน',
+        cancelButtonText: 'ยกเลิก'
+      });
+
+      if (confirm.isConfirmed) {
+        try {
+          const res = await axios.post('/api-digital/kpi/toggle_all_kpi_locks.php', {
+            is_locked: newStatus
+          });
+          if (res.data.status === 'success') {
+            this.kpis.forEach(kpi => kpi.is_locked = newStatus);
+            Swal.fire({
+              icon: 'success',
+              title: newStatus == 1 ? 'ล็อคตัวชี้วัดทั้งหมดแล้ว' : 'ปลดล็อคทั้งหมดแล้ว',
+              toast: true,
+              position: 'top-end',
+              showConfirmButton: false,
+              timer: 1500
+            });
+          } else {
+            Swal.fire('ข้อผิดพลาด', res.data.message || 'ไม่สามารถอัปเดตสถานะได้', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
         }
       }
     },

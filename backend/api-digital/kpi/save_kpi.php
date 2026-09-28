@@ -67,6 +67,14 @@ try {
 
     // Check if ID exists (Update) or not (Insert)
     if (!empty($data['id'])) {
+        // Check if locked
+        $checkLock = $pdo2->prepare("SELECT is_locked FROM kpi_definitions WHERE id = ?");
+        $checkLock->execute([$data['id']]);
+        $lockStatus = $checkLock->fetchColumn();
+        if ($lockStatus == 1) {
+            throw new Exception("ไม่สามารถแก้ไขได้เนื่องจากตัวชี้วัดถูกล็อคอยู่");
+        }
+
         $sql = "UPDATE kpi_definitions SET 
                     code = :code,
                     category_id = :cat_id,
