@@ -2246,7 +2246,8 @@ export default {
         'ผู้รับผิดชอบ', 
         'เป้าหมาย', 
         'ผลงานล่าสุด', 
-        'สถานะ'
+        'สถานะ',
+        'หมายเหตุ (Analysis)'
       ]);
 
       this.filteredCategories.forEach(cat => {
@@ -2286,7 +2287,8 @@ export default {
               kpi.responsible_person || 'ยังไม่ระบุ',
               targetStr,
               actualStr,
-              statusText
+              statusText,
+              kpi.analysis || ''
             ]);
           });
         }
@@ -2303,7 +2305,8 @@ export default {
         { wch: 25 },
         { wch: 20 },
         { wch: 15 },
-        { wch: 15 }
+        { wch: 15 },
+        { wch: 40 }
       ];
       ws['!cols'] = colWidths;
 

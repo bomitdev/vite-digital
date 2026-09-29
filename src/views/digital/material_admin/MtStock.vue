@@ -14,11 +14,18 @@
           </nav>
           <h2 class="fw-bold text-dark mb-0">รายการคลังวัสดุ</h2>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
           <router-link to="/home-backoffice" class="btn btn-outline-secondary rounded-pill">
-            <i class="bi bi-house-door me-2"></i>กลับหน้าหลัก
+            <i class="bi bi-house-door me-1"></i>หน้าหลัก
           </router-link>
-          <button class="btn btn-success rounded-pill px-4" @click="openModal()">
+          <button class="btn btn-outline-primary rounded-pill px-3 shadow-sm" @click="downloadTemplate">
+            <i class="bi bi-download me-1"></i> โหลด Template
+          </button>
+          <button class="btn btn-outline-primary rounded-pill px-3 shadow-sm" @click="$refs.excelInput.click()">
+            <i class="bi bi-file-earmark-excel-fill me-1"></i> นำเข้าวัสดุ
+          </button>
+          <input type="file" ref="excelInput" class="d-none" accept=".xlsx, .xls" @change="importExcel" />
+          <button class="btn btn-success rounded-pill px-4 shadow-sm" @click="openModal()">
             <i class="bi bi-plus-lg me-2"></i>เพิ่มวัสดุใหม่
           </button>
         </div>
@@ -266,6 +273,8 @@
 <script>
 import axios from 'axios';
 import * as bootstrap from 'bootstrap';
+import * as XLSX from 'xlsx';
+import Swal from 'sweetalert2';
 
 export default {
   name: 'MtStock',
@@ -303,6 +312,114 @@ export default {
       } catch (err) {
         console.error(err);
       }
+    },
+    downloadTemplate() {
+      const templateData = [
+        {
+          รหัสสินค้า: 'MT-001',
+          ชื่ออุปกรณ์: 'ปากกาน้ำเงิน',
+          ประเภท: 'เครื่องเขียน',
+          หน่วยนับ: 'ด้าม',
+          ราคาต่อหน่วย: 5.50,
+          แจ้งเตือนขั้นต่ำ: 20,
+          ยอดยกมา: 100
+        },
+        {
+          รหัสสินค้า: 'MT-002',
+          ชื่ออุปกรณ์: 'กระดาษ A4',
+          ประเภท: 'กระดาษ',
+          หน่วยนับ: 'รีม',
+          ราคาต่อหน่วย: 95.00,
+          แจ้งเตือนขั้นต่ำ: 10,
+          ยอดยกมา: 50
+        }
+      ];
+
+      const worksheet = XLSX.utils.json_to_sheet(templateData);
+      
+      // Set column widths
+      const wscols = [
+        { wch: 15 }, // รหัสสินค้า
+        { wch: 30 }, // ชื่ออุปกรณ์
+        { wch: 20 }, // ประเภท
+        { wch: 15 }, // หน่วยนับ
+        { wch: 15 }, // ราคาต่อหน่วย
+        { wch: 15 }, // แจ้งเตือนขั้นต่ำ
+        { wch: 15 }  // ยอดยกมา
+      ];
+      worksheet['!cols'] = wscols;
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Materials');
+
+      XLSX.writeFile(workbook, 'Material_Import_Template.xlsx');
+    },
+    async importExcel(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+          if (!json || json.length === 0) {
+            Swal.fire('ข้อผิดพลาด', 'ไม่พบข้อมูลในไฟล์ Excel', 'error');
+            return;
+          }
+
+          const confirm = await Swal.fire({
+            title: 'ยืนยันการนำเข้าข้อมูล?',
+            text: `พบข้อมูลจำนวน ${json.length} รายการ ต้องการดำเนินการต่อหรือไม่?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'ตกลง',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#0d6efd'
+          });
+
+          if (confirm.isConfirmed) {
+            Swal.fire({
+              title: 'กำลังนำเข้าข้อมูล',
+              allowOutsideClick: false,
+              didOpen: () => {
+                Swal.showLoading();
+              }
+            });
+
+            const res = await axios.post('/api-digital/material_admin/import_material.php', json);
+            
+            if (res.data.status === 'success') {
+              let htmlContent = `<div class="text-start">${res.data.message}</div>`;
+              if (res.data.errors && res.data.errors.length > 0) {
+                const errorList = res.data.errors.map(err => `<li>${err}</li>`).join('');
+                htmlContent += `<hr><div class="text-start text-danger" style="max-height: 200px; overflow-y: auto; font-size: 0.85rem;"><b>ข้อผิดพลาดที่พบ:</b><ul class="mb-0 ps-3 mt-1">${errorList}</ul></div>`;
+              }
+              Swal.fire({
+                title: 'ผลการนำเข้าข้อมูล',
+                html: htmlContent,
+                icon: res.data.errors && res.data.errors.length > 0 ? 'warning' : 'success',
+                confirmButtonText: 'ตกลง'
+              });
+              this.fetchMaterials();
+            } else {
+              Swal.fire('ข้อผิดพลาด', res.data.message || 'ไม่สามารถนำเข้าได้', 'error');
+            }
+          }
+        } catch (error) {
+          console.error('Error importing Excel:', error);
+          Swal.fire('ข้อผิดพลาด', 'รูปแบบไฟล์ไม่ถูกต้อง หรือเกิดปัญหาในการอ่านไฟล์', 'error');
+        } finally {
+          if (this.$refs.excelInput) {
+            this.$refs.excelInput.value = null;
+          }
+        }
+      };
+      reader.readAsArrayBuffer(file);
     },
     openModal(item = null) {
       this.previewImage = null;

@@ -14,14 +14,14 @@
             <i class="bi bi-plus-circle-fill me-1"></i> เพิ่มตัวชี้วัดใหม่
           </button>
           <!-- <button
-            class="btn calm-btn-secondary rounded-pill px-3 fw-bold me-2"
+            class="btn btn-outline-primary rounded-pill px-3 fw-bold me-2 shadow-sm"
             @click="downloadTemplate"
             v-if="isAdmin"
           >
             <i class="bi bi-download me-1"></i> โหลด Template
-          </button> -->
-          <!-- <button
-            class="btn calm-btn-secondary rounded-pill px-3 fw-bold me-2"
+          </button>
+          <button
+            class="btn btn-outline-primary rounded-pill px-3 fw-bold me-2 shadow-sm"
             @click="$refs.fileInput.click()"
             v-if="isAdmin"
           >
