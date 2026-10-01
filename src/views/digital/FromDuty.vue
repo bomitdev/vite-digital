@@ -5,7 +5,33 @@
         <h2 class="mb-0"><i class="bi bi-calendar-plus me-2"></i>เพิ่มตารางเวร IT</h2>
       </div>
       <div class="card-body">
+        <!-- คัดลอกเวรจากห้องบัตร -->
+        <div class="mb-4 p-3 border border-info rounded bg-info bg-opacity-10">
+          <h5 class="fw-bold text-info-emphasis"><i class="bi bi-files"></i> คัดลอกเวรทั้งเดือนจากห้องบัตร</h5>
+          <p class="small text-muted mb-2">ดึงข้อมูลเวรจากห้องบัตรมาใส่ในตาราง IT (คำเตือน: ข้อมูลเวร IT เดิมของเดือนที่เลือกจะถูกแทนที่)</p>
+          <div class="row g-2 align-items-center">
+            <div class="col-md-4">
+              <select class="form-select" v-model="copyMonth">
+                <option v-for="(m, i) in months" :key="i" :value="i+1">{{ m }}</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <select class="form-select" v-model="copyYear">
+                <option v-for="y in [currentYear-1, currentYear, currentYear+1]" :key="y" :value="y">{{ y }} ({{ y + 543 }})</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <button type="button" class="btn btn-info text-dark w-100 fw-bold" @click="copyFromOpdCard">
+                <i class="bi bi-box-arrow-in-down"></i> ดึงข้อมูลเวร
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <hr class="mb-4" />
+
         <form @submit.prevent="submitForm">
+          <h5 class="fw-bold text-primary mb-3"><i class="bi bi-person-plus"></i> เพิ่มเวรรายบุคคล</h5>
           <!-- เลือกพนักงาน -->
           <div class="mb-4">
             <label for="employeeId" class="form-label fw-bold">เลือกเจ้าหน้าที่ขั้นเวร</label>
@@ -91,7 +117,14 @@ export default {
         employee_id: '',
         dates: [{ date: '', is_special: 0 }]
       },
-      message: ''
+      message: '',
+      copyMonth: new Date().getMonth() + 1,
+      copyYear: new Date().getFullYear(),
+      currentYear: new Date().getFullYear(),
+      months: [
+        'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+        'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+      ]
     };
   },
   mounted() {
@@ -131,6 +164,40 @@ export default {
       } catch (error) {
         console.error(error);
         this.message = error.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล';
+      }
+    },
+    async copyFromOpdCard() {
+      if (
+        !confirm(
+          `คุณต้องการคัดลอกตารางเวรจาก "ห้องบัตร" ประจำเดือน ${this.months[this.copyMonth - 1]} ${this.copyYear} มาลงใน "ตารางเวร IT" ใช่หรือไม่?\n\n(คำเตือน: ข้อมูลเวร IT ของเดือนนี้จะถูกลบและแทนที่ด้วยข้อมูลจากห้องบัตรทั้งหมด!)`
+        )
+      ) {
+        return;
+      }
+      try {
+        const token = localStorage.getItem('user_token');
+        const response = await axios.post(
+          '/api-digital/duties/copy-schedule-from-opd.php',
+          {
+            month: this.copyMonth,
+            year: this.copyYear
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+
+        if (response.data.status === 'success') {
+          this.message = response.data.message;
+          setTimeout(() => {
+            this.message = '';
+          }, 5000);
+        } else {
+          alert('เกิดข้อผิดพลาด: ' + response.data.message);
+        }
+      } catch (error) {
+        console.error('Copy Error', error);
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
       }
     }
   }

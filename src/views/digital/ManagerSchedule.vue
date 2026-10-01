@@ -155,6 +155,7 @@
           >
             <i class="bi bi-printer"></i> รายงาน OT
           </button>
+
           <button v-if="currentTab !== 'leave'" class="btn btn-warning btn-sm text-dark fw-bold border" @click="goToDeletePage">
             <i class="bi bi-pencil-square"></i> แก้ไข
           </button>
@@ -879,6 +880,7 @@ export default {
         this.$router.push({ path: '/manager_duties_opdcard' });
       }
     },
+
 
     getShiftClass(shiftCode) {
       if (!shiftCode) return 'text-bg-light';
