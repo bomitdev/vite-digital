@@ -216,9 +216,9 @@
                               <div class="d-flex justify-content-between align-items-center mt-3 bg-light rounded-3 p-2 border">
                                 <span class="small fw-bold text-secondary">ระบุจำนวน:</span>
                                 <div class="d-flex align-items-center gap-2">
-                                  <div class="input-group input-group-sm shadow-sm rounded-pill overflow-hidden" style="width: 110px;">
+                                  <div class="input-group input-group-sm shadow-sm rounded-pill overflow-hidden" style="width: 120px;">
                                     <button type="button" class="btn btn-primary px-2" @click="item.quantity > 1 ? item.quantity-- : null"><i class="bi bi-dash"></i></button>
-                                    <input type="number" v-model.number="item.quantity" class="form-control text-center fw-bold border-primary text-primary" min="1" required style="max-width: 50px;">
+                                    <input type="number" v-model.number="item.quantity" class="form-control text-center fw-bold border-primary text-primary px-0 hide-arrows" min="1" required style="max-width: 50px;">
                                     <button type="button" class="btn btn-primary px-2" @click="item.quantity++"><i class="bi bi-plus"></i></button>
                                   </div>
                                   <span class="small fw-bold text-dark w-25 text-end pe-2">{{ getSelectedMaterial(item.material_id)?.unit || '' }}</span>
@@ -433,8 +433,8 @@ export default {
       pastRequesters: [],
       pastDepartments: [],
       form: {
-        requester_name: localStorage.getItem('user_name') || localStorage.getItem('last_requester_name_admin') || '',
-        department: localStorage.getItem('last_department_admin') || '',
+        requester_name: localStorage.getItem('user_name') || localStorage.getItem('last_requester_name_it') || '',
+        department: localStorage.getItem('user_department') || localStorage.getItem('last_department_it') || '',
         items: []
       },
       loading: false,
@@ -573,8 +573,8 @@ export default {
     cancelEdit() {
       this.editingRequestNo = null;
       this.form = {
-        requester_name: localStorage.getItem('user_name') || localStorage.getItem('last_requester_name_admin') || '',
-        department: localStorage.getItem('last_department_admin') || '',
+        requester_name: localStorage.getItem('user_name') || localStorage.getItem('last_requester_name_it') || '',
+        department: localStorage.getItem('user_department') || localStorage.getItem('last_department_it') || '',
         items: []
       };
     },
@@ -705,8 +705,8 @@ export default {
 
           // Reset form
           this.form = {
-            requester_name: localStorage.getItem('user_name') || localStorage.getItem('last_requester_name_admin') || '',
-            department: localStorage.getItem('last_department_admin') || '',
+            requester_name: localStorage.getItem('user_name') || localStorage.getItem('last_requester_name_it') || '',
+            department: localStorage.getItem('user_department') || localStorage.getItem('last_department_it') || '',
             items: []
           };
           this.fetchRequests(); // Refresh the history list
@@ -871,5 +871,19 @@ export default {
 }
 .custom-select-dropdown .dropdown-toggle::after {
   margin-left: auto;
+}
+
+/* Chrome, Safari, Edge, Opera */
+.hide-arrows::-webkit-outer-spin-button,
+.hide-arrows::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+.hide-arrows {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 </style>
