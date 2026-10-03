@@ -1021,7 +1021,7 @@ export default {
       await this.checkITAccessAndGo('/ip-address');
     },
     async goToMaterialV2() {
-      await this.checkITAccessAndGo('/material-v2');
+      await this.checkITAccessAndGo('/material-it');
     },
     async goToMaterialAdmin() {
       await this.checkITAccessAndGoGM('/material-admin');

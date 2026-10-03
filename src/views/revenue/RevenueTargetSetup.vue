@@ -19,6 +19,51 @@
       </button>
     </div>
 
+
+    <!-- Modal คัดลอกเป้าหมาย -->
+    <div
+      class="modal fade"
+      id="copyTargetModal"
+      ref="copyTargetModal"
+      aria-hidden="true"
+      data-bs-focus="false"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+          <div class="modal-header bg-light border-bottom">
+            <h5 class="modal-title fw-bolder text-dark d-flex align-items-center">
+              <i class="bi bi-files text-primary me-2 fs-4"></i>
+              คัดลอกรายการเป้าหมายจากปีเดิม
+            </h5>
+            <button type="button" class="btn-close" @click="closeCopyModal"></button>
+          </div>
+          <div class="modal-body p-4 bg-white">
+            <div class="alert alert-info rounded-3 border-0 small mb-4">
+              <i class="bi bi-info-circle-fill me-2"></i> 
+              ระบบจะดึงรายการเป้าหมายทั้งหมดจาก <strong>ปีต้นทาง</strong> มาสร้างเป็นรายการใหม่ใน <strong>ปีปลายทาง</strong> โดยอัตโนมัติ
+            </div>
+            <div class="row g-3">
+              <div class="col-6">
+                <label class="form-label fw-bold">คัดลอกจากปี (ต้นทาง)</label>
+                <input type="number" v-model="copyForm.from_year" class="form-control border-dark rounded-0 px-3 py-2" required />
+              </div>
+              <div class="col-6">
+                <label class="form-label fw-bold">ไปยังปี (ปลายทาง)</label>
+                <input type="number" v-model="copyForm.to_year" class="form-control border-dark rounded-0 px-3 py-2" required />
+              </div>
+            </div>
+            <div class="d-flex justify-content-end gap-3 mt-4 pt-3 border-top">
+              <button type="button" @click="closeCopyModal" class="btn btn-light border px-4 py-2 fw-bold">ยกเลิก</button>
+              <button type="button" @click="submitCopy" class="btn btn-primary px-4 py-2 fw-bold shadow-sm" :disabled="loading">
+                <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-check2-circle me-2"></i> คัดลอก
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal เพิ่ม/แก้ไขเป้าหมาย -->
     <div
       class="modal fade"
@@ -208,7 +253,19 @@
             <i class="bi bi-x-circle me-1"></i>ดูทั้งหมด
           </button>
 
-          <div class="input-group shadow-sm rounded-pill overflow-hidden border bg-white" style="max-width: 300px">
+          
+          <div class="d-flex align-items-center bg-white border rounded-pill px-3 py-1 shadow-sm">
+            <label class="me-2 fw-bold text-muted small"><i class="bi bi-calendar-event me-1"></i> ปีงบฯ:</label>
+            <select
+              v-model="filterYear"
+              class="form-select form-select-sm border-0 bg-transparent fw-bold text-dark p-0"
+              style="width: 70px; cursor: pointer; box-shadow: none;"
+            >
+              <option value="">ทั้งหมด</option>
+              <option v-for="y in filterYearOptions" :key="y" :value="y">{{ y }}</option>
+            </select>
+          </div>
+<div class="input-group shadow-sm rounded-pill overflow-hidden border bg-white" style="max-width: 300px">
             <span class="input-group-text bg-transparent border-0 text-muted ps-3"><i class="bi bi-search"></i></span>
             <input
               type="text"
@@ -217,6 +274,9 @@
               v-model="searchQuery"
             />
           </div>
+          <button v-if="isAdmin" class="btn btn-outline-primary rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center bg-white" @click="openCopyModal">
+            <i class="bi bi-files me-1"></i> คัดลอกจากปีเก่า
+          </button>
           <button v-if="isAdmin" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center" @click="openSetupModal">
             <i class="bi bi-plus-lg me-2"></i> เพิ่มเป้าหมายใหม่
           </button>
@@ -447,6 +507,7 @@
 <script>
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import * as bootstrap from 'bootstrap';
 import { Modal } from 'bootstrap';
 
 export default {
@@ -454,6 +515,7 @@ export default {
   data() {
     return {
       searchQuery: '',
+      filterYear: new Date().getFullYear() + 543 + (new Date().getMonth() >= 9 ? 1 : 0),
       fiscalMonths: [
         { value: 10, label: 'ตุลาคม' },
         { value: 11, label: 'พฤศจิกายน' },
@@ -470,6 +532,8 @@ export default {
       ],
       targets: [],
       claimPrograms: [],
+      copyModalInstance: null,
+      loading: false, copyForm: { from_year: new Date().getFullYear() + 543 + (new Date().getMonth() >= 9 ? 1 : 0) - 1, to_year: new Date().getFullYear() + 543 + (new Date().getMonth() >= 9 ? 1 : 0) },
       hrPersons: [],
       selectedPersons: [],
       currentPersonInput: '',
@@ -502,6 +566,10 @@ export default {
     };
   },
   computed: {
+    filterYearOptions() {
+      const current = new Date().getFullYear() + 543 + (new Date().getMonth() >= 9 ? 1 : 0);
+      return Array.from({ length: 6 }, (_, i) => current + 1 - i);
+    },
     isAdmin() {
       return (
         this.userDepartment.includes('กลุ่มงานสุขภาพดิจิทัล') ||
@@ -519,6 +587,11 @@ export default {
       
       if (this.onlyMyTargets) {
         baseList = baseList.filter((target) => this.isMyTarget(target));
+      }
+
+      
+      if (this.filterYear) {
+        baseList = baseList.filter(target => String(target.fiscal_year) === String(this.filterYear));
       }
 
       if (this.searchQuery) {
@@ -731,6 +804,45 @@ export default {
       };
       this.selectedPersons = [];
       this.currentPersonInput = '';
+    },
+    openCopyModal() {
+      if (!this.copyModalInstance) {
+        let el = this.$refs.copyTargetModal;
+        if (!el) el = document.getElementById('copyTargetModal');
+        // Fallback if bootstrap is imported differently
+        this.copyModalInstance = new bootstrap.Modal(el);
+      }
+      this.copyModalInstance.show();
+    },
+    closeCopyModal() {
+      if (this.copyModalInstance) {
+        this.copyModalInstance.hide();
+      }
+    },
+    async submitCopy() {
+      if (!this.copyForm.from_year || !this.copyForm.to_year) {
+        Swal.fire('แจ้งเตือน', 'กรุณาระบุปีต้นทางและปลายทางให้ครบถ้วน', 'warning');
+        return;
+      }
+      try {
+        this.loading = true;
+        const token = localStorage.getItem('user_token');
+        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+        const res = await axios.post('/api-digital/revenue/copy_targets.php', this.copyForm, config);
+        
+        if (res.data.status === 'success') {
+          Swal.fire('สำเร็จ', res.data.message, 'success');
+          this.closeCopyModal();
+          this.fetchTargets();
+        } else {
+          Swal.fire('เกิดข้อผิดพลาด', res.data.message || 'ไม่สามารถคัดลอกได้', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+      } finally {
+        this.loading = false;
+      }
     },
     openSetupModal() {
       this.resetForm();

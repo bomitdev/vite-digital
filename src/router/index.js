@@ -191,120 +191,120 @@ const routes = [
 
   // Material Management v2
   {
-    path: '/material-v2',
-    component: () => import('../views/digital/material_v2/MtDashboard.vue'),
+    path: '/material-it',
+    component: () => import('../views/digital/it_material/MtDashboard.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/material-v2/stock',
-    component: () => import('../views/digital/material_v2/MtStock.vue'),
+    path: '/material-it/stock',
+    component: () => import('../views/digital/it_material/MtStock.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/material-v2/in',
-    component: () => import('../views/digital/material_v2/MtTransactionIn.vue'),
+    path: '/material-it/in',
+    component: () => import('../views/digital/it_material/MtTransactionIn.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/material-v2/out',
-    component: () => import('../views/digital/material_v2/MtTransactionOut.vue'),
+    path: '/material-it/out',
+    component: () => import('../views/digital/it_material/MtTransactionOut.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/material-v2/report',
-    component: () => import('../views/digital/material_v2/MtReport.vue'),
+    path: '/material-it/report',
+    component: () => import('../views/digital/it_material/MtReport.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/material-v2/monthly-report',
-    component: () => import('../views/digital/material_v2/MtMonthlyReport.vue'),
+    path: '/material-it/monthly-report',
+    component: () => import('../views/digital/it_material/MtMonthlyReport.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/material-v2/yearly-report',
+    path: '/material-it/yearly-report',
     name: 'MtV2YearlyReport',
-    component: () => import('../views/digital/material_v2/MtYearlyReport.vue'),
+    component: () => import('../views/digital/it_material/MtYearlyReport.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/material-request',
-    component: () => import('../views/digital/material_v2/MtRequestForm.vue') // Public/Staff facing, could be unauthenticated depending on requirements, but let's keep consistent if needed. Let's make it public like helpdesk.
+    component: () => import('../views/digital/it_material/MtRequestForm.vue') // Public/Staff facing, could be unauthenticated depending on requirements, but let's keep consistent if needed. Let's make it public like helpdesk.
   },
   {
-    path: '/material-v2/requests',
-    component: () => import('../views/digital/material_v2/MtRequestsManage.vue'),
+    path: '/material-it/requests',
+    component: () => import('../views/digital/it_material/MtRequestsManage.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/material-v2/settings',
-    component: () => import('../views/digital/material_v2/MtPrintSettings.vue'),
+    path: '/material-it/settings',
+    component: () => import('../views/digital/it_material/MtPrintSettings.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/material-v2/request-print/:id',
+    path: '/material-it/request-print/:id',
     name: 'MtRequestPrint',
-    component: () => import('../views/digital/material_v2/MtRequestPrint.vue'),
+    component: () => import('../views/digital/it_material/MtRequestPrint.vue'),
     meta: { requiresAuth: true, hideNavbar: true }
   },
 
   // General Material Management (Administration)
   {
     path: '/material-admin',
-    component: () => import('../views/digital/material_admin/MtDashboard.vue'),
+    component: () => import('../views/digital/admin_material/MtDashboard.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/material-admin/stock',
-    component: () => import('../views/digital/material_admin/MtStock.vue'),
+    component: () => import('../views/digital/admin_material/MtStock.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/material-admin/in',
-    component: () => import('../views/digital/material_admin/MtTransactionIn.vue'),
+    component: () => import('../views/digital/admin_material/MtTransactionIn.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/material-admin/out',
-    component: () => import('../views/digital/material_admin/MtTransactionOut.vue'),
+    component: () => import('../views/digital/admin_material/MtTransactionOut.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/material-admin/report',
-    component: () => import('../views/digital/material_admin/MtReport.vue'),
+    component: () => import('../views/digital/admin_material/MtReport.vue'),
     meta: { requiresAuth: true }
   },
 
   {
     path: '/material-admin/monthly-report',
     name: 'MtMonthlyReport',
-    component: () => import('../views/digital/material_admin/MtMonthlyReport.vue'),
+    component: () => import('../views/digital/admin_material/MtMonthlyReport.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/material-admin/yearly-report',
     name: 'MtYearlyReport',
-    component: () => import('../views/digital/material_admin/MtYearlyReport.vue'),
+    component: () => import('../views/digital/admin_material/MtYearlyReport.vue'),
     meta: { requiresAuth: true }
   },
 
   {
     path: '/material-admin/settings',
-    component: () => import('../views/digital/material_admin/MtPrintSettings.vue'),
+    component: () => import('../views/digital/admin_material/MtPrintSettings.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/material-admin-request',
-    component: () => import('../views/digital/material_admin/MtRequestForm.vue')
+    component: () => import('../views/digital/admin_material/MtRequestForm.vue')
   },
   {
     path: '/material-admin/requests',
-    component: () => import('../views/digital/material_admin/MtRequestsManage.vue'),
+    component: () => import('../views/digital/admin_material/MtRequestsManage.vue'),
     meta: { requiresAuth: true }
   },
   {
     path: '/material-admin/request-print/:id',
     name: 'MtAdminRequestPrint',
-    component: () => import('../views/digital/material_admin/MtRequestPrint.vue'),
+    component: () => import('../views/digital/admin_material/MtRequestPrint.vue'),
     meta: { requiresAuth: true, hideNavbar: true }
   },
 
