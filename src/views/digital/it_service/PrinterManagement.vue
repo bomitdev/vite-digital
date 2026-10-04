@@ -39,17 +39,22 @@
             </thead>
             <tbody>
               <tr v-for="(printer, index) in printers" :key="printer.id">
-                <td class="px-4 text-muted">{{ index + 1 }}</td>
-                <td class="fw-bold">{{ printer.name }}</td>
-                <td><span class="badge bg-light text-dark border">{{ printer.ip_address }}</span></td>
-                <td>{{ printer.community || 'public' }}</td>
-                <td class="px-4 text-end">
-                  <button @click="openEditModal(printer)" class="btn btn-sm btn-outline-primary rounded-circle me-2" title="แก้ไข">
-                    <i class="bi bi-pencil-fill"></i>
-                  </button>
-                  <button @click="deletePrinter(printer.id)" class="btn btn-sm btn-outline-danger rounded-circle" title="ลบ">
-                    <i class="bi bi-trash-fill"></i>
-                  </button>
+                <td class="px-4 py-3 text-muted" style="width: 5%">{{ index + 1 }}</td>
+                <td class="py-3 fw-bold text-dark" style="width: 35%">{{ printer.name }}</td>
+                <td class="py-3" style="width: 25%"><span class="badge bg-light text-primary border px-3 py-2 fs-6 rounded-pill"><i class="bi bi-hdd-network me-1"></i> {{ printer.ip_address }}</span></td>
+                <td class="py-3 text-muted" style="width: 15%">{{ printer.community || 'public' }}</td>
+                <td class="px-4 py-3 text-end" style="width: 20%">
+                  <div class="d-flex gap-2 justify-content-end text-nowrap">
+                    <button @click="resetMeter(printer)" class="btn btn-sm btn-outline-info rounded-3 hover-lift px-3" title="เปลี่ยนเครื่องปริ้นใหม่ (เก็บยอดสะสมเดิม)">
+                      <i class="bi bi-arrow-repeat"></i> เปลี่ยนเครื่อง
+                    </button>
+                    <button @click="openEditModal(printer)" class="btn btn-sm btn-outline-primary rounded-3 hover-lift px-3" title="แก้ไข">
+                      <i class="bi bi-pencil-fill"></i>
+                    </button>
+                    <button @click="deletePrinter(printer.id)" class="btn btn-sm btn-outline-danger rounded-3 hover-lift px-3" title="ลบ">
+                      <i class="bi bi-trash-fill"></i>
+                    </button>
+                  </div>
                 </td>
               </tr>
               <tr v-if="printers.length === 0">
@@ -214,6 +219,40 @@ export default {
           }
         } catch (error) {
           Swal.fire('ผิดพลาด', error.message || 'ไม่สามารถลบข้อมูลได้', 'error');
+        }
+      }
+    },
+    async resetMeter(printer) {
+      const result = await Swal.fire({
+        title: 'ยืนยันการเปลี่ยนเครื่องปริ้น?',
+        html: `คุณกำลังเปลี่ยนเครื่องปริ้นใหม่สำหรับ <br><b>${printer.name} (IP: ${printer.ip_address})</b> ใช่หรือไม่?<br><br>
+               <span class="text-danger small">กรุณาเสียบสาย LAN เข้าเครื่องปริ้นใหม่ก่อนกดยืนยัน</span><br>
+               <span class="text-success small">ระบบจะทำการชดเชยเลขไมล์ให้ยอดสะสมของโรงพยาบาลไม่หายไป</span>`,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonColor: '#0dcaf0',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'ใช่, เปลี่ยนเครื่องใหม่',
+        cancelButtonText: 'ยกเลิก'
+      });
+
+      if (result.isConfirmed) {
+        try {
+          Swal.fire({
+            title: 'กำลังเชื่อมต่อเครื่องปริ้นใหม่...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+          });
+          const response = await axios.post('/api-digital/it_service/printer_dashboard.php?action=reset_meter', { id: printer.id });
+          if (response.data.success) {
+            Swal.fire('สำเร็จ!', response.data.message, 'success');
+            this.fetchPrinters();
+          } else {
+            throw new Error(response.data.message || 'ไม่สามารถชดเชยยอดได้');
+          }
+        } catch (error) {
+          console.error(error);
+          Swal.fire('ข้อผิดพลาด', error.message, 'error');
         }
       }
     }

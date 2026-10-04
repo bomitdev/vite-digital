@@ -67,15 +67,23 @@ if ($action === 'summary') {
         $yd = $stmt_yd->fetch(PDO::FETCH_ASSOC);
         $yd_count = $yd ? (int)$yd['page_count'] : $current_count;
         
+        // Get initial baseline (the oldest log ever recorded)
+        $stmt_init = $pdo2->prepare("SELECT page_count FROM it_printer_logs WHERE printer_id = ? ORDER BY record_date ASC LIMIT 1");
+        $stmt_init->execute([$pid]);
+        $init = $stmt_init->fetch(PDO::FETCH_ASSOC);
+        $initial_count = $init ? (int)$init['page_count'] : $current_count;
+        
         $today_usage = max(0, $current_count - $yd_count);
         $this_month_usage = max(0, $current_count - $lm_count);
         $this_fy_usage = max(0, $current_count - $fy_count);
+        $total_usage_since_install = max(0, $current_count - $initial_count);
         
         $results[] = [
             'id' => $pid,
             'name' => $p['name'],
             'ip' => $p['ip_address'],
-            'current_total' => $current_count,
+            'current_total' => $total_usage_since_install, // This is what the UI shows as 'ยอดสะสมรวม'
+            'raw_total' => $current_count, // Keeping raw just in case
             'today_usage' => $today_usage,
             'this_month_usage' => $this_month_usage,
             'this_fy_usage' => $this_fy_usage

@@ -47,6 +47,7 @@ if ($action === 'fetch_live') {
     foreach ($printers as $printer) {
         $ip = $printer['ip_address'];
         $community = $printer['community'] ?: 'public';
+        $offset = (int)$printer['page_offset'];
         
         $snmp_result = @snmpget($ip, $community, $oid_page_count, 1000000, 1);
         
@@ -61,7 +62,8 @@ if ($action === 'fetch_live') {
             ];
         } else {
             $parts = explode(':', $snmp_result);
-            $page_count = isset($parts[1]) ? (int)trim($parts[1]) : 0;
+            $raw_count = isset($parts[1]) ? (int)trim($parts[1]) : 0;
+            $page_count = $raw_count > 0 ? $raw_count + $offset : 0;
             
             $results[] = [
                 'id' => $printer['id'],
@@ -118,6 +120,52 @@ if ($action === 'delete') {
         }
     } else {
         echo json_encode(['success' => false, 'message' => 'ไม่พบ ID เครื่องปริ้น']);
+    }
+    exit;
+}
+
+if ($action === 'reset_meter') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    $printer_id = $data['id'] ?? null;
+    if ($printer_id) {
+        // 1. Get highest historical page count from logs
+        $stmt_log = $pdo2->prepare("SELECT MAX(page_count) as max_count FROM it_printer_logs WHERE printer_id = ?");
+        $stmt_log->execute([$printer_id]);
+        $row = $stmt_log->fetch(PDO::FETCH_ASSOC);
+        $highest_historical = $row ? (int)$row['max_count'] : 0;
+        
+        // 2. Fetch current raw count from printer
+        $stmt_p = $pdo2->prepare("SELECT ip_address, community FROM it_printers WHERE id = ?");
+        $stmt_p->execute([$printer_id]);
+        $p = $stmt_p->fetch(PDO::FETCH_ASSOC);
+        
+        $oid_page_count = '1.3.6.1.2.1.43.10.2.1.4.1.1';
+        $ip = $p['ip_address'];
+        $community = $p['community'] ?: 'public';
+        
+        $snmp_result = @snmpget($ip, $community, $oid_page_count, 1000000, 1);
+        if ($snmp_result !== false) {
+            $parts = explode(':', $snmp_result);
+            $raw_count = isset($parts[1]) ? (int)trim($parts[1]) : 0;
+            
+            if ($highest_historical >= $raw_count) {
+                $new_offset = $highest_historical - $raw_count;
+            } else {
+                // Should not happen normally if it's a new printer starting at 0
+                $new_offset = 0; 
+            }
+            
+            $stmt_upd = $pdo2->prepare("UPDATE it_printers SET page_offset = ? WHERE id = ?");
+            if ($stmt_upd->execute([$new_offset, $printer_id])) {
+                echo json_encode(['success' => true, 'message' => 'เปลี่ยนเครื่องใหม่และชดเชยยอดสำเร็จ (Offset: '.$new_offset.')']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'ไม่สามารถอัปเดต Offset ได้']);
+            }
+        } else {
+            echo json_encode(['success' => false, 'message' => 'ติดต่อเครื่องปริ้นใหม่ไม่ได้ (กรุณาเสียบสาย LAN เครื่องใหม่ก่อน)']);
+        }
+    } else {
+        echo json_encode(['success' => false, 'message' => 'ข้อมูลไม่ครบ']);
     }
     exit;
 }
