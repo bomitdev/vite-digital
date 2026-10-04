@@ -442,12 +442,13 @@ export default {
       searchQuery: '',
       materialSearchQuery: '',
       showPreviewModal: false,
-      editingRequestNo: null
+      editingRequestNo: null,
+      isAdminUser: false
     };
   },
   computed: {
     isAdmin() {
-      return !!localStorage.getItem('user_token');
+      return this.isAdminUser;
     },
     filteredMaterials() {
       if (!this.materialSearchQuery) return this.materials;
@@ -479,6 +480,7 @@ export default {
     }
   },
   mounted() {
+    this.checkAdminStatus();
     this.fetchMaterials();
     this.fetchRequestersAndDepts();
     this.fetchRequests();
@@ -494,6 +496,20 @@ export default {
     }
   },
   methods: {
+    async checkAdminStatus() {
+      try {
+        const token = localStorage.getItem('user_token');
+        if (!token) return;
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        const response = await axios.get('/api-hosoffice/get_user_profile.php', config);
+        if (response.data && response.data.status === 'success') {
+          const accessUser = response.data.access_user ? response.data.access_user.split(':') : [];
+          this.isAdminUser = accessUser.includes('administrator') || accessUser.includes('menu_gm_material_manage');
+        }
+      } catch (error) {
+        console.error('Error checking admin status', error);
+      }
+    },
     async fetchMaterials() {
       try {
         const res = await axios.get('/api-digital/admin_material/admin_get_materials.php');

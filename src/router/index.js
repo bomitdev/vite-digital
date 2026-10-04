@@ -129,6 +129,25 @@ const routes = [
     component: () => import('../views/digital/server/ServerList.vue'),
     meta: { title: 'ทะเบียน Server - Digital' }
   },
+  // Printer Management
+  {
+    path: '/printer-dashboard',
+    name: 'PrinterDashboard',
+    component: () => import('../views/digital/it_service/PrinterDashboard.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/printer-management',
+    name: 'PrinterManagement',
+    component: () => import('../views/digital/it_service/PrinterManagement.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/printer-reports',
+    name: 'PrinterReport',
+    component: () => import('../views/digital/it_service/PrinterReport.vue'),
+    meta: { requiresAuth: true }
+  },
   // Software Management
   {
     path: '/software-dashboard',
