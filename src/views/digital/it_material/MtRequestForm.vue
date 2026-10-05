@@ -698,8 +698,8 @@ export default {
         let endpoint = '/api-digital/it_material/it_request_material.php';
         let payload = this.form;
         if (this.editingRequestNo) {
-           endpoint = '/api-digital/it_material/it_update_request.php';
-           payload = { ...this.form, request_no: this.editingRequestNo };
+           endpoint = '/api-digital/it_material/it_edit_request.php';
+           payload = { ...this.form, request_no: this.editingRequestNo, group_id: this.editingRequestNo };
         }
 
         const res = await axios.post(endpoint, payload);
