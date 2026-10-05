@@ -13,21 +13,24 @@ if (!isset($pdo2)) {
 
 $data = json_decode(file_get_contents("php://input"));
 
-if (!isset($data->id)) {
-    echo json_encode(['success' => false, 'message' => 'Request ID is required']);
+if (!isset($data->id) && !isset($data->request_no)) {
+    echo json_encode(['success' => false, 'message' => 'Request ID or request_no is required']);
     exit;
 }
 
 $adminNote = isset($data->admin_note) ? $data->admin_note : '';
 
 try {
-    $id = intval($data->id);
-
-    // Find request_no
-    $stmtNo = $pdo2->prepare("SELECT request_no FROM mt_admin_requests WHERE id = :id");
-    $stmtNo->execute([':id' => $id]);
-    $rowNo = $stmtNo->fetch(PDO::FETCH_ASSOC);
-    $request_no = $rowNo ? $rowNo['request_no'] : null;
+    $request_no = $data->request_no ?? null;
+    $id = isset($data->id) ? intval($data->id) : null;
+    
+    if (!$request_no && $id) {
+        // Find request_no
+        $stmtNo = $pdo2->prepare("SELECT request_no FROM mt_admin_requests WHERE id = :id");
+        $stmtNo->execute([':id' => $id]);
+        $rowNo = $stmtNo->fetch(PDO::FETCH_ASSOC);
+        $request_no = $rowNo ? $rowNo['request_no'] : null;
+    }
 
     if ($request_no) {
         $stmt = $pdo2->prepare("UPDATE mt_admin_requests SET status = 'rejected', admin_note = :note WHERE request_no = :request_no AND status = 'pending'");

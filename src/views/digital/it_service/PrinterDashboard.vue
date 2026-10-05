@@ -26,7 +26,12 @@
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
-      <p class="text-muted mt-3">กำลังดึงข้อมูลจากเครื่องปริ้น...</p>
+      <p class="text-muted mt-3 mb-2">กำลังดึงข้อมูลจากเครื่องปริ้น...</p>
+      
+      <div v-if="total > 0" class="progress mx-auto rounded-pill" style="max-width: 400px; height: 12px; background-color: #e9ecef;">
+        <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary rounded-pill" role="progressbar" :style="`width: ${(progress / total) * 100}%`"></div>
+      </div>
+      <p v-if="total > 0" class="text-muted small mt-2 fw-bold">{{ progress }} / {{ total }} สำเร็จ</p>
     </div>
 
     <div v-else class="row g-4">
@@ -82,6 +87,8 @@ export default {
   data() {
     return {
       loading: true,
+      progress: 0,
+      total: 0,
       printers: []
     };
   },
@@ -91,13 +98,43 @@ export default {
   methods: {
     async fetchPrinterStatus() {
       this.loading = true;
+      this.progress = 0;
+      this.total = 0;
+      this.printers = [];
       try {
-        const response = await axios.get('/api-digital/it_service/printer_dashboard.php?action=fetch_live');
-        if (response.data.success) {
-          this.printers = response.data.data;
-        } else {
-          throw new Error(response.data.message || 'ไม่สามารถดึงข้อมูลได้');
+        const dbRes = await axios.get('/api-digital/it_service/printer_dashboard.php?action=fetch_db');
+        if (!dbRes.data.success) throw new Error(dbRes.data.message || 'ไม่สามารถดึงข้อมูลได้');
+        
+        const list = dbRes.data.data;
+        this.total = list.length;
+        
+        if (this.total === 0) {
+           this.loading = false;
+           return;
         }
+
+        // Process in batches of 5 to avoid overloading XAMPP Apache
+        const batchSize = 5;
+        for (let i = 0; i < list.length; i += batchSize) {
+          const batch = list.slice(i, i + batchSize);
+          const promises = batch.map(async (p) => {
+            try {
+               const res = await axios.get(`/api-digital/it_service/printer_dashboard.php?action=fetch_single&id=${p.id}`, { timeout: 4000 });
+               if (res.data.success && res.data.data) {
+                   this.printers.push(res.data.data);
+               }
+            } catch(e) {
+               console.error(`Error fetching printer ID ${p.id}`, e);
+            } finally {
+               this.progress++;
+            }
+          });
+          await Promise.allSettled(promises);
+        }
+        
+        // Sort printers by ID just in case they finished out of order
+        this.printers.sort((a, b) => a.id - b.id);
+        
       } catch (error) {
         console.error(error);
         Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อกับ API หรือเครื่องปริ้นได้: ' + error.message, 'error');

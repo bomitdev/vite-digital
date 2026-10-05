@@ -199,7 +199,7 @@
             <li><a class="dropdown-item text-success fw-bold py-2" href="#" @click.prevent="exportDashboardExcel(); isExportDropdownOpen = false;"><i class="bi bi-file-earmark-excel-fill me-2"></i>Export Excel</a></li>
           </ul>
         </div>
-        <router-link to="/kpi-setup" class="btn btn-dark shadow-sm fw-bold" v-if="isAdmin || hasResponsibleKpi">
+        <router-link to="/kpi-setup" class="btn btn-dark shadow-sm fw-bold" v-if="isAdmin">
           <i class="bi bi-gear-fill me-1"></i> ตั้งค่า KPI
         </router-link>
       </div>
@@ -1160,36 +1160,7 @@ export default {
       return !!(kpi.responsible_person && kpi.responsible_person.toLowerCase().includes(this.userFullname.toLowerCase()));
     },
     canViewKpi(kpi) {
-      if (!kpi) return false;
-      if (this.isAdmin) return true;
-      if (this.userAccess && this.userAccess.includes('menu_dashboard_kpi')) return true;
-      if (!this.userFullname) return true; // public view if not logged in
-      
-      // 1. Can report means can definitely view
-      if (this.canReport(kpi)) return true;
-      
-      // 2. Belongs to the same department / unit / team
-      const kpiUnit = (kpi.responsible_unit || '').trim().toLowerCase();
-      if (!kpiUnit) return false;
-      
-      const units = kpiUnit.split(',').map(u => u.trim().toLowerCase()).filter(Boolean);
-      
-      // Match against userDepartment
-      const userDept = (this.userDepartment || '').trim().toLowerCase();
-      if (userDept && units.some(u => u.includes(userDept) || userDept.includes(u))) {
-        return true;
-      }
-      
-      // Match against userTeams
-      if (this.userTeams && this.userTeams.length > 0) {
-        const matchTeam = this.userTeams.some(team => {
-          const t = team.trim().toLowerCase();
-          return t && units.some(u => u.includes(t) || t.includes(u));
-        });
-        if (matchTeam) return true;
-      }
-      
-      return false;
+      return true;
     },
     setStatusFilter(status) {
       this.statusFilter = status;

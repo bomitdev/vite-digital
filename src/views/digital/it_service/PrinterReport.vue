@@ -23,8 +23,18 @@
       <p class="text-muted mt-3">กำลังประมวลผลรายงาน...</p>
     </div>
 
+    <!-- Chart -->
+    <div v-if="!loading && reports.length > 0" class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+      <div class="card-header bg-white py-3 border-bottom-0">
+        <h5 class="m-0 fw-bold text-dark">กราฟแสดงปริมาณการใช้งาน (แผ่น)</h5>
+      </div>
+      <div class="card-body" style="height: 350px;">
+        <Bar :data="chartData" :options="chartOptions" />
+      </div>
+    </div>
+
     <!-- Data Table -->
-    <div v-else class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+    <div v-if="!loading" class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
       <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom-0">
         <h5 class="m-0 fw-bold text-dark">สรุปยอดการพิมพ์รายเครื่อง</h5>
         <span class="badge bg-light text-secondary border">อัปเดตล่าสุด: {{ currentDate }}</span>
@@ -89,15 +99,60 @@
 <script>
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import { Bar } from 'vue-chartjs';
+import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js';
+
+ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
 export default {
   name: 'PrinterReport',
+  components: {
+    Bar
+  },
   data() {
     return {
       loading: true,
       reports: [],
       currentDate: new Date().toLocaleDateString('th-TH')
     };
+  },
+  computed: {
+    chartData() {
+      // เรียงข้อมูลจากใช้เยอะไปน้อย (อิงจากเดือนนี้)
+      const sortedReports = [...this.reports].sort((a, b) => b.this_month_usage - a.this_month_usage);
+      
+      return {
+        labels: sortedReports.map(r => r.name),
+        datasets: [
+          {
+            label: 'ใช้วันนี้ (แผ่น)',
+            backgroundColor: '#0dcaf0',
+            data: sortedReports.map(r => r.today_usage)
+          },
+          {
+            label: 'ใช้เดือนนี้ (แผ่น)',
+            backgroundColor: '#0d6efd',
+            data: sortedReports.map(r => r.this_month_usage)
+          }
+        ]
+      };
+    },
+    chartOptions() {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      };
+    }
   },
   mounted() {
     this.fetchReports();

@@ -701,7 +701,7 @@
               </div>
               
               <!-- QI Committees -->
-              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_kpi_admin') || isAdmin">
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_ha') || isAdmin">
                 <div
                   class="nav-card h-100 bg-gradient-teal text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="goToQiCommittees"
@@ -947,7 +947,7 @@ export default {
     isAdmin() {
       return this.hasPermission([
         'menu_kpi_admin', 'menu_it_schedule', 'menu_communication', 
-        'menu_doc_center', 'menu_user_manager', 'menu_git_sync'
+        'menu_doc_center', 'menu_user_manager', 'menu_git_sync', 'menu_ha'
       ]);
     }
   },
@@ -1040,7 +1040,7 @@ export default {
       await this.checkAdminAccessAndGo('/kpi-setup');
     },
     async goToQiCommittees() {
-      await this.checkAdminAccessAndGo('/qi-committees');
+      this.$router.push({ path: '/qi-committees' });
     },
 
     goToRevenueResult() {

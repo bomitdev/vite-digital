@@ -9,7 +9,7 @@
           <button
             class="btn calm-btn-primary rounded-pill px-3 fw-bold me-2"
             @click="openAddModal"
-            v-if="isAdmin || userFullname"
+            v-if="isAdmin"
           >
             <i class="bi bi-plus-circle-fill me-1"></i> เพิ่มตัวชี้วัดใหม่
           </button>
@@ -527,10 +527,10 @@
                   >
                     <i class="bi bi-clock-history text-secondary"></i>
                   </button>
-                  <button class="btn btn-sm btn-light border me-1" @click="editKpi(kpi)" :disabled="kpi.is_locked == 1" title="แก้ไขตัวชี้วัด">
+                  <button class="btn btn-sm btn-light border me-1" @click="editKpi(kpi)" :disabled="kpi.is_locked == 1" title="แก้ไขตัวชี้วัด" v-if="isAdmin">
                     <i class="bi bi-pencil" :class="kpi.is_locked == 1 ? 'text-muted' : 'text-warning'"></i>
                   </button>
-                  <button class="btn btn-sm btn-light border" @click="deleteKpi(kpi.id)" :disabled="kpi.is_locked == 1" title="ลบตัวชี้วัด">
+                  <button class="btn btn-sm btn-light border" @click="deleteKpi(kpi.id)" :disabled="kpi.is_locked == 1" title="ลบตัวชี้วัด" v-if="isAdmin">
                     <i class="bi bi-trash" :class="kpi.is_locked == 1 ? 'text-muted' : 'text-danger'"></i>
                   </button>
                 </td>

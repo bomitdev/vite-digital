@@ -15,7 +15,7 @@ if ($action === 'summary') {
     // 2. Pages printed THIS fiscal year (Current total - Total at end of last September)
     
     // First, let's get all printers
-    $stmt = $pdo2->query("SELECT id, name, ip_address FROM it_printers ORDER BY id ASC");
+    $stmt = $pdo2->query("SELECT * FROM it_printers ORDER BY id ASC");
     $printers = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     $results = [];
@@ -37,13 +37,25 @@ if ($action === 'summary') {
 
     foreach ($printers as $p) {
         $pid = $p['id'];
+        $ip = $p['ip_address'];
+        $community = $p['community'] ?: 'public';
+        $offset = (int)$p['page_offset'];
         
-        // Get current (latest) log
-        $stmt_curr = $pdo2->prepare("SELECT page_count, record_date FROM it_printer_logs WHERE printer_id = ? ORDER BY record_date DESC LIMIT 1");
-        $stmt_curr->execute([$pid]);
-        $current = $stmt_curr->fetch(PDO::FETCH_ASSOC);
+        // 1. Get live count via SNMP
+        $oid_page_count = '1.3.6.1.2.1.43.10.2.1.4.1.1';
+        $snmp_result = @snmpget($ip, $community, $oid_page_count, 1000000, 1);
         
-        $current_count = $current ? (int)$current['page_count'] : 0;
+        if ($snmp_result !== false) {
+            $parts = explode(':', $snmp_result);
+            $raw_count = isset($parts[1]) ? (int)trim($parts[1]) : 0;
+            $current_count = $raw_count > 0 ? $raw_count + $offset : 0;
+        } else {
+            // Fallback: Get current (latest) log if printer is offline
+            $stmt_curr = $pdo2->prepare("SELECT page_count FROM it_printer_logs WHERE printer_id = ? ORDER BY record_date DESC LIMIT 1");
+            $stmt_curr->execute([$pid]);
+            $current = $stmt_curr->fetch(PDO::FETCH_ASSOC);
+            $current_count = $current ? (int)$current['page_count'] : 0;
+        }
         
         // Get last month baseline
         // We look for the log closest to, but not exceeding, the end of last month

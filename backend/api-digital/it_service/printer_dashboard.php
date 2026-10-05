@@ -79,6 +79,62 @@ if ($action === 'fetch_live') {
     exit;
 }
 
+if ($action === 'fetch_single') {
+    if (!extension_loaded('snmp')) {
+        echo json_encode(['success' => false, 'message' => 'PHP SNMP extension is not loaded']);
+        exit;
+    }
+
+    $id = $_GET['id'] ?? null;
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'Missing ID']);
+        exit;
+    }
+
+    $stmt = $pdo2->prepare("SELECT * FROM it_printers WHERE id = ?");
+    $stmt->execute([$id]);
+    $printer = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$printer) {
+        echo json_encode(['success' => false, 'message' => 'Printer not found']);
+        exit;
+    }
+
+    $ip = $printer['ip_address'];
+    $community = $printer['community'] ?: 'public';
+    $offset = (int)$printer['page_offset'];
+    $oid_page_count = '1.3.6.1.2.1.43.10.2.1.4.1.1';
+
+    $snmp_result = @snmpget($ip, $community, $oid_page_count, 1000000, 1);
+
+    if ($snmp_result === false) {
+        $result = [
+            'id' => $printer['id'],
+            'name' => $printer['name'],
+            'ip' => $ip,
+            'status' => 'offline',
+            'page_count' => 0,
+            'last_update' => date('Y-m-d H:i:s')
+        ];
+    } else {
+        $parts = explode(':', $snmp_result);
+        $raw_count = isset($parts[1]) ? (int)trim($parts[1]) : 0;
+        $page_count = $raw_count > 0 ? $raw_count + $offset : 0;
+        
+        $result = [
+            'id' => $printer['id'],
+            'name' => $printer['name'],
+            'ip' => $ip,
+            'status' => 'online',
+            'page_count' => $page_count,
+            'last_update' => date('Y-m-d H:i:s')
+        ];
+    }
+    
+    echo json_encode(['success' => true, 'data' => $result]);
+    exit;
+}
+
 if ($action === 'add') {
     $data = json_decode(file_get_contents("php://input"), true);
     if (!empty($data['name']) && !empty($data['ip'])) {

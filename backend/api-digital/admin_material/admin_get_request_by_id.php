@@ -13,17 +13,20 @@ if (!isset($pdo2)) {
 
 try {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+    $request_no = isset($_GET['request_no']) ? $_GET['request_no'] : null;
 
-    if ($id <= 0) {
-        echo json_encode(['success' => false, 'message' => 'Invalid ID']);
+    if ($id <= 0 && !$request_no) {
+        echo json_encode(['success' => false, 'message' => 'Invalid ID or Request No']);
         exit;
     }
 
-    // First, find the request_no for this ID
-    $stmtNo = $pdo2->prepare("SELECT request_no FROM mt_admin_requests WHERE id = :id");
-    $stmtNo->execute([':id' => $id]);
-    $rowNo = $stmtNo->fetch(PDO::FETCH_ASSOC);
-    $request_no = $rowNo ? $rowNo['request_no'] : null;
+    // If only ID is provided, find the request_no for this ID
+    if ($id > 0 && !$request_no) {
+        $stmtNo = $pdo2->prepare("SELECT request_no FROM mt_admin_requests WHERE id = :id");
+        $stmtNo->execute([':id' => $id]);
+        $rowNo = $stmtNo->fetch(PDO::FETCH_ASSOC);
+        $request_no = $rowNo ? $rowNo['request_no'] : null;
+    }
 
     $sql = "
         SELECT 

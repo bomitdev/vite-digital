@@ -18,8 +18,8 @@ if (!isset($pdo2)) {
 
 $data = json_decode(file_get_contents("php://input"));
 
-if (!isset($data->id) && (!isset($data->approvals) || !is_array($data->approvals))) {
-    echo json_encode(['success' => false, 'message' => 'Request ID or approvals array is required']);
+if (!isset($data->id) && (!isset($data->approvals) || !is_array($data->approvals)) && !isset($data->request_no)) {
+    echo json_encode(['success' => false, 'message' => 'Request ID, request_no, or approvals array is required']);
     exit;
 }
 
@@ -29,6 +29,18 @@ try {
     $approvals = [];
     if (isset($data->approvals) && is_array($data->approvals)) {
         $approvals = $data->approvals;
+    } elseif (isset($data->request_no)) {
+        // Fetch all pending requests for this request_no
+        $stmt_reqs = $pdo2->prepare("SELECT id, quantity FROM mt_admin_requests WHERE request_no = ? AND status = 'pending'");
+        $stmt_reqs->execute([$data->request_no]);
+        $items = $stmt_reqs->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($items as $item) {
+            $approvals[] = [
+                'id' => $item['id'],
+                'approved_quantity' => $item['quantity'],
+                'admin_note' => $data->admin_note ?? 'Approved via system (Bulk)'
+            ];
+        }
     } else {
         // Fallback for single approval (legacy)
         $approvals[] = [
