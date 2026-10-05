@@ -505,6 +505,10 @@ export default {
         if (response.data && response.data.status === 'success') {
           const accessUser = response.data.access_user ? response.data.access_user.split(':') : [];
           this.isAdminUser = accessUser.includes('administrator') || accessUser.includes('menu_it_material_manage');
+          
+          if (!this.form.department && response.data.department) {
+            this.form.department = response.data.department;
+          }
         }
       } catch (error) {
         console.error('Error checking admin status', error);

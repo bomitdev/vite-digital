@@ -34,7 +34,7 @@ try {
 
     $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
 
-    $stmt = $pdo2->prepare("SELECT * FROM mt_admin_materials $whereClause ORDER BY name ASC");
+    $stmt = $pdo2->prepare("SELECT * FROM mt_admin_materials $whereClause ORDER BY id ASC");
     $stmt->execute($params);
     $materials = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

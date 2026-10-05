@@ -66,18 +66,18 @@ try {
             }
         }
 
-        // Get past transactions to calculate correct beginning balance
-        $stmtPast = $pdo2->prepare("
+        // Get future transactions to calculate correct beginning and ending balances based on current stock
+        $stmtFuture = $pdo2->prepare("
             SELECT 
-                SUM(CASE WHEN action_type = 'IN' THEN quantity ELSE 0 END) as past_in,
-                SUM(CASE WHEN action_type = 'OUT' THEN quantity ELSE 0 END) as past_out
+                SUM(CASE WHEN action_type = 'IN' THEN quantity ELSE 0 END) as future_in,
+                SUM(CASE WHEN action_type = 'OUT' THEN quantity ELSE 0 END) as future_out
             FROM mt_admin_transactions 
-            WHERE material_id = :id AND action_date < :start_date
+            WHERE material_id = :id AND action_date > :end_date
         ");
-        $stmtPast->execute([':id' => $mat_id, ':start_date' => $start_date]);
-        $pastTx = $stmtPast->fetch(PDO::FETCH_ASSOC);
-        $past_in = intval($pastTx['past_in'] ?? 0);
-        $past_out = intval($pastTx['past_out'] ?? 0);
+        $stmtFuture->execute([':id' => $mat_id, ':end_date' => $end_date_str]);
+        $futureTx = $stmtFuture->fetch(PDO::FETCH_ASSOC);
+        $future_in = intval($futureTx['future_in'] ?? 0);
+        $future_out = intval($futureTx['future_out'] ?? 0);
 
         // Get latest vendor
         $stmtVendor = $pdo2->prepare("
@@ -90,11 +90,12 @@ try {
         $vendorRow = $stmtVendor->fetch(PDO::FETCH_ASSOC);
         $vendor = $vendorRow ? $vendorRow['reference_dest'] : '';
 
-        // Calculate balances forward from past transactions
-        $begin_bal = $past_in - $past_out;
+        // Calculate balances backward from current stock
+        $curr_bal = intval($mat['current_balance']);
+        $end_bal = $curr_bal - $future_in + $future_out;
+        $begin_bal = $end_bal - $month_in + $month_out;
+        
         if ($begin_bal < 0) $begin_bal = 0; // Prevent negative stock from bad manual data
-
-        $end_bal = $begin_bal + $month_in - $month_out;
 
         // Apply prices
         $forward_baht = $begin_bal * $price;

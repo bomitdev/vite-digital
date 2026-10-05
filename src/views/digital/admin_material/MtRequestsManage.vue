@@ -159,6 +159,7 @@
     </div>
 
     <!-- Edit Request Modal -->
+    <teleport to="body">
     <div class="modal fade" id="editRequestModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow">
@@ -303,6 +304,7 @@
         </div>
       </div>
     </div>
+    </teleport>
   </div>
 </template>
 
@@ -330,17 +332,17 @@ export default {
         request_date: '',
         items: []
       },
-      editModalInstance: null,
-      editData: {
-        request_no: null,
-        group_id: null,
-        requester_name: '',
-        department: '',
-        request_date: '',
-        items: []
-      },
       editModalInstance: null
     };
+  },
+  computed: {
+    isEditFormValid() {
+      return this.editData.requester_name && 
+             this.editData.department && 
+             this.editData.request_date && 
+             this.editData.items.length > 0 &&
+             this.editData.items.every(item => item.material_id && item.quantity > 0);
+    }
   },
   mounted() {
     this.fetchRequests();
