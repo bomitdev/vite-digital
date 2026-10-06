@@ -11,6 +11,7 @@ if (!isset($pdo2)) {
 
 $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-01-01');
 $end_date_str = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
+$type = isset($_GET['type']) ? $_GET['type'] : '';
 
 // Ensure time boundaries
 $start_date .= " 00:00:00";
@@ -18,11 +19,17 @@ $end_date_str .= " 23:59:59";
 
 try {
     // Select all admin materials
-    $stmt = $pdo2->prepare("
+    $sql = "
         SELECT id, name, type, unit, balance as current_balance, price_per_unit 
         FROM mt_admin_materials 
-    ");
-    $stmt->execute();
+    ";
+    $params = [];
+    if ($type !== '') {
+        $sql .= " WHERE type = :type";
+        $params[':type'] = $type;
+    }
+    $stmt = $pdo2->prepare($sql);
+    $stmt->execute($params);
     $materials = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $summary = [

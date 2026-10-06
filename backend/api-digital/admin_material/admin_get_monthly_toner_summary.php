@@ -11,6 +11,7 @@ if (!isset($pdo2)) {
 
 $month = isset($_GET['month']) ? intval($_GET['month']) : intval(date('m'));
 $year = isset($_GET['year']) ? intval($_GET['year']) : intval(date('Y'));
+$type = isset($_GET['type']) ? $_GET['type'] : '';
 
 // Calculate start and end dates of the target month
 $start_date = sprintf('%04d-%02d-01 00:00:00', $year, $month);
@@ -18,11 +19,17 @@ $end_date_str = date('Y-m-t 23:59:59', strtotime($start_date));
 
 try {
     // Select all admin materials
-    $stmt = $pdo2->prepare("
+    $sql = "
         SELECT id, name, type, unit, balance as current_balance, price_per_unit 
         FROM mt_admin_materials 
-    ");
-    $stmt->execute();
+    ";
+    $params = [];
+    if ($type !== '') {
+        $sql .= " WHERE type = :type";
+        $params[':type'] = $type;
+    }
+    $stmt = $pdo2->prepare($sql);
+    $stmt->execute($params);
     $materials = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $summary = [

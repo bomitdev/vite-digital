@@ -32,8 +32,14 @@
             <div class="card-body p-4">
               <h5 class="fw-bold mb-4 text-primary">ตั้งค่าการออกรายงาน</h5>
               <div class="mb-4">
+                <label class="form-label fw-semibold">ประเภทวัสดุ</label>
+                <select class="form-select form-control-lg mb-3" v-model="selectedType" @change="fetchData">
+                  <option value="">ทั้งหมด</option>
+                  <option value="วัสดุสำนักงาน">วัสดุสำนักงาน</option>
+                  <option value="งานบ้านงานครัว">งานบ้านงานครัว</option>
+                </select>
                 <label class="form-label fw-semibold">เลือกวันที่เริ่มต้น</label>
-                <input type="date" class="form-control form-control-lg mb-3" v-model="startDate" />
+                <input type="date" class="form-control form-control-lg mb-3" v-model="startDate" @change="fetchData" />
                 <label class="form-label fw-semibold">เลือกวันที่สิ้นสุด</label>
                 <input
                   type="date"
@@ -125,6 +131,7 @@ export default {
       krutImg: krutImgUrl,
       startDate: moment().startOf('month').format('YYYY-MM-DD'),
       endDate: moment().format('YYYY-MM-DD'),
+      selectedType: '',
       loading: false,
       summary: {
         forward_baht: 0,
@@ -153,7 +160,7 @@ export default {
         if (!start || !end) return;
 
         const res = await axios.get(
-          `/api-digital/admin_material/admin_get_yearly_toner_summary.php?start_date=${start}&end_date=${end}`
+          `/api-digital/admin_material/admin_get_yearly_toner_summary.php?start_date=${start}&end_date=${end}&type=${encodeURIComponent(this.selectedType)}`
         );
 
         if (res.data.status === 'success') {
@@ -289,8 +296,9 @@ export default {
         // Paragraph 1
         const p1Opts = { maxWidth: 160, align: 'justify', lineHeightFactor: 1.5 };
         const indentStr = '          ';
+        const typeText = this.selectedType ? ` (ประเภท: ${this.selectedType})` : '';
         doc.text(
-          `${indentStr}กลุ่มงานบริหารทั่วไปได้สรุปยอดการรับ-จ่าย วัสดุงานบริหารทั่วไป ระหว่างวันที่ ${dStart} ถึง ${dEnd} เพื่อส่งการเงินจัดทำรายงาน ดังรายการต่อไปนี้`,
+          `${indentStr}กลุ่มงานบริหารทั่วไปได้สรุปยอดการรับ-จ่าย วัสดุงานบริหารทั่วไป${typeText} ระหว่างวันที่ ${dStart} ถึง ${dEnd} เพื่อส่งการเงินจัดทำรายงาน ดังรายการต่อไปนี้`,
           20,
           74,
           p1Opts
@@ -303,7 +311,7 @@ export default {
         const col3 = 155;
         const col4 = 175;
 
-        doc.text('วัสดุงานบริหารทั่วไป', col1, listY);
+        doc.text(`วัสดุงานบริหารทั่วไป${this.selectedType ? ' (' + this.selectedType + ')' : ''}`, col1, listY);
         doc.text('ยกมา', col2, listY);
         doc.text(this.formatCurrency(this.summary.forward_baht), col3, listY, { align: 'right' });
         doc.text('บาท', col4, listY);
@@ -628,7 +636,7 @@ export default {
           didDrawPage: (data) => {
             doc.setFontSize(16);
             doc.setFont('Sarabun', 'bold');
-            doc.text(`การใช้วัสดุงานบริหารทั่วไป ระหว่างวันที่ ${dStart} ถึง ${dEnd}`, 148, 15, {
+            doc.text(`การใช้วัสดุงานบริหารทั่วไป${this.selectedType ? ' (ประเภท: ' + this.selectedType + ')' : ''} ระหว่างวันที่ ${dStart} ถึง ${dEnd}`, 148, 15, {
               align: 'center'
             });
             doc.text('โรงพยาบาลชานุมาน อ.ชานุมาน จ.อำนาจเจริญ', 148, 22, { align: 'center' });
@@ -671,7 +679,7 @@ export default {
 
         doc.setFontSize(16);
         doc.setFont('Sarabun', 'normal');
-        doc.text('รายงานสถานะคงคลัง วัสดุงานบริหารทั่วไป โรงพยาบาลชานุมาน', 105, 20, {
+        doc.text(`รายงานสถานะคงคลัง วัสดุงานบริหารทั่วไป${this.selectedType ? ' (ประเภท: ' + this.selectedType + ')' : ''} โรงพยาบาลชานุมาน`, 105, 20, {
           align: 'center'
         });
         doc.text(`ข้อมูลระหว่างวันที่ ${dStart} ถึง ${dEnd}`, 105, 28, {
@@ -682,7 +690,7 @@ export default {
           [
             { content: '', styles: { halign: 'center', fillColor: [255, 255, 255] } },
             {
-              content: 'วัสดุงานบริหารทั่วไป',
+              content: `วัสดุงานบริหารทั่วไป${this.selectedType ? ' (' + this.selectedType + ')' : ''}`,
               styles: { halign: 'center', fontStyle: 'normal', fillColor: [255, 255, 255] }
             }
           ]

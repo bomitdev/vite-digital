@@ -32,6 +32,12 @@
             <div class="card-body p-4">
               <h5 class="fw-bold mb-4 text-primary">ตั้งค่าการออกรายงาน</h5>
               <div class="mb-4">
+                <label class="form-label fw-semibold">ประเภทวัสดุ</label>
+                <select class="form-select form-control-lg mb-3" v-model="selectedType" @change="fetchData">
+                  <option value="">ทั้งหมด</option>
+                  <option value="วัสดุสำนักงาน">วัสดุสำนักงาน</option>
+                  <option value="งานบ้านงานครัว">งานบ้านงานครัว</option>
+                </select>
                 <label class="form-label fw-semibold">เลือกเดือนและปี</label>
                 <input
                   type="month"
@@ -122,6 +128,7 @@ export default {
     return {
       krutImg: krutImgUrl,
       selectedMonth: moment().format('YYYY-MM'),
+      selectedType: '',
       loading: false,
       summary: {
         forward_baht: 0,
@@ -149,7 +156,7 @@ export default {
         const month = parts[1];
 
         const res = await axios.get(
-          `/api-digital/admin_material/admin_get_monthly_toner_summary.php?month=${month}&year=${year}`
+          `/api-digital/admin_material/admin_get_monthly_toner_summary.php?month=${month}&year=${year}&type=${encodeURIComponent(this.selectedType)}`
         );
 
         if (res.data.status === 'success') {
@@ -290,8 +297,9 @@ export default {
         // Paragraph 1
         const p1Opts = { maxWidth: 160, align: 'justify', lineHeightFactor: 1.5 };
         const indentStr = '          ';
+        const typeText = this.selectedType ? ` (ประเภท: ${this.selectedType})` : '';
         doc.text(
-          `${indentStr}กลุ่มงานบริหารทั่วไปได้สรุปยอดการรับ-จ่าย วัสดุงานบริหารทั่วไป ประจำเดือน${
+          `${indentStr}กลุ่มงานบริหารทั่วไปได้สรุปยอดการรับ-จ่าย วัสดุงานบริหารทั่วไป${typeText} ประจำเดือน${
             thaiMonths[mom.month()]
           } ${mom.year() + 543} เพื่อส่งการเงินจัดทำรายงานประจำเดือน ดังรายการต่อไปนี้`,
           20,
@@ -306,7 +314,7 @@ export default {
         const col3 = 155;
         const col4 = 175;
 
-        doc.text('วัสดุงานบริหารทั่วไป', col1, listY);
+        doc.text(`วัสดุงานบริหารทั่วไป${this.selectedType ? ' (' + this.selectedType + ')' : ''}`, col1, listY);
         doc.text('ยกมา', col2, listY);
         doc.text(this.formatCurrency(this.summary.forward_baht), col3, listY, { align: 'right' });
         doc.text('บาท', col4, listY);
@@ -632,7 +640,7 @@ export default {
             doc.setFontSize(16);
             doc.setFont('Sarabun', 'bold');
             doc.text(
-              `การใช้วัสดุงานบริหารทั่วไป ประจำเดือน ${thaiMonths[mom.month()]} ${mom.year() + 543}`,
+              `การใช้วัสดุงานบริหารทั่วไป${this.selectedType ? ' (ประเภท: ' + this.selectedType + ')' : ''} ประจำเดือน ${thaiMonths[mom.month()]} ${mom.year() + 543}`,
               148,
               15,
               { align: 'center' }
@@ -677,7 +685,7 @@ export default {
 
         doc.setFontSize(16);
         doc.setFont('Sarabun', 'normal');
-        doc.text('รายงานสถานะคงคลัง วัสดุงานบริหารทั่วไป โรงพยาบาลชานุมาน', 105, 20, {
+        doc.text(`รายงานสถานะคงคลัง วัสดุงานบริหารทั่วไป${this.selectedType ? ' (ประเภท: ' + this.selectedType + ')' : ''} โรงพยาบาลชานุมาน`, 105, 20, {
           align: 'center'
         });
         doc.text(`ประจำเดือน ${thaiMonths[mom.month()]}  ${mom.year() + 543}`, 105, 28, {
@@ -688,7 +696,7 @@ export default {
           [
             { content: '', styles: { halign: 'center', fillColor: [255, 255, 255] } },
             {
-              content: 'วัสดุงานบริหารทั่วไป',
+              content: `วัสดุงานบริหารทั่วไป${this.selectedType ? ' (' + this.selectedType + ')' : ''}`,
               styles: { halign: 'center', fontStyle: 'normal', fillColor: [255, 255, 255] }
             }
           ]
