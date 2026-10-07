@@ -1,6 +1,10 @@
 <?php
 require_once '../../config.php';
 require_once '../../cors.php';
+require_once __DIR__ . '/../../auth_utils.php';
+require_once __DIR__ . '/admin_log_helper.php';
+
+$userData = authGuard();
 
 header("Content-Type: application/json");
 
@@ -44,26 +48,9 @@ try {
     $current_balance = intval($mat['balance']);
 
     if ($new_quantity != $old_quantity) {
-        $diff = $new_quantity - $old_quantity; // ถ้าบวกคือจำนวนที่ทำรายการเพิ่มขึ้น
-        $new_balance = $current_balance;
-
-        if ($action_type === 'IN') {
-            // รับเข้ามากขึ้น Diff เป็นบวก -> สต็อกเพิ่ม
-            $new_balance += $diff;
-        } else if ($action_type === 'OUT') {
-            // จ่ายออกมากขึ้น Diff เป็นบวก -> สต็อกลดลง
-            $new_balance -= $diff;
-        }
-
-        if ($new_balance < 0) {
-            $pdo2->rollBack();
-            echo json_encode(['status' => 'error', 'message' => 'ไม่สามารถแก้ไขจำนวนได้ เนื่องจากยอดคงเหลือปัจจุบันไม่เพียงพอ']);
-            exit;
-        }
-
-        // อัปเดตยอดคงเหลือ
-        $stmtUpdMat = $pdo2->prepare("UPDATE mt_admin_materials SET balance = :balance, updated_at = NOW() WHERE id = :id");
-        $stmtUpdMat->execute([':balance' => $new_balance, ':id' => $material_id]);
+        $pdo2->rollBack();
+        echo json_encode(['status' => 'error', 'message' => 'ไม่สามารถแก้ไขจำนวนผ่านหน้านี้ได้ (กรุณายกเลิกและทำรายการใหม่เพื่อความถูกต้องของระบบ Lot)']);
+        exit;
     }
 
     // อัปเดตรายการ
@@ -86,6 +73,10 @@ try {
     ]);
 
     $pdo2->commit();
+
+    $username = $userData['name'] ?? $userData['user'] ?? 'Unknown User';
+    insertAdminLog($pdo2, $username, 'UPDATE_TRANSACTION', "แก้ไขรายละเอียดการทำรายการ ID: $id");
+
     echo json_encode(['status' => 'success', 'message' => 'บันทึกการแก้ไขเรียบร้อยแล้ว']);
 } catch (PDOException $e) {
     $pdo2->rollBack();

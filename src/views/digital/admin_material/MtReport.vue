@@ -17,6 +17,9 @@
           </h2>
         </div>
         <div>
+          <button @click="openLogModal" class="btn btn-outline-info rounded-pill me-2">
+            <i class="bi bi-clock-history me-1"></i>ดูประวัติการแก้ไข/ยกเลิก
+          </button>
           <router-link to="/home-backoffice" class="btn btn-outline-secondary rounded-pill">
             <i class="bi bi-house-door me-2"></i>กลับหน้าหลัก
           </router-link>
@@ -117,7 +120,10 @@
                 <tr v-for="t in transactions" :key="t.id">
                   <td class="ps-4">{{ formatDate(t.action_date) }}</td>
                   <td>{{ t.material_code }}</td>
-                  <td class="fw-bold">{{ t.material_name }}</td>
+                  <td>
+                    <div class="fw-bold">{{ t.material_name }}</div>
+                    <div class="small text-muted">{{ t.material_type || 'ไม่มีหมวดหมู่' }}</div>
+                  </td>
                   <td>
                     <span v-if="t.action_type === 'IN'" class="badge bg-success rounded-pill"
                       >รับเข้า</span
@@ -232,6 +238,9 @@
         </div>
       </div>
     </div>
+
+    <!-- Log Modal -->
+    <MtLogModal ref="logModal" logType="manage" modalId="reportLogModal" />
   </div>
 </template>
 
@@ -240,9 +249,13 @@ import axios from 'axios';
 import moment from 'moment';
 import Swal from 'sweetalert2';
 import * as bootstrap from 'bootstrap';
+import MtLogModal from './MtLogModal.vue';
 
 export default {
   name: 'MtReport',
+  components: {
+    MtLogModal
+  },
   data() {
     return {
       materials: [],
@@ -377,6 +390,12 @@ export default {
           }
         }
       });
+    },
+    openLogModal() {
+      // eslint-disable-next-line no-undef
+      const modal = new bootstrap.Modal(document.getElementById('reportLogModal'));
+      modal.show();
+      this.$refs.logModal.fetchLogs();
     }
   },
   mounted() {

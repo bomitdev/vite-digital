@@ -1,5 +1,5 @@
 <template>
-  <div class="request-form-container mt-2 fade-in">
+  <div class="request-form-container container-fluid px-4 px-md-5 pt-3 fade-in">
     <!-- Top Actions -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
       <!-- Breadcrumb -->
@@ -128,9 +128,15 @@
                            <span class="badge bg-primary text-white rounded-pill px-2 py-1 shadow-sm"><i class="bi bi-2-circle fs-6"></i></span>
                            รายการวัสดุสำนักงาน
                          </h5>
-                         <div class="input-group shadow-sm" style="max-width: 280px;">
-                           <span class="input-group-text bg-white border-end-0 text-primary"><i class="bi bi-search"></i></span>
-                           <input type="text" v-model="materialSearchQuery" class="form-control border-start-0 ps-0" placeholder="ค้นหาชื่อ หรือรหัสวัสดุ...">
+                         <div class="d-flex gap-2 flex-wrap justify-content-end">
+                           <select v-model="selectedType" class="form-select shadow-sm border-light-subtle" style="max-width: 160px; font-size: 0.9rem;">
+                             <option value="">ทุกประเภท</option>
+                             <option v-for="cat in uniqueCategories" :key="cat" :value="cat">{{ cat }}</option>
+                           </select>
+                           <div class="input-group shadow-sm" style="max-width: 280px;">
+                             <span class="input-group-text bg-white border-end-0 text-primary"><i class="bi bi-search"></i></span>
+                             <input type="text" v-model="materialSearchQuery" class="form-control border-start-0 ps-0" placeholder="ค้นหาชื่อ หรือรหัสวัสดุ...">
+                           </div>
                          </div>
                       </div>
                       
@@ -138,15 +144,16 @@
                          <table class="table table-hover align-middle mb-0">
                            <thead class="table-light sticky-top shadow-sm" style="z-index: 10;">
                              <tr>
-                               <th width="15%" class="ps-4">รูปภาพ</th>
-                               <th width="45%">รหัส / ชื่อวัสดุ</th>
-                               <th width="20%" class="text-center">คงเหลือ</th>
+                               <th width="12%" class="ps-4">รูปภาพ</th>
+                               <th width="33%">รหัส / ชื่อวัสดุ</th>
+                               <th width="20%" class="text-center">ประเภท</th>
+                               <th width="15%" class="text-center">คงเหลือ</th>
                                <th width="20%" class="text-center pe-4">แอคชัน</th>
                              </tr>
                            </thead>
                            <tbody>
                              <tr v-if="filteredMaterials.length === 0">
-                               <td colspan="4" class="text-center py-5 text-muted">
+                               <td colspan="5" class="text-center py-5 text-muted">
                                  <i class="bi bi-search fs-1 mb-2 d-block text-light"></i>
                                  ไม่พบรายการวัสดุที่ค้นหา
                                </td>
@@ -161,6 +168,9 @@
                                <td>
                                  <div class="fw-bold text-dark fs-6">{{ mat.name }}</div>
                                  <div class="small text-muted">{{ mat.code }}</div>
+                               </td>
+                               <td class="text-center">
+                                 <span class="badge bg-secondary rounded-pill fw-normal shadow-sm">{{ mat.type || '-' }}</span>
                                </td>
                                <td class="text-center">
                                  <span class="badge bg-light text-dark border px-2 py-1 fs-6">{{ mat.balance }} <span class="fw-normal text-muted ms-1">{{ mat.unit }}</span></span>
@@ -441,6 +451,7 @@ export default {
       requests: [],
       searchQuery: '',
       materialSearchQuery: '',
+      selectedType: '',
       showPreviewModal: false,
       editingRequestNo: null,
       isAdminUser: false
@@ -450,10 +461,21 @@ export default {
     isAdmin() {
       return this.isAdminUser;
     },
+    uniqueCategories() {
+      const categories = this.materials.map(m => m.type).filter(t => t);
+      return [...new Set(categories)].sort();
+    },
     filteredMaterials() {
-      if (!this.materialSearchQuery) return this.materials;
+      let mats = this.materials;
+      
+      if (this.selectedType) {
+        mats = mats.filter(m => m.type === this.selectedType);
+      }
+      
+      if (!this.materialSearchQuery) return mats;
+      
       const q = this.materialSearchQuery.toLowerCase().trim();
-      return this.materials.filter(m => 
+      return mats.filter(m => 
         (m.name && m.name.toLowerCase().includes(q)) || 
         (m.code && m.code.toLowerCase().includes(q))
       );
@@ -518,9 +540,9 @@ export default {
       try {
         const res = await axios.get('/api-digital/admin_material/admin_get_materials.php');
         if (res.data.status === 'success') {
-          // ดึงเฉพาะวัสดุที่มีของเหลือ (balance > 0)
+          // ดึงเฉพาะวัสดุที่มีของเหลือ (balance > 0) และเปิดใช้งานอยู่ (is_active != 0)
           this.materials = res.data.data
-            .filter((mat) => mat.balance > 0)
+            .filter((mat) => mat.balance > 0 && mat.is_active != 0)
             .sort((a, b) => b.balance - a.balance);
             
           if (this.materials.length === 0) {

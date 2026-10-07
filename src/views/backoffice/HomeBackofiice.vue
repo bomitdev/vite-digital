@@ -1,9 +1,9 @@
 <template>
   <div class="page-container min-vh-100 bg-light py-5">
-    <div class="container-lg">
+    <div class="container-xxl">
       <!-- User Profile Header -->
       <div v-if="userProfile.fullname" class="row justify-content-center mb-5 fade-in-up">
-        <div class="col-lg-10">
+        <div class="col-12">
           <div
             class="profile-card p-4 p-md-5 rounded-5 shadow text-white position-relative overflow-hidden"
           >
@@ -56,7 +56,7 @@
 
       <!-- Menu Grid -->
       <div class="row justify-content-center g-4 fade-in-up delay-100">
-        <div class="col-lg-10">
+        <div class="col-12">
           <div class="d-flex align-items-center mb-4 px-2">
             <div class="bg-primary rounded-pill me-3" style="width: 5px; height: 25px"></div>
             <h4 class="fw-bold text-dark m-0">เมนูหลัก</h4>
@@ -67,170 +67,44 @@
             <h6 class="fw-bold text-secondary mb-3 mt-1 border-bottom pb-2">
               <i class="bi bi-pc-display me-2 text-primary"></i>สำหรับเจ้าหน้าที่
             </h6>
-            <div class="row g-3 mb-4">
+            <div class="row g-4 mb-4">
+            
+            <!-- ====== GROUP 1: HR & Time ====== -->
             <!-- Access Log -->
             <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_time_in_out', 'backoffice_staff_all'])">
               <div
-                class="nav-card h-100 bg-gradient-teal text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
+                class="nav-card h-100 bg-gradient-green text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group"
                 @click="goToFingerScan"
               >
-                <div
-                  class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
-                ></div>
+                <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
                 <div class="position-relative z-1 d-flex flex-column h-100">
-                  <div
-                    class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
-                  >
+                  <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
                     <i class="bi bi-clock-history fs-4"></i>
                   </div>
-                  <h6 class="fw-bold text-white mb-1 text-truncate" title="เวลาเข้า-ออกงาน">
-                    เวลาเข้า-ออกงาน
-                  </h6>
-                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
-                    ประวัติลงเวลาและสรุปวันลา
-                  </p>
-                  <div
-                    class="d-flex align-items-center text-white fw-bold small mt-auto"
-                    style="font-size: 0.75rem"
-                  >
-                    เข้าใช้งาน
-                    <i
-                      class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
-                    ></i>
+                  <h6 class="fw-bold text-white mb-1 text-truncate" title="เวลาเข้า-ออกงาน">เวลาเข้า-ออกงาน</h6>
+                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">ประวัติลงเวลาและสรุปวันลา</p>
+                  <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
+                    เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
                   </div>
                 </div>
               </div>
             </div>
-            <!-- Computer Repair -->
-            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_computer_repair', 'backoffice_staff_all'])">
-              <div
-                class="nav-card h-100 bg-gradient-red text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
-                @click="goToComputerRepair"
-              >
-                <div
-                  class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
-                ></div>
-                <div class="position-relative z-1 d-flex flex-column h-100">
-                  <div
-                    class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
-                  >
-                    <i class="bi bi-tools fs-4"></i>
-                  </div>
-                  <h6 class="fw-bold text-white mb-1 text-truncate" title="แจ้งซ่อมคอมพิวเตอร์">
-                    แจ้งซ่อมคอมพิวเตอร์
-                  </h6>
-                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
-                    ติดตามปัญหาอุปกรณ์
-                  </p>
-                  <div
-                    class="d-flex align-items-center text-white fw-bold small mt-auto"
-                    style="font-size: 0.75rem"
-                  >
-                    เข้าใช้งาน
-                    <i
-                      class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
-                    ></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <!-- Material Request Form IT -->
-            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_it_material_req', 'backoffice_staff_all'])">
-              <div
-                class="nav-card h-100 bg-gradient-pink text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
-                @click="goToMaterialRequestForm"
-              >
-                <div
-                  class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
-                ></div>
-                <div class="position-relative z-1 d-flex flex-column h-100">
-                  <div
-                    class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
-                  >
-                    <i class="bi bi-cart-plus fs-4"></i>
-                  </div>
-                  <h6 class="fw-bold text-white mb-1 text-truncate" title="ฟอร์มขอเบิกวัสดุคอมฯ">
-                    ขอเบิกวัสดุคอมฯ
-                  </h6>
-                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
-                    สำหรับขอเบิกอุปกรณ์ IT
-                  </p>
-                  <div
-                    class="d-flex align-items-center text-white fw-bold small mt-auto"
-                    style="font-size: 0.75rem"
-                  >
-                    เข้าใช้งาน
-                    <i
-                      class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
-                    ></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Material Request Form Admin -->
-            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_gm_material_req', 'backoffice_staff_all'])">
-              <div
-                class="nav-card h-100 bg-gradient-teal text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
-                @click="goToMaterialAdminRequestForm"
-              >
-                <div
-                  class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
-                ></div>
-                <div class="position-relative z-1 d-flex flex-column h-100">
-                  <div
-                    class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
-                  >
-                    <i class="bi bi-cart-check fs-4"></i>
-                  </div>
-                  <h6 class="fw-bold text-white mb-1 text-truncate" title="ฟอร์มขอเบิกวัสดุบริหาร">
-                    ขอเบิกวัสดุบริหารฯ
-                  </h6>
-                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
-                    สำหรับขอเบิกวัสดุทั่วไป
-                  </p>
-                  <div
-                    class="d-flex align-items-center text-white fw-bold small mt-auto"
-                    style="font-size: 0.75rem"
-                  >
-                    เข้าใช้งาน
-                    <i
-                      class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
-                    ></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-
+            <!-- ====== GROUP 2: Data & Reports ====== -->
             <!-- Report Status -->
             <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_data_report', 'backoffice_staff_all'])">
               <div
-                class="nav-card h-100 bg-gradient-blue text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
+                class="nav-card h-100 bg-gradient-orange text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group"
                 @click="goToReport"
               >
-                <div
-                  class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
-                ></div>
+                <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
                 <div class="position-relative z-1 d-flex flex-column h-100">
-                  <div
-                    class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
-                  >
+                  <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
                     <i class="bi bi-file-earmark-text-fill fs-4"></i>
                   </div>
-                  <h6 class="fw-bold text-white mb-1 text-truncate" title="ขอข้อมูล/รายงาน">
-                    ขอข้อมูล/รายงาน
-                  </h6>
-                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
-                    ยื่นคำร้องและติดตามผล
-                  </p>
-                  <div
-                    class="d-flex align-items-center text-white fw-bold small mt-auto"
-                    style="font-size: 0.75rem"
-                  >
-                    เข้าใช้งาน
-                    <i
-                      class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
-                    ></i>
+                  <h6 class="fw-bold text-white mb-1 text-truncate" title="ขอข้อมูล/รายงาน">ขอข้อมูล/รายงาน</h6>
+                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">ยื่นคำร้องและติดตามผล</p>
+                  <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
+                    เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
                   </div>
                 </div>
               </div>
@@ -239,32 +113,39 @@
             <!-- Report Center -->
             <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_report_center', 'backoffice_staff_all'])">
               <div
-                class="nav-card h-100 bg-gradient-green text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
+                class="nav-card h-100 bg-gradient-orange text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group"
                 @click="goToReportCenter"
               >
-                <div
-                  class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
-                ></div>
+                <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
                 <div class="position-relative z-1 d-flex flex-column h-100">
-                  <div
-                    class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
-                  >
+                  <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
                     <i class="bi bi-table fs-4"></i>
                   </div>
-                  <h6 class="fw-bold text-white mb-1 text-truncate" title="Report Center">
-                    Report Center
-                  </h6>
-                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
-                    เรียกดูรายงานและ Export
-                  </p>
-                  <div
-                    class="d-flex align-items-center text-white fw-bold small mt-auto"
-                    style="font-size: 0.75rem"
-                  >
-                    เข้าใช้งาน
-                    <i
-                      class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
-                    ></i>
+                  <h6 class="fw-bold text-white mb-1 text-truncate" title="Report Center">Report Center</h6>
+                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">เรียกดูรายงานและ Export</p>
+                  <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
+                    เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ====== GROUP 3: IT ====== -->
+            <!-- Computer Repair -->
+            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_computer_repair', 'backoffice_staff_all'])">
+              <div
+                class="nav-card h-100 bg-gradient-blue text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group"
+                @click="goToComputerRepair"
+              >
+                <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
+                <div class="position-relative z-1 d-flex flex-column h-100">
+                  <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
+                    <i class="bi bi-tools fs-4"></i>
+                  </div>
+                  <h6 class="fw-bold text-white mb-1 text-truncate" title="แจ้งซ่อมคอมพิวเตอร์">แจ้งซ่อมคอมพิวเตอร์</h6>
+                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">ติดตามปัญหาอุปกรณ์</p>
+                  <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
+                    เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
                   </div>
                 </div>
               </div>
@@ -273,66 +154,115 @@
             <!-- Computer Loan Form -->
             <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_borrow_it', 'backoffice_staff_all'])">
               <div
-                class="nav-card h-100 bg-gradient-purple text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
+                class="nav-card h-100 bg-gradient-blue text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group"
                 @click="goToComputerLoanForm"
               >
-                <div
-                  class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
-                ></div>
+                <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
                 <div class="position-relative z-1 d-flex flex-column h-100">
-                  <div
-                    class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
-                  >
+                  <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
                     <i class="bi bi-laptop fs-4"></i>
                   </div>
-                  <h6 class="fw-bold text-white mb-1 text-truncate" title="ยืมอุปกรณ์คอมพิวเตอร์">
-                    ยืมอุปกรณ์คอมฯ
-                  </h6>
-                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
-                    ยื่นคำร้องขอยืมอุปกรณ์
-                  </p>
-                  <div
-                    class="d-flex align-items-center text-white fw-bold small mt-auto"
-                    style="font-size: 0.75rem"
-                  >
-                    เข้าใช้งาน
-                    <i
-                      class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
-                    ></i>
+                  <h6 class="fw-bold text-white mb-1 text-truncate" title="ยืมอุปกรณ์คอมพิวเตอร์">ยืมอุปกรณ์คอมฯ</h6>
+                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">ยื่นคำร้องขอยืมอุปกรณ์</p>
+                  <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
+                    เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
                   </div>
                 </div>
               </div>
             </div>
 
+            <!-- Material Request Form IT -->
+            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_it_material_req', 'backoffice_staff_all'])">
+              <div
+                class="nav-card h-100 bg-gradient-blue text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group"
+                @click="goToMaterialRequestForm"
+              >
+                <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
+                <div class="position-relative z-1 d-flex flex-column h-100">
+                  <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
+                    <i class="bi bi-cart-plus fs-4"></i>
+                  </div>
+                  <h6 class="fw-bold text-white mb-1 text-truncate" title="ฟอร์มขอเบิกวัสดุคอมฯ">ขอเบิกวัสดุคอมฯ</h6>
+                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">สำหรับขอเบิกอุปกรณ์ IT</p>
+                  <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
+                    เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ====== GROUP 4: Admin & Health ====== -->
+            <!-- Material Request Form Admin -->
+            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_gm_material_req', 'backoffice_staff_all'])">
+              <div
+                class="nav-card h-100 bg-gradient-purple text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group"
+                @click="goToMaterialAdminRequestForm"
+              >
+                <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
+                <div class="position-relative z-1 d-flex flex-column h-100">
+                  <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
+                    <i class="bi bi-cart-check fs-4"></i>
+                  </div>
+                  <h6 class="fw-bold text-white mb-1 text-truncate" title="ฟอร์มขอเบิกวัสดุบริหาร">ขอเบิกวัสดุบริหารฯ</h6>
+                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">สำหรับขอเบิกวัสดุทั่วไป</p>
+                  <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
+                    เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pharmacy Request Form -->
+            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_pharmacy_material_req', 'backoffice_staff_all'])">
+              <div class="nav-card h-100 bg-gradient-teal text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group" @click="goToPharmacyRequestForm">
+                <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
+                <div class="position-relative z-1 d-flex flex-column h-100">
+                  <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
+                    <i class="bi bi-capsule fs-4"></i>
+                  </div>
+                  <h6 class="fw-bold text-white mb-1 text-truncate" title="ฟอร์มขอเบิกยา">ขอเบิกยา</h6>
+                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">สำหรับขอเบิกยาจากคลัง</p>
+                  <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
+                    เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Med Request Form -->
+            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_med_material_req', 'backoffice_staff_all'])">
+              <div class="nav-card h-100 bg-gradient-teal text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group" @click="goToMedRequestForm">
+                <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
+                <div class="position-relative z-1 d-flex flex-column h-100">
+                  <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
+                    <i class="bi bi-bandaid fs-4"></i>
+                  </div>
+                  <h6 class="fw-bold text-white mb-1 text-truncate" title="ฟอร์มขอเบิกเวชภัณฑ์">ขอเบิกเวชภัณฑ์</h6>
+                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">สำหรับขอเบิกเวชภัณฑ์</p>
+                  <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
+                    เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            
+
             <!-- Revenue Result Reporting (Staff) -->
             <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_revenue_report', 'backoffice_staff_all'])">
               <div
-                class="nav-card h-100 bg-gradient-orange text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
+                class="nav-card h-100 bg-gradient-orange text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group"
                 @click="goToRevenueResult"
               >
-                <div
-                  class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
-                ></div>
+                <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
                 <div class="position-relative z-1 d-flex flex-column h-100">
-                  <div
-                    class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
-                  >
+                  <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
                     <i class="bi bi-cash-stack fs-4"></i>
                   </div>
-                  <h6 class="fw-bold text-white mb-1 text-truncate" title="รายงานผลจัดเก็บรายได้">
-                    รายงานผลจัดเก็บ
-                  </h6>
-                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
-                    ดูภาพรวมและส่งยอดรายได้
-                  </p>
-                  <div
-                    class="d-flex align-items-center text-white fw-bold small mt-auto"
-                    style="font-size: 0.75rem"
-                  >
-                    เข้าใช้งาน
-                    <i
-                      class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
-                    ></i>
+                  <h6 class="fw-bold text-white mb-1 text-truncate" title="รายงานผลจัดเก็บรายได้">รายงานผลจัดเก็บ</h6>
+                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">ดูภาพรวมและส่งยอดรายได้</p>
+                  <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
+                    เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
                   </div>
                 </div>
               </div>
@@ -340,34 +270,63 @@
 
             <!-- Project Management -->
             <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_projects')">
-                <div
-                  class="nav-card h-100 bg-gradient-teal text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
-                  @click="$router.push('/projects')"
-                  style="background: linear-gradient(135deg, #20c997 0%, #198754 100%) !important;"
-                >
-                  <div
-                    class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
-                  ></div>
+              <div
+                class="nav-card h-100 bg-gradient-purple text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group"
+                @click="$router.push('/projects')"
+              >
+                <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
+                <div class="position-relative z-1 d-flex flex-column h-100">
+                  <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
+                    <i class="bi bi-kanban fs-4"></i>
+                  </div>
+                  <h6 class="fw-bold text-white mb-1 text-truncate" title="ระบบงานโครงการ">โครงการ</h6>
+                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">ติดตามความคืบหน้าโครงการ</p>
+                  <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
+                    เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          </template>
+          <!-- Category Health -->
+          <template v-if="hasHealthAccess">
+            <h6 class="fw-bold text-secondary mb-3 mt-4 border-bottom pb-2">
+              <i class="bi bi-heart-pulse me-2 text-primary"></i>ระบบคลังยาและวัสดุทางการแพทย์
+            </h6>
+            <div class="row g-3 mb-4">
+              
+
+              <!-- Pharmacy Management Admin -->
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_pharmacy_material_manage')">
+                <div class="nav-card h-100 bg-gradient-green text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group" @click="goToPharmacyAdmin">
+                  <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
                   <div class="position-relative z-1 d-flex flex-column h-100">
-                    <div
-                      class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
-                    >
-                      <i class="bi bi-kanban fs-4"></i>
+                    <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
+                      <i class="bi bi-capsule fs-4"></i>
                     </div>
-                    <h6 class="fw-bold text-white mb-1 text-truncate" title="ระบบงานโครงการ">
-                      โครงการ
-                    </h6>
-                    <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
-                      ติดตามความคืบหน้าโครงการ
-                    </p>
-                    <div
-                      class="d-flex align-items-center text-white fw-bold small mt-auto"
-                      style="font-size: 0.75rem"
-                    >
-                      เข้าใช้งาน
-                      <i
-                        class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
-                      ></i>
+                    <h6 class="fw-bold text-white mb-1 text-truncate" title="ระบบคลังยา">ระบบคลังยา</h6>
+                    <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">หน้า Stock ยา</p>
+                    <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
+                      เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Med Management Admin -->
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_med_material_manage')">
+                <div class="nav-card h-100 bg-gradient-green text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group" @click="goToMedAdmin">
+                  <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
+                  <div class="position-relative z-1 d-flex flex-column h-100">
+                    <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
+                      <i class="bi bi-bandaid fs-4"></i>
+                    </div>
+                    <h6 class="fw-bold text-white mb-1 text-truncate" title="ระบบคลังเวชภัณฑ์">ระบบคลังเวชภัณฑ์</h6>
+                    <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">หน้า Stock เวชภัณฑ์</p>
+                    <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
+                      เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
                     </div>
                   </div>
                 </div>
@@ -412,6 +371,8 @@
                   </div>
                 </div>
               </div>
+
+
               <!-- Procurement Tracking -->
               <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_procurement')">
                 <div
@@ -929,7 +890,7 @@ export default {
     showStaffCategory() {
       return this.hasPermission([
         'menu_time_in_out', 'menu_computer_repair', 'menu_it_material_req',
-        'menu_gm_material_req', 'menu_data_report', 'menu_report_center',
+        'menu_gm_material_req', 'menu_pharmacy_material_req', 'menu_med_material_req', 'menu_data_report', 'menu_report_center',
         'menu_borrow_it', 'menu_revenue_report', 'menu_projects', 'backoffice_staff_all'
       ]);
     },
@@ -938,6 +899,12 @@ export default {
         'menu_gm_material_manage', 'menu_procurement'
       ]);
     },
+    hasHealthAccess() {
+      return this.hasPermission([
+        'menu_pharmacy_material_manage', 'menu_med_material_manage'
+      ]);
+    },
+
     isItAdmin() {
       return this.hasPermission([
         'menu_it_asset', 'menu_software', 'menu_it_material_manage', 
@@ -1072,6 +1039,18 @@ export default {
     },
     goToMaterialRequestForm() {
       this.$router.push({ path: '/material-request' });
+    },
+    goToPharmacyRequestForm() {
+      this.$router.push({ path: '/pharmacy-admin-request' });
+    },
+    goToMedRequestForm() {
+      this.$router.push({ path: '/med-admin-request' });
+    },
+    async goToPharmacyAdmin() {
+      await this.checkITAccessAndGoGM('/pharmacy-admin');
+    },
+    async goToMedAdmin() {
+      await this.checkITAccessAndGoGM('/med-admin');
     },
     goToMaterialAdminRequestForm() {
       this.$router.push({ path: '/material-admin-request' });

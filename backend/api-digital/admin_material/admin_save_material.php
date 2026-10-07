@@ -2,6 +2,7 @@
 require __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../auth_utils.php';
 require_once '../../cors.php';
+require_once __DIR__ . '/admin_log_helper.php';
 
 // Secure Auth
 $userData = authGuard();
@@ -40,20 +41,31 @@ $balance = isset($data['balance']) && $id == 0 ? intval($data['balance']) : 0;
 $imagePath = isset($data['image_path']) ? $data['image_path'] : null;
 
 // Image Upload Handling
-if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-    $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    $filename = $_FILES['image']['name'];
-    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-    
-    if (in_array($ext, $allowed)) {
-        $wsRoot = realpath(__DIR__ . '/../../'); // backend root
-        $uploadDir = $wsRoot . '/uploads/materials/';
-        if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+if (isset($_FILES['image'])) {
+    if ($_FILES['image']['error'] === UPLOAD_ERR_OK) {
+        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'jfif'];
+        $filename = $_FILES['image']['name'];
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        
+        if (in_array($ext, $allowed)) {
+            $wsRoot = realpath(__DIR__ . '/../../'); // backend root
+            $uploadDir = $wsRoot . '/uploads/materials/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
-        $newFilename = uniqid('mt_') . '.' . $ext;
-        if (move_uploaded_file($_FILES['image']['tmp_name'], $uploadDir . $newFilename)) {
-            $imagePath = 'backend/uploads/materials/' . $newFilename;
+            $newFilename = uniqid('mt_') . '.' . $ext;
+            if (move_uploaded_file($_FILES['image']['tmp_name'], $uploadDir . $newFilename)) {
+                $imagePath = 'backend/uploads/materials/' . $newFilename;
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'เกิดข้อผิดพลาดในการบันทึกไฟล์รูปภาพ']);
+                exit;
+            }
+        } else {
+            echo json_encode(['status' => 'error', 'message' => "ไฟล์รูปภาพไม่รองรับนามสกุล .$ext (รองรับเฉพาะ jpg, png, gif, webp, jfif)"]);
+            exit;
         }
+    } else if ($_FILES['image']['error'] !== UPLOAD_ERR_NO_FILE) {
+        echo json_encode(['status' => 'error', 'message' => 'การอัปโหลดรูปภาพล้มเหลว (Error Code: ' . $_FILES['image']['error'] . ')']);
+        exit;
     }
 }
 
@@ -89,6 +101,9 @@ try {
             ':id' => $id
         ]);
 
+        $username = $userData['name'] ?? $userData['user'] ?? 'Unknown User';
+        insertAdminLog($pdo2, $username, 'UPDATE_MATERIAL', "แก้ไขข้อมูลวัสดุ รหัส $code (ID: $id)");
+
         $message = 'อัปเดตข้อมูลวัสดุสำเร็จ';
     } else {
         // Insert
@@ -109,6 +124,10 @@ try {
             ':image_path' => $imagePath
         ]);
         $id = $pdo2->lastInsertId();
+
+        $username = $userData['name'] ?? $userData['user'] ?? 'Unknown User';
+        insertAdminLog($pdo2, $username, 'CREATE_MATERIAL', "เพิ่มวัสดุใหม่ รหัส $code (ID: $id)");
+
         $message = 'เพิ่มวัสดุใหม่สำเร็จ';
     }
 

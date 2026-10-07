@@ -111,25 +111,11 @@
                     <div class="d-flex gap-2 justify-content-end align-items-center h-100 flex-wrap" style="max-width: 150px">
                       <template v-if="req.status === 'pending'">
                         <button
-                          class="btn btn-sm btn-success flex-fill"
-                          @click="approveRequest(req)"
-                          title="อนุมัติจ่ายของ"
+                          class="btn btn-sm btn-primary flex-fill fw-bold"
+                          @click="openReviewModal(req)"
+                          title="ตรวจสอบและพิจารณาอนุมัติ"
                         >
-                          <i class="bi bi-check-circle"></i> อนุมัติ
-                        </button>
-                        <button
-                          class="btn btn-sm btn-warning flex-fill text-dark"
-                          @click="openEditModal(req)"
-                          title="แก้ไข"
-                        >
-                          <i class="bi bi-pencil-square"></i> แก้ไข
-                        </button>
-                        <button
-                          class="btn btn-sm btn-danger flex-fill"
-                          @click="rejectRequest(req)"
-                          title="ปฏิเสธ"
-                        >
-                          <i class="bi bi-x-circle"></i> ปฏิเสธ
+                          <i class="bi bi-search"></i> พิจารณาอนุมัติ
                         </button>
                       </template>
                       <template v-else-if="req.status === 'approved'">
@@ -140,14 +126,23 @@
                         >
                           <i class="bi bi-file-earmark-pdf-fill"></i> Export PDF
                         </button>
+                        <button
+                          class="btn btn-sm btn-outline-danger flex-fill"
+                          @click="deleteRequest(req)"
+                          title="ลบข้อมูล"
+                        >
+                          <i class="bi bi-trash"></i> ลบ
+                        </button>
                       </template>
-                      <button
-                        class="btn btn-sm btn-outline-danger flex-fill"
-                        @click="deleteRequest(req)"
-                        title="ลบข้อมูล"
-                      >
-                        <i class="bi bi-trash"></i> ลบ
-                      </button>
+                      <template v-else-if="req.status === 'rejected'">
+                        <button
+                          class="btn btn-sm btn-outline-danger flex-fill"
+                          @click="deleteRequest(req)"
+                          title="ลบข้อมูล"
+                        >
+                          <i class="bi bi-trash"></i> ลบ
+                        </button>
+                      </template>
                     </div>
                   </td>
                 </tr>
@@ -158,8 +153,103 @@
       </div>
     </div>
 
-    <!-- Edit Request Modal -->
+    <!-- Review Request Modal -->
     <teleport to="body">
+    <div class="modal fade" id="reviewRequestModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+          <div class="modal-header bg-primary bg-opacity-10 border-bottom-0 pb-0">
+            <h5 class="modal-title text-primary-emphasis fw-bold">
+              <i class="bi bi-search me-2"></i>รายละเอียดคำขอเบิกวัสดุ
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-4 pt-3" v-if="reviewData">
+            <div class="card border border-light shadow-sm mb-4">
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <span class="text-muted small">ชื่อ-สกุลผู้เบิก:</span>
+                    <div class="fw-bold fs-6">{{ reviewData.requester_name }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <span class="text-muted small">หน่วยงาน:</span>
+                    <div class="fw-bold fs-6">{{ reviewData.department }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <span class="text-muted small">วันที่ขอเบิก:</span>
+                    <div class="fw-bold fs-6">{{ reviewData.request_date }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <span class="text-muted small">สถานะ:</span>
+                    <div>
+                      <span class="badge bg-warning text-dark fs-6 px-3 rounded-pill shadow-sm">
+                        <i class="bi bi-hourglass-split"></i> รออนุมัติ
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <h6 class="fw-bold mb-3"><i class="bi bi-box-seam me-1"></i> รายการวัสดุที่ขอเบิก</h6>
+            <div class="table-responsive border rounded bg-white shadow-sm">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light text-center">
+                  <tr>
+                    <th width="5%">ลำดับ</th>
+                    <th width="40%" class="text-start">รายการวัสดุ</th>
+                    <th width="15%">ขอเบิก</th>
+                    <th width="20%">จำนวนจ่าย</th>
+                    <th width="20%">คงเหลือในคลัง</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(item, index) in reviewData.items" :key="index">
+                    <td class="text-center text-muted">{{ index + 1 }}</td>
+                    <td>
+                      <div class="fw-bold">{{ item.material_name }}</div>
+                      <div class="small text-muted">{{ item.material_code }}</div>
+                    </td>
+                    <td class="text-center text-primary fs-5">{{ item.quantity }}</td>
+                    <td class="text-center">
+                      <div class="input-group input-group-sm w-100 mx-auto" style="max-width: 120px;">
+                        <button type="button" class="btn btn-outline-secondary px-2" @click="item.dispense_qty > 1 ? item.dispense_qty-- : null">-</button>
+                        <input type="number" class="form-control text-center fw-bold" v-model.number="item.dispense_qty" min="1" :max="item.quantity" />
+                        <button type="button" class="btn btn-outline-secondary px-2" @click="item.dispense_qty++">+</button>
+                      </div>
+                    </td>
+                    <td class="text-center">
+                      <span class="badge border px-3 py-2" :class="getMaterialBalance(item.material_id) < item.dispense_qty ? 'bg-danger-subtle text-danger border-danger' : 'bg-success-subtle text-success border-success'">
+                        {{ getMaterialBalance(item.material_id) }} {{ item.unit }}
+                      </span>
+                      <div v-if="getMaterialBalance(item.material_id) < item.dispense_qty" class="small text-danger mt-1 fw-bold">
+                        <i class="bi bi-exclamation-circle"></i> ของไม่พอจ่าย!
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer border-0 bg-light p-3 px-4 justify-content-between">
+            <button type="button" class="btn btn-outline-danger fw-bold" @click="deleteFromReview(reviewData)">
+              <i class="bi bi-trash"></i> ลบคำขอ
+            </button>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-danger fw-bold px-3" @click="rejectFromReview(reviewData)">
+                <i class="bi bi-x-circle"></i> ปฏิเสธ
+              </button>
+              <button type="button" class="btn btn-success fw-bold px-4" @click="approveFromReview(reviewData)">
+                <i class="bi bi-check-circle fs-5"></i> อนุมัติ
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Request Modal -->
     <div class="modal fade" id="editRequestModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow">
@@ -332,7 +422,8 @@ export default {
         request_date: '',
         items: []
       },
-      editModalInstance: null
+      editModalInstance: null,
+      reviewData: null
     };
   },
   computed: {
@@ -412,6 +503,43 @@ export default {
       const mat = this.materials.find(m => m.id === materialId);
       return mat ? mat.balance : 0;
     },
+    openReviewModal(req) {
+      this.reviewData = JSON.parse(JSON.stringify(req));
+      this.reviewData.items.forEach(item => {
+        item.dispense_qty = item.quantity; // Initialize dispense qty
+      });
+      const modal = new bootstrap.Modal(document.getElementById('reviewRequestModal'));
+      modal.show();
+    },
+    closeReviewModal() {
+      const modalEl = document.getElementById('reviewRequestModal');
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+    },
+    editFromReview(req) {
+      this.closeReviewModal();
+      setTimeout(() => {
+        this.openEditModal(req);
+      }, 400); // Wait for modal to hide
+    },
+    rejectFromReview(req) {
+      this.closeReviewModal();
+      setTimeout(() => {
+        this.rejectRequest(req);
+      }, 400);
+    },
+    approveFromReview(req) {
+      this.closeReviewModal();
+      setTimeout(() => {
+        this.approveRequest(req);
+      }, 400);
+    },
+    deleteFromReview(req) {
+      this.closeReviewModal();
+      setTimeout(() => {
+        this.deleteRequest(req);
+      }, 400);
+    },
     openEditModal(req) {
       // Clone data to avoid live binding edits
       this.editData = {
@@ -482,9 +610,10 @@ export default {
       let hasError = false;
       let errorMsg = '';
       for (const item of req.items) {
-        if (item.quantity > item.current_balance) {
+        const checkQty = item.dispense_qty !== undefined ? item.dispense_qty : item.quantity;
+        if (checkQty > item.current_balance) {
           hasError = true;
-          errorMsg = `ยอดคงเหลือไม่พอสำหรับ ${item.material_name} (เหลือ ${item.current_balance}) เบิก ${item.quantity}`;
+          errorMsg = `ยอดคงเหลือไม่พอสำหรับ ${item.material_name} (เหลือ ${item.current_balance}) จ่าย ${checkQty}`;
           break;
         }
       }
@@ -505,8 +634,15 @@ export default {
 
       if (confirm.isConfirmed) {
         try {
+          const approvals = req.items.map(item => ({
+            id: item.id,
+            approved_quantity: item.dispense_qty !== undefined ? item.dispense_qty : item.quantity,
+            admin_note: 'อนุมัติผ่านระบบ'
+          }));
+
           const res = await axios.post('/api-digital/admin_material/admin_approve_request.php', {
             request_no: req.request_no,
+            approvals: approvals,
             admin_note: 'อนุมัติผ่านระบบ'
           });
           if (res.data.success) {

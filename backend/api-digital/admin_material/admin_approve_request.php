@@ -107,21 +107,47 @@ try {
             ':id' => $id
         ]);
 
-        // 3. Record transaction (Out)
+        // 3. Deduct from Lots (FIFO) and calculate total_price
+        $stmtLots = $pdo2->prepare("SELECT * FROM mt_admin_lots WHERE material_id = :id AND remaining_qty > 0 ORDER BY receive_date ASC, id ASC FOR UPDATE");
+        $stmtLots->execute([':id' => $request['material_id']]);
+        $lots = $stmtLots->fetchAll();
+
+        $remaining_to_fulfill = $approved_quantity;
+        $total_out_price = 0;
+
+        foreach ($lots as $lot) {
+            if ($remaining_to_fulfill <= 0) break;
+
+            $take_qty = min($lot['remaining_qty'], $remaining_to_fulfill);
+            $total_out_price += ($take_qty * $lot['price_per_unit']);
+            $remaining_to_fulfill -= $take_qty;
+            
+            $new_lot_qty = $lot['remaining_qty'] - $take_qty;
+
+            $stmtUpdateLot = $pdo2->prepare("UPDATE mt_admin_lots SET remaining_qty = :qty WHERE id = :id");
+            $stmtUpdateLot->execute([':qty' => $new_lot_qty, ':id' => $lot['id']]);
+        }
+
+        if ($remaining_to_fulfill > 0) {
+            throw new Exception("สต็อก Lot ไม่พอจ่าย กรุณาตรวจสอบข้อมูลตั้งต้น (Material ID: " . $request['material_id'] . ")");
+        }
+
+        // 4. Record transaction (Out)
         $stmtTx = $pdo2->prepare("
-            INSERT INTO mt_admin_transactions (material_id, action_type, quantity, action_date, user_profile_name, receiver_name, reference_dest, note)
-            VALUES (:material_id, 'OUT', :quantity, NOW(), :user, :receiver, :dest, :note)
+            INSERT INTO mt_admin_transactions (material_id, action_type, quantity, total_price, action_date, user_profile_name, receiver_name, reference_dest, note)
+            VALUES (:material_id, 'OUT', :quantity, :total_price, NOW(), :user, :receiver, :dest, :note)
         ");
         $stmtTx->execute([
             ':material_id' => $request['material_id'],
             ':quantity' => $approved_quantity,
-            ':user' => $userData['user_profile_name'] ?? 'System Admin', // Use authenticated user if available
+            ':total_price' => $total_out_price,
+            ':user' => $userData['user_profile_name'] ?? 'System Admin',
             ':receiver' => $request['requester_name'],
             ':dest' => $request['department'],
             ':note' => 'Approved request ID ' . $id . ($admin_note ? ' - ' . $admin_note : '')
         ]);
 
-        // 4. Deduct from Material balance
+        // 5. Deduct from Material balance
         $stmtStock = $pdo2->prepare("
             UPDATE mt_admin_materials 
             SET balance = balance - :qty 

@@ -27,15 +27,18 @@
                 <div>
                   <p class="mb-1 text-white-50 small text-uppercase fw-bold">รายการวัสดุ (SKU)</p>
                   <h2 class="display-5 fw-bold mb-0">{{ dashboard.total_sku }}</h2>
+                  <div class="mt-1 small fw-semibold text-white">
+                    <i class="bi bi-wallet2 me-1"></i>มูลค่ารวม: {{ Number(dashboard.total_inventory_value || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }} ฿
+                  </div>
                 </div>
                 <div
-                  class="icon-box bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center"
+                  class="icon-box bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center mt-2"
                   style="width: 48px; height: 48px"
                 >
                   <i class="bi bi-boxes fs-4"></i>
                 </div>
               </div>
-              <div class="mt-3 text-white-50 small">จัดการรายการวัสดุทั้งหมด &rarr;</div>
+              <div class="mt-2 text-white-50 small">จัดการรายการวัสดุทั้งหมด &rarr;</div>
             </div>
           </div>
         </div>
@@ -92,8 +95,7 @@
 
         <div class="col-md-3">
           <div
-            class="dashboard-card bg-warning text-dark rounded-4 p-4 h-100 position-relative overflow-hidden cursor-pointer"
-            @click="goTo('/material-admin/out')"
+            class="dashboard-card bg-warning text-dark rounded-4 p-4 h-100 position-relative overflow-hidden"
           >
             <div class="z-1 position-relative">
               <div class="d-flex justify-content-between">
@@ -110,7 +112,7 @@
                   <i class="bi bi-box-arrow-up fs-4"></i>
                 </div>
               </div>
-              <div class="mt-3 text-dark-50 small">บันทึกบิกจ่าย &rarr;</div>
+              <div class="mt-3 text-dark-50 small">&nbsp;</div>
             </div>
           </div>
         </div>
@@ -141,16 +143,6 @@
                   <div>
                     <h6 class="mb-0 fw-bold">รับวัสดุเข้าคลัง</h6>
                     <small class="text-muted">บันทึกการสั่งซื้อ รับของ</small>
-                  </div>
-                </button>
-                <button
-                  @click="goTo('/material-admin/out')"
-                  class="btn btn-outline-warning text-start p-3 rounded-3 d-flex align-items-center"
-                >
-                  <i class="bi bi-dash-circle fs-4 me-3 text-warning"></i>
-                  <div>
-                    <h6 class="mb-0 fw-bold">จ่ายวัสดุออก</h6>
-                    <small class="text-muted">เบิกจ่ายให้หน่วยงาน</small>
                   </div>
                 </button>
                 <button
@@ -191,6 +183,16 @@
                   <div>
                     <h6 class="mb-0 fw-bold">รายงานประจำปี (PDF)</h6>
                     <small class="text-muted">พิมพ์สรุปยอดรวมประจำปีปฏิทิน</small>
+                  </div>
+                </button>
+                <button
+                  @click="goTo('/material-admin/logs')"
+                  class="btn btn-outline-dark text-start p-3 rounded-3 d-flex align-items-center mt-2"
+                >
+                  <i class="bi bi-clock-history fs-4 me-3 text-secondary"></i>
+                  <div>
+                    <h6 class="mb-0 fw-bold">ประวัติการใช้งาน (Logs)</h6>
+                    <small class="text-muted">ตรวจสอบการเพิ่ม/ลบ/แก้ไขข้อมูล</small>
                   </div>
                 </button>
               </div>
@@ -240,7 +242,10 @@
                           >จ่ายออก <i class="bi bi-arrow-up"></i
                         ></span>
                       </td>
-                      <td class="fw-bold">{{ t.material_name }}</td>
+                      <td>
+                        <div class="fw-bold">{{ t.material_name }}</div>
+                        <div class="small text-muted">{{ t.material_type || 'ไม่มีหมวดหมู่' }}</div>
+                      </td>
                       <td>
                         <span
                           :class="{
@@ -254,10 +259,12 @@
                       <td>
                         <div v-if="t.action_type === 'OUT'">
                           <div>{{ t.receiver_name }}</div>
-                          <div class="small text-muted">{{ t.reference_dest }}</div>
+                          <div class="small text-muted"><i class="bi bi-building me-1"></i>{{ t.reference_dest }}</div>
+                          <div class="small text-primary mt-1"><i class="bi bi-person-check me-1"></i>จ่ายโดย: {{ t.user_profile_name }}</div>
                         </div>
                         <div v-else>
-                          {{ t.reference_dest }}
+                          <div>{{ t.reference_dest }}</div>
+                          <div class="small text-primary mt-1"><i class="bi bi-person-down me-1"></i>รับเข้าโดย: {{ t.user_profile_name }}</div>
                         </div>
                       </td>
                       <td class="text-center">

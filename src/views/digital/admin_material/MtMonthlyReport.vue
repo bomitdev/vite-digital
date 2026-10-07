@@ -91,19 +91,71 @@
           </div>
         </div>
 
-        <!-- Preview Dummy -->
+        <!-- Preview Data -->
         <div class="col-md-8">
           <div class="card border-0 shadow-sm rounded-4 h-100 bg-white" style="min-height: 600px">
-            <div
-              class="card-body p-5 d-flex flex-column align-items-center justify-content-center text-center"
-            >
-              <img :src="krutImg" alt="Krut" height="120" class="mb-4 opacity-50" />
-              <h4 class="text-muted mb-3">ตัวอย่างรายงานบันทึกข้อความ</h4>
-              <p class="text-secondary" style="max-width: 400px">
-                ระบบจะสร้างไฟล์ PDF รูปแบบบันทึกข้อความอย่างเป็นทางการ โดยสรุปยอดรับ-จ่าย
-                วัสดุงานบริหารทั่วไป ตามเดือนที่คุณเลือก คลิกปุ่ม
-                <strong>สร้างไฟล์ PDF</strong> ด้านซ้ายเพื่อดาวน์โหลด
-              </p>
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+              <h5 class="fw-bold text-dark mb-0">
+                <i class="bi bi-table me-2 text-primary"></i>รายละเอียดรายงาน
+              </h5>
+            </div>
+            <div class="card-body p-4">
+              <div v-if="loading" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <div class="mt-2 text-muted">กำลังโหลดข้อมูล...</div>
+              </div>
+              <div v-else-if="details && details.length > 0" class="table-responsive" style="max-height: 600px;">
+                <table class="table table-hover table-bordered align-middle" style="font-size: 0.9rem;">
+                  <thead class="table-light text-center sticky-top">
+                    <tr>
+                      <th rowspan="2" class="align-middle">ลำดับ</th>
+                      <th rowspan="2" class="align-middle">รายการ</th>
+                      <th rowspan="2" class="align-middle">ยอดยกมา</th>
+                      <th colspan="2">รับ</th>
+                      <th colspan="2">จ่าย</th>
+                      <th rowspan="2" class="align-middle">คงเหลือ</th>
+                    </tr>
+                    <tr>
+                      <th>จำนวน</th>
+                      <th>เป็นเงิน</th>
+                      <th>จำนวน</th>
+                      <th>เป็นเงิน</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(item, index) in details" :key="item.material_id">
+                      <td class="text-center">{{ index + 1 }}</td>
+                      <td>{{ item.name }}</td>
+                      <td class="text-end">{{ formatCurrency(item.forward_baht) }}</td>
+                      <td class="text-center">{{ item.in_qty }}</td>
+                      <td class="text-end text-success">{{ formatCurrency(item.in_baht) }}</td>
+                      <td class="text-center">{{ item.out_qty }}</td>
+                      <td class="text-end text-danger">{{ formatCurrency(item.out_baht) }}</td>
+                      <td class="text-end fw-bold">{{ formatCurrency(item.balance_baht) }}</td>
+                    </tr>
+                  </tbody>
+                  <tfoot class="table-light fw-bold text-end">
+                    <tr>
+                      <td colspan="2" class="text-center">รวมทั้งสิ้น</td>
+                      <td>{{ formatCurrency(summary.forward_baht) }}</td>
+                      <td></td>
+                      <td class="text-success">{{ formatCurrency(summary.in_baht) }}</td>
+                      <td></td>
+                      <td class="text-danger">{{ formatCurrency(summary.out_baht) }}</td>
+                      <td class="text-primary">{{ formatCurrency(summary.balance_baht) }}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              <div v-else class="d-flex flex-column align-items-center justify-content-center text-center h-100 py-5">
+                <img :src="krutImg" alt="Krut" height="120" class="mb-4 opacity-50" />
+                <h5 class="text-muted mb-3">ยังไม่มีข้อมูลสำหรับเดือนนี้</h5>
+                <p class="text-secondary" style="max-width: 400px">
+                  ระบบจะสร้างไฟล์ PDF รูปแบบบันทึกข้อความอย่างเป็นทางการ โดยสรุปยอดรับ-จ่าย
+                  วัสดุงานบริหารทั่วไป ตามเดือนที่คุณเลือก คลิกปุ่ม
+                  <strong>สร้างไฟล์ PDF</strong> ด้านซ้ายเพื่อดาวน์โหลด
+                </p>
+              </div>
             </div>
           </div>
         </div>

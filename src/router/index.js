@@ -292,6 +292,11 @@ const routes = [
     component: () => import('../views/digital/admin_material/MtReport.vue'),
     meta: { requiresAuth: true }
   },
+  {
+    path: '/material-admin/logs',
+    component: () => import('../views/digital/admin_material/MtSystemLogs.vue'),
+    meta: { requiresAuth: true }
+  },
 
   {
     path: '/material-admin/monthly-report',
@@ -375,6 +380,35 @@ const routes = [
     component: () => import('../views/procurement/PrintInspectionView.vue'),
     meta: { requiresAuth: true, hideNavbar: true }
   },
+
+
+  // Pharmacy Material Management
+  { path: '/pharmacy-admin', component: () => import('../views/digital/pharmacy_material/MtDashboard.vue'), meta: { requiresAuth: true } },
+  { path: '/pharmacy-admin/stock', component: () => import('../views/digital/pharmacy_material/MtStock.vue'), meta: { requiresAuth: true } },
+  { path: '/pharmacy-admin/in', component: () => import('../views/digital/pharmacy_material/MtTransactionIn.vue'), meta: { requiresAuth: true } },
+  { path: '/pharmacy-admin/out', component: () => import('../views/digital/pharmacy_material/MtTransactionOut.vue'), meta: { requiresAuth: true } },
+  { path: '/pharmacy-admin/report', component: () => import('../views/digital/pharmacy_material/MtReport.vue'), meta: { requiresAuth: true } },
+  { path: '/pharmacy-admin/logs', component: () => import('../views/digital/pharmacy_material/MtSystemLogs.vue'), meta: { requiresAuth: true } },
+  { path: '/pharmacy-admin-request', component: () => import('../views/digital/pharmacy_material/MtRequestForm.vue') },
+  { path: '/pharmacy-admin/requests', component: () => import('../views/digital/pharmacy_material/MtRequestsManage.vue'), meta: { requiresAuth: true } },
+  { path: '/pharmacy-admin/settings', component: () => import('../views/digital/pharmacy_material/MtPrintSettings.vue'), meta: { requiresAuth: true } },
+  { path: '/pharmacy-admin/request-print/:id', name: 'PharmacyRequestPrint', component: () => import('../views/digital/pharmacy_material/MtRequestPrint.vue'), meta: { requiresAuth: true, hideNavbar: true } },
+  { path: '/pharmacy-admin/monthly-report', component: () => import('../views/digital/pharmacy_material/MtMonthlyReport.vue'), meta: { requiresAuth: true } },
+  { path: '/pharmacy-admin/yearly-report', component: () => import('../views/digital/pharmacy_material/MtYearlyReport.vue'), meta: { requiresAuth: true } },
+
+  // Medical Supplies Management
+  { path: '/med-admin', component: () => import('../views/digital/med_material/MtDashboard.vue'), meta: { requiresAuth: true } },
+  { path: '/med-admin/stock', component: () => import('../views/digital/med_material/MtStock.vue'), meta: { requiresAuth: true } },
+  { path: '/med-admin/in', component: () => import('../views/digital/med_material/MtTransactionIn.vue'), meta: { requiresAuth: true } },
+  { path: '/med-admin/out', component: () => import('../views/digital/med_material/MtTransactionOut.vue'), meta: { requiresAuth: true } },
+  { path: '/med-admin/report', component: () => import('../views/digital/med_material/MtReport.vue'), meta: { requiresAuth: true } },
+  { path: '/med-admin/logs', component: () => import('../views/digital/med_material/MtSystemLogs.vue'), meta: { requiresAuth: true } },
+  { path: '/med-admin-request', component: () => import('../views/digital/med_material/MtRequestForm.vue') },
+  { path: '/med-admin/requests', component: () => import('../views/digital/med_material/MtRequestsManage.vue'), meta: { requiresAuth: true } },
+  { path: '/med-admin/settings', component: () => import('../views/digital/med_material/MtPrintSettings.vue'), meta: { requiresAuth: true } },
+  { path: '/med-admin/request-print/:id', name: 'MedRequestPrint', component: () => import('../views/digital/med_material/MtRequestPrint.vue'), meta: { requiresAuth: true, hideNavbar: true } },
+  { path: '/med-admin/monthly-report', component: () => import('../views/digital/med_material/MtMonthlyReport.vue'), meta: { requiresAuth: true } },
+  { path: '/med-admin/yearly-report', component: () => import('../views/digital/med_material/MtYearlyReport.vue'), meta: { requiresAuth: true } },
 
   { path: '/:pathMatch(.*)*', component: () => import('../views/errors/Page404.vue') } // แก้ไขจาก pathMathch เป็น pathMatch
 ];

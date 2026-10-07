@@ -30,6 +30,7 @@ try {
         $unit = isset($row['หน่วยนับ']) ? trim($row['หน่วยนับ']) : '';
         
         $price_per_unit = isset($row['ราคาต่อหน่วย']) ? floatval($row['ราคาต่อหน่วย']) : 0.00;
+        $lot_number = isset($row['เลขLot']) ? trim($row['เลขLot']) : '';
         $min_alert = isset($row['แจ้งเตือนขั้นต่ำ']) ? intval($row['แจ้งเตือนขั้นต่ำ']) : 5;
         $balance = isset($row['ยอดยกมา']) ? intval($row['ยอดยกมา']) : 0;
 
@@ -70,6 +71,19 @@ try {
                 ':min_alert' => $min_alert,
                 ':balance' => $balance
             ]);
+            $new_material_id = $pdo2->lastInsertId();
+
+            if ($balance > 0) {
+                // Insert initial lot
+                $stmtLot = $pdo2->prepare("INSERT INTO mt_admin_lots (material_id, receive_date, original_qty, remaining_qty, price_per_unit, lot_number) 
+                    VALUES (:mid, NOW(), :qty, :qty, :price, :lot)");
+                $stmtLot->execute([
+                    ':mid' => $new_material_id,
+                    ':qty' => $balance,
+                    ':price' => $price_per_unit,
+                    ':lot' => $lot_number
+                ]);
+            }
         }
         $importedCount++;
     }

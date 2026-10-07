@@ -43,6 +43,7 @@ try {
             m.code AS material_code, 
             m.name AS material_name, 
             m.unit,
+            m.type AS material_type,
             t.action_type, 
             t.quantity, 
             t.action_date, 

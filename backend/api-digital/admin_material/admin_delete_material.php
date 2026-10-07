@@ -1,6 +1,10 @@
 <?php
 require_once '../../config.php';
 require_once '../../cors.php';
+require_once __DIR__ . '/../../auth_utils.php';
+require_once __DIR__ . '/admin_log_helper.php';
+
+$userData = authGuard();
 
 header("Content-Type: application/json");
 
@@ -24,17 +28,27 @@ if ($id <= 0) {
 }
 
 try {
+    $checkMat = $pdo2->prepare("SELECT code, name FROM mt_admin_materials WHERE id = :id");
+    $checkMat->execute([':id' => $id]);
+    $mat = $checkMat->fetch();
+    $matName = $mat ? "[{$mat['code']}] {$mat['name']}" : "ID: $id";
+
     // Check if there are transactions for this material
     $checkTx = $pdo2->prepare("SELECT id FROM mt_admin_transactions WHERE material_id = :id LIMIT 1");
     $checkTx->execute([':id' => $id]);
     if ($checkTx->fetch()) {
-        // If there are transactions, we might not want to delete, or we delete with CASCADE (defined in schema).
-        // Let's allow deletion with CASCADE, or return an error if you want to strictly keep history.
-        // I will allow deletion because ON DELETE CASCADE is set.
+        echo json_encode([
+            'status' => 'error', 
+            'message' => 'รายการนี้มีการรับเข้าหรือเบิกจ่ายแล้ว ไม่สามารถลบได้! กรุณาใช้การ "ปิดการใช้งาน" (สวิตช์สถานะ) แทนการลบเพื่อเก็บประวัติ'
+        ]);
+        exit;
     }
 
     $stmt = $pdo2->prepare("DELETE FROM mt_admin_materials WHERE id = :id");
     $stmt->execute([':id' => $id]);
+
+    $username = $userData['name'] ?? $userData['user'] ?? 'Unknown User';
+    insertAdminLog($pdo2, $username, 'DELETE_MATERIAL', "ลบวัสดุ: $matName");
 
     echo json_encode([
         'status' => 'success',

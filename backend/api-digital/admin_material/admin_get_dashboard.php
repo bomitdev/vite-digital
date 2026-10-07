@@ -44,17 +44,28 @@ try {
         SELECT 
             t.id, 
             m.name AS material_name, 
+            m.type AS material_type,
             t.action_type, 
             t.quantity, 
             t.action_date, 
             t.receiver_name,
-            t.reference_dest
+            t.reference_dest,
+            t.user_profile_name
         FROM mt_admin_transactions t
         LEFT JOIN mt_admin_materials m ON t.material_id = m.id
+        WHERE t.user_profile_name != 'System Migration'
         ORDER BY t.action_date DESC, t.id DESC
         LIMIT 5
     ");
     $recent_transactions = $stmtRecentTx->fetchAll(PDO::FETCH_ASSOC);
+
+    // 6. มูลค่าคงคลังรวม
+    $stmtTotalValue = $pdo2->query("
+        SELECT COALESCE(SUM(remaining_qty * price_per_unit), 0) AS total_value 
+        FROM mt_admin_lots 
+        WHERE remaining_qty > 0
+    ");
+    $total_inventory_value = $stmtTotalValue->fetch()['total_value'];
 
     echo json_encode([
         'status' => 'success',
@@ -63,6 +74,7 @@ try {
             'low_stock_count' => $low_stock,
             'total_in_month' => $total_in_month,
             'total_out_month' => $total_out_month,
+            'total_inventory_value' => floatval($total_inventory_value),
             'recent_transactions' => $recent_transactions
         ]
     ]);

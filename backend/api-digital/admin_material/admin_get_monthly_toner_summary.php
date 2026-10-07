@@ -46,9 +46,30 @@ try {
         $price = floatval($mat['price_per_unit']);
         $mat_id = $mat['id'];
 
+        // Get historical transactions to calculate beginning balance and beginning value
+        $stmtHist = $pdo2->prepare("
+            SELECT 
+                SUM(CASE WHEN action_type = 'IN' THEN quantity ELSE 0 END) as hist_in_qty,
+                SUM(CASE WHEN action_type = 'OUT' THEN quantity ELSE 0 END) as hist_out_qty,
+                SUM(CASE WHEN action_type = 'IN' THEN total_price ELSE 0 END) as hist_in_baht,
+                SUM(CASE WHEN action_type = 'OUT' THEN total_price ELSE 0 END) as hist_out_baht
+            FROM mt_admin_transactions 
+            WHERE material_id = :id AND action_date < :start_date
+        ");
+        $stmtHist->execute([':id' => $mat_id, ':start_date' => $start_date]);
+        $hist = $stmtHist->fetch(PDO::FETCH_ASSOC);
+
+        $begin_bal = intval($hist['hist_in_qty'] ?? 0) - intval($hist['hist_out_qty'] ?? 0);
+        $forward_baht = floatval($hist['hist_in_baht'] ?? 0) - floatval($hist['hist_out_baht'] ?? 0);
+        
+        if ($begin_bal < 0) {
+            $begin_bal = 0;
+            $forward_baht = 0;
+        }
+
         // Get transactions during the month
         $stmtMonth = $pdo2->prepare("
-            SELECT action_type, quantity, reference_dest
+            SELECT action_type, quantity, total_price, reference_dest
             FROM mt_admin_transactions 
             WHERE material_id = :id AND action_date >= :start_date AND action_date <= :end_date
         ");
@@ -57,14 +78,21 @@ try {
 
         $month_in = 0;
         $month_out = 0;
+        $in_baht = 0;
+        $out_baht = 0;
         $out_depts = [];
 
         foreach ($monthlyTransactions as $tx) {
             $qty = intval($tx['quantity']);
+            $tx_price = floatval($tx['total_price']);
+            
             if ($tx['action_type'] === 'IN') {
                 $month_in += $qty;
+                $in_baht += $tx_price;
             } else if ($tx['action_type'] === 'OUT') {
                 $month_out += $qty;
+                $out_baht += $tx_price;
+                
                 $dept = trim($tx['reference_dest']);
                 if (!isset($out_depts[$dept])) {
                     $out_depts[$dept] = 0;
@@ -72,19 +100,6 @@ try {
                 $out_depts[$dept] += $qty;
             }
         }
-
-        // Get future transactions to calculate correct beginning and ending balances based on current stock
-        $stmtFuture = $pdo2->prepare("
-            SELECT 
-                SUM(CASE WHEN action_type = 'IN' THEN quantity ELSE 0 END) as future_in,
-                SUM(CASE WHEN action_type = 'OUT' THEN quantity ELSE 0 END) as future_out
-            FROM mt_admin_transactions 
-            WHERE material_id = :id AND action_date > :end_date
-        ");
-        $stmtFuture->execute([':id' => $mat_id, ':end_date' => $end_date_str]);
-        $futureTx = $stmtFuture->fetch(PDO::FETCH_ASSOC);
-        $future_in = intval($futureTx['future_in'] ?? 0);
-        $future_out = intval($futureTx['future_out'] ?? 0);
 
         // Get latest vendor
         $stmtVendor = $pdo2->prepare("
@@ -97,18 +112,9 @@ try {
         $vendorRow = $stmtVendor->fetch(PDO::FETCH_ASSOC);
         $vendor = $vendorRow ? $vendorRow['reference_dest'] : '';
 
-        // Calculate balances backward from current stock
-        $curr_bal = intval($mat['current_balance']);
-        $end_bal = $curr_bal - $future_in + $future_out;
-        $begin_bal = $end_bal - $month_in + $month_out;
-        
-        if ($begin_bal < 0) $begin_bal = 0; // Prevent negative stock from bad manual data
-
-        // Apply prices
-        $forward_baht = $begin_bal * $price;
-        $in_baht = $month_in * $price;
-        $out_baht = $month_out * $price;
-        $balance_baht = $end_bal * $price;
+        // Calculate end balance
+        $end_bal = $begin_bal + $month_in - $month_out;
+        $balance_baht = $forward_baht + $in_baht - $out_baht;
 
         $summary['forward_baht'] += $forward_baht;
         $summary['in_baht'] += $in_baht;

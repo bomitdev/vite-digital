@@ -1,6 +1,10 @@
 <?php
 require_once '../../config.php';
 require_once '../../cors.php';
+require_once __DIR__ . '/../../auth_utils.php';
+require_once __DIR__ . '/admin_log_helper.php';
+
+$userData = authGuard();
 
 header("Content-Type: application/json");
 
@@ -23,7 +27,7 @@ try {
     $pdo2->beginTransaction();
 
     // 1. ดึงข้อมูล Transaction
-    $stmtTx = $pdo2->prepare("SELECT material_id, action_type, quantity FROM mt_admin_transactions WHERE id = :id FOR UPDATE");
+    $stmtTx = $pdo2->prepare("SELECT material_id, action_type, quantity, action_date FROM mt_admin_transactions WHERE id = :id FOR UPDATE");
     $stmtTx->execute([':id' => $transaction_id]);
     $tx = $stmtTx->fetch(PDO::FETCH_ASSOC);
 
@@ -72,9 +76,40 @@ try {
         ':id' => $material_id
     ]);
 
+    // 4.5 จัดการระบบ Lot
+    if ($action_type === 'IN') {
+        // ค้นหา Lot ที่เกี่ยวข้องและลบทิ้ง (อิงจาก material_id, action_date, original_qty)
+        $stmtFindLot = $pdo2->prepare("SELECT id, remaining_qty, original_qty FROM mt_admin_lots WHERE material_id = :id AND receive_date = :dt AND original_qty = :qty LIMIT 1");
+        $stmtFindLot->execute([':id' => $material_id, ':dt' => $tx['action_date'], ':qty' => $quantity]);
+        $lot = $stmtFindLot->fetch();
+        if ($lot) {
+            if ($lot['remaining_qty'] < $lot['original_qty']) {
+                $pdo2->rollBack();
+                echo json_encode(['status' => 'error', 'message' => 'ไม่สามารถยกเลิกได้ เนื่องจาก Lot นี้ถูกเบิกจ่ายไปแล้วบางส่วน']);
+                exit;
+            }
+            $pdo2->prepare("DELETE FROM mt_admin_lots WHERE id = :id")->execute([':id' => $lot['id']]);
+        }
+    } else if ($action_type === 'OUT') {
+        // คืนของเข้า Lot
+        $stmtTxLots = $pdo2->prepare("SELECT lot_id, quantity FROM mt_admin_transaction_lots WHERE transaction_id = :tx_id");
+        $stmtTxLots->execute([':tx_id' => $transaction_id]);
+        $used_lots = $stmtTxLots->fetchAll();
+
+        $stmtRestoreLot = $pdo2->prepare("UPDATE mt_admin_lots SET remaining_qty = remaining_qty + :qty WHERE id = :lot_id");
+        foreach ($used_lots as $ul) {
+            $stmtRestoreLot->execute([':qty' => $ul['quantity'], ':lot_id' => $ul['lot_id']]);
+        }
+        
+        $pdo2->prepare("DELETE FROM mt_admin_transaction_lots WHERE transaction_id = :tx_id")->execute([':tx_id' => $transaction_id]);
+    }
+
     // 5. ลบรายการ Transaction ทิ้ง
     $stmtDeleteTx = $pdo2->prepare("DELETE FROM mt_admin_transactions WHERE id = :id");
     $stmtDeleteTx->execute([':id' => $transaction_id]);
+
+    $username = $userData['name'] ?? $userData['user'] ?? 'Unknown User';
+    insertAdminLog($pdo2, $username, 'DELETE_TRANSACTION', "ยกเลิกรายการ $action_type ของวัสดุ ID: $material_id จำนวน $quantity ชิ้น");
 
     $pdo2->commit();
 

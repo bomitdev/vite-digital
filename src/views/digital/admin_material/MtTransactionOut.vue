@@ -17,6 +17,9 @@
           </h2>
         </div>
         <div>
+          <button @click="openLogModal" class="btn btn-outline-info rounded-pill me-2">
+            <i class="bi bi-clock-history me-1"></i>ดูประวัติ
+          </button>
           <router-link to="/home-backoffice" class="btn btn-outline-secondary rounded-pill">
             <i class="bi bi-house-door me-2"></i>กลับหน้าหลัก
           </router-link>
@@ -53,6 +56,18 @@
 
                 <div class="mb-4" v-if="form.material_id">
                   <h5 class="fw-bold mb-3 border-bottom pb-2">2. รายละเอียดการเบิกจ่าย</h5>
+                  
+                  <!-- Show Lots -->
+                  <div class="alert alert-info py-2 mb-4" v-if="availableLots.length > 0">
+                    <div class="fw-bold mb-1"><i class="bi bi-info-circle me-1"></i>Lot ที่มีอยู่ในคลัง (จ่ายแบบ FIFO):</div>
+                    <ul class="mb-0 ps-3 small">
+                      <li v-for="lot in availableLots" :key="lot.id">
+                        Lot: <span class="fw-bold">{{ lot.lot_number || 'ไม่ระบุ' }}</span> 
+                        <span class="text-muted ms-2">(เหลือ {{ lot.remaining_qty }} ชิ้น, รับเข้าเมื่อ {{ formatDateShort(lot.receive_date) }})</span>
+                      </li>
+                    </ul>
+                  </div>
+
                   <div class="row g-3">
                     <div class="col-md-6">
                       <label class="form-label"
@@ -186,21 +201,31 @@
         </div>
       </div>
     </div>
+
+    <!-- Log Modal -->
+    <MtLogModal ref="logModal" logType="out" modalId="outLogModal" />
   </div>
 </template>
 
 <script>
 import axios from 'axios';
 import moment from 'moment';
+import Swal from 'sweetalert2';
+import * as bootstrap from 'bootstrap';
+import MtLogModal from './MtLogModal.vue';
 
 export default {
   name: 'MtTransactionOut',
+  components: {
+    MtLogModal
+  },
   data() {
     return {
       materials: [],
       itUsers: [],
       allStaff: [],
       allDepartments: [],
+      availableLots: [],
       isSubmitting: false,
       form: {
         material_id: '',
@@ -225,7 +250,20 @@ export default {
       return this.selectedMaterial ? parseInt(this.selectedMaterial.balance) : 0;
     }
   },
+  watch: {
+    'form.material_id'(newVal) {
+      if (newVal) {
+        this.fetchLots(newVal);
+      } else {
+        this.availableLots = [];
+      }
+    }
+  },
   methods: {
+    formatDateShort(dateStr) {
+      if (!dateStr) return '';
+      return moment(dateStr).format('DD/MM/YYYY');
+    },
     async fetchMaterials() {
       try {
         const res = await axios.get('/api-digital/admin_material/admin_get_materials.php');
@@ -234,6 +272,16 @@ export default {
         }
       } catch (err) {
         console.error(err);
+      }
+    },
+    async fetchLots(materialId) {
+      try {
+        const res = await axios.get(`/api-digital/admin_material/admin_get_lots.php?material_id=${materialId}`);
+        if (res.data.status === 'success') {
+          this.availableLots = res.data.data;
+        }
+      } catch (err) {
+        console.error('Failed to fetch lots', err);
       }
     },
     async fetchItUsers() {
@@ -303,6 +351,12 @@ export default {
       } finally {
         this.isSubmitting = false;
       }
+    },
+    openLogModal() {
+      // eslint-disable-next-line no-undef
+      const modal = new bootstrap.Modal(document.getElementById('outLogModal'));
+      modal.show();
+      this.$refs.logModal.fetchLogs();
     }
   },
   mounted() {
