@@ -830,7 +830,7 @@
                 </div>
               </div>
               <!-- Git Sync -->
-              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_git_sync')">
+              <div class="col-6 col-md-4 col-lg-3" v-if="userProfile?.username === 'suriya'">
                 <div
                   class="nav-card h-100 bg-gradient-dark text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="$router.push('/git-sync')"

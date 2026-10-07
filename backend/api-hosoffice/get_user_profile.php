@@ -45,6 +45,7 @@ try {
         "hr_level_name" => $user['HR_LEVEL_NAME'] ?? '',
         "access_user" => $user['access_user'] ?? '',
         "fullname" => $user['FULLNAME'] ?? '',
+        "username" => $userData['user'] ?? '',
         "image" => $image_base64
     ]);
 } catch (PDOException $e) {
