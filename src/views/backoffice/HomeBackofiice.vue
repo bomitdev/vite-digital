@@ -333,6 +333,33 @@
               </div>
             </div>
           </template>
+
+          <!-- Category Inventory System (Phase 1-3) -->
+          <template v-if="isAdmin || hasPermission('menu_pharmacy_material_manage') || hasPermission('menu_med_material_manage') || hasPermission('menu_gm_material_manage')">
+            <h6 class="fw-bold text-secondary mb-3 mt-4 border-bottom pb-2">
+              <i class="bi bi-box-seam me-2 text-primary"></i>ระบบคลังวัสดุรวมศูนย์ (Inventory System)
+            </h6>
+            <div class="row g-3 mb-4">
+              <!-- Main Inventory Dashboard -->
+              <div class="col-6 col-md-4 col-lg-3">
+                <div class="nav-card h-100 bg-gradient-blue text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group" @click="$router.push('/inventory-dashboard')">
+                  <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
+                  <div class="position-relative z-1 d-flex flex-column h-100">
+                    <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
+                      <i class="bi bi-box-seam fs-4"></i>
+                    </div>
+                    <h6 class="fw-bold text-white mb-1 text-truncate" title="ระบบคลังวัสดุ">จัดการคลังวัสดุ</h6>
+                    <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">รับ-จ่าย, เช็คสต๊อก, Master Data</p>
+                    <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
+                      เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </template>
+          
           <template v-if="hasGMAccess">
             <h6 class="fw-bold text-secondary mb-3 mt-4 border-bottom pb-2">
               <i class="bi bi-graph-up me-2 text-primary"></i>งานบริหาร
@@ -1059,7 +1086,6 @@ export default {
     goToComputerLoanForm() {
       this.$router.push({ path: '/computer-loan' });
     },
-
     logout() {
       if (confirm('คุณต้องการออกจากระบบใช่หรือไม่?')) {
         localStorage.removeItem('user_token');
@@ -1086,6 +1112,9 @@ export default {
   background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
   border: none;
   transition: transform 0.3s ease;
+    width: 1300px;
+    height: 300px;
+
 }
 
 .profile-card:hover {
@@ -1114,16 +1143,16 @@ export default {
 }
 
 .avatar-ring {
-  width: 130px;
-  height: 130px;
+  width: 200px;
+  height: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .avatar-circle {
-  width: 120px;
-  height: 120px;
+  width: 200px;
+  height: 200px;
   background-color: #e2e8f0;
   border-radius: 50%;
   display: flex;

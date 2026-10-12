@@ -48,9 +48,7 @@
                       <label class="form-label">แหล่งที่มา / ผู้จำหน่าย <span class="text-danger">*</span></label>
                       <input type="text" class="form-control form-control-lg" v-model="form.reference_dest" required placeholder="เช่น บริษัท A, สินค้าบริจาค" list="vendors" />
                       <datalist id="vendors">
-                        <option value="Advice"></option>
-                        <option value="JIB"></option>
-                        <option value="IT City"></option>
+                        <option v-for="c in companies" :key="c.id" :value="c.company_name"></option>
                       </datalist>
                     </div>
                     <div class="col-md-6">
@@ -213,6 +211,7 @@ export default {
       searchQuery: '',
       isDropdownOpen: false,
       isSubmitting: false,
+      companies: [],
       items: [], // Array to hold selected materials
       currentItem: {
         material_id: '',
@@ -251,6 +250,7 @@ export default {
       });
     }
     this.fetchMaterials();
+    this.fetchCompanies();
   },
   methods: {
     formatCurrency(value) {
@@ -268,6 +268,16 @@ export default {
         }
       } catch (err) {
         console.error(err);
+      }
+    },
+    async fetchCompanies() {
+      try {
+        const res = await axios.get('/api-digital/admin_material/admin_companies.php');
+        if (res.data.status === 'success') {
+          this.companies = res.data.data;
+        }
+      } catch (err) {
+        console.error('Error fetching companies:', err);
       }
     },
     selectMaterial(m) {
@@ -330,6 +340,17 @@ export default {
 
       this.isSubmitting = true;
       try {
+        // บันทึกบริษัทใหม่ลงฐานข้อมูล (ถ้ายังไม่มี)
+        if (this.form.reference_dest) {
+          try {
+            await axios.post('/api-digital/admin_material/admin_companies.php', {
+              company_name: this.form.reference_dest
+            });
+          } catch (e) {
+            console.error('Error saving company:', e);
+          }
+        }
+
         // Prepare payload as array of items
         const payloadItems = this.items.map(item => ({
           material_id: item.material_id,

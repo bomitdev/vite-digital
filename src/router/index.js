@@ -67,6 +67,11 @@ const routes = [
     meta: { requiresAuth: true } // ต้องล็อกอิน
   },
   {
+    path: '/invs-stock',
+    component: () => import('../views/backoffice/InvsStockList.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/report',
     component: () => import('../views/backoffice/ReprotCenterView.vue'),
     meta: { requiresAuth: true } // ต้องล็อกอิน
@@ -409,6 +414,20 @@ const routes = [
   { path: '/med-admin/request-print/:id', name: 'MedRequestPrint', component: () => import('../views/digital/med_material/MtRequestPrint.vue'), meta: { requiresAuth: true, hideNavbar: true } },
   { path: '/med-admin/monthly-report', component: () => import('../views/digital/med_material/MtMonthlyReport.vue'), meta: { requiresAuth: true } },
   { path: '/med-admin/yearly-report', component: () => import('../views/digital/med_material/MtYearlyReport.vue'), meta: { requiresAuth: true } },
+
+  // New Unified Inventory System (Phase 1, 2, 3)
+  { path: '/inventory-dashboard', component: () => import('../views/digital/inventory/InventoryDashboard.vue'), meta: { requiresAuth: true } },
+  { path: '/inventory-settings', component: () => import('../views/digital/inventory/InventorySettings.vue'), meta: { requiresAuth: true } },
+  { path: '/inventory-receive', component: () => import('../views/digital/inventory/Receive.vue'), meta: { requiresAuth: true } },
+  { path: '/inventory-issue', component: () => import('../views/digital/inventory/Issue.vue'), meta: { requiresAuth: true } },
+  { path: '/inventory-stock-card', component: () => import('../views/digital/inventory/StockCard.vue'), meta: { requiresAuth: true } },
+  { path: '/inventory-pr', component: () => import('../views/digital/inventory/PRDashboard.vue'), meta: { requiresAuth: true } },
+  { path: '/inventory-pr-form', component: () => import('../views/digital/inventory/PRForm.vue'), meta: { requiresAuth: true } },
+  { path: '/inventory-po', component: () => import('../views/digital/inventory/PODashboard.vue'), meta: { requiresAuth: true } },
+  { path: '/inventory-po-form', component: () => import('../views/digital/inventory/POForm.vue'), meta: { requiresAuth: true } },
+  { path: '/inventory-transfer', component: () => import('../views/digital/inventory/TransferDashboard.vue'), meta: { requiresAuth: true } },
+  { path: '/inventory-transfer-form', component: () => import('../views/digital/inventory/TransferForm.vue'), meta: { requiresAuth: true } },
+  { path: '/inventory-return', component: () => import('../views/digital/inventory/ReturnDashboard.vue'), meta: { requiresAuth: true } },
 
   { path: '/:pathMatch(.*)*', component: () => import('../views/errors/Page404.vue') } // แก้ไขจาก pathMathch เป็น pathMatch
 ];
