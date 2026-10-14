@@ -21,12 +21,15 @@
           <router-link to="/home-backoffice" class="btn btn-outline-secondary rounded-pill">
             <i class="bi bi-house-door me-1"></i>หน้าหลัก
           </router-link>
-          <button class="btn btn-outline-primary rounded-pill px-3 shadow-sm" @click="downloadTemplate">
+          <button @click="openCategoryModal" class="btn btn-outline-warning rounded-pill px-3 shadow-sm">
+            <i class="bi bi-tags me-1"></i> จัดการประเภท
+          </button>
+          <!-- <button class="btn btn-outline-primary rounded-pill px-3 shadow-sm" @click="downloadTemplate">
             <i class="bi bi-download me-1"></i> โหลด Template
           </button>
           <button class="btn btn-outline-primary rounded-pill px-3 shadow-sm" @click="$refs.excelInput.click()">
             <i class="bi bi-file-earmark-excel-fill me-1"></i> นำเข้าวัสดุ
-          </button>
+          </button> -->
           <input type="file" ref="excelInput" class="d-none" accept=".xlsx, .xls" @change="importExcel" />
           <button class="btn btn-success rounded-pill px-4 shadow-sm" @click="openModal()">
             <i class="bi bi-plus-lg me-2"></i>เพิ่มวัสดุใหม่
@@ -251,61 +254,125 @@
             </div>
             <div class="modal-body p-4">
               <form @submit.prevent="saveMaterial">
-                <div class="mb-3">
-                  <label class="form-label"
-                    >รหัสสินค้า (SKU) <span class="text-danger">*</span></label
-                  >
-                  <input
-                    type="text"
-                    class="form-control"
-                    v-model="form.code"
-                    required
-                    placeholder="เช่น ADM-RAM-001"
-                  />
+                <div class="row g-3 mb-3">
+                  <div class="col-md-6 position-relative">
+                    <label class="form-label fw-bold">ประเภท / หมวดหมู่ <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                      <input
+                        type="text"
+                        class="form-control"
+                        v-model="form.type"
+                        required
+                        placeholder="ค้นหา หรือพิมพ์ประเภท..."
+                        @focus="isTypeDropdownOpen = true"
+                        @input="onTypeInput"
+                        @blur="closeTypeDropdown"
+                      />
+                      <button
+                        type="button"
+                        class="btn btn-outline-secondary"
+                        @click="toggleTypeDropdown"
+                        tabindex="-1"
+                      >
+                        <i class="bi" :class="isTypeDropdownOpen ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                      </button>
+                    </div>
+
+                    <!-- Searchable Dropdown Menu -->
+                    <div
+                      v-if="isTypeDropdownOpen"
+                      class="position-absolute w-100 bg-white border rounded-3 shadow-lg mt-1 overflow-hidden"
+                      style="z-index: 1055; max-height: 230px; overflow-y: auto; left: 0;"
+                    >
+                      <div
+                        v-for="cat in filteredCategoryList"
+                        :key="cat.name"
+                        class="px-3 py-2 border-bottom d-flex align-items-center justify-content-between category-dropdown-item cursor-pointer"
+                        :class="{ 'bg-primary-subtle text-primary fw-bold': form.type === cat.name }"
+                        @mousedown.prevent="selectCategory(cat.name)"
+                      >
+                        <span>
+                          <i class="bi bi-tag-fill me-2 opacity-50"></i>{{ cat.name }}
+                        </span>
+                        <span class="badge bg-secondary-subtle text-secondary font-monospace">
+                          {{ cat.prefix }}-
+                        </span>
+                      </div>
+
+                      <div
+                        v-if="filteredCategoryList.length === 0"
+                        class="px-3 py-2 text-muted fst-italic small text-center"
+                      >
+                        ไม่พบประเภทที่ค้นหา (พิมพ์ใหม่ได้)
+                      </div>
+
+                      <div
+                        v-if="form.type && !availableCategories.some(c => c.name.toLowerCase() === form.type.trim().toLowerCase())"
+                        class="px-3 py-2 bg-light text-primary border-top small cursor-pointer d-flex align-items-center"
+                        @mousedown.prevent="selectCategory(form.type)"
+                      >
+                        <i class="bi bi-plus-circle me-2"></i>
+                        <span>ใช้ประเภทใหม่: <strong>"{{ form.type }}"</strong></span>
+                      </div>
+                    </div>
+
+                    <small class="text-muted" style="font-size: 0.8rem;">
+                      <i class="bi bi-magic me-1 text-primary"></i>ระบบจะรันรหัสอัตโนมัติตามประเภท
+                    </small>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">
+                      รหัสสินค้า (SKU) <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group">
+                      <input
+                        type="text"
+                        class="form-control fw-bold text-primary font-monospace"
+                        v-model="form.code"
+                        required
+                        placeholder="เช่น OS-0001"
+                      />
+                      <button
+                        type="button"
+                        class="btn btn-outline-secondary"
+                        @click="regenerateCode"
+                        title="สร้างรหัสใหม่อัตโนมัติ"
+                      >
+                        <i class="bi bi-arrow-repeat"></i> รันใหม่
+                      </button>
+                    </div>
+                    <small class="text-muted" style="font-size: 0.8rem;">สามารถพิมพ์แก้ไขเองได้</small>
+                  </div>
                 </div>
+
                 <div class="mb-3">
-                  <label class="form-label">ชื่ออุปกรณ์ <span class="text-danger">*</span></label>
+                  <label class="form-label fw-bold">ชื่ออุปกรณ์ / รายการวัสดุ <span class="text-danger">*</span></label>
                   <input
                     type="text"
                     class="form-control"
                     v-model="form.name"
                     required
-                    placeholder="เช่น RAM DDR4 8GB"
+                    placeholder="เช่น กระดาษ A4 80 แกรม"
                   />
                 </div>
-                <div class="row">
-                  <div class="col-md-4 mb-3">
-                    <label class="form-label">ประเภท <span class="text-danger">*</span></label>
-                    <input
-                      type="text"
-                      class="form-control"
-                      v-model="form.type"
-                      required
-                      list="categoryList"
-                      placeholder="เลือกหรือพิมพ์ใหม่ (เช่น RAM)"
-                    />
-                    <datalist id="categoryList">
-                      <option v-for="cat in uniqueCategories" :key="cat" :value="cat"></option>
-                    </datalist>
-                  </div>
-                  <div class="col-md-4 mb-3">
-                    <label class="form-label">หน่วยนับ <span class="text-danger">*</span></label>
+
+                <div class="row g-3 mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">หน่วยนับ <span class="text-danger">*</span></label>
                     <input
                       type="text"
                       class="form-control"
                       v-model="form.unit"
                       required
                       list="unitList"
-                      placeholder="เลือกหรือพิมพ์ใหม่ (เช่น ชิ้น)"
+                      placeholder="เลือกหรือพิมพ์ใหม่ (เช่น ชิ้น, รีม)"
                     />
                     <datalist id="unitList">
                       <option v-for="u in uniqueUnits" :key="u" :value="u"></option>
                     </datalist>
                   </div>
-                  <div class="col-md-4 mb-3">
-                    <label class="form-label"
-                      >ราคาต่อหน่วย <span class="text-danger">*</span></label
-                    >
+                  <div class="col-md-6">
+                    <label class="form-label fw-bold">ราคาต่อหน่วย (บาท) <span class="text-danger">*</span></label>
                     <input
                       type="number"
                       step="0.01"
@@ -353,6 +420,163 @@
         </div>
       </div>
 
+      <!-- Category Management Modal -->
+      <div
+        class="modal fade"
+        id="categoryManageModal"
+        tabindex="-1"
+        aria-hidden="true"
+      >
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+          <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header bg-warning bg-opacity-10 border-bottom-0 pb-0">
+              <h5 class="modal-title fw-bold text-dark">
+                <i class="bi bi-tags-fill text-warning me-2"></i>จัดการประเภท / หมวดหมู่วัสดุ
+              </h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div class="modal-body p-4">
+              <!-- Category form (Add / Edit) -->
+              <div
+                class="card border-0 rounded-3 p-3 mb-4 transition-all"
+                :class="editingCategory ? 'bg-primary-subtle border border-primary-subtle' : 'bg-light'"
+              >
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h6
+                    class="fw-bold mb-0"
+                    :class="editingCategory ? 'text-primary' : 'text-secondary'"
+                  >
+                    <i class="bi" :class="editingCategory ? 'bi-pencil-square me-1' : 'bi-plus-circle me-1'"></i>
+                    {{ editingCategory ? `แก้ไขประเภท: "${editingCategory.name}"` : 'เพิ่มประเภท / หมวดหมู่ใหม่' }}
+                  </h6>
+                  <button
+                    v-if="editingCategory"
+                    type="button"
+                    class="btn btn-sm btn-link text-muted p-0 text-decoration-none"
+                    @click="cancelCategoryEdit"
+                  >
+                    <i class="bi bi-x-circle me-1"></i>ยกเลิกการแก้ไข
+                  </button>
+                </div>
+                <form @submit.prevent="saveCategoryForm" class="row g-2 align-items-end">
+                  <div class="col-md-6">
+                    <label class="form-label small fw-bold">ชื่อประเภท / หมวดหมู่ <span class="text-danger">*</span></label>
+                    <input
+                      type="text"
+                      class="form-control form-control-sm"
+                      v-model="newCategoryForm.name"
+                      placeholder="เช่น วัสดุกีฬา, เครื่องดื่ม"
+                      required
+                    />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">คำนำหน้ารหัส (Prefix) <span class="text-danger">*</span></label>
+                    <input
+                      type="text"
+                      class="form-control form-control-sm text-uppercase font-monospace"
+                      v-model="newCategoryForm.prefix"
+                      placeholder="เช่น SP, DR"
+                      maxlength="10"
+                      required
+                    />
+                  </div>
+                  <div class="col-md-3 d-flex gap-1">
+                    <button
+                      type="submit"
+                      class="btn btn-sm w-100 fw-bold"
+                      :class="editingCategory ? 'btn-primary' : 'btn-warning'"
+                      :disabled="isSavingCategory"
+                    >
+                      <i class="bi" :class="editingCategory ? 'bi-check-lg me-1' : 'bi-check2-circle me-1'"></i>
+                      {{ editingCategory ? 'บันทึกแก้ไข' : 'บันทึกประเภท' }}
+                    </button>
+                    <button
+                      v-if="editingCategory"
+                      type="button"
+                      class="btn btn-outline-secondary btn-sm"
+                      @click="cancelCategoryEdit"
+                      title="ยกเลิก"
+                    >
+                      ยกเลิก
+                    </button>
+                  </div>
+                </form>
+                <div class="form-text small mt-1 text-muted">
+                  * คำนำหน้ารหัส (Prefix) จะถูกนำไปใช้รันรหัสสินค้าอัตโนมัติ เช่น ระบุ <code>SP</code> ระบบจะรันเป็น <code>SP-0001</code>
+                </div>
+              </div>
+
+              <!-- Category table list -->
+              <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light sticky-top">
+                    <tr>
+                      <th style="width: 50px;">#</th>
+                      <th>ชื่อประเภท / หมวดหมู่</th>
+                      <th class="text-center" style="width: 140px;">รหัสคำนำหน้า (Prefix)</th>
+                      <th class="text-center" style="width: 120px;">จำนวนวัสดุ</th>
+                      <th class="text-end" style="width: 110px;">จัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-if="categories.length === 0">
+                      <td colspan="5" class="text-center py-4 text-muted">ไม่มีข้อมูลหมวดหมู่</td>
+                    </tr>
+                    <tr
+                      v-for="(cat, idx) in categories"
+                      :key="cat.id || idx"
+                      :class="{ 'table-primary': editingCategory && editingCategory.id === cat.id }"
+                    >
+                      <td>{{ idx + 1 }}</td>
+                      <td class="fw-bold">{{ cat.name }}</td>
+                      <td class="text-center">
+                        <span class="badge bg-primary-subtle text-primary font-monospace px-2 py-1">
+                          {{ cat.prefix }}-
+                        </span>
+                      </td>
+                      <td class="text-center">
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill">
+                          {{ getCategoryMaterialCount(cat.name) }} รายการ
+                        </span>
+                      </td>
+                      <td class="text-end text-nowrap">
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-primary border-0 me-1"
+                          title="แก้ไขประเภท"
+                          @click="startEditCategory(cat)"
+                        >
+                          <i class="bi bi-pencil-square"></i>
+                        </button>
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-danger border-0"
+                          title="ลบประเภท"
+                          @click="deleteCategory(cat)"
+                          :disabled="getCategoryMaterialCount(cat.name) > 0"
+                        >
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0">
+              <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">
+                ปิด
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
 
 
     </div>
@@ -383,6 +607,15 @@ export default {
       expandedRowId: null,
       expandedLots: [],
       isLoadingLots: false,
+      isTypeDropdownOpen: false,
+      categories: [],
+      categoryModalInstance: null,
+      editingCategory: null,
+      newCategoryForm: {
+        name: '',
+        prefix: ''
+      },
+      isSavingCategory: false,
       form: {
         id: null,
         code: '',
@@ -440,22 +673,22 @@ export default {
     downloadTemplate() {
       const templateData = [
         {
-          รหัสสินค้า: 'MT-001',
-          ชื่ออุปกรณ์: 'ปากกาน้ำเงิน',
-          ประเภท: 'เครื่องเขียน',
+          รหัสสินค้า: 'OS-0001',
+          ชื่ออุปกรณ์: 'ปากกาลูกลื่น น้ำเงิน 0.5',
+          ประเภท: 'วัสดุสำนักงาน',
           หน่วยนับ: 'ด้าม',
           ราคาต่อหน่วย: 5.50,
-          เลขLot: 'L-2026-01',
+          เลขLot: 'LOT-OS-01',
           แจ้งเตือนขั้นต่ำ: 20,
           ยอดยกมา: 100
         },
         {
-          รหัสสินค้า: 'MT-002',
-          ชื่ออุปกรณ์: 'กระดาษ A4',
-          ประเภท: 'กระดาษ',
-          หน่วยนับ: 'รีม',
-          ราคาต่อหน่วย: 95.00,
-          เลขLot: 'L-2026-02',
+          รหัสสินค้า: 'BF-0001',
+          ชื่ออุปกรณ์: 'น้ำยาล้างจาน 500 มล.',
+          ประเภท: 'งานบ้านงานครัว',
+          หน่วยนับ: 'ขวด',
+          ราคาต่อหน่วย: 35.00,
+          เลขLot: 'LOT-BF-01',
           แจ้งเตือนขั้นต่ำ: 10,
           ยอดยกมา: 50
         }
@@ -538,7 +771,8 @@ export default {
           }
         } catch (error) {
           console.error('Error importing Excel:', error);
-          Swal.fire('ข้อผิดพลาด', 'รูปแบบไฟล์ไม่ถูกต้อง หรือเกิดปัญหาในการอ่านไฟล์', 'error');
+          const errorMsg = error.response?.data?.message || 'รูปแบบไฟล์ไม่ถูกต้อง หรือเกิดปัญหาในการอ่านไฟล์';
+          Swal.fire('ข้อผิดพลาด', errorMsg, 'error');
         } finally {
           if (this.$refs.excelInput) {
             this.$refs.excelInput.value = null;
@@ -555,25 +789,14 @@ export default {
       if (item) {
         this.form = { ...item };
       } else {
-        let nextCode = 'MT-001';
-        if (this.materials && this.materials.length > 0) {
-          const mtCodes = this.materials
-            .map(m => m.code)
-            .filter(code => code && code.startsWith('MT-'))
-            .map(code => parseInt(code.replace('MT-', ''), 10))
-            .filter(num => !isNaN(num));
-
-          if (mtCodes.length > 0) {
-            const maxNum = Math.max(...mtCodes);
-            nextCode = `MT-${String(maxNum + 1).padStart(3, '0')}`;
-          }
-        }
+        const defaultType = this.selectedCategory !== 'all' ? this.selectedCategory : (this.uniqueCategories[0] || 'วัสดุสำนักงาน');
+        const nextCode = this.generateNextCodeForType(defaultType) || 'OS-0001';
 
         this.form = {
           id: null,
           code: nextCode,
           name: '',
-          type: '',
+          type: defaultType,
           unit: '',
           price_per_unit: 0.0,
           min_alert: 5,
@@ -585,6 +808,157 @@ export default {
         this.modalInstance = new bootstrap.Modal(document.getElementById('materialModal'));
       }
       this.modalInstance.show();
+    },
+    generateNextCodeForType(selectedType) {
+      if (!selectedType) return '';
+      const typeTrim = selectedType.trim();
+
+      // 1. Check from mt_admin_categories in database
+      let prefix = '';
+      const matchedCat = (this.categories || []).find(
+        c => c.name && c.name.trim().toLowerCase() === typeTrim.toLowerCase()
+      );
+      if (matchedCat && matchedCat.prefix) {
+        prefix = matchedCat.prefix.toUpperCase();
+      }
+
+      // 2. Default mapping fallback
+      if (!prefix) {
+        const defaultPrefixMap = {
+          'วัสดุสำนักงาน': 'OS',
+          'สำนักงาน': 'OS',
+          'งานบ้านงานครัว': 'BF',
+          'วัสดุงานบ้านงานครัว': 'BF',
+          'งานบ้าน': 'HK',
+          'งานครัว': 'BF',
+          'วัสดุคอมพิวเตอร์': 'IT',
+          'คอมพิวเตอร์': 'IT',
+          'วัสดุการแพทย์': 'MD',
+          'การแพทย์': 'MD',
+          'วัสดุวิทยาศาสตร์': 'SC',
+          'วิทยาศาสตร์': 'SC',
+          'วัสดุยานพาหนะ': 'VH',
+          'ยานพาหนะ': 'VH',
+          'วัสดุไฟฟ้าและวิทยุ': 'EL',
+          'วัสดุไฟฟ้า': 'EL',
+          'ไฟฟ้า': 'EL',
+          'งานประปา': 'PB',
+          'วัสดุก่อสร้าง': 'CN'
+        };
+        prefix = defaultPrefixMap[typeTrim] || '';
+      }
+
+      // 3. Fallback to existing items prefix
+      if (!prefix) {
+        const sameTypeMaterials = (this.materials || []).filter(
+          m => m.type && m.type.trim() === typeTrim && m.code
+        );
+        if (sameTypeMaterials.length > 0) {
+          const prefixCounts = {};
+          sameTypeMaterials.forEach(m => {
+            const match = m.code.match(/^([A-Za-z]+)-(\d+)$/);
+            if (match) {
+              const p = match[1].toUpperCase();
+              prefixCounts[p] = (prefixCounts[p] || 0) + 1;
+            }
+          });
+          const sorted = Object.keys(prefixCounts).sort((a, b) => prefixCounts[b] - prefixCounts[a]);
+          if (sorted.length > 0) prefix = sorted[0];
+        }
+      }
+
+      // 4. Fallback: English letters or 'MT'
+      if (!prefix) {
+        const enMatch = typeTrim.match(/[A-Za-z]{2,}/);
+        prefix = enMatch ? enMatch[0].substring(0, 3).toUpperCase() : 'MT';
+      }
+
+      prefix = prefix.toUpperCase();
+
+      // 5. Find max number across all materials starting with this prefix
+      const matchingCodes = (this.materials || [])
+        .map(m => m.code)
+        .filter(code => code && code.toUpperCase().startsWith(`${prefix}-`))
+        .map(code => {
+          const match = code.match(new RegExp(`^${prefix}-(\\d+)`, 'i'));
+          return match ? parseInt(match[1], 10) : 0;
+        })
+        .filter(num => !isNaN(num));
+
+      const maxNum = matchingCodes.length > 0 ? Math.max(...matchingCodes) : 0;
+      const nextNum = maxNum + 1;
+
+      return `${prefix}-${String(nextNum).padStart(4, '0')}`;
+    },
+    onTypeInput() {
+      this.isTypeDropdownOpen = true;
+      this.onTypeChange();
+    },
+    toggleTypeDropdown() {
+      this.isTypeDropdownOpen = !this.isTypeDropdownOpen;
+    },
+    closeTypeDropdown() {
+      setTimeout(() => {
+        this.isTypeDropdownOpen = false;
+      }, 150);
+    },
+    async selectCategory(catName) {
+      this.form.type = catName;
+      this.isTypeDropdownOpen = false;
+      this.onTypeChange();
+
+      // If new category not in categories list, register it in mt_admin_categories
+      const exists = (this.categories || []).some(
+        c => c.name.toLowerCase() === catName.trim().toLowerCase()
+      );
+      if (!exists && catName.trim()) {
+        try {
+          const prefix = (this.form.code && this.form.code.includes('-')) 
+            ? this.form.code.split('-')[0].trim().toUpperCase() 
+            : '';
+          const res = await axios.post('/api-digital/admin_material/admin_save_category.php', {
+            name: catName.trim(),
+            prefix: prefix
+          });
+          if (res.data.status === 'success') {
+            this.fetchCategories();
+          }
+        } catch (e) {
+          console.error('Error auto-saving new category:', e);
+        }
+      }
+    },
+    onTypeChange() {
+      if (this.form.id) return;
+      const nextCode = this.generateNextCodeForType(this.form.type);
+      if (nextCode) {
+        this.form.code = nextCode;
+      }
+    },
+    regenerateCode() {
+      let currentPrefix = '';
+      if (this.form.code && this.form.code.includes('-')) {
+        currentPrefix = this.form.code.split('-')[0].trim().toUpperCase();
+      }
+      if (currentPrefix) {
+        const matchingCodes = (this.materials || [])
+          .map(m => m.code)
+          .filter(code => code && code.toUpperCase().startsWith(`${currentPrefix}-`))
+          .map(code => {
+            const match = code.match(new RegExp(`^${currentPrefix}-(\\d+)`, 'i'));
+            return match ? parseInt(match[1], 10) : 0;
+          })
+          .filter(num => !isNaN(num));
+
+        const maxNum = matchingCodes.length > 0 ? Math.max(...matchingCodes) : 0;
+        this.form.code = `${currentPrefix}-${String(maxNum + 1).padStart(4, '0')}`;
+        return;
+      }
+
+      const nextCode = this.generateNextCodeForType(this.form.type || 'วัสดุสำนักงาน');
+      if (nextCode) {
+        this.form.code = nextCode;
+      }
     },
     async saveMaterial() {
       try {
@@ -605,6 +979,7 @@ export default {
           // alert(res.data.message);
           this.modalInstance.hide();
           this.fetchMaterials();
+          this.fetchCategories();
         } else {
           alert(res.data.message);
         }
@@ -726,6 +1101,105 @@ export default {
       const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
       return `${baseUrl}/vue-app/vite-digital/${path}`;
     },
+    async fetchCategories() {
+      try {
+        const res = await axios.get('/api-digital/admin_material/admin_get_categories.php');
+        if (res.data.status === 'success') {
+          this.categories = res.data.data || [];
+        }
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+      }
+    },
+    openCategoryModal() {
+      if (!this.categoryModalInstance) {
+        this.categoryModalInstance = new bootstrap.Modal(document.getElementById('categoryManageModal'));
+      }
+      this.categoryModalInstance.show();
+    },
+    startEditCategory(cat) {
+      this.editingCategory = { ...cat };
+      this.newCategoryForm = {
+        name: cat.name,
+        prefix: cat.prefix
+      };
+    },
+    cancelCategoryEdit() {
+      this.editingCategory = null;
+      this.newCategoryForm = {
+        name: '',
+        prefix: ''
+      };
+    },
+    async saveCategoryForm() {
+      if (!this.newCategoryForm.name || !this.newCategoryForm.prefix) return;
+      this.isSavingCategory = true;
+      try {
+        const payload = {
+          name: this.newCategoryForm.name.trim(),
+          prefix: this.newCategoryForm.prefix.trim().toUpperCase()
+        };
+        if (this.editingCategory && this.editingCategory.id) {
+          payload.id = this.editingCategory.id;
+        }
+
+        const res = await axios.post('/api-digital/admin_material/admin_save_category.php', payload);
+        if (res.data.status === 'success') {
+          Swal.fire({
+            icon: 'success',
+            title: 'บันทึกสำเร็จ',
+            text: res.data.message || (this.editingCategory ? 'อัปเดตประเภทเรียบร้อยแล้ว' : 'เพิ่มประเภทเรียบร้อยแล้ว'),
+            timer: 1500,
+            showConfirmButton: false
+          });
+          this.cancelCategoryEdit();
+          await this.fetchCategories();
+          await this.fetchMaterials();
+        } else {
+          Swal.fire('ผิดพลาด', res.data.message, 'error');
+        }
+      } catch (e) {
+        Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการบันทึกประเภท', 'error');
+      } finally {
+        this.isSavingCategory = false;
+      }
+    },
+    getCategoryMaterialCount(catName) {
+      if (!catName || !this.materials) return 0;
+      return this.materials.filter(m => m.type && m.type.trim() === catName.trim()).length;
+    },
+    async deleteCategory(cat) {
+      const count = this.getCategoryMaterialCount(cat.name);
+      if (count > 0) {
+        Swal.fire('ไม่สามารถลบได้', `ประเภท "${cat.name}" มีวัสดุใช้งานอยู่ ${count} รายการ`, 'warning');
+        return;
+      }
+
+      const confirm = await Swal.fire({
+        title: 'ยืนยันการลบประเภท?',
+        text: `ต้องการลบประเภท "${cat.name}" (${cat.prefix}-) ออกจากระบบหรือไม่?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'ลบข้อมูล',
+        cancelButtonText: 'ยกเลิก'
+      });
+
+      if (confirm.isConfirmed) {
+        try {
+          const res = await axios.post('/api-digital/admin_material/admin_delete_category.php', { id: cat.id });
+          if (res.data.status === 'success') {
+            Swal.fire('สำเร็จ', res.data.message, 'success');
+            this.fetchCategories();
+          } else {
+            Swal.fire('ผิดพลาด', res.data.message, 'error');
+          }
+        } catch (e) {
+          Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการลบประเภท', 'error');
+        }
+      }
+    },
     openLogModal() {
       // eslint-disable-next-line no-undef
       const modal = new bootstrap.Modal(document.getElementById('stockLogModal'));
@@ -735,8 +1209,32 @@ export default {
   },
   computed: {
     uniqueCategories() {
-      const categories = this.materials.map(m => m.type).filter(t => t);
-      return [...new Set(categories)].sort();
+      const fromCats = (this.categories || []).map(c => c.name);
+      const fromMats = (this.materials || []).map(m => m.type).filter(t => t);
+      return [...new Set([...fromCats, ...fromMats])].sort();
+    },
+    availableCategories() {
+      if (this.categories && this.categories.length > 0) {
+        return this.categories;
+      }
+      return [
+        { name: 'วัสดุสำนักงาน', prefix: 'OS' },
+        { name: 'งานบ้านงานครัว', prefix: 'BF' },
+        { name: 'วัสดุคอมพิวเตอร์', prefix: 'IT' },
+        { name: 'วัสดุการแพทย์', prefix: 'MD' },
+        { name: 'วัสดุวิทยาศาสตร์', prefix: 'SC' },
+        { name: 'วัสดุยานพาหนะ', prefix: 'VH' },
+        { name: 'วัสดุไฟฟ้าและวิทยุ', prefix: 'EL' },
+        { name: 'งานประปา', prefix: 'PB' },
+        { name: 'วัสดุก่อสร้าง', prefix: 'CN' }
+      ];
+    },
+    filteredCategoryList() {
+      const q = (this.form.type || '').trim().toLowerCase();
+      if (!q) return this.availableCategories;
+      return this.availableCategories.filter(
+        c => (c.name && c.name.toLowerCase().includes(q)) || (c.prefix && c.prefix.toLowerCase().includes(q))
+      );
     },
     uniqueUnits() {
       const units = this.materials.map(m => m.unit).filter(u => u);
@@ -751,6 +1249,7 @@ export default {
   },
   mounted() {
     this.fetchMaterials();
+    this.fetchCategories();
   }
 };
 </script>
@@ -762,5 +1261,15 @@ export default {
 }
 .table-danger {
   --bs-table-bg: rgba(220, 53, 69, 0.05);
+}
+.category-dropdown-item {
+  transition: background-color 0.15s ease-in-out;
+  cursor: pointer;
+}
+.category-dropdown-item:hover {
+  background-color: #f1f5f9;
+}
+.cursor-pointer {
+  cursor: pointer;
 }
 </style>

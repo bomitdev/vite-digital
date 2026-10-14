@@ -131,6 +131,24 @@ try {
         $message = 'เพิ่มวัสดุใหม่สำเร็จ';
     }
 
+    // Auto-sync category to mt_admin_categories if not exists
+    if (!empty($type)) {
+        $catCheck = $pdo2->prepare("SELECT id FROM mt_admin_categories WHERE name = ?");
+        $catCheck->execute([$type]);
+        if (!$catCheck->fetch()) {
+            $prefix = '';
+            if (preg_match('/^([A-Za-z]+)-/i', $code, $m)) {
+                $prefix = strtoupper($m[1]);
+            } else if (preg_match('/[A-Za-z]{2,}/', $type, $m)) {
+                $prefix = strtoupper(substr($m[0], 0, 3));
+            } else {
+                $prefix = 'MT';
+            }
+            $catIns = $pdo2->prepare("INSERT IGNORE INTO mt_admin_categories (name, prefix) VALUES (?, ?)");
+            $catIns->execute([$type, $prefix]);
+        }
+    }
+
     echo json_encode([
         'status' => 'success',
         'message' => $message,

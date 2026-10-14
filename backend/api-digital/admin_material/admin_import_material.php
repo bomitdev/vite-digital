@@ -24,15 +24,20 @@ try {
     foreach ($data as $index => $row) {
         $rowNum = $index + 2; // +1 for 0-index, +1 for header
 
-        $code = isset($row['รหัสสินค้า']) ? trim($row['รหัสสินค้า']) : '';
-        $name = isset($row['ชื่ออุปกรณ์']) ? trim($row['ชื่ออุปกรณ์']) : '';
-        $type = isset($row['ประเภท']) ? trim($row['ประเภท']) : '';
-        $unit = isset($row['หน่วยนับ']) ? trim($row['หน่วยนับ']) : '';
+        $cleanRow = [];
+        foreach ($row as $k => $v) {
+            $cleanRow[trim((string)$k)] = $v;
+        }
+
+        $code = isset($cleanRow['รหัสสินค้า']) ? trim((string)$cleanRow['รหัสสินค้า']) : '';
+        $name = isset($cleanRow['ชื่ออุปกรณ์']) ? trim((string)$cleanRow['ชื่ออุปกรณ์']) : '';
+        $type = isset($cleanRow['ประเภท']) ? trim((string)$cleanRow['ประเภท']) : '';
+        $unit = isset($cleanRow['หน่วยนับ']) ? trim((string)$cleanRow['หน่วยนับ']) : '';
         
-        $price_per_unit = isset($row['ราคาต่อหน่วย']) ? floatval($row['ราคาต่อหน่วย']) : 0.00;
-        $lot_number = isset($row['เลขLot']) ? trim($row['เลขLot']) : '';
-        $min_alert = isset($row['แจ้งเตือนขั้นต่ำ']) ? intval($row['แจ้งเตือนขั้นต่ำ']) : 5;
-        $balance = isset($row['ยอดยกมา']) ? intval($row['ยอดยกมา']) : 0;
+        $price_per_unit = isset($cleanRow['ราคาต่อหน่วย']) && $cleanRow['ราคาต่อหน่วย'] !== '' ? floatval($cleanRow['ราคาต่อหน่วย']) : 0.00;
+        $lot_number = isset($cleanRow['เลขLot']) ? trim((string)$cleanRow['เลขLot']) : '';
+        $min_alert = isset($cleanRow['แจ้งเตือนขั้นต่ำ']) && $cleanRow['แจ้งเตือนขั้นต่ำ'] !== '' ? intval($cleanRow['แจ้งเตือนขั้นต่ำ']) : 5;
+        $balance = isset($cleanRow['ยอดยกมา']) && $cleanRow['ยอดยกมา'] !== '' ? intval($cleanRow['ยอดยกมา']) : 0;
 
         if (empty($code) || empty($name)) {
             $errors[] = "แถวที่ $rowNum: รหัสสินค้าและชื่ออุปกรณ์ห้ามว่าง";
@@ -76,15 +81,35 @@ try {
             if ($balance > 0) {
                 // Insert initial lot
                 $stmtLot = $pdo2->prepare("INSERT INTO mt_admin_lots (material_id, receive_date, original_qty, remaining_qty, price_per_unit, lot_number) 
-                    VALUES (:mid, NOW(), :qty, :qty, :price, :lot)");
+                    VALUES (:mid, NOW(), :qty1, :qty2, :price, :lot)");
                 $stmtLot->execute([
                     ':mid' => $new_material_id,
-                    ':qty' => $balance,
+                    ':qty1' => $balance,
+                    ':qty2' => $balance,
                     ':price' => $price_per_unit,
                     ':lot' => $lot_number
                 ]);
             }
         }
+
+        // Auto-sync category to mt_admin_categories if not exists
+        if (!empty($type)) {
+            $catCheck = $pdo2->prepare("SELECT id FROM mt_admin_categories WHERE name = ?");
+            $catCheck->execute([$type]);
+            if (!$catCheck->fetch()) {
+                $prefix = '';
+                if (preg_match('/^([A-Za-z]+)-/i', $code, $m)) {
+                    $prefix = strtoupper($m[1]);
+                } else if (preg_match('/[A-Za-z]{2,}/', $type, $m)) {
+                    $prefix = strtoupper(substr($m[0], 0, 3));
+                } else {
+                    $prefix = 'MT';
+                }
+                $catIns = $pdo2->prepare("INSERT IGNORE INTO mt_admin_categories (name, prefix) VALUES (?, ?)");
+                $catIns->execute([$type, $prefix]);
+            }
+        }
+
         $importedCount++;
     }
 

@@ -212,39 +212,6 @@
               </div>
             </div>
 
-            <!-- Pharmacy Request Form -->
-            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_pharmacy_material_req', 'backoffice_staff_all'])">
-              <div class="nav-card h-100 bg-gradient-teal text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group" @click="goToPharmacyRequestForm">
-                <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
-                <div class="position-relative z-1 d-flex flex-column h-100">
-                  <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
-                    <i class="bi bi-capsule fs-4"></i>
-                  </div>
-                  <h6 class="fw-bold text-white mb-1 text-truncate" title="ฟอร์มขอเบิกยา">ขอเบิกยา</h6>
-                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">สำหรับขอเบิกยาจากคลัง</p>
-                  <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
-                    เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Med Request Form -->
-            <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['menu_med_material_req', 'backoffice_staff_all'])">
-              <div class="nav-card h-100 bg-gradient-teal text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group" @click="goToMedRequestForm">
-                <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
-                <div class="position-relative z-1 d-flex flex-column h-100">
-                  <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
-                    <i class="bi bi-bandaid fs-4"></i>
-                  </div>
-                  <h6 class="fw-bold text-white mb-1 text-truncate" title="ฟอร์มขอเบิกเวชภัณฑ์">ขอเบิกเวชภัณฑ์</h6>
-                  <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">สำหรับขอเบิกเวชภัณฑ์</p>
-                  <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
-                    เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             
 
@@ -290,49 +257,7 @@
 
           </div>
           </template>
-          <!-- Category Health -->
-          <template v-if="hasHealthAccess">
-            <h6 class="fw-bold text-secondary mb-3 mt-4 border-bottom pb-2">
-              <i class="bi bi-heart-pulse me-2 text-primary"></i>ระบบคลังยาและวัสดุทางการแพทย์
-            </h6>
-            <div class="row g-3 mb-4">
-              
 
-              <!-- Pharmacy Management Admin -->
-              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_pharmacy_material_manage')">
-                <div class="nav-card h-100 bg-gradient-green text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group" @click="goToPharmacyAdmin">
-                  <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
-                  <div class="position-relative z-1 d-flex flex-column h-100">
-                    <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
-                      <i class="bi bi-capsule fs-4"></i>
-                    </div>
-                    <h6 class="fw-bold text-white mb-1 text-truncate" title="ระบบคลังยา">ระบบคลังยา</h6>
-                    <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">หน้า Stock ยา</p>
-                    <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
-                      เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Med Management Admin -->
-              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_med_material_manage')">
-                <div class="nav-card h-100 bg-gradient-green text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group" @click="goToMedAdmin">
-                  <div class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"></div>
-                  <div class="position-relative z-1 d-flex flex-column h-100">
-                    <div class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur">
-                      <i class="bi bi-bandaid fs-4"></i>
-                    </div>
-                    <h6 class="fw-bold text-white mb-1 text-truncate" title="ระบบคลังเวชภัณฑ์">ระบบคลังเวชภัณฑ์</h6>
-                    <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">หน้า Stock เวชภัณฑ์</p>
-                    <div class="d-flex align-items-center text-white fw-bold small mt-auto" style="font-size: 0.75rem">
-                      เข้าใช้งาน <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </template>
 
           <!-- Category Inventory System (Phase 1-3) -->
           <template v-if="isAdmin || hasPermission('menu_pharmacy_material_manage') || hasPermission('menu_med_material_manage') || hasPermission('menu_gm_material_manage')">
@@ -917,18 +842,13 @@ export default {
     showStaffCategory() {
       return this.hasPermission([
         'menu_time_in_out', 'menu_computer_repair', 'menu_it_material_req',
-        'menu_gm_material_req', 'menu_pharmacy_material_req', 'menu_med_material_req', 'menu_data_report', 'menu_report_center',
+        'menu_gm_material_req', 'menu_data_report', 'menu_report_center',
         'menu_borrow_it', 'menu_revenue_report', 'menu_projects', 'backoffice_staff_all'
       ]);
     },
     hasGMAccess() {
       return this.hasPermission([
         'menu_gm_material_manage', 'menu_procurement'
-      ]);
-    },
-    hasHealthAccess() {
-      return this.hasPermission([
-        'menu_pharmacy_material_manage', 'menu_med_material_manage'
       ]);
     },
 
@@ -1067,18 +987,7 @@ export default {
     goToMaterialRequestForm() {
       this.$router.push({ path: '/material-request' });
     },
-    goToPharmacyRequestForm() {
-      this.$router.push({ path: '/pharmacy-admin-request' });
-    },
-    goToMedRequestForm() {
-      this.$router.push({ path: '/med-admin-request' });
-    },
-    async goToPharmacyAdmin() {
-      await this.checkITAccessAndGoGM('/pharmacy-admin');
-    },
-    async goToMedAdmin() {
-      await this.checkITAccessAndGoGM('/med-admin');
-    },
+
     goToMaterialAdminRequestForm() {
       this.$router.push({ path: '/material-admin-request' });
     },
