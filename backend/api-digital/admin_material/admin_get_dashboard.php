@@ -1,6 +1,6 @@
 <?php
-require_once '../../config.php';
-require_once '../../cors.php';
+require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../cors.php';
 
 header("Content-Type: application/json");
 
@@ -21,23 +21,31 @@ try {
 
     // 3. ยอดรวมรับเข้า (เดือนปัจจุบัน)
     $stmtTotalIn = $pdo2->query("
-        SELECT COALESCE(SUM(quantity), 0) AS total 
+        SELECT 
+            COALESCE(SUM(quantity), 0) AS total_qty,
+            COALESCE(SUM(total_price), 0) AS total_val
         FROM mt_admin_transactions 
         WHERE action_type = 'IN' 
         AND MONTH(action_date) = MONTH(CURRENT_DATE())
         AND YEAR(action_date) = YEAR(CURRENT_DATE())
     ");
-    $total_in_month = $stmtTotalIn->fetch()['total'];
+    $rowIn = $stmtTotalIn->fetch();
+    $total_in_month = intval($rowIn['total_qty']);
+    $total_in_value = floatval($rowIn['total_val']);
 
     // 4. ยอดรวมจ่ายออก (เดือนปัจจุบัน)
     $stmtTotalOut = $pdo2->query("
-        SELECT COALESCE(SUM(quantity), 0) AS total 
+        SELECT 
+            COALESCE(SUM(quantity), 0) AS total_qty,
+            COALESCE(SUM(total_price), 0) AS total_val
         FROM mt_admin_transactions 
         WHERE action_type = 'OUT' 
         AND MONTH(action_date) = MONTH(CURRENT_DATE())
         AND YEAR(action_date) = YEAR(CURRENT_DATE())
     ");
-    $total_out_month = $stmtTotalOut->fetch()['total'];
+    $rowOut = $stmtTotalOut->fetch();
+    $total_out_month = intval($rowOut['total_qty']);
+    $total_out_value = floatval($rowOut['total_val']);
 
     // 5. 5 การเคลื่อนไหวล่าสุด
     $stmtRecentTx = $pdo2->query("
@@ -45,8 +53,10 @@ try {
             t.id, 
             m.name AS material_name, 
             m.type AS material_type,
+            m.unit,
             t.action_type, 
             t.quantity, 
+            t.total_price,
             t.action_date, 
             t.receiver_name,
             t.reference_dest,
@@ -73,7 +83,9 @@ try {
             'total_sku' => $total_sku,
             'low_stock_count' => $low_stock,
             'total_in_month' => $total_in_month,
+            'total_in_value' => $total_in_value,
             'total_out_month' => $total_out_month,
+            'total_out_value' => $total_out_value,
             'total_inventory_value' => floatval($total_inventory_value),
             'recent_transactions' => $recent_transactions
         ]

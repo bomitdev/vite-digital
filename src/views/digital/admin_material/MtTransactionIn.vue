@@ -45,7 +45,16 @@
                       <input type="text" class="form-control form-control-lg" v-model="form.bill_number" placeholder="เช่น INV-2023001" />
                     </div>
                     <div class="col-md-6">
-                      <label class="form-label">แหล่งที่มา / ผู้จำหน่าย <span class="text-danger">*</span></label>
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label mb-0">แหล่งที่มา / ผู้จำหน่าย <span class="text-danger">*</span></label>
+                        <button
+                          type="button"
+                          class="btn btn-link btn-sm p-0 text-decoration-none text-primary fw-bold"
+                          @click="openCompanyModal"
+                        >
+                          <i class="bi bi-gear me-1"></i>จัดการผู้จำหน่าย
+                        </button>
+                      </div>
                       <input type="text" class="form-control form-control-lg" v-model="form.reference_dest" required placeholder="เช่น บริษัท A, สินค้าบริจาค" list="vendors" />
                       <datalist id="vendors">
                         <option v-for="c in companies" :key="c.id" :value="c.company_name"></option>
@@ -127,7 +136,12 @@
 
                 <!-- Section 3: Added Items Table -->
                 <div class="mb-4" v-if="items.length > 0">
-                  <h5 class="fw-bold mb-3 border-bottom pb-2">3. รายการวัสดุที่เตรียมรับเข้า</h5>
+                  <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                    <h5 class="fw-bold mb-0">3. รายการวัสดุที่เตรียมรับเข้า</h5>
+                    <div class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-3 py-2 rounded-pill fs-6 fw-normal">
+                      <i class="bi bi-building me-1"></i>แหล่งที่มา / ผู้จำหน่าย: <strong class="text-dark">{{ form.reference_dest || '-' }}</strong>
+                    </div>
+                  </div>
                   <div class="table-responsive">
                     <table class="table table-bordered table-hover align-middle">
                       <thead class="table-light">
@@ -135,6 +149,7 @@
                           <th>ลำดับ</th>
                           <th>รหัสวัสดุ</th>
                           <th>ชื่อวัสดุ</th>
+                          <th>แหล่งที่มา / ผู้จำหน่าย</th>
                           <th class="text-end">ราคา/หน่วย</th>
                           <th class="text-end">จำนวน</th>
                           <th>หน่วยนับ</th>
@@ -154,6 +169,11 @@
                             <div class="small text-muted" v-else>
                               <i class="bi bi-tag-fill me-1"></i>Lot อัตโนมัติ
                             </div>
+                          </td>
+                          <td>
+                            <span class="badge bg-light text-dark border">
+                              <i class="bi bi-building me-1 text-primary"></i>{{ form.reference_dest || '-' }}
+                            </span>
                           </td>
                           <td class="text-end text-primary">{{ formatCurrency(item.price_per_unit) }} ฿</td>
                           <td class="text-end fw-bold text-success">{{ item.quantity }}</td>
@@ -190,6 +210,9 @@
 
     <!-- Log Modal -->
     <MtLogModal ref="logModal" logType="in" modalId="inLogModal" />
+
+    <!-- Company Management Modal -->
+    <MtCompanyModal ref="companyModal" @updated="fetchCompanies" />
   </div>
 </template>
 
@@ -199,11 +222,13 @@ import moment from 'moment';
 import Swal from 'sweetalert2';
 import * as bootstrap from 'bootstrap';
 import MtLogModal from './MtLogModal.vue';
+import MtCompanyModal from './MtCompanyModal.vue';
 
 export default {
   name: 'MtTransactionIn',
   components: {
-    MtLogModal
+    MtLogModal,
+    MtCompanyModal
   },
   data() {
     return {
@@ -391,15 +416,12 @@ export default {
       const modal = new bootstrap.Modal(document.getElementById('inLogModal'));
       modal.show();
       this.$refs.logModal.fetchLogs();
+    },
+    openCompanyModal() {
+      if (this.$refs.companyModal) {
+        this.$refs.companyModal.openModal();
+      }
     }
-  },
-  mounted() {
-    if (!localStorage.getItem('user_name')) {
-      axios.get('/api-hosoffice/get_user_profile.php').then((res) => {
-        if (res.data.status === 'success') this.form.user_profile_name = res.data.fullname;
-      });
-    }
-    this.fetchMaterials();
   }
 };
 </script>

@@ -24,6 +24,9 @@
           <button @click="openCategoryModal" class="btn btn-outline-warning rounded-pill px-3 shadow-sm">
             <i class="bi bi-tags me-1"></i> จัดการประเภท
           </button>
+          <button @click="openCompanyModal" class="btn btn-outline-primary rounded-pill px-3 shadow-sm">
+            <i class="bi bi-building me-1"></i> จัดการผู้จำหน่าย
+          </button>
           <!-- <button class="btn btn-outline-primary rounded-pill px-3 shadow-sm" @click="downloadTemplate">
             <i class="bi bi-download me-1"></i> โหลด Template
           </button>
@@ -182,7 +185,7 @@
                 </tr>
                 <!-- Expandable Row for Lots -->
                 <tr v-if="expandedRowId === item.id" class="bg-light bg-opacity-50">
-                  <td colspan="8" class="p-0 border-bottom">
+                  <td colspan="9" class="p-0 border-bottom">
                     <div class="p-3 px-4 border-start border-info border-4">
                       <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="mb-0 text-info fw-bold"><i class="bi bi-box-seam me-2"></i>รายการ Lot ที่มีในคลัง</h6>
@@ -201,6 +204,7 @@
                             <tr>
                               <th class="ps-3 py-2">วันที่รับเข้า</th>
                               <th class="py-2">เลข Lot</th>
+                              <th class="py-2">แหล่งที่มา / ผู้จำหน่าย</th>
                               <th class="text-end py-2">ราคา/หน่วย</th>
                               <th class="text-center py-2">รับมา</th>
                               <th class="text-center py-2">คงเหลือ</th>
@@ -211,6 +215,12 @@
                             <tr v-for="lot in expandedLots" :key="lot.id" :class="{'text-danger': lot.remaining_qty <= 0}">
                               <td class="ps-3">{{ formatDateShort(lot.receive_date) }}</td>
                               <td class="fw-bold">{{ lot.lot_number || 'ไม่ระบุ (Auto)' }}</td>
+                              <td>
+                                <span v-if="lot.vendor" class="badge bg-light text-dark border">
+                                  <i class="bi bi-building me-1 text-primary"></i>{{ lot.vendor }}
+                                </span>
+                                <span v-else class="text-muted small">-</span>
+                              </td>
                               <td class="text-end">{{ Number(lot.price_per_unit).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }} ฿</td>
                               <td class="text-center text-muted">{{ lot.original_qty }}</td>
                               <td class="text-center fw-bold" :class="lot.remaining_qty > 0 ? 'text-success' : ''">{{ lot.remaining_qty }}</td>
@@ -219,7 +229,7 @@
                           </tbody>
                           <tfoot class="table-light fw-bold text-dark border-top">
                             <tr>
-                              <td colspan="3" class="text-end py-2">รวมทั้งหมด:</td>
+                              <td colspan="4" class="text-end py-2">รวมทั้งหมด:</td>
                               <td class="text-center py-2 text-muted">{{ expandedLots.reduce((sum, lot) => sum + (Number(lot.original_qty) || 0), 0).toLocaleString() }}</td>
                               <td class="text-center py-2 text-success">{{ expandedLots.reduce((sum, lot) => sum + (Number(lot.remaining_qty) || 0), 0).toLocaleString() }}</td>
                               <td class="text-end pe-3 py-2 text-primary">{{ expandedLots.reduce((sum, lot) => sum + (Number(lot.remaining_qty) * Number(lot.price_per_unit)), 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }} ฿</td>
@@ -581,6 +591,9 @@
 
     </div>
 
+    <!-- Company/Vendor Management Modal -->
+    <MtCompanyModal ref="companyModal" @updated="onCompanyUpdated" />
+
     <!-- Log Modal -->
     <MtLogModal ref="logModal" logType="stock" modalId="stockLogModal" />
   </div>
@@ -592,11 +605,13 @@ import * as bootstrap from 'bootstrap';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import MtLogModal from './MtLogModal.vue';
+import MtCompanyModal from './MtCompanyModal.vue';
 
 export default {
   name: 'MtStock',
   components: {
-    MtLogModal
+    MtLogModal,
+    MtCompanyModal
   },
   data() {
     return {
@@ -655,6 +670,29 @@ export default {
         console.error('Failed to fetch lots', err);
       } finally {
         this.isLoadingLots = false;
+      }
+    },
+    openCompanyModal() {
+      if (this.$refs.companyModal) {
+        this.$refs.companyModal.openModal();
+      }
+    },
+    onCompanyUpdated() {
+      this.reloadExpandedLots();
+    },
+    async reloadExpandedLots() {
+      if (this.expandedRowId) {
+        this.isLoadingLots = true;
+        try {
+          const res = await axios.get(`/api-digital/admin_material/admin_get_lots.php?material_id=${this.expandedRowId}`);
+          if (res.data.status === 'success') {
+            this.expandedLots = res.data.data || [];
+          }
+        } catch (err) {
+          console.error('Failed to reload lots', err);
+        } finally {
+          this.isLoadingLots = false;
+        }
       }
     },
     async fetchMaterials() {

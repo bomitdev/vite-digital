@@ -95,17 +95,24 @@ try {
 
         // 2.5 สร้าง Lot ใหม่
         $stmtLot = $pdo2->prepare("
-            INSERT INTO mt_admin_lots (material_id, lot_number, price_per_unit, original_qty, remaining_qty, receive_date)
-            VALUES (:material_id, :lot_number, :price, :qty1, :qty2, :receive_date)
+            INSERT INTO mt_admin_lots (material_id, lot_number, vendor, price_per_unit, original_qty, remaining_qty, receive_date)
+            VALUES (:material_id, :lot_number, :vendor, :price, :qty1, :qty2, :receive_date)
         ");
         $stmtLot->execute([
             ':material_id' => $material_id,
             ':lot_number' => $lot_number,
+            ':vendor' => $reference_dest,
             ':price' => $final_price,
             ':qty1' => $quantity,
             ':qty2' => $quantity,
             ':receive_date' => $action_date
         ]);
+
+        // 2.6 บันทึกเข้า mt_admin_companies อัตโนมัติถ้ายังไม่มี
+        if (!empty($reference_dest)) {
+            $stmtComp = $pdo2->prepare("INSERT INTO mt_admin_companies (company_name) VALUES (:name) ON DUPLICATE KEY UPDATE company_name=company_name");
+            $stmtComp->execute([':name' => $reference_dest]);
+        }
 
         // 3. อัปเดตยอดคงคลัง
         $newBalance = $material['balance'] + $quantity;

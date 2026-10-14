@@ -80,15 +80,18 @@
                   <h2 class="display-5 fw-bold mb-0">
                     {{ dashboard.total_in_month }} <span class="fs-6 fw-normal">ชิ้น</span>
                   </h2>
+                  <div class="mt-1 small fw-semibold text-white">
+                    <i class="bi bi-wallet2 me-1"></i>มูลค่ารับเข้า: {{ Number(dashboard.total_in_value || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }} ฿
+                  </div>
                 </div>
                 <div
-                  class="icon-box bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center"
+                  class="icon-box bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center mt-2"
                   style="width: 48px; height: 48px"
                 >
                   <i class="bi bi-box-arrow-in-down fs-4"></i>
                 </div>
               </div>
-              <div class="mt-3 text-white-50 small">บันทึกรับเข้า &rarr;</div>
+              <div class="mt-2 text-white-50 small">บันทึกรับเข้า &rarr;</div>
             </div>
           </div>
         </div>
@@ -104,15 +107,18 @@
                   <h2 class="display-5 fw-bold mb-0">
                     {{ dashboard.total_out_month }} <span class="fs-6 fw-normal">ชิ้น</span>
                   </h2>
+                  <div class="mt-1 small fw-semibold text-dark">
+                    <i class="bi bi-wallet2 me-1"></i>มูลค่าจ่ายออก: {{ Number(dashboard.total_out_value || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }} ฿
+                  </div>
                 </div>
                 <div
-                  class="icon-box bg-dark bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center"
+                  class="icon-box bg-dark bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center mt-2"
                   style="width: 48px; height: 48px"
                 >
                   <i class="bi bi-box-arrow-up fs-4"></i>
                 </div>
               </div>
-              <div class="mt-3 text-dark-50 small">&nbsp;</div>
+              <div class="mt-2 text-dark-50 small">&nbsp;</div>
             </div>
           </div>
         </div>
@@ -248,6 +254,7 @@
                       </td>
                       <td>
                         <span
+                          class="fw-bold"
                           :class="{
                             'text-success': t.action_type === 'IN',
                             'text-warning': t.action_type === 'OUT'
@@ -255,6 +262,9 @@
                         >
                           {{ t.action_type === 'IN' ? '+' : '-' }}{{ t.quantity }}
                         </span>
+                        <div class="small text-muted" v-if="Number(t.total_price) > 0">
+                          {{ Number(t.total_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }} ฿
+                        </div>
                       </td>
                       <td>
                         <div v-if="t.action_type === 'OUT'">
@@ -378,7 +388,10 @@ export default {
         total_sku: 0,
         low_stock_count: 0,
         total_in_month: 0,
+        total_in_value: 0,
         total_out_month: 0,
+        total_out_value: 0,
+        total_inventory_value: 0,
         recent_transactions: []
       },
       editForm: {

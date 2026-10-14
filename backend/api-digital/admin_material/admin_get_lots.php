@@ -1,6 +1,6 @@
 <?php
-require_once '../../config.php';
-require_once '../../cors.php';
+require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../cors.php';
 
 header("Content-Type: application/json");
 
@@ -17,7 +17,7 @@ if ($material_id <= 0) {
 }
 
 try {
-    $stmt = $pdo2->prepare("SELECT id, lot_number, price_per_unit, original_qty, remaining_qty, receive_date FROM mt_admin_lots WHERE material_id = :id AND remaining_qty > 0 ORDER BY receive_date ASC, id ASC");
+    $stmt = $pdo2->prepare("SELECT id, lot_number, vendor, price_per_unit, original_qty, remaining_qty, receive_date FROM mt_admin_lots WHERE material_id = :id AND remaining_qty > 0 ORDER BY receive_date ASC, id ASC");
     $stmt->execute([':id' => $material_id]);
     $lots = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

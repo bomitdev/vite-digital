@@ -444,6 +444,7 @@ export default {
       pastDepartments: [],
       form: {
         requester_name: localStorage.getItem('user_name') || localStorage.getItem('last_requester_name_admin') || '',
+        requester_id: null,
         department: localStorage.getItem('user_department') || localStorage.getItem('last_department_admin') || '',
         items: []
       },
@@ -511,8 +512,13 @@ export default {
     'form.requester_name'(newName) {
       if (newName) {
         const found = this.pastRequesters.find((req) => req.name === newName);
-        if (found && found.department) {
-          this.form.department = found.department;
+        if (found) {
+          if (found.department) {
+            this.form.department = found.department;
+          }
+          if (found.id) {
+            this.form.requester_id = found.id;
+          }
         }
       }
     }
@@ -563,6 +569,12 @@ export default {
         if (res.data.success) {
           this.pastRequesters = res.data.requesters || [];
           this.pastDepartments = res.data.departments || [];
+          if (this.form.requester_name && !this.form.requester_id) {
+            const found = this.pastRequesters.find((req) => req.name === this.form.requester_name);
+            if (found && found.id) {
+              this.form.requester_id = found.id;
+            }
+          }
         }
       } catch (error) {
         console.error('Error fetching requesters and departments:', error);
@@ -605,6 +617,7 @@ export default {
     editRequest(req) {
       this.editingRequestNo = req.request_no;
       this.form.requester_name = req.requester_name;
+      this.form.requester_id = req.requester_id || null;
       this.form.department = req.department;
       this.form.items = req.items.map(it => ({
         material_id: it.material_id,
@@ -616,9 +629,16 @@ export default {
       this.editingRequestNo = null;
       this.form = {
         requester_name: localStorage.getItem('user_name') || localStorage.getItem('last_requester_name_admin') || '',
+        requester_id: null,
         department: localStorage.getItem('user_department') || localStorage.getItem('last_department_admin') || '',
         items: []
       };
+      if (this.form.requester_name) {
+        const found = this.pastRequesters.find((req) => req.name === this.form.requester_name);
+        if (found && found.id) {
+          this.form.requester_id = found.id;
+        }
+      }
     },
     async cancelRequest(req) {
       const result = await Swal.fire({
@@ -748,9 +768,16 @@ export default {
           // Reset form
           this.form = {
             requester_name: localStorage.getItem('user_name') || localStorage.getItem('last_requester_name_admin') || '',
+            requester_id: null,
             department: localStorage.getItem('user_department') || localStorage.getItem('last_department_admin') || '',
             items: []
           };
+          if (this.form.requester_name) {
+            const found = this.pastRequesters.find((req) => req.name === this.form.requester_name);
+            if (found && found.id) {
+              this.form.requester_id = found.id;
+            }
+          }
           this.fetchRequests(); // Refresh the history list
         } else {
           throw new Error(res.data.message);

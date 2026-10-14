@@ -53,6 +53,7 @@ try {
                 'request_no' => $row['request_no'],
                 'request_date' => $row['request_date'],
                 'requester_name' => $row['requester_name'],
+                'requester_id' => $row['requester_id'] ?? null,
                 'department' => $row['department'],
                 'status' => $row['status'],
                 'items' => []

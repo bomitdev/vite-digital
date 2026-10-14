@@ -125,6 +125,19 @@ try {
         ]);
         $id = $pdo2->lastInsertId();
 
+        if ($balance > 0) {
+            $stmtLot = $pdo2->prepare("
+                INSERT INTO mt_admin_lots (material_id, lot_number, vendor, price_per_unit, original_qty, remaining_qty, receive_date)
+                VALUES (:material_id, 'LOT-INIT', 'ยอดยกมาตั้งต้น', :price, :qty1, :qty2, NOW())
+            ");
+            $stmtLot->execute([
+                ':material_id' => $id,
+                ':price' => $price_per_unit,
+                ':qty1' => $balance,
+                ':qty2' => $balance
+            ]);
+        }
+
         $username = $userData['name'] ?? $userData['user'] ?? 'Unknown User';
         insertAdminLog($pdo2, $username, 'CREATE_MATERIAL', "เพิ่มวัสดุใหม่ รหัส $code (ID: $id)");
 
