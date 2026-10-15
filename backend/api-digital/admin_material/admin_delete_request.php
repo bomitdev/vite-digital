@@ -115,8 +115,18 @@ try {
 
     $refundedCount = 0;
     foreach ($requests as $request) {
-        // 2. If approved, refund stock and remove transaction
+        // 2. If approved, refund stock, restore lots, and remove transaction
         if ($request['status'] === 'approved') {
+            if (!$isAdmin) {
+                $pdo2->rollBack();
+                http_response_code(403);
+                echo json_encode([
+                    'success' => false, 
+                    'message' => 'คำขอนี้ได้รับการอนุมัติและตัดจ่ายของแล้ว ไม่สามารถยกเลิกเองได้ กรุณาติดต่อผู้ดูแลคลัง'
+                ]);
+                exit;
+            }
+
             $qty = (int)$request['quantity'];
             $matId = $request['material_id'];
 
@@ -124,11 +134,52 @@ try {
             $stmtMat = $pdo2->prepare("UPDATE mt_admin_materials SET balance = balance + :qty WHERE id = :matId");
             $stmtMat->execute([':qty' => $qty, ':matId' => $matId]);
 
-            // Remove the transaction OUT that was created (Match both legacy and new note styles including admin notes)
+            // Find matching OUT transactions
             $noteLike1 = 'Approved request ID ' . $request['id'] . '%';
             $noteLike2 = 'Approved request No: ' . $requestNo . '%';
-            $stmtDelTx = $pdo2->prepare("DELETE FROM mt_admin_transactions WHERE material_id = :matId AND action_type = 'OUT' AND (note LIKE :note1 OR note LIKE :note2)");
-            $stmtDelTx->execute([':matId' => $matId, ':note1' => $noteLike1, ':note2' => $noteLike2]);
+            $stmtFindTx = $pdo2->prepare("SELECT id FROM mt_admin_transactions WHERE material_id = :matId AND action_type = 'OUT' AND (note LIKE :note1 OR note LIKE :note2)");
+            $stmtFindTx->execute([':matId' => $matId, ':note1' => $noteLike1, ':note2' => $noteLike2]);
+            $txRows = $stmtFindTx->fetchAll(PDO::FETCH_ASSOC);
+
+            $totalLotRestored = 0;
+            if (!empty($txRows)) {
+                $stmtTxLots = $pdo2->prepare("SELECT lot_id, quantity FROM mt_admin_transaction_lots WHERE transaction_id = :tx_id");
+                $stmtRestoreLot = $pdo2->prepare("UPDATE mt_admin_lots SET remaining_qty = remaining_qty + :qty WHERE id = :lot_id");
+                $stmtDelTxLot = $pdo2->prepare("DELETE FROM mt_admin_transaction_lots WHERE transaction_id = :tx_id");
+                $stmtDelTx = $pdo2->prepare("DELETE FROM mt_admin_transactions WHERE id = :tx_id");
+
+                foreach ($txRows as $txR) {
+                    $stmtTxLots->execute([':tx_id' => $txR['id']]);
+                    $usedLots = $stmtTxLots->fetchAll(PDO::FETCH_ASSOC);
+                    foreach ($usedLots as $ul) {
+                        $stmtRestoreLot->execute([':qty' => $ul['quantity'], ':lot_id' => $ul['lot_id']]);
+                        $totalLotRestored += (int)$ul['quantity'];
+                    }
+                    $stmtDelTxLot->execute([':tx_id' => $txR['id']]);
+                    $stmtDelTx->execute([':tx_id' => $txR['id']]);
+                }
+            }
+
+            // Fallback: If no lots were restored (legacy transaction or missing transaction_lots), restore lot to the latest active lot or create adjustment
+            if ($totalLotRestored < $qty) {
+                $missingLotQty = $qty - $totalLotRestored;
+                $stmtLatestLot = $pdo2->prepare("SELECT id FROM mt_admin_lots WHERE material_id = :mid ORDER BY receive_date DESC, id DESC LIMIT 1");
+                $stmtLatestLot->execute([':mid' => $matId]);
+                $latestLot = $stmtLatestLot->fetch(PDO::FETCH_ASSOC);
+
+                if ($latestLot) {
+                    $pdo2->prepare("UPDATE mt_admin_lots SET remaining_qty = remaining_qty + :qty WHERE id = :id")
+                         ->execute([':qty' => $missingLotQty, ':id' => $latestLot['id']]);
+                } else {
+                    $stmtPrice = $pdo2->prepare("SELECT price_per_unit FROM mt_admin_materials WHERE id = :id");
+                    $stmtPrice->execute([':id' => $matId]);
+                    $pRow = $stmtPrice->fetch(PDO::FETCH_ASSOC);
+                    $uPrice = $pRow ? floatval($pRow['price_per_unit']) : 0;
+
+                    $pdo2->prepare("INSERT INTO mt_admin_lots (material_id, lot_number, vendor, price_per_unit, original_qty, remaining_qty, receive_date) VALUES (:mid, 'LOT-RESTORED', 'คืนสต็อกจากยกเลิกคำขอ', :price, :orig, :rem, NOW())")
+                         ->execute([':mid' => $matId, ':price' => $uPrice, ':orig' => $missingLotQty, ':rem' => $missingLotQty]);
+                }
+            }
 
             $refundedCount++;
         }

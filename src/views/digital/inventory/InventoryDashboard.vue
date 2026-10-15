@@ -2,7 +2,7 @@
   <div class="page-container min-vh-100 bg-light py-4">
     <div class="container-fluid px-4 px-md-5">
       <!-- Header -->
-      <div class="d-flex justify-content-between align-items-center mb-4">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
         <div>
           <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-1">
@@ -16,25 +16,29 @@
             </h2>
           </div>
         </div>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <!-- Master Data Button (Admin Only) -->
+          <button
+            v-if="isAdmin"
+            class="btn text-white rounded-pill px-4 shadow-sm fw-bold d-flex align-items-center gap-2 hover-scale"
+            style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); border: none;"
+            @click="$router.push('/inventory-settings')"
+            title="ตั้งค่าคลังวัสดุ, หมวดหมู่ และรายการวัสดุ"
+          >
+            <i class="bi bi-gear-fill"></i>
+            <span>ตั้งค่าระบบ (Master Data)</span>
+          </button>
+
+          <router-link to="/home-backoffice" class="btn btn-outline-secondary rounded-pill px-3 shadow-sm fw-medium">
+            <i class="bi bi-house-door me-1"></i>หน้าหลัก
+          </router-link>
+        </div>
       </div>
 
       <!-- Main Dashboard Content -->
       <div class="row g-4 mt-2">
-        <!-- Master Data -->
-        <div class="col-md-6 col-lg-3">
-          <div class="card border-0 shadow-sm rounded-4 h-100 cursor-pointer hover-scale" @click="$router.push('/inventory-settings')">
-            <div class="card-body p-4 text-center">
-              <div class="icon-circle bg-purple-light text-purple mb-3 mx-auto">
-                <i class="bi bi-gear-fill fs-2"></i>
-              </div>
-              <h5 class="fw-bold">ตั้งค่าระบบ (Master Data)</h5>
-              <p class="text-muted small mb-0">จัดการคลังวัสดุ, หมวดหมู่ และรายการวัสดุ</p>
-            </div>
-          </div>
-        </div>
-
         <!-- Receive -->
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-lg-4">
           <div class="card border-0 shadow-sm rounded-4 h-100 cursor-pointer hover-scale" @click="$router.push('/inventory-receive')">
             <div class="card-body p-4 text-center">
               <div class="icon-circle bg-success-light text-success mb-3 mx-auto">
@@ -47,7 +51,7 @@
         </div>
 
         <!-- Issue -->
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-lg-4">
           <div class="card border-0 shadow-sm rounded-4 h-100 cursor-pointer hover-scale" @click="$router.push('/inventory-issue')">
             <div class="card-body p-4 text-center">
               <div class="icon-circle bg-warning-light text-warning mb-3 mx-auto">
@@ -60,7 +64,7 @@
         </div>
 
         <!-- Stock Card -->
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-lg-4">
           <div class="card border-0 shadow-sm rounded-4 h-100 cursor-pointer hover-scale" @click="$router.push('/inventory-stock-card')">
             <div class="card-body p-4 text-center">
               <div class="icon-circle bg-info-light text-info mb-3 mx-auto">
@@ -73,7 +77,7 @@
         </div>
 
         <!-- PR/PO System -->
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-lg-4">
           <div class="card border-0 shadow-sm rounded-4 h-100 cursor-pointer hover-scale" @click="$router.push('/inventory-pr')">
             <div class="card-body p-4 text-center">
               <div class="icon-circle bg-danger-light text-danger mb-3 mx-auto">
@@ -86,7 +90,7 @@
         </div>
 
         <!-- Transfer -->
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-lg-4">
           <div class="card border-0 shadow-sm rounded-4 h-100 cursor-pointer hover-scale" @click="$router.push('/inventory-transfer')">
             <div class="card-body p-4 text-center">
               <div class="icon-circle bg-secondary text-white mb-3 mx-auto">
@@ -99,7 +103,7 @@
         </div>
 
         <!-- Return -->
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-lg-4">
           <div class="card border-0 shadow-sm rounded-4 h-100 cursor-pointer hover-scale" @click="$router.push('/inventory-return')">
             <div class="card-body p-4 text-center">
               <div class="icon-circle bg-dark text-white mb-3 mx-auto">
@@ -116,9 +120,53 @@
 </template>
 
 <script>
+import axios from 'axios';
+
 export default {
-  name: 'InventoryDashboard'
-}
+  name: 'InventoryDashboard',
+  data() {
+    return {
+      isAdminUser: false
+    };
+  },
+  computed: {
+    isAdmin() {
+      return this.isAdminUser;
+    }
+  },
+  mounted() {
+    this.checkAdminStatus();
+  },
+  methods: {
+    async checkAdminStatus() {
+      try {
+        const token = localStorage.getItem('user_token');
+        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+        const response = await axios.get('/api-hosoffice/get_user_profile.php', config);
+        if (response.data && response.data.status === 'success') {
+          const accessUser = response.data.access_user ? response.data.access_user.split(':') : [];
+          this.isAdminUser =
+            accessUser.includes('administrator') ||
+            accessUser.includes('menu_inventory_manage') ||
+            accessUser.includes('menu_inventory_admin') ||
+            accessUser.includes('menu_it_material_manage') ||
+            accessUser.includes('menu_gm_material_manage') ||
+            localStorage.getItem('user_role') === 'admin' ||
+            localStorage.getItem('is_admin') === 'true';
+        } else {
+          this.isAdminUser =
+            localStorage.getItem('user_role') === 'admin' ||
+            localStorage.getItem('is_admin') === 'true';
+        }
+      } catch (error) {
+        console.error('Error checking admin status', error);
+        this.isAdminUser =
+          localStorage.getItem('user_role') === 'admin' ||
+          localStorage.getItem('is_admin') === 'true';
+      }
+    }
+  }
+};
 </script>
 
 <style scoped>
@@ -149,6 +197,4 @@ export default {
 .text-info { color: #0ea5e9; }
 .bg-danger-light { background-color: #ffe4e6; }
 .text-danger { color: #e11d48; }
-
-
 </style>

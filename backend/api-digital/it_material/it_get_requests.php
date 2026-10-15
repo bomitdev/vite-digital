@@ -19,6 +19,7 @@ try {
             r.*, 
             m.name AS material_name, 
             m.code AS material_code,
+            m.unit AS unit,
             m.balance AS current_balance
         FROM mt_it_requests r
         JOIN mt_it_materials m ON r.material_id = m.id
@@ -50,6 +51,7 @@ try {
                 'group_id' => $groupKey,
                 'request_date' => $row['request_date'],
                 'requester_name' => $row['requester_name'],
+                'requester_id' => $row['requester_id'] ?? null,
                 'department' => $row['department'],
                 'status' => $row['status'],
                 'admin_note' => $row['admin_note'],
@@ -71,9 +73,22 @@ try {
             'quantity' => $row['quantity'],
             'status' => $row['status'],
             'admin_note' => $row['admin_note'],
-            'current_balance' => $row['current_balance']
+            'current_balance' => $row['current_balance'],
+            'unit' => $row['unit'] ?? ''
         ];
     }
+
+    foreach ($ticketsMap as &$grp) {
+        $statuses = array_column($grp['items'], 'status');
+        if (in_array('pending', $statuses)) {
+            $grp['status'] = 'pending';
+        } elseif (in_array('approved', $statuses)) {
+            $grp['status'] = 'approved';
+        } else {
+            $grp['status'] = 'rejected';
+        }
+    }
+    unset($grp);
 
     $tickets = array_values($ticketsMap);
 

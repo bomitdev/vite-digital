@@ -22,7 +22,7 @@ try {
     $requesters = $stmtRequesters->fetchAll(PDO::FETCH_COLUMN);
 
     // Get departments from hr_department_sub in hosoffice
-    $sqlDepts = "SELECT HR_DEPARTMENT_SUB_NAME as name
+    $sqlDepts = "SELECT DISTINCT TRIM(HR_DEPARTMENT_SUB_NAME) as name
                  FROM hr_department_sub
                  WHERE HR_DEPARTMENT_SUB_NAME IS NOT NULL AND HR_DEPARTMENT_SUB_NAME != ''
                  ORDER BY HR_DEPARTMENT_SUB_NAME ASC";

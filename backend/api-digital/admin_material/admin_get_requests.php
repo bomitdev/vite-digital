@@ -4,7 +4,7 @@ header("Access-Control-Allow-Methods: GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json; charset=UTF-8");
 
-require_once '../../config.php';
+require_once __DIR__ . '/../../config.php';
 
 if (!isset($pdo2)) {
     echo json_encode(['success' => false, 'message' => 'Database connection failed']);
@@ -67,11 +67,24 @@ try {
             'material_name' => $row['material_name'],
             'material_code' => $row['material_code'],
             'quantity' => (int)$row['quantity'],
+            'status' => $row['status'],
             'admin_note' => $row['admin_note'],
             'current_balance' => (int)$row['current_balance'],
             'unit' => $row['unit'] ?? ''
         ];
     }
+
+    foreach ($grouped as &$grp) {
+        $statuses = array_column($grp['items'], 'status');
+        if (in_array('pending', $statuses)) {
+            $grp['status'] = 'pending';
+        } elseif (in_array('approved', $statuses)) {
+            $grp['status'] = 'approved';
+        } else {
+            $grp['status'] = 'rejected';
+        }
+    }
+    unset($grp);
 
     echo json_encode([
         'success' => true,

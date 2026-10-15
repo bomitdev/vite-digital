@@ -1,0 +1,190 @@
+<?php
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Content-Type: application/json; charset=UTF-8");
+
+require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../auth_utils.php';
+
+// Secure Auth
+$userData = authGuard();
+
+if (!isset($pdo2)) {
+    echo json_encode(['success' => false, 'message' => 'Database connection failed']);
+    exit;
+}
+
+$data = json_decode(file_get_contents("php://input"));
+
+if (!isset($data->request_no) || empty($data->request_no)) {
+    echo json_encode(['success' => false, 'message' => 'Missing request_no']);
+    exit;
+}
+
+if (!isset($data->requester_name) || !isset($data->department)) {
+    echo json_encode(['success' => false, 'message' => 'Missing requester info']);
+    exit;
+}
+
+$items = [];
+if (isset($data->items) && is_array($data->items)) {
+    $items = $data->items;
+}
+
+if (empty($items)) {
+    echo json_encode(['success' => false, 'message' => 'No items provided']);
+    exit;
+}
+
+try {
+    $pdo2->beginTransaction();
+
+    // Check if the request is still pending
+    $stmtCheckStatus = $pdo2->prepare("SELECT * FROM mt_it_requests WHERE request_no = :request_no LIMIT 1");
+    $stmtCheckStatus->execute([':request_no' => $data->request_no]);
+    $requestRow = $stmtCheckStatus->fetch(PDO::FETCH_ASSOC);
+
+    if (!$requestRow) {
+        throw new Exception("ไม่พบคำขอเบิกที่ระบุ");
+    }
+
+    if ($requestRow['status'] !== 'pending') {
+        throw new Exception("ไม่สามารถแก้ไขได้เนื่องจากคำขอนี้ได้รับการประมวลผลแล้ว (สถานะ: " . $requestRow['status'] . ")");
+    }
+
+    // Ownership check: แก้ได้เฉพาะของตัวเองเท่านั้น ใครเบิกคนนั้นสามารถแก้ไขได้
+    $isOwner = false;
+    $currentUid = isset($userData['uid']) ? intval($userData['uid']) : 0;
+
+    if ($currentUid > 0 && !empty($requestRow['requester_id']) && intval($requestRow['requester_id']) === $currentUid) {
+        $isOwner = true;
+    }
+
+    if (!$isOwner) {
+        $currentName = trim($userData['name'] ?? '');
+        $existingName = trim($requestRow['requester_name'] ?? '');
+
+        if (!empty($currentName) && !empty($existingName)) {
+            $cleanCurrent = preg_replace('/^(นาย|นางสาว|นาง|ดร\.|นพ\.|พญ\.|ทพ\.|ทพญ\.|ภก\.|ภญ\.|ว่าที่\s*ร\.ต\.|ร\.ต\.|อ\.)\s*/u', '', $currentName);
+            $cleanCurrent = preg_replace('/\s+/', '', $cleanCurrent);
+
+            $cleanExisting = preg_replace('/^(นาย|นางสาว|นาง|ดร\.|นพ\.|พญ\.|ทพ\.|ทพญ\.|ภก\.|ภญ\.|ว่าที่\s*ร\.ต\.|ร\.ต\.|อ\.)\s*/u', '', $existingName);
+            $cleanExisting = preg_replace('/\s+/', '', $cleanExisting);
+
+            if ($cleanCurrent === $cleanExisting || $currentName === $existingName) {
+                $isOwner = true;
+            }
+        }
+    }
+
+    if (!$isOwner && isset($pdo3) && $currentUid > 0) {
+        $stmtHr = $pdo3->prepare("
+            SELECT CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) as fullname,
+                   CONCAT(p.HR_FNAME, ' ', p.HR_LNAME) as name_no_prefix
+            FROM hr_person p
+            LEFT JOIN hr_prefix pf ON p.HR_PREFIX_ID = pf.HR_PREFIX_ID
+            WHERE p.ID = :id
+        ");
+        $stmtHr->execute([':id' => $currentUid]);
+        $hrUser = $stmtHr->fetch(PDO::FETCH_ASSOC);
+        if ($hrUser) {
+            $existingName = trim($requestRow['requester_name'] ?? '');
+            if ($existingName === trim($hrUser['fullname']) || $existingName === trim($hrUser['name_no_prefix'])) {
+                $isOwner = true;
+            }
+        }
+    }
+
+    if (!$isOwner) {
+        $pdo2->rollBack();
+        http_response_code(403);
+        echo json_encode([
+            'success' => false, 
+            'message' => 'คุณสามารถแก้ไขได้เฉพาะคำขอเบิกของตัวเองเท่านั้น'
+        ]);
+        exit;
+    }
+
+    // Resolve requester_id
+    $requester_id = isset($data->requester_id) && !empty($data->requester_id) ? intval($data->requester_id) : null;
+    if (!$requester_id && isset($pdo3) && !empty($data->requester_name)) {
+        $cleanName = trim($data->requester_name);
+        $stmtP = $pdo3->prepare("
+            SELECT p.ID 
+            FROM hr_person p 
+            LEFT JOIN hr_prefix pf ON p.HR_PREFIX_ID = pf.HR_PREFIX_ID 
+            WHERE CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) = :name1
+               OR CONCAT(p.HR_FNAME, ' ', p.HR_LNAME) = :name2
+               OR REPLACE(CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME), ' ', '') = REPLACE(:name3, ' ', '')
+               OR :name4 LIKE CONCAT('%', p.HR_FNAME, '%', p.HR_LNAME, '%')
+            LIMIT 1
+        ");
+        $stmtP->execute([
+            ':name1' => $cleanName,
+            ':name2' => $cleanName,
+            ':name3' => $cleanName,
+            ':name4' => $cleanName
+        ]);
+        $personFound = $stmtP->fetch(PDO::FETCH_ASSOC);
+        if ($personFound) {
+            $requester_id = intval($personFound['ID']);
+        } elseif (isset($userData['uid'])) {
+            $requester_id = intval($userData['uid']);
+        }
+    } elseif (!$requester_id && isset($userData['uid'])) {
+        $requester_id = intval($userData['uid']);
+    }
+
+    // Delete old items
+    $stmtDelete = $pdo2->prepare("DELETE FROM mt_it_requests WHERE request_no = :request_no");
+    $stmtDelete->execute([':request_no' => $data->request_no]);
+
+    $stmtCheck = $pdo2->prepare("SELECT id, name, unit, balance FROM mt_it_materials WHERE id = :id");
+
+    $sqlInsert = "INSERT INTO mt_it_requests (request_date, requester_name, requester_id, department, material_id, quantity, status, request_no) 
+            VALUES (CURDATE(), :requester_name, :requester_id, :department, :material_id, :quantity, 'pending', :request_no)";
+    $stmtInsert = $pdo2->prepare($sqlInsert);
+
+    foreach ($items as $item) {
+        $mId = is_object($item) ? $item->material_id : $item['material_id'];
+        $qty = is_object($item) ? $item->quantity : $item['quantity'];
+
+        $stmtCheck->execute([':id' => $mId]);
+        $materialRow = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+        if (!$materialRow) {
+            throw new Exception("Material ID {$mId} not found");
+        }
+
+        if ($qty <= 0) {
+            throw new Exception("Quantity must be greater than 0");
+        }
+
+        if ($qty > $materialRow['balance']) {
+            throw new Exception("Insufficient stock balance for material ID {$mId}. Requested: {$qty}, Available: {$materialRow['balance']}");
+        }
+
+        $stmtInsert->execute([
+            ':requester_name' => $data->requester_name,
+            ':requester_id' => $requester_id,
+            ':department' => trim($data->department),
+            ':material_id' => $mId,
+            ':quantity' => $qty,
+            ':request_no' => $data->request_no
+        ]);
+    }
+
+    $pdo2->commit();
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'แก้ไขคำขอเบิกวัสดุคอมพิวเตอร์เรียบร้อยแล้ว'
+    ]);
+} catch (Exception $e) {
+    if ($pdo2->inTransaction()) {
+        $pdo2->rollBack();
+    }
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+}

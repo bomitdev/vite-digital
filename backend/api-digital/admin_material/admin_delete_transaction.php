@@ -79,8 +79,16 @@ try {
     // 4.5 จัดการระบบ Lot
     if ($action_type === 'IN') {
         // ค้นหา Lot ที่เกี่ยวข้องและลบทิ้ง (อิงจาก material_id, action_date, original_qty)
-        $stmtFindLot = $pdo2->prepare("SELECT id, remaining_qty, original_qty FROM mt_admin_lots WHERE material_id = :id AND receive_date = :dt AND original_qty = :qty LIMIT 1");
-        $stmtFindLot->execute([':id' => $material_id, ':dt' => $tx['action_date'], ':qty' => $quantity]);
+        $stmtFindLot = $pdo2->prepare("
+            SELECT id, remaining_qty, original_qty 
+            FROM mt_admin_lots 
+            WHERE material_id = :id 
+              AND (receive_date = :dt OR DATE(receive_date) = DATE(:dt2)) 
+              AND original_qty = :qty 
+            ORDER BY id DESC 
+            LIMIT 1
+        ");
+        $stmtFindLot->execute([':id' => $material_id, ':dt' => $tx['action_date'], ':dt2' => $tx['action_date'], ':qty' => $quantity]);
         $lot = $stmtFindLot->fetch();
         if ($lot) {
             if ($lot['remaining_qty'] < $lot['original_qty']) {
@@ -96,12 +104,31 @@ try {
         $stmtTxLots->execute([':tx_id' => $transaction_id]);
         $used_lots = $stmtTxLots->fetchAll();
 
+        $totalLotRestored = 0;
         $stmtRestoreLot = $pdo2->prepare("UPDATE mt_admin_lots SET remaining_qty = remaining_qty + :qty WHERE id = :lot_id");
         foreach ($used_lots as $ul) {
             $stmtRestoreLot->execute([':qty' => $ul['quantity'], ':lot_id' => $ul['lot_id']]);
+            $totalLotRestored += (int)$ul['quantity'];
         }
         
         $pdo2->prepare("DELETE FROM mt_admin_transaction_lots WHERE transaction_id = :tx_id")->execute([':tx_id' => $transaction_id]);
+
+        // Fallback: If no lots were restored, restore to latest lot or create adjustment
+        if ($totalLotRestored < $quantity) {
+            $missingQty = $quantity - $totalLotRestored;
+            $stmtLatestLot = $pdo2->prepare("SELECT id FROM mt_admin_lots WHERE material_id = :mid ORDER BY receive_date DESC, id DESC LIMIT 1");
+            $stmtLatestLot->execute([':mid' => $material_id]);
+            $latestLot = $stmtLatestLot->fetch(PDO::FETCH_ASSOC);
+
+            if ($latestLot) {
+                $pdo2->prepare("UPDATE mt_admin_lots SET remaining_qty = remaining_qty + :qty WHERE id = :id")
+                     ->execute([':qty' => $missingQty, ':id' => $latestLot['id']]);
+            } else {
+                $uPrice = floatval($material['price_per_unit'] ?? 0);
+                $pdo2->prepare("INSERT INTO mt_admin_lots (material_id, lot_number, vendor, price_per_unit, original_qty, remaining_qty, receive_date) VALUES (:mid, 'LOT-RESTORED', 'คืนสต็อกจากยกเลิก Transaction', :price, :orig, :rem, NOW())")
+                     ->execute([':mid' => $material_id, ':price' => $uPrice, ':orig' => $missingQty, ':rem' => $missingQty]);
+            }
+        }
     }
 
     // 5. ลบรายการ Transaction ทิ้ง

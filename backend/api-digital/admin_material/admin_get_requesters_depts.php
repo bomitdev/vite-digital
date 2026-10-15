@@ -13,7 +13,7 @@ if (!isset($pdo3)) {
 
 try {
     // Get requesters from hr_person in hosoffice
-    $sqlRequesters = "SELECT p.ID as id, CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) as name, ds.HR_DEPARTMENT_SUB_NAME as department
+    $sqlRequesters = "SELECT p.ID as id, CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) as name, TRIM(ds.HR_DEPARTMENT_SUB_NAME) as department
                       FROM hr_person p
                       LEFT JOIN hr_prefix pf ON p.HR_PREFIX_ID = pf.HR_PREFIX_ID
                       LEFT JOIN hr_department_sub ds ON p.HR_DEPARTMENT_SUB_ID = ds.HR_DEPARTMENT_SUB_ID
@@ -23,7 +23,7 @@ try {
     $requesters = $stmtRequesters->fetchAll(PDO::FETCH_ASSOC);
 
     // Get departments from hr_department_sub in hosoffice
-    $sqlDepts = "SELECT HR_DEPARTMENT_SUB_NAME as name
+    $sqlDepts = "SELECT DISTINCT TRIM(HR_DEPARTMENT_SUB_NAME) as name
                  FROM hr_department_sub
                  WHERE HR_DEPARTMENT_SUB_NAME IS NOT NULL AND HR_DEPARTMENT_SUB_NAME != ''
                  ORDER BY HR_DEPARTMENT_SUB_NAME ASC";

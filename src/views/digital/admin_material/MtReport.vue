@@ -104,6 +104,7 @@
                   <th>ชื่อวัสดุ</th>
                   <th>ประเภท</th>
                   <th class="text-center">จำนวน</th>
+                  <th class="text-center">คงเหลือ</th>
                   <th>หน่วยงาน/ผู้รับ</th>
                   <th>แหล่งที่มา/ผู้จำหน่าย</th>
                   <th>ผู้บันทึก/อนุมัติ</th>
@@ -113,7 +114,7 @@
               </thead>
               <tbody>
                 <tr v-if="transactions.length === 0">
-                  <td colspan="8" class="text-center py-5 text-muted">
+                  <td colspan="11" class="text-center py-5 text-muted">
                     ไม่พบข้อมูลการทำรายการในช่วงเวลาที่เลือก
                   </td>
                 </tr>
@@ -136,6 +137,16 @@
                   >
                     {{ t.action_type === 'IN' ? '+' : '-' }}{{ t.quantity }}
                     <span class="fw-normal text-muted fs-6">{{ t.unit }}</span>
+                  </td>
+                  <td class="text-center">
+                    <span
+                      class="badge rounded-pill px-3 py-1 fw-bold"
+                      :class="Number(t.balance) <= Number(t.min_alert || 0) ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-primary-subtle text-primary border border-primary-subtle'"
+                      style="font-size: 0.9rem;"
+                    >
+                      {{ t.balance !== null && t.balance !== undefined ? t.balance : '-' }}
+                    </span>
+                    <div class="small text-muted">{{ t.unit || '' }}</div>
                   </td>
                   <td>
                     <span v-if="t.action_type === 'OUT'">

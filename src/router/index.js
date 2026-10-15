@@ -235,6 +235,11 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/material-it/logs',
+    component: () => import('../views/digital/it_material/MtSystemLogs.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/material-it/report',
     component: () => import('../views/digital/it_material/MtReport.vue'),
     meta: { requiresAuth: true }

@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../auth_utils.php';
 // Secure Auth
 $userData = authGuard();
 require_once '../../cors.php';
+require_once __DIR__ . '/it_log_helper.php';
 
 header("Content-Type: application/json");
 
@@ -43,7 +44,7 @@ try {
 
     if (!$material) {
         $pdo2->rollBack();
-        echo json_encode(['status' => 'error', 'message' => 'ไม่พบข้อมูลวัสดุในระบบ']);
+        echo json_encode(['status' => 'error', 'message' => 'ไม่พบข้อมูลวัสดุคอมในระบบ']);
         exit;
     }
 
@@ -53,9 +54,62 @@ try {
         exit;
     }
 
-    $total_price = $material['price_per_unit'] * $quantity;
+    // 2. ดึง Lot ทั้งหมดที่ยังมีของเรียงตามวันที่รับเข้า (FIFO)
+    $stmtLots = $pdo2->prepare("SELECT * FROM mt_it_lots WHERE material_id = :id AND remaining_qty > 0 ORDER BY receive_date ASC, id ASC FOR UPDATE");
+    $stmtLots->execute([':id' => $material_id]);
+    $lots = $stmtLots->fetchAll();
 
-    // 2. บันทึก Transaction
+    $remaining_to_fulfill = $quantity;
+    $total_out_price = 0;
+    $lots_used = [];
+
+    foreach ($lots as $lot) {
+        if ($remaining_to_fulfill <= 0) break;
+
+        $take_qty = min($lot['remaining_qty'], $remaining_to_fulfill);
+        
+        $total_out_price += ($take_qty * $lot['price_per_unit']);
+        $remaining_to_fulfill -= $take_qty;
+        
+        $new_lot_qty = $lot['remaining_qty'] - $take_qty;
+
+        // Update lot remaining_qty
+        $stmtUpdateLot = $pdo2->prepare("UPDATE mt_it_lots SET remaining_qty = :qty WHERE id = :id");
+        $stmtUpdateLot->execute([':qty' => $new_lot_qty, ':id' => $lot['id']]);
+
+        $lots_used[] = [
+            'lot_id' => $lot['id'],
+            'qty' => $take_qty,
+            'price' => $lot['price_per_unit']
+        ];
+    }
+
+    if ($remaining_to_fulfill > 0) {
+        $stmtMatPrice = $pdo2->prepare("SELECT price_per_unit FROM mt_it_materials WHERE id = :id");
+        $stmtMatPrice->execute([':id' => $material_id]);
+        $matRow = $stmtMatPrice->fetch();
+        $unitPrice = $matRow ? floatval($matRow['price_per_unit']) : 0;
+
+        $stmtNewLot = $pdo2->prepare("
+            INSERT INTO mt_it_lots (material_id, lot_number, vendor, price_per_unit, original_qty, remaining_qty, receive_date)
+            VALUES (:mid, 'LOT-AUTO-ADJUST', 'ระบบปรับยอดอัตโนมัติ', :price, :orig, 0, NOW())
+        ");
+        $stmtNewLot->execute([
+            ':mid' => $material_id,
+            ':price' => $unitPrice,
+            ':orig' => $remaining_to_fulfill
+        ]);
+        $autoLotId = $pdo2->lastInsertId();
+        $total_out_price += ($remaining_to_fulfill * $unitPrice);
+        $lots_used[] = [
+            'lot_id' => $autoLotId,
+            'qty' => $remaining_to_fulfill,
+            'price' => $unitPrice
+        ];
+        $remaining_to_fulfill = 0;
+    }
+
+    // 3. บันทึก Transaction
     $stmtTx = $pdo2->prepare("
         INSERT INTO mt_it_transactions (material_id, action_type, quantity, total_price, action_date, user_profile_name, receiver_name, reference_dest, note)
         VALUES (:material_id, 'OUT', :quantity, :total_price, :action_date, :user, :receiver, :dest, :note)
@@ -63,24 +117,35 @@ try {
     $stmtTx->execute([
         ':material_id' => $material_id,
         ':quantity' => $quantity,
-        ':total_price' => $total_price,
+        ':total_price' => $total_out_price,
         ':action_date' => $action_date,
         ':user' => $user_profile_name,
         ':receiver' => $receiver_name,
         ':dest' => $reference_dest,
         ':note' => $note
     ]);
+    
+    $transaction_id = $pdo2->lastInsertId();
 
-    // 3. อัปเดตยอดคงคลัง (หักออก)
+    // 4. บันทึกประวัติการใช้ Lot (Transaction Lots)
+    $stmtTxLot = $pdo2->prepare("INSERT INTO mt_it_transaction_lots (transaction_id, lot_id, quantity, price_per_unit) VALUES (?, ?, ?, ?)");
+    foreach ($lots_used as $u) {
+        $stmtTxLot->execute([$transaction_id, $u['lot_id'], $u['qty'], $u['price']]);
+    }
+
+    // 5. อัปเดตยอดคงคลังหลัก (หักออก)
     $newBalance = $material['balance'] - $quantity;
     $stmtUpdate = $pdo2->prepare("UPDATE mt_it_materials SET balance = :balance WHERE id = :id");
     $stmtUpdate->execute([':balance' => $newBalance, ':id' => $material_id]);
 
     $pdo2->commit();
 
+    $username = $userData['name'] ?? $userData['user'] ?? 'Unknown User';
+    insertItLog($pdo2, $username, 'TRANSACTION_OUT', "จ่ายวัสดุคอม (ID: $material_id) จำนวน $quantity ชิ้น ให้ $receiver_name ($reference_dest)");
+
     echo json_encode([
         'status' => 'success',
-        'message' => 'บันทึกการจ่ายออกวัสดุสำเร็จ',
+        'message' => 'บันทึกการจ่ายออกวัสดุคอมสำเร็จ',
         'new_balance' => $newBalance
     ]);
 } catch (PDOException $e) {

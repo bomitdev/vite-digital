@@ -526,7 +526,7 @@ export default {
         if (res.data.status === 'success') {
           // ดึงเฉพาะวัสดุที่มีของเหลือ (balance > 0)
           this.materials = res.data.data
-            .filter((mat) => mat.balance > 0)
+            .filter((mat) => mat.balance > 0 && mat.is_active != 0)
             .sort((a, b) => b.balance - a.balance);
             
           if (this.materials.length === 0) {

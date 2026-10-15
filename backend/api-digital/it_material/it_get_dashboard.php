@@ -21,40 +21,64 @@ try {
 
     // 3. ยอดรวมรับเข้า (เดือนปัจจุบัน)
     $stmtTotalIn = $pdo2->query("
-        SELECT COALESCE(SUM(quantity), 0) AS total 
+        SELECT 
+            COALESCE(SUM(quantity), 0) AS total_qty,
+            COALESCE(SUM(total_price), 0) AS total_val
         FROM mt_it_transactions 
         WHERE action_type = 'IN' 
         AND MONTH(action_date) = MONTH(CURRENT_DATE())
         AND YEAR(action_date) = YEAR(CURRENT_DATE())
     ");
-    $total_in_month = $stmtTotalIn->fetch()['total'];
+    $rowIn = $stmtTotalIn->fetch();
+    $total_in_month = intval($rowIn['total_qty']);
+    $total_in_value = floatval($rowIn['total_val']);
 
     // 4. ยอดรวมจ่ายออก (เดือนปัจจุบัน)
     $stmtTotalOut = $pdo2->query("
-        SELECT COALESCE(SUM(quantity), 0) AS total 
+        SELECT 
+            COALESCE(SUM(quantity), 0) AS total_qty,
+            COALESCE(SUM(total_price), 0) AS total_val
         FROM mt_it_transactions 
         WHERE action_type = 'OUT' 
         AND MONTH(action_date) = MONTH(CURRENT_DATE())
         AND YEAR(action_date) = YEAR(CURRENT_DATE())
     ");
-    $total_out_month = $stmtTotalOut->fetch()['total'];
+    $rowOut = $stmtTotalOut->fetch();
+    $total_out_month = intval($rowOut['total_qty']);
+    $total_out_value = floatval($rowOut['total_val']);
 
     // 5. 5 การเคลื่อนไหวล่าสุด
     $stmtRecentTx = $pdo2->query("
         SELECT 
             t.id, 
+            t.material_id,
             m.name AS material_name, 
+            m.type AS material_type,
+            m.unit,
+            m.balance,
+            m.min_alert,
             t.action_type, 
             t.quantity, 
+            t.total_price,
             t.action_date, 
             t.receiver_name,
-            t.reference_dest
+            t.reference_dest,
+            t.user_profile_name
         FROM mt_it_transactions t
         LEFT JOIN mt_it_materials m ON t.material_id = m.id
+        WHERE t.user_profile_name != 'System Migration'
         ORDER BY t.action_date DESC, t.id DESC
         LIMIT 5
     ");
     $recent_transactions = $stmtRecentTx->fetchAll(PDO::FETCH_ASSOC);
+
+    // 6. มูลค่าคงคลังรวม
+    $stmtTotalValue = $pdo2->query("
+        SELECT COALESCE(SUM(remaining_qty * price_per_unit), 0) AS total_value 
+        FROM mt_it_lots 
+        WHERE remaining_qty > 0
+    ");
+    $total_inventory_value = $stmtTotalValue->fetch()['total_value'];
 
     echo json_encode([
         'status' => 'success',
@@ -62,7 +86,10 @@ try {
             'total_sku' => $total_sku,
             'low_stock_count' => $low_stock,
             'total_in_month' => $total_in_month,
+            'total_in_value' => $total_in_value,
             'total_out_month' => $total_out_month,
+            'total_out_value' => $total_out_value,
+            'total_inventory_value' => floatval($total_inventory_value),
             'recent_transactions' => $recent_transactions
         ]
     ]);

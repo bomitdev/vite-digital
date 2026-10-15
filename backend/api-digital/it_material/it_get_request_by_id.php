@@ -12,10 +12,22 @@ if (!isset($pdo2)) {
 }
 
 try {
-    $requestNo = isset($_GET['request_no']) ? $_GET['request_no'] : (isset($_GET['id']) ? 'LEGACY-' . $_GET['id'] : '');
+    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+    $requestNo = isset($_GET['request_no']) ? trim($_GET['request_no']) : '';
+
+    if ($id > 0 && empty($requestNo)) {
+        $stmtFindNo = $pdo2->prepare("SELECT request_no FROM mt_it_requests WHERE id = :id");
+        $stmtFindNo->execute([':id' => $id]);
+        $rowNo = $stmtFindNo->fetch(PDO::FETCH_ASSOC);
+        if ($rowNo && !empty($rowNo['request_no'])) {
+            $requestNo = $rowNo['request_no'];
+        } else {
+            $requestNo = 'LEGACY-' . $id;
+        }
+    }
 
     if (empty($requestNo)) {
-        echo json_encode(['success' => false, 'message' => 'Invalid Request No']);
+        echo json_encode(['success' => false, 'message' => 'Invalid Request No or ID']);
         exit;
     }
 
@@ -62,6 +74,7 @@ try {
             'request_no' => isset($firstRow['request_no']) ? $firstRow['request_no'] : null,
             'request_date' => $firstRow['request_date'],
             'requester_name' => $firstRow['requester_name'],
+            'requester_id' => isset($firstRow['requester_id']) ? $firstRow['requester_id'] : null,
             'department' => $firstRow['department'],
             'status' => $firstRow['status'],
             'items' => []
@@ -80,23 +93,57 @@ try {
             ];
         }
 
+        $statuses = array_column($requestData['items'], 'status');
+        if (in_array('pending', $statuses)) {
+            $requestData['status'] = 'pending';
+        } elseif (in_array('approved', $statuses)) {
+            $requestData['status'] = 'approved';
+        } else {
+            $requestData['status'] = 'rejected';
+        }
+
         if (isset($pdo3) && !empty($requestData['requester_name'])) {
-            $posSql = "
-                SELECT 
-                    CONCAT(pos.HR_POSITION_NAME, 
-                        IF(hl.HR_LEVEL_NAME IS NOT NULL AND hl.HR_LEVEL_NAME != '', CONCAT(' ', hl.HR_LEVEL_NAME), '')
-                    ) as position_name,
-                     pos.HR_POSITION_NAME as position_name2
-                FROM hr_person p
-                LEFT JOIN hr_prefix pfx ON p.HR_PREFIX_ID = pfx.HR_PREFIX_ID
-                LEFT JOIN hr_position pos ON p.HR_POSITION_ID = pos.HR_POSITION_ID
-                LEFT JOIN hr_level hl ON p.HR_LEVEL_ID = hl.HR_LEVEL_ID
-                WHERE CONCAT(pfx.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) = :name
-                LIMIT 1
-            ";
-            $posStmt = $pdo3->prepare($posSql);
-            $posStmt->execute([':name' => $requestData['requester_name']]);
-            $posData = $posStmt->fetch(PDO::FETCH_ASSOC);
+            $posData = false;
+            $reqId = !empty($requestData['requester_id']) ? intval($requestData['requester_id']) : 0;
+            if ($reqId > 0) {
+                $posSql = "
+                    SELECT 
+                        CONCAT(pos.HR_POSITION_NAME, 
+                            IF(hl.HR_LEVEL_NAME IS NOT NULL AND hl.HR_LEVEL_NAME != '', CONCAT(' ', hl.HR_LEVEL_NAME), '')
+                        ) as position_name,
+                        pos.HR_POSITION_NAME as position_name2
+                    FROM hr_person p
+                    LEFT JOIN hr_position pos ON p.HR_POSITION_ID = pos.HR_POSITION_ID
+                    LEFT JOIN hr_level hl ON p.HR_LEVEL_ID = hl.HR_LEVEL_ID
+                    WHERE p.ID = :id
+                    LIMIT 1
+                ";
+                $posStmt = $pdo3->prepare($posSql);
+                $posStmt->execute([':id' => $reqId]);
+                $posData = $posStmt->fetch(PDO::FETCH_ASSOC);
+            }
+            if (!$posData) {
+                $posSql = "
+                    SELECT 
+                        CONCAT(pos.HR_POSITION_NAME, 
+                            IF(hl.HR_LEVEL_NAME IS NOT NULL AND hl.HR_LEVEL_NAME != '', CONCAT(' ', hl.HR_LEVEL_NAME), '')
+                        ) as position_name,
+                        pos.HR_POSITION_NAME as position_name2
+                    FROM hr_person p
+                    LEFT JOIN hr_prefix pfx ON p.HR_PREFIX_ID = pfx.HR_PREFIX_ID
+                    LEFT JOIN hr_position pos ON p.HR_POSITION_ID = pos.HR_POSITION_ID
+                    LEFT JOIN hr_level hl ON p.HR_LEVEL_ID = hl.HR_LEVEL_ID
+                    WHERE CONCAT(pfx.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) = :name
+                       OR CONCAT(p.HR_FNAME, ' ', p.HR_LNAME) = :name2
+                    LIMIT 1
+                ";
+                $posStmt = $pdo3->prepare($posSql);
+                $posStmt->execute([
+                    ':name' => $requestData['requester_name'],
+                    ':name2' => $requestData['requester_name']
+                ]);
+                $posData = $posStmt->fetch(PDO::FETCH_ASSOC);
+            }
             $requestData['requester_position'] = $posData ? $posData['position_name'] : '';
             $requestData['position_name2'] = $posData ? $posData['position_name2'] : '';
         } else {

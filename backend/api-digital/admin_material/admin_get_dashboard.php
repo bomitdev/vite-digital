@@ -51,9 +51,12 @@ try {
     $stmtRecentTx = $pdo2->query("
         SELECT 
             t.id, 
+            t.material_id,
             m.name AS material_name, 
             m.type AS material_type,
             m.unit,
+            m.balance,
+            m.min_alert,
             t.action_type, 
             t.quantity, 
             t.total_price,

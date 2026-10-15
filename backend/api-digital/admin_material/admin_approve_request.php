@@ -153,6 +153,7 @@ try {
 
         $remaining_to_fulfill = $approved_quantity;
         $total_out_price = 0;
+        $lots_used = [];
 
         foreach ($lots as $lot) {
             if ($remaining_to_fulfill <= 0) break;
@@ -165,10 +166,37 @@ try {
 
             $stmtUpdateLot = $pdo2->prepare("UPDATE mt_admin_lots SET remaining_qty = :qty WHERE id = :id");
             $stmtUpdateLot->execute([':qty' => $new_lot_qty, ':id' => $lot['id']]);
+
+            $lots_used[] = [
+                'lot_id' => $lot['id'],
+                'qty' => $take_qty,
+                'price' => $lot['price_per_unit']
+            ];
         }
 
         if ($remaining_to_fulfill > 0) {
-            throw new Exception("สต็อก Lot ไม่พอจ่าย กรุณาตรวจสอบข้อมูลตั้งต้น (Material ID: " . $request['material_id'] . ")");
+            $stmtMatPrice = $pdo2->prepare("SELECT price_per_unit FROM mt_admin_materials WHERE id = :id");
+            $stmtMatPrice->execute([':id' => $request['material_id']]);
+            $matRow = $stmtMatPrice->fetch();
+            $unitPrice = $matRow ? floatval($matRow['price_per_unit']) : 0;
+
+            $stmtNewLot = $pdo2->prepare("
+                INSERT INTO mt_admin_lots (material_id, lot_number, vendor, price_per_unit, original_qty, remaining_qty, receive_date)
+                VALUES (:mid, 'LOT-AUTO-ADJUST', 'ระบบปรับยอดอัตโนมัติ', :price, :orig, 0, NOW())
+            ");
+            $stmtNewLot->execute([
+                ':mid' => $request['material_id'],
+                ':price' => $unitPrice,
+                ':orig' => $remaining_to_fulfill
+            ]);
+            $autoLotId = $pdo2->lastInsertId();
+            $total_out_price += ($remaining_to_fulfill * $unitPrice);
+            $lots_used[] = [
+                'lot_id' => $autoLotId,
+                'qty' => $remaining_to_fulfill,
+                'price' => $unitPrice
+            ];
+            $remaining_to_fulfill = 0;
         }
 
         // 4. Record transaction (Out)
@@ -185,6 +213,15 @@ try {
             ':dest' => $request['department'],
             ':note' => 'Approved request ID ' . $id . ($admin_note ? ' - ' . $admin_note : '')
         ]);
+        $txId = $pdo2->lastInsertId();
+
+        // 4.5 Insert transaction lots
+        if (!empty($lots_used)) {
+            $stmtTxLot = $pdo2->prepare("INSERT INTO mt_admin_transaction_lots (transaction_id, lot_id, quantity, price_per_unit) VALUES (?, ?, ?, ?)");
+            foreach ($lots_used as $u) {
+                $stmtTxLot->execute([$txId, $u['lot_id'], $u['qty'], $u['price']]);
+            }
+        }
 
         // 5. Deduct from Material balance
         $stmtStock = $pdo2->prepare("

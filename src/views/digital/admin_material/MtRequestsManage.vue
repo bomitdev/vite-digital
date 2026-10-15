@@ -916,7 +916,7 @@ export default {
         const globalSettings = setRes.data.success ? setRes.data.global || {} : {};
         const departmentsConfig = setRes.data.success ? setRes.data.departments || [] : [];
         const matchedConfig =
-          departmentsConfig.find((d) => d.department_name === requestData.department) || {};
+          departmentsConfig.find((d) => (d.department_name || '').trim() === (requestData.department || '').trim()) || {};
 
         const doc = new jsPDF();
 
@@ -1039,7 +1039,7 @@ export default {
           requestData.requester_name ||
           '...........................................';
         const reqPos =
-          matchedConfig.requester_position ||
+          (matchedConfig.requester_name ? matchedConfig.requester_position : (requestData.position_name2 || requestData.requester_position)) || matchedConfig.requester_position || requestData.position_name2 || requestData.requester_position ||
           '.....................................................';
 
         const payerName =
@@ -1138,6 +1138,7 @@ export default {
 .text-gradient-primary {
   background: linear-gradient(135deg, #0d6efd, #0dcaf0);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 .glass-card {

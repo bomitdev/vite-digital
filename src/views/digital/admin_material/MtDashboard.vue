@@ -228,13 +228,14 @@
                       <th>ประเภท</th>
                       <th>วัสดุ</th>
                       <th class="text-center">จำนวน</th>
+                      <th class="text-center">คงเหลือ</th>
                       <th>อ้างอิง/หน่วยงาน</th>
                       <th class="text-center">จัดการ</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-if="dashboard.recent_transactions.length === 0">
-                      <td colspan="6" class="text-center py-4 text-muted">ยังไม่มีการเคลื่อนไหว</td>
+                      <td colspan="7" class="text-center py-4 text-muted">ยังไม่มีการเคลื่อนไหว</td>
                     </tr>
                     <tr v-for="t in dashboard.recent_transactions" :key="t.id">
                       <td>{{ formatDate(t.action_date) }}</td>
@@ -252,7 +253,7 @@
                         <div class="fw-bold">{{ t.material_name }}</div>
                         <div class="small text-muted">{{ t.material_type || 'ไม่มีหมวดหมู่' }}</div>
                       </td>
-                      <td>
+                      <td class="text-center">
                         <span
                           class="fw-bold"
                           :class="{
@@ -265,6 +266,16 @@
                         <div class="small text-muted" v-if="Number(t.total_price) > 0">
                           {{ Number(t.total_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }} ฿
                         </div>
+                      </td>
+                      <td class="text-center">
+                        <span
+                          class="badge rounded-pill px-3 py-1 fw-bold"
+                          :class="Number(t.balance) <= Number(t.min_alert || 0) ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-primary-subtle text-primary border border-primary-subtle'"
+                          style="font-size: 0.9rem;"
+                        >
+                          {{ t.balance !== null && t.balance !== undefined ? t.balance : '-' }}
+                        </span>
+                        <div class="small text-muted mt-1">{{ t.unit || '' }}</div>
                       </td>
                       <td>
                         <div v-if="t.action_type === 'OUT'">

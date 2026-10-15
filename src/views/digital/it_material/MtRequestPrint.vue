@@ -92,16 +92,16 @@
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td>1</td>
+          <tr v-for="(item, index) in (request.items && request.items.length ? request.items : [request])" :key="item.id || index">
+            <td>{{ index + 1 }}</td>
             <td class="text-start">
-              {{ request.material_name }}
-              <span v-if="request.material_code">({{ request.material_code }})</span>
+              {{ item.material_name }}
+              <span v-if="item.material_code">({{ item.material_code }})</span>
             </td>
-            <td>{{ request.material_unit || 'ชิ้น' }}</td>
-            <td>{{ request.quantity }}</td>
-            <td>{{ request.status === 'approved' ? request.quantity : '-' }}</td>
-            <td>{{ request.current_balance }}</td>
+            <td>{{ item.material_unit || item.unit || 'ชิ้น' }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.status === 'approved' ? item.quantity : (item.status === 'rejected' ? 'ไม่อนุมัติ' : '-') }}</td>
+            <td>{{ item.current_balance }}</td>
           </tr>
         </tbody>
       </table>
@@ -123,7 +123,8 @@
           <div>
             ตำแหน่ง
             {{
-              deptSigner.requester_position ||
+              (deptSigner.requester_name ? deptSigner.requester_position : (request.position_name2 || request.requester_position)) ||
+              deptSigner.requester_position || request.position_name2 || request.requester_position ||
               '.....................................................'
             }}
           </div>
@@ -161,7 +162,8 @@
           <div>
             ตำแหน่ง
             {{
-              deptSigner.requester_position ||
+              (deptSigner.requester_name ? deptSigner.requester_position : (request.position_name2 || request.requester_position)) ||
+              deptSigner.requester_position || request.position_name2 || request.requester_position ||
               '.....................................................'
             }}
           </div>
@@ -283,7 +285,7 @@ export default {
     mapSigner() {
       if (this.request && this.request.department) {
         const matched = this.departmentsConfig.find(
-          (d) => d.department_name === this.request.department
+          (d) => (d.department_name || '').trim() === (this.request.department || '').trim()
         );
         if (matched) {
           this.deptSigner = matched;

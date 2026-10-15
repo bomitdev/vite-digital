@@ -172,7 +172,7 @@ try {
         $stmtInsert->execute([
             ':requester_name' => $data->requester_name,
             ':requester_id' => $requester_id,
-            ':department' => $data->department,
+            ':department' => trim($data->department),
             ':material_id' => $item->material_id,
             ':quantity' => $item->quantity,
             ':request_no' => $data->request_no

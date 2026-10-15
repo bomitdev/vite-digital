@@ -7,14 +7,22 @@
           <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-1">
               <li class="breadcrumb-item">
-                <router-link to="/material-it">หน้าหลักวัสดุ</router-link>
+                <router-link to="/material-it">หน้าหลักวัสดุคอมพิวเตอร์</router-link>
               </li>
               <li class="breadcrumb-item active" aria-current="page">เบิกจ่ายวัสดุ</li>
             </ol>
           </nav>
           <h2 class="fw-bold text-warning mb-0">
-            <i class="bi bi-box-arrow-up me-2"></i>บันทึกจ่ายออก (Stock Out)
+            <i class="bi bi-box-arrow-up me-2"></i>บันทึกจ่ายออกวัสดุคอมพิวเตอร์ (Stock Out)
           </h2>
+        </div>
+        <div>
+          <button @click="openLogModal" class="btn btn-outline-info rounded-pill me-2">
+            <i class="bi bi-clock-history me-1"></i>ดูประวัติ
+          </button>
+          <router-link to="/home-backoffice" class="btn btn-outline-secondary rounded-pill">
+            <i class="bi bi-house-door me-2"></i>กลับหน้าหลัก
+          </router-link>
         </div>
       </div>
 
@@ -25,7 +33,7 @@
               <form @submit.prevent="submitTx">
                 <div class="mb-4">
                   <h5 class="fw-bold mb-3 border-bottom pb-2">
-                    1. เลือกวัสดุชิ้นที่ต้องการเบิกจ่าย
+                    1. เลือกวัสดุคอมพิวเตอร์ที่ต้องการเบิกจ่าย
                   </h5>
                   <div class="position-relative">
                     <label class="form-label"
@@ -48,6 +56,18 @@
 
                 <div class="mb-4" v-if="form.material_id">
                   <h5 class="fw-bold mb-3 border-bottom pb-2">2. รายละเอียดการเบิกจ่าย</h5>
+                  
+                  <!-- Show Lots -->
+                  <div class="alert alert-info py-2 mb-4" v-if="availableLots.length > 0">
+                    <div class="fw-bold mb-1"><i class="bi bi-info-circle me-1"></i>Lot ที่มีอยู่ในคลัง (จ่ายแบบ FIFO):</div>
+                    <ul class="mb-0 ps-3 small">
+                      <li v-for="lot in availableLots" :key="lot.id">
+                        Lot: <span class="fw-bold">{{ lot.lot_number || 'ไม่ระบุ' }}</span> 
+                        <span class="text-muted ms-2">(เหลือ {{ lot.remaining_qty }} {{ selectedUnit }}, รับเข้าเมื่อ {{ formatDateShort(lot.receive_date) }})</span>
+                      </li>
+                    </ul>
+                  </div>
+
                   <div class="row g-3">
                     <div class="col-md-6">
                       <label class="form-label"
@@ -119,60 +139,56 @@
                         <option
                           v-for="staff in allStaff"
                           :key="staff.ID"
-                          :value="staff.FULLNAME"
+                          :value="staff.fullname"
                         ></option>
                       </datalist>
                     </div>
 
                     <div class="col-md-12">
                       <label class="form-label"
-                        >ชื่อแผนกที่เบิก (หน่วยงาน) <span class="text-danger">*</span></label
+                        >หน่วยงาน/กลุ่มงาน (ปลายทาง) <span class="text-danger">*</span></label
                       >
                       <input
                         type="text"
                         class="form-control"
                         v-model="form.reference_dest"
                         required
-                        placeholder="-- พิมพ์เพื่อค้นหา --"
-                        list="departments"
+                        placeholder="-- พิมพ์เพื่อค้นหาหน่วยงาน --"
+                        list="deptList"
                         autocomplete="off"
                       />
-                      <datalist id="departments">
+                      <datalist id="deptList">
                         <option
                           v-for="dept in allDepartments"
-                          :key="dept.HR_DEPARTMENT_SUB_ID"
-                          :value="dept.HR_DEPARTMENT_SUB_NAME"
+                          :key="dept.HR_DEPARTMENT_SUB_SUB_ID"
+                          :value="dept.HR_DEPARTMENT_SUB_SUB_NAME"
                         ></option>
                       </datalist>
                     </div>
 
-                    <div class="col-12">
-                      <label class="form-label">หมายเหตุ (เหตุผลการเบิก)</label>
-                      <textarea
+                    <div class="col-md-12">
+                      <label class="form-label">หมายเหตุ</label>
+                      <input
+                        type="text"
                         class="form-control"
                         v-model="form.note"
-                        rows="2"
-                        placeholder="เช่น คอมพิวเตอร์เสีย, ขอเพิ่ม"
-                      ></textarea>
+                        placeholder="เช่น เบิกไปใช้ห้องตรวจ, งานอบรม เป็นต้น"
+                      />
                     </div>
                   </div>
                 </div>
 
-                <div class="d-flex justify-content-end mt-5" v-if="form.material_id">
-                  <button
-                    type="button"
-                    class="btn btn-light rounded-pill px-4 me-2"
-                    @click="resetForm"
-                  >
+                <div class="d-flex justify-content-end gap-2 mt-5">
+                  <button type="button" class="btn btn-light rounded-pill px-4" @click="resetForm">
                     ล้างข้อมูล
                   </button>
                   <button
                     type="submit"
                     class="btn btn-warning rounded-pill px-5 fw-bold"
-                    :disabled="isSubmitting || form.quantity > selectedBalance"
+                    :disabled="isSubmitting || !form.material_id || form.quantity > selectedBalance"
                   >
                     <span v-if="isSubmitting" class="spinner-border spinner-border-sm me-2"></span>
-                    บันทึกรายการจ่ายออก
+                    บันทึกการเบิกจ่าย
                   </button>
                 </div>
               </form>
@@ -181,21 +197,31 @@
         </div>
       </div>
     </div>
+
+    <!-- Log Modal -->
+    <MtLogModal ref="logModal" logType="out" modalId="outLogModal" />
   </div>
 </template>
 
 <script>
 import axios from 'axios';
 import moment from 'moment';
+import Swal from 'sweetalert2';
+import * as bootstrap from 'bootstrap';
+import MtLogModal from './MtLogModal.vue';
 
 export default {
   name: 'MtTransactionOut',
+  components: {
+    MtLogModal
+  },
   data() {
     return {
       materials: [],
       itUsers: [],
       allStaff: [],
       allDepartments: [],
+      availableLots: [],
       isSubmitting: false,
       form: {
         material_id: '',
@@ -220,7 +246,20 @@ export default {
       return this.selectedMaterial ? parseInt(this.selectedMaterial.balance) : 0;
     }
   },
+  watch: {
+    'form.material_id'(newVal) {
+      if (newVal) {
+        this.fetchLots(newVal);
+      } else {
+        this.availableLots = [];
+      }
+    }
+  },
   methods: {
+    formatDateShort(dateStr) {
+      if (!dateStr) return '';
+      return moment(dateStr).format('DD/MM/YYYY');
+    },
     async fetchMaterials() {
       try {
         const res = await axios.get('/api-digital/it_material/it_get_materials.php');
@@ -231,13 +270,22 @@ export default {
         console.error(err);
       }
     },
+    async fetchLots(materialId) {
+      try {
+        const res = await axios.get(`/api-digital/it_material/it_get_lots.php?material_id=${materialId}`);
+        if (res.data.status === 'success') {
+          this.availableLots = res.data.data;
+        }
+      } catch (err) {
+        console.error('Failed to fetch lots', err);
+      }
+    },
     async fetchItUsers() {
       try {
         const res = await axios.get('/api-digital/it_material/it_get_it_users.php');
         if (res.data.status === 'success') {
           this.itUsers = res.data.data;
 
-          // Set default user if matched
           const currentName = localStorage.getItem('user_name');
           if (currentName && this.itUsers.find((u) => u.fullname === currentName)) {
             this.form.user_profile_name = currentName;
@@ -277,27 +325,40 @@ export default {
     },
     async submitTx() {
       if (this.form.quantity <= 0) {
-        alert('จำนวนต้องมากกว่า 0');
+        Swal.fire('ข้อผิดพลาด', 'จำนวนต้องมากกว่า 0', 'warning');
         return;
       }
       if (this.form.quantity > this.selectedBalance) {
-        alert('ยอดคงคลังไม่เพียงพอ');
+        Swal.fire('ข้อผิดพลาด', 'ยอดคงคลังไม่เพียงพอ (มีในคลัง ' + this.selectedBalance + ' ' + this.selectedUnit + ')', 'error');
         return;
       }
       this.isSubmitting = true;
       try {
         const res = await axios.post('/api-digital/it_material/it_transaction_out.php', this.form);
         if (res.data.status === 'success') {
-          alert('บันทึกการเบิกจ่ายสำเร็จ ยอดคงเหลือใหม่: ' + res.data.new_balance);
-          this.$router.push('/material-it');
+          Swal.fire({
+            title: 'บันทึกสำเร็จ!',
+            text: `บันทึกการเบิกจ่ายสำเร็จ ยอดคงเหลือใหม่: ${res.data.new_balance} ${this.selectedUnit}`,
+            icon: 'success',
+            confirmButtonText: 'ตกลง',
+            confirmButtonColor: '#198754'
+          }).then(() => {
+            this.$router.push('/material-it');
+          });
         } else {
-          alert(res.data.message);
+          Swal.fire('ข้อผิดพลาด', res.data.message, 'error');
         }
       } catch (err) {
-        alert('ระบบขัดข้อง');
+        Swal.fire('ข้อผิดพลาด', 'ระบบขัดข้อง', 'error');
       } finally {
         this.isSubmitting = false;
       }
+    },
+    openLogModal() {
+      // eslint-disable-next-line no-undef
+      const modal = new bootstrap.Modal(document.getElementById('outLogModal'));
+      modal.show();
+      this.$refs.logModal.fetchLogs();
     }
   },
   mounted() {

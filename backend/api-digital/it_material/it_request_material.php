@@ -36,156 +36,205 @@ if (isset($data->items) && is_array($data->items) && count($data->items) > 0) {
 }
 
 try {
-    // Check if request_no exists, if not create it
-    $checkColumn = $pdo2->query("SHOW COLUMNS FROM mt_it_requests LIKE 'request_no'")->fetch();
-    if (!$checkColumn) {
-        $pdo2->exec("ALTER TABLE mt_it_requests ADD COLUMN request_no VARCHAR(50) AFTER id");
+    // 1. Resolve requester_id
+    $requester_id = null;
+    if (isset($data->requester_id) && intval($data->requester_id) > 0) {
+        $requester_id = intval($data->requester_id);
+    } elseif (isset($pdo3) && !empty($data->requester_name)) {
+        $cleanName = trim($data->requester_name);
+        $stmtP = $pdo3->prepare("
+            SELECT p.ID 
+            FROM hr_person p 
+            LEFT JOIN hr_prefix pf ON p.HR_PREFIX_ID = pf.HR_PREFIX_ID 
+            WHERE CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) = :name1
+               OR CONCAT(p.HR_FNAME, ' ', p.HR_LNAME) = :name2
+               OR REPLACE(CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME), ' ', '') = REPLACE(:name3, ' ', '')
+               OR :name4 LIKE CONCAT('%', p.HR_FNAME, '%', p.HR_LNAME, '%')
+            LIMIT 1
+        ");
+        $stmtP->execute([
+            ':name1' => $cleanName,
+            ':name2' => $cleanName,
+            ':name3' => $cleanName,
+            ':name4' => $cleanName
+        ]);
+        $personFound = $stmtP->fetch(PDO::FETCH_ASSOC);
+        if ($personFound) {
+            $requester_id = intval($personFound['ID']);
+        } elseif (isset($userData['uid'])) {
+            $requester_id = intval($userData['uid']);
+        }
+    } elseif (!$requester_id && isset($userData['uid'])) {
+        $requester_id = intval($userData['uid']);
     }
 
     $pdo2->beginTransaction();
 
     $request_no = 'REQ-' . date('Ymd-His') . '-' . strtoupper(bin2hex(random_bytes(2)));
 
-    $stmtCheck = $pdo2->prepare("SELECT id, name FROM mt_it_materials WHERE id = :id");
-    $sql = "INSERT INTO mt_it_requests (request_date, requester_name, department, material_id, quantity, status, request_no) 
-            VALUES (CURDATE(), :requester_name, :department, :material_id, :quantity, 'pending', :request_no)";
-    $stmt = $pdo2->prepare($sql);
+    $stmtCheck = $pdo2->prepare("SELECT id, name, unit, balance FROM mt_it_materials WHERE id = :id");
 
-    $materialNames = [];
+    $sqlInsert = "INSERT INTO mt_it_requests (request_date, requester_name, requester_id, department, material_id, quantity, status, request_no) 
+            VALUES (CURDATE(), :requester_name, :requester_id, :department, :material_id, :quantity, 'pending', :request_no)";
+    $stmtInsert = $pdo2->prepare($sqlInsert);
+
     $lineItems = [];
 
     foreach ($items as $item) {
-        $stmtCheck->execute([':id' => $item->material_id]);
-        $materialInfo = $stmtCheck->fetch(PDO::FETCH_ASSOC);
-
-        if (!$materialInfo) {
-            throw new Exception("Material not found");
+        if (!isset($item->material_id) || !isset($item->quantity)) {
+            throw new Exception("Invalid item format missing material_id or quantity");
         }
 
-        $stmt->execute([
+        $stmtCheck->execute([':id' => $item->material_id]);
+        $materialRow = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+        if (!$materialRow) {
+            throw new Exception("Material ID {$item->material_id} not found");
+        }
+
+        if ($item->quantity <= 0) {
+            throw new Exception("Quantity must be greater than 0");
+        }
+
+        if ($item->quantity > $materialRow['balance']) {
+            throw new Exception("Insufficient stock balance for material ID {$item->material_id}. Requested: {$item->quantity}, Available: {$materialRow['balance']}");
+        }
+
+        $stmtInsert->execute([
             ':requester_name' => $data->requester_name,
-            ':department' => $data->department,
+            ':requester_id' => $requester_id,
+            ':department' => trim($data->department),
             ':material_id' => $item->material_id,
             ':quantity' => $item->quantity,
             ':request_no' => $request_no
         ]);
 
-        $materialNames[] = $materialInfo['name'];
+        $unitStr = !empty($materialRow['unit']) ? ' ' . $materialRow['unit'] : '';
         $lineItems[] = [
             "type" => "box",
             "layout" => "baseline",
             "spacing" => "sm",
             "contents" => [
-                ["type" => "text", "text" => "- " . $materialInfo['name'], "wrap" => true, "color" => "#666666", "size" => "sm", "flex" => 4],
-                ["type" => "text", "text" => (string)$item->quantity, "color" => "#0d6efd", "size" => "sm", "flex" => 1, "align" => "end", "weight" => "bold"]
+                ["type" => "text", "text" => "- " . $materialRow['name'], "wrap" => true, "color" => "#555555", "size" => "sm", "flex" => 4],
+                ["type" => "text", "text" => (string)$item->quantity . $unitStr, "color" => "#0d6efd", "size" => "sm", "flex" => 2, "align" => "end", "weight" => "bold"]
             ]
         ];
     }
 
     $pdo2->commit();
 
-    // --- LINE NOTIFY START ---
-    $client_key = '151518fbb68266eb98604e010d4ffdb231365f32';
-    $secret_key = 'KVQRE5QY6PEDRAQRX6UGQU7QOO5Y';
+    // --- MOPH NOTIFY START ---
+    try {
+        $client_key = 'a883bc9bb2ff70b96fbd1285e581aa2edd7e81bc';
+        $secret_key = '52ZILLQKT4UZCQVZHMTCQGYQHPSA';
 
-    $linePayload = [
-        "messages" => [
-            [
-                "type" => "flex",
-                "altText" => "คำขอเบิกวัสดุคอมพิวเตอร์ใหม่",
-                "contents" => [
-                    "type" => "bubble",
-                    "direction" => "ltr",
-                    "header" => [
-                        "type" => "box",
-                        "layout" => "vertical",
-                        "backgroundColor" => "#0d6efd",
-                        "contents" => [
-                            [
-                                "type" => "text",
-                                "text" => "📦 คำขอเบิกวัสดุใหม่ (" . count($items) . " รายการ)",
-                                "weight" => "bold",
-                                "size" => "md",
-                                "color" => "#ffffff",
-                                "align" => "center"
+        $linePayload = [
+            "messages" => [
+                [
+                    "type" => "flex",
+                    "altText" => "คำขอเบิกวัสดุคอมพิวเตอร์ใหม่ (เลขที่: " . $request_no . ")",
+                    "contents" => [
+                        "type" => "bubble",
+                        "direction" => "ltr",
+                        "header" => [
+                            "type" => "box",
+                            "layout" => "vertical",
+                            "backgroundColor" => "#0d6efd",
+                            "contents" => [
+                                [
+                                    "type" => "text",
+                                    "text" => "💻 คำขอเบิกวัสดุคอมพิวเตอร์ใหม่ (" . count($items) . " รายการ)",
+                                    "weight" => "bold",
+                                    "size" => "md",
+                                    "color" => "#ffffff",
+                                    "align" => "center"
+                                ]
+                            ]
+                        ],
+                        "body" => [
+                            "type" => "box",
+                            "layout" => "vertical",
+                            "spacing" => "sm",
+                            "contents" => [
+                                [
+                                    "type" => "box",
+                                    "layout" => "horizontal",
+                                    "contents" => [
+                                        ["type" => "text", "text" => "ผู้ขอเบิก:", "color" => "#888888", "size" => "xs", "flex" => 2],
+                                        ["type" => "text", "text" => (string)$data->requester_name, "weight" => "bold", "color" => "#333333", "size" => "xs", "flex" => 4]
+                                    ]
+                                ],
+                                [
+                                    "type" => "box",
+                                    "layout" => "horizontal",
+                                    "contents" => [
+                                        ["type" => "text", "text" => "หน่วยงาน:", "color" => "#888888", "size" => "xs", "flex" => 2],
+                                        ["type" => "text", "text" => (string)$data->department, "weight" => "bold", "color" => "#333333", "size" => "xs", "flex" => 4]
+                                    ]
+                                ],
+                                [
+                                    "type" => "box",
+                                    "layout" => "horizontal",
+                                    "contents" => [
+                                        ["type" => "text", "text" => "เลขที่คำขอ:", "color" => "#888888", "size" => "xs", "flex" => 2],
+                                        ["type" => "text", "text" => $request_no, "color" => "#555555", "size" => "xs", "flex" => 4]
+                                    ]
+                                ],
+                                [
+                                    "type" => "separator",
+                                    "margin" => "md"
+                                ],
+                                [
+                                    "type" => "text",
+                                    "text" => "รายการวัสดุ:",
+                                    "weight" => "bold",
+                                    "size" => "xs",
+                                    "color" => "#333333",
+                                    "margin" => "md"
+                                ],
+                                [
+                                    "type" => "box",
+                                    "layout" => "vertical",
+                                    "margin" => "sm",
+                                    "spacing" => "xs",
+                                    "contents" => $lineItems
+                                ]
                             ]
                         ]
-                    ],
-                    "body" => [
-                        "type" => "box",
-                        "layout" => "vertical",
-                        "contents" => array_merge([
-                            [
-                                "type" => "box",
-                                "layout" => "vertical",
-                                "margin" => "md",
-                                "spacing" => "sm",
-                                "contents" => [
-                                    [
-                                        "type" => "box",
-                                        "layout" => "baseline",
-                                        "spacing" => "sm",
-                                        "contents" => [
-                                            ["type" => "text", "text" => "ผู้เบิก", "color" => "#aaaaaa", "size" => "sm", "flex" => 2],
-                                            ["type" => "text", "text" => $data->requester_name, "wrap" => true, "color" => "#666666", "size" => "sm", "flex" => 5]
-                                        ]
-                                    ],
-                                    [
-                                        "type" => "box",
-                                        "layout" => "baseline",
-                                        "spacing" => "sm",
-                                        "contents" => [
-                                            ["type" => "text", "text" => "หน่วยงาน", "color" => "#aaaaaa", "size" => "sm", "flex" => 2],
-                                            ["type" => "text", "text" => $data->department, "wrap" => true, "color" => "#666666", "size" => "sm", "flex" => 5]
-                                        ]
-                                    ]
-                                ]
-                            ],
-                            [
-                                "type" => "separator",
-                                "margin" => "md"
-                            ],
-                            [
-                                "type" => "text",
-                                "text" => "รายการที่เบิก",
-                                "weight" => "bold",
-                                "size" => "sm",
-                                "color" => "#aaaaaa",
-                                "margin" => "md"
-                            ]
-                        ], $lineItems)
                     ]
                 ]
             ]
-        ]
-    ];
+        ];
 
-    $url = "https://morpromt2f.moph.go.th/api/notify/send";
-    $headers = [
-        "Content-Type: application/json",
-        "client-key: {$client_key}",
-        "secret-key: {$secret_key}"
-    ];
+        $url = 'https://notify-api.moph.go.th/api/v1/notify';
+        $headers = [
+            'Content-Type: application/json',
+            'client-key: ' . $client_key,
+            'secret-key: ' . $secret_key
+        ];
 
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($linePayload, JSON_UNESCAPED_UNICODE));
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-
-    curl_exec($ch);
-    // --- LINE NOTIFY END ---
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($linePayload, JSON_UNESCAPED_UNICODE));
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_exec($ch);
+        unset($ch);
+    } catch (Exception $notifyEx) {
+        error_log("MOPH Notify Error in it_request_material: " . $notifyEx->getMessage());
+    }
 
     echo json_encode([
         'success' => true,
         'message' => 'Material request submitted successfully'
     ]);
 } catch (Exception $e) {
-    if (isset($pdo2) && $pdo2->inTransaction()) {
+    if ($pdo2->inTransaction()) {
         $pdo2->rollBack();
     }
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }

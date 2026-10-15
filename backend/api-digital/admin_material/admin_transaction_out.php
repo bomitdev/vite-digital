@@ -86,10 +86,28 @@ try {
     }
 
     if ($remaining_to_fulfill > 0) {
-        // Should not happen if balance check passed, but just in case of mismatch
-        $pdo2->rollBack();
-        echo json_encode(['status' => 'error', 'message' => "สต็อก Lot ไม่พอจ่าย กรุณาตรวจสอบข้อมูลตั้งต้น"]);
-        exit;
+        $stmtMatPrice = $pdo2->prepare("SELECT price_per_unit FROM mt_admin_materials WHERE id = :id");
+        $stmtMatPrice->execute([':id' => $material_id]);
+        $matRow = $stmtMatPrice->fetch();
+        $unitPrice = $matRow ? floatval($matRow['price_per_unit']) : 0;
+
+        $stmtNewLot = $pdo2->prepare("
+            INSERT INTO mt_admin_lots (material_id, lot_number, vendor, price_per_unit, original_qty, remaining_qty, receive_date)
+            VALUES (:mid, 'LOT-AUTO-ADJUST', 'ระบบปรับยอดอัตโนมัติ', :price, :orig, 0, NOW())
+        ");
+        $stmtNewLot->execute([
+            ':mid' => $material_id,
+            ':price' => $unitPrice,
+            ':orig' => $remaining_to_fulfill
+        ]);
+        $autoLotId = $pdo2->lastInsertId();
+        $total_out_price += ($remaining_to_fulfill * $unitPrice);
+        $lots_used[] = [
+            'lot_id' => $autoLotId,
+            'qty' => $remaining_to_fulfill,
+            'price' => $unitPrice
+        ];
+        $remaining_to_fulfill = 0;
     }
 
     // 3. บันทึก Transaction
