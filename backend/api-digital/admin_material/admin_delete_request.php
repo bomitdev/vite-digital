@@ -45,6 +45,74 @@ try {
         exit;
     }
 
+    // Check ownership or admin rights (ใครเบิกคนนั้นสามารถยกเลิกได้)
+    $isOwner = false;
+    $isAdmin = false;
+    $currentUid = isset($userData['uid']) ? intval($userData['uid']) : 0;
+
+    // Check if user has admin rights
+    if (isset($pdo3) && $currentUid > 0) {
+        $stmtRights = $pdo3->prepare("SELECT access_user FROM hr_person WHERE ID = :id");
+        $stmtRights->execute([':id' => $currentUid]);
+        $userRow = $stmtRights->fetch(PDO::FETCH_ASSOC);
+        if ($userRow && !empty($userRow['access_user'])) {
+            $accessList = explode(':', $userRow['access_user']);
+            if (in_array('administrator', $accessList) || in_array('menu_gm_material_manage', $accessList)) {
+                $isAdmin = true;
+            }
+        }
+    }
+
+    $firstReq = $requests[0];
+    if ($currentUid > 0 && !empty($firstReq['requester_id']) && intval($firstReq['requester_id']) === $currentUid) {
+        $isOwner = true;
+    }
+
+    if (!$isOwner) {
+        $currentName = trim($userData['name'] ?? '');
+        $existingName = trim($firstReq['requester_name'] ?? '');
+
+        if (!empty($currentName) && !empty($existingName)) {
+            $cleanCurrent = preg_replace('/^(นาย|นางสาว|นาง|ดร\.|นพ\.|พญ\.|ทพ\.|ทพญ\.|ภก\.|ภญ\.|ว่าที่\s*ร\.ต\.|ร\.ต\.|อ\.)\s*/u', '', $currentName);
+            $cleanCurrent = preg_replace('/\s+/', '', $cleanCurrent);
+
+            $cleanExisting = preg_replace('/^(นาย|นางสาว|นาง|ดร\.|นพ\.|พญ\.|ทพ\.|ทพญ\.|ภก\.|ภญ\.|ว่าที่\s*ร\.ต\.|ร\.ต\.|อ\.)\s*/u', '', $existingName);
+            $cleanExisting = preg_replace('/\s+/', '', $cleanExisting);
+
+            if ($cleanCurrent === $cleanExisting || $currentName === $existingName) {
+                $isOwner = true;
+            }
+        }
+    }
+
+    if (!$isOwner && isset($pdo3) && $currentUid > 0) {
+        $stmtHr = $pdo3->prepare("
+            SELECT CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) as fullname,
+                   CONCAT(p.HR_FNAME, ' ', p.HR_LNAME) as name_no_prefix
+            FROM hr_person p
+            LEFT JOIN hr_prefix pf ON p.HR_PREFIX_ID = pf.HR_PREFIX_ID
+            WHERE p.ID = :id
+        ");
+        $stmtHr->execute([':id' => $currentUid]);
+        $hrUser = $stmtHr->fetch(PDO::FETCH_ASSOC);
+        if ($hrUser) {
+            $existingName = trim($firstReq['requester_name'] ?? '');
+            if ($existingName === trim($hrUser['fullname']) || $existingName === trim($hrUser['name_no_prefix'])) {
+                $isOwner = true;
+            }
+        }
+    }
+
+    if (!$isOwner && !$isAdmin) {
+        $pdo2->rollBack();
+        http_response_code(403);
+        echo json_encode([
+            'success' => false, 
+            'message' => 'คุณสามารถยกเลิกได้เฉพาะคำขอเบิกของตัวเองเท่านั้น'
+        ]);
+        exit;
+    }
+
     $refundedCount = 0;
     foreach ($requests as $request) {
         // 2. If approved, refund stock and remove transaction

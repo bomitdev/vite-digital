@@ -332,7 +332,7 @@
                     </td>
                     <td>{{ req.items && req.items.length > 0 ? req.items[0].admin_note || '-' : '-' }}</td>
                     <td class="text-center">
-                      <div class="d-flex justify-content-center gap-2" v-if="req.status === 'pending'">
+                      <div class="d-flex justify-content-center gap-2" v-if="req.status === 'pending' && isRequestOwner(req)">
                         <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm hover-lift" @click="editRequest(req)" title="แก้ไขคำขอ">
                           <i class="bi bi-pencil-square"></i> แก้ไข
                         </button>
@@ -340,6 +340,7 @@
                           <i class="bi bi-trash"></i> ยกเลิก
                         </button>
                       </div>
+                      <span v-else class="text-muted small">-</span>
                     </td>
                   </tr>
                 </tbody>
@@ -455,7 +456,9 @@ export default {
       selectedType: '',
       showPreviewModal: false,
       editingRequestNo: null,
-      isAdminUser: false
+      isAdminUser: false,
+      currentUserFullname: localStorage.getItem('user_name') || '',
+      currentUserId: null
     };
   },
   computed: {
@@ -484,12 +487,9 @@ export default {
     filteredRequests() {
       let reqs = this.requests;
 
+      // Regular user sees only their own requests
       if (!this.isAdmin) {
-        if (!this.form.requester_name) {
-          return [];
-        }
-        const requester = this.form.requester_name.toLowerCase().trim();
-        reqs = reqs.filter(req => req.requester_name && req.requester_name.toLowerCase().trim() === requester);
+        reqs = reqs.filter(req => this.isRequestOwner(req));
       }
 
       if (!this.searchQuery) return reqs;
@@ -534,6 +534,13 @@ export default {
           const accessUser = response.data.access_user ? response.data.access_user.split(':') : [];
           this.isAdminUser = accessUser.includes('administrator') || accessUser.includes('menu_gm_material_manage');
           
+          if (response.data.fullname) {
+            this.currentUserFullname = response.data.fullname;
+          }
+          if (response.data.user_id) {
+            this.currentUserId = response.data.user_id;
+          }
+
           if (!this.form.department && response.data.department) {
             this.form.department = response.data.department;
           }
@@ -614,7 +621,52 @@ export default {
       };
       return map[status] || status;
     },
+    isRequestOwner(req) {
+      if (!req) return false;
+
+      // 1. Check by ID if both are available
+      if (this.currentUserId && req.requester_id) {
+        if (parseInt(req.requester_id) === parseInt(this.currentUserId)) {
+          return true;
+        }
+      }
+
+      // 2. Check by Name
+      const myName = (this.currentUserFullname || localStorage.getItem('user_name') || '').trim();
+      const reqName = (req.requester_name || '').trim();
+
+      if (!myName || !reqName) return false;
+
+      if (myName.toLowerCase() === reqName.toLowerCase()) {
+        return true;
+      }
+
+      // Normalize Thai prefixes and remove whitespace
+      const stripPrefix = (str) => {
+        return str
+          .replace(/^(นาย|นางสาว|นาง|ดร\.|นพ\.|พญ\.|ทพ\.|ทพญ\.|ภก\.|ภญ\.|ว่าที่\s*ร\.ต\.|ร\.ต\.|อ\.)\s*/i, '')
+          .replace(/\s+/g, '')
+          .toLowerCase();
+      };
+
+      const cleanMyName = stripPrefix(myName);
+      const cleanReqName = stripPrefix(reqName);
+
+      if (cleanMyName && cleanReqName && cleanMyName === cleanReqName) {
+        return true;
+      }
+
+      return false;
+    },
     editRequest(req) {
+      if (!this.isRequestOwner(req)) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'ไม่มีสิทธิ์ดำเนินการ',
+          text: 'คุณสามารถแก้ไขได้เฉพาะคำขอเบิกของตัวเองเท่านั้น'
+        });
+        return;
+      }
       this.editingRequestNo = req.request_no;
       this.form.requester_name = req.requester_name;
       this.form.requester_id = req.requester_id || null;
@@ -641,6 +693,14 @@ export default {
       }
     },
     async cancelRequest(req) {
+      if (!this.isRequestOwner(req)) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'ไม่มีสิทธิ์ดำเนินการ',
+          text: 'คุณสามารถยกเลิกได้เฉพาะคำขอเบิกของตัวเองเท่านั้น'
+        });
+        return;
+      }
       const result = await Swal.fire({
         title: 'ยืนยันการยกเลิก?',
         text: 'คุณต้องการยกเลิกคำขอเบิกวัสดุนี้ใช่หรือไม่? ข้อมูลจะถูกลบออกและไม่สามารถกู้คืนได้',

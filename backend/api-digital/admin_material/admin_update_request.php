@@ -41,16 +41,69 @@ try {
     $pdo2->beginTransaction();
 
     // Check if the request is still pending
-    $stmtCheckStatus = $pdo2->prepare("SELECT status FROM mt_admin_requests WHERE request_no = :request_no LIMIT 1");
+    $stmtCheckStatus = $pdo2->prepare("SELECT * FROM mt_admin_requests WHERE request_no = :request_no LIMIT 1");
     $stmtCheckStatus->execute([':request_no' => $data->request_no]);
     $requestRow = $stmtCheckStatus->fetch(PDO::FETCH_ASSOC);
 
     if (!$requestRow) {
-        throw new Exception("Request not found");
+        throw new Exception("ไม่พบคำขอเบิกที่ระบุ");
     }
 
     if ($requestRow['status'] !== 'pending') {
-        throw new Exception("Cannot edit a request that is already processed (Status: " . $requestRow['status'] . ")");
+        throw new Exception("ไม่สามารถแก้ไขได้เนื่องจากคำขอนี้ได้รับการประมวลผลแล้ว (สถานะ: " . $requestRow['status'] . ")");
+    }
+
+    // Ownership check: แก้ได้เฉพาะของตัวเองเท่านั้น ใครเบิกคนนั้นสามารถแก้ไขได้
+    $isOwner = false;
+    $currentUid = isset($userData['uid']) ? intval($userData['uid']) : 0;
+
+    if ($currentUid > 0 && !empty($requestRow['requester_id']) && intval($requestRow['requester_id']) === $currentUid) {
+        $isOwner = true;
+    }
+
+    if (!$isOwner) {
+        $currentName = trim($userData['name'] ?? '');
+        $existingName = trim($requestRow['requester_name'] ?? '');
+
+        if (!empty($currentName) && !empty($existingName)) {
+            $cleanCurrent = preg_replace('/^(นาย|นางสาว|นาง|ดร\.|นพ\.|พญ\.|ทพ\.|ทพญ\.|ภก\.|ภญ\.|ว่าที่\s*ร\.ต\.|ร\.ต\.|อ\.)\s*/u', '', $currentName);
+            $cleanCurrent = preg_replace('/\s+/', '', $cleanCurrent);
+
+            $cleanExisting = preg_replace('/^(นาย|นางสาว|นาง|ดร\.|นพ\.|พญ\.|ทพ\.|ทพญ\.|ภก\.|ภญ\.|ว่าที่\s*ร\.ต\.|ร\.ต\.|อ\.)\s*/u', '', $existingName);
+            $cleanExisting = preg_replace('/\s+/', '', $cleanExisting);
+
+            if ($cleanCurrent === $cleanExisting || $currentName === $existingName) {
+                $isOwner = true;
+            }
+        }
+    }
+
+    if (!$isOwner && isset($pdo3) && $currentUid > 0) {
+        $stmtHr = $pdo3->prepare("
+            SELECT CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) as fullname,
+                   CONCAT(p.HR_FNAME, ' ', p.HR_LNAME) as name_no_prefix
+            FROM hr_person p
+            LEFT JOIN hr_prefix pf ON p.HR_PREFIX_ID = pf.HR_PREFIX_ID
+            WHERE p.ID = :id
+        ");
+        $stmtHr->execute([':id' => $currentUid]);
+        $hrUser = $stmtHr->fetch(PDO::FETCH_ASSOC);
+        if ($hrUser) {
+            $existingName = trim($requestRow['requester_name'] ?? '');
+            if ($existingName === trim($hrUser['fullname']) || $existingName === trim($hrUser['name_no_prefix'])) {
+                $isOwner = true;
+            }
+        }
+    }
+
+    if (!$isOwner) {
+        $pdo2->rollBack();
+        http_response_code(403);
+        echo json_encode([
+            'success' => false, 
+            'message' => 'คุณสามารถแก้ไขได้เฉพาะคำขอเบิกของตัวเองเท่านั้น'
+        ]);
+        exit;
     }
 
     // Resolve requester_id

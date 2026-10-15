@@ -39,6 +39,8 @@ try {
 
     echo json_encode([
         "status" => "success",
+        "user_id" => (int)$user_id,
+        "id" => (int)$user_id,
         "department" => $user['HR_DEPARTMENT_SUB_NAME'] ?? '',
         "department_id" => $user['HR_DEPARTMENT_SUB_ID'] ?? 0,
         "position" => $user['HR_POSITION_NAME'] ?? '',
