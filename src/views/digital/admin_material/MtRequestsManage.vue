@@ -87,13 +87,27 @@
                   <td>{{ req.department }}</td>
                   <td>
                     <div v-for="item in req.items" :key="item.id" class="mb-1 pb-1 border-bottom border-light">
-                      <span class="fw-bold">{{ item.material_name }}</span><br />
+                      <div class="d-flex align-items-center flex-wrap gap-1">
+                        <span class="fw-bold">{{ item.material_name }}</span>
+                        <template v-if="req.status === 'pending'">
+                          <span v-if="getMaterialBalance(item.material_id) <= 0" class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0" style="font-size: 0.72rem;">
+                            <i class="bi bi-x-circle me-1"></i>ของหมด (0)
+                          </span>
+                          <span v-else-if="getMaterialBalance(item.material_id) < item.quantity" class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-0" style="font-size: 0.72rem;">
+                            <i class="bi bi-exclamation-triangle me-1"></i>เหลือ {{ getMaterialBalance(item.material_id) }} {{ getMaterialUnit(item.material_id) }}
+                          </span>
+                          <span v-else class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0" style="font-size: 0.72rem;">
+                            <i class="bi bi-check2 me-1"></i>เหลือ {{ getMaterialBalance(item.material_id) }} {{ getMaterialUnit(item.material_id) }}
+                          </span>
+                        </template>
+                      </div>
                       <small class="text-muted">{{ item.material_code }}</small>
                     </div>
                   </td>
                   <td class="text-center fw-bold text-dark fs-6">
                     <div v-for="item in req.items" :key="item.id" class="mb-1 pb-1 border-bottom border-light" style="min-height: 42px; display: flex; align-items: center; justify-content: center;">
-                      {{ item.quantity }}
+                      <span>{{ item.quantity }}</span>
+                      <span class="text-muted small fw-normal ms-1">{{ getMaterialUnit(item.material_id) }}</span>
                     </div>
                   </td>
                   <td class="text-center">
@@ -110,8 +124,13 @@
                   <td class="text-end pe-4">
                     <div class="d-flex gap-2 justify-content-end align-items-center h-100 flex-wrap" style="max-width: 150px">
                       <template v-if="req.status === 'pending'">
+                        <div v-if="isRequestOutOfStock(req)" class="w-100 text-center mb-1">
+                          <span class="badge bg-danger-subtle text-danger border border-danger-subtle py-1 px-2 w-100" style="font-size: 0.72rem;">
+                            <i class="bi bi-exclamation-octagon me-1"></i>ของในคลังหมด
+                          </span>
+                        </div>
                         <button
-                          class="btn btn-sm btn-primary flex-fill fw-bold"
+                          class="btn btn-sm btn-primary flex-fill fw-bold shadow-sm"
                           @click="openReviewModal(req)"
                           title="ตรวจสอบและพิจารณาอนุมัติ"
                         >
@@ -198,10 +217,10 @@
                 <thead class="table-light text-center">
                   <tr>
                     <th width="5%">ลำดับ</th>
-                    <th width="40%" class="text-start">รายการวัสดุ</th>
+                    <th width="35%" class="text-start">รายการวัสดุ</th>
                     <th width="15%">ขอเบิก</th>
-                    <th width="20%">จำนวนจ่าย</th>
-                    <th width="20%">คงเหลือในคลัง</th>
+                    <th width="22%">จำนวนจ่าย</th>
+                    <th width="23%">คงเหลือในคลัง</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -211,39 +230,102 @@
                       <div class="fw-bold">{{ item.material_name }}</div>
                       <div class="small text-muted">{{ item.material_code }}</div>
                     </td>
-                    <td class="text-center text-primary fs-5">{{ item.quantity }}</td>
+                    <td class="text-center text-primary fs-5 fw-bold">
+                      {{ item.quantity }}
+                      <span class="fs-6 text-muted fw-normal ms-1">{{ getMaterialUnit(item.material_id) }}</span>
+                    </td>
                     <td class="text-center">
-                      <div class="input-group input-group-sm w-100 mx-auto" style="max-width: 120px;">
-                        <button type="button" class="btn btn-outline-secondary px-2" @click="item.dispense_qty > 1 ? item.dispense_qty-- : null">-</button>
-                        <input type="number" class="form-control text-center fw-bold" v-model.number="item.dispense_qty" min="1" :max="item.quantity" />
-                        <button type="button" class="btn btn-outline-secondary px-2" @click="item.dispense_qty++">+</button>
+                      <div v-if="getMaterialBalance(item.material_id) <= 0">
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-2 fw-bold d-inline-block">
+                          <i class="bi bi-slash-circle me-1"></i> ไม่สามารถจ่ายได้
+                        </span>
+                        <div class="text-muted small mt-1">(ของหมดในคลัง)</div>
+                      </div>
+                      <div v-else>
+                        <div class="input-group input-group-sm w-100 mx-auto" style="max-width: 130px;">
+                          <button 
+                            type="button" 
+                            class="btn btn-outline-secondary px-2" 
+                            :disabled="item.dispense_qty <= 0"
+                            @click="item.dispense_qty > 0 ? item.dispense_qty-- : null"
+                          >-</button>
+                          <input 
+                            type="number" 
+                            class="form-control text-center fw-bold" 
+                            v-model.number="item.dispense_qty" 
+                            min="0" 
+                            :max="Math.min(item.quantity, getMaterialBalance(item.material_id))"
+                            @input="validateItemDispenseQty(item)"
+                          />
+                          <button 
+                            type="button" 
+                            class="btn btn-outline-secondary px-2" 
+                            :disabled="item.dispense_qty >= Math.min(item.quantity, getMaterialBalance(item.material_id))"
+                            @click="item.dispense_qty < Math.min(item.quantity, getMaterialBalance(item.material_id)) ? item.dispense_qty++ : null"
+                          >+</button>
+                        </div>
+                        <div v-if="item.dispense_qty < item.quantity" class="small text-warning-emphasis mt-1">
+                          จ่ายบางส่วน (ขอ {{ item.quantity }})
+                        </div>
                       </div>
                     </td>
                     <td class="text-center">
-                      <span class="badge border px-3 py-2" :class="getMaterialBalance(item.material_id) < item.dispense_qty ? 'bg-danger-subtle text-danger border-danger' : 'bg-success-subtle text-success border-success'">
-                        {{ getMaterialBalance(item.material_id) }} {{ item.unit }}
-                      </span>
-                      <div v-if="getMaterialBalance(item.material_id) < item.dispense_qty" class="small text-danger mt-1 fw-bold">
-                        <i class="bi bi-exclamation-circle"></i> ของไม่พอจ่าย!
-                      </div>
+                      <template v-if="getMaterialBalance(item.material_id) <= 0">
+                        <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2 fw-bold">
+                          0 {{ getMaterialUnit(item.material_id) }}
+                        </span>
+                        <div class="small text-danger mt-1 fw-bold">
+                          <i class="bi bi-x-circle-fill me-1"></i> สินค้าหมดในคลัง
+                        </div>
+                      </template>
+                      <template v-else-if="getMaterialBalance(item.material_id) < item.quantity">
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-3 py-2 fw-bold">
+                          {{ getMaterialBalance(item.material_id) }} {{ getMaterialUnit(item.material_id) }}
+                        </span>
+                        <div class="small text-danger mt-1 fw-bold" v-if="item.dispense_qty > getMaterialBalance(item.material_id)">
+                          <i class="bi bi-exclamation-circle-fill me-1"></i> ของไม่พอจ่าย!
+                        </div>
+                        <div class="small text-warning-emphasis mt-1" v-else>
+                          <i class="bi bi-info-circle me-1"></i> มีน้อยกว่าที่ขอเบิก
+                        </div>
+                      </template>
+                      <template v-else>
+                        <span class="badge bg-success-subtle text-success border border-success px-3 py-2 fw-bold">
+                          {{ getMaterialBalance(item.material_id) }} {{ getMaterialUnit(item.material_id) }}
+                        </span>
+                        <div class="small text-success mt-1">
+                          <i class="bi bi-check-circle me-1"></i> ของพร้อมจ่าย
+                        </div>
+                      </template>
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
-          <div class="modal-footer border-0 bg-light p-3 px-4 justify-content-between">
+          <div class="modal-footer border-0 bg-light p-3 px-4 justify-content-between align-items-center">
             <button type="button" class="btn btn-outline-danger fw-bold" @click="deleteFromReview(reviewData)">
               <i class="bi bi-trash"></i> ลบคำขอ
             </button>
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 align-items-center">
               <button type="button" class="btn btn-danger fw-bold px-3" @click="rejectFromReview(reviewData)">
                 <i class="bi bi-x-circle"></i> ปฏิเสธ
               </button>
-              <button type="button" class="btn btn-success fw-bold px-4" @click="approveFromReview(reviewData)">
-                <i class="bi bi-check-circle fs-5"></i> อนุมัติ
+              <button 
+                type="button" 
+                class="btn btn-success fw-bold px-4" 
+                :disabled="isApproveDisabled(reviewData)"
+                @click="approveFromReview(reviewData)"
+                :title="isApproveDisabled(reviewData) ? 'ไม่สามารถอนุมัติได้เนื่องจากไม่มีของพร้อมจ่าย' : 'ยืนยันอนุมัติจ่าย'"
+              >
+                <i class="bi bi-check-circle fs-5 me-1"></i> อนุมัติ
               </button>
             </div>
+          </div>
+          <div v-if="reviewData && isApproveDisabled(reviewData)" class="bg-danger-subtle text-danger px-4 py-2 border-top border-danger-subtle small fw-bold text-center">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            <span v-if="isAllItemsOutOfStock(reviewData)">ไม่สามารถอนุมัติจ่ายได้ เนื่องจากของในคลังหมดทั้งหมด (กรุณากดปฏิเสธคำขอ)</span>
+            <span v-else>มีรายการที่ระบุจำนวนจ่ายมากกว่าของในคลัง หรือจำนวนจ่ายรวมเป็น 0</span>
           </div>
         </div>
       </div>
@@ -500,13 +582,54 @@ export default {
     },
     getMaterialBalance(materialId) {
       if (!materialId) return 0;
-      const mat = this.materials.find(m => m.id === materialId);
-      return mat ? mat.balance : 0;
+      const mat = this.materials.find(m => Number(m.id) === Number(materialId));
+      return mat ? Number(mat.balance) : 0;
     },
-    openReviewModal(req) {
+    getMaterialUnit(materialId) {
+      if (!materialId) return '';
+      const mat = this.materials.find(m => Number(m.id) === Number(materialId));
+      return mat ? (mat.unit || '') : '';
+    },
+    isRequestOutOfStock(req) {
+      if (!req || !req.items || req.items.length === 0) return false;
+      return req.items.every(item => this.getMaterialBalance(item.material_id) <= 0);
+    },
+    isAllItemsOutOfStock(data) {
+      if (!data || !data.items || data.items.length === 0) return true;
+      return data.items.every(item => this.getMaterialBalance(item.material_id) <= 0);
+    },
+    isApproveDisabled(data) {
+      if (!data || !data.items || data.items.length === 0) return true;
+      const totalDispensing = data.items.reduce((sum, item) => sum + (Number(item.dispense_qty) || 0), 0);
+      if (totalDispensing <= 0) return true;
+      const hasInvalid = data.items.some(item => {
+        const bal = this.getMaterialBalance(item.material_id);
+        const qty = Number(item.dispense_qty) || 0;
+        return qty > bal || qty < 0;
+      });
+      return hasInvalid;
+    },
+    validateItemDispenseQty(item) {
+      const bal = this.getMaterialBalance(item.material_id);
+      const maxAllowed = Math.min(Number(item.quantity), bal);
+      if (item.dispense_qty > maxAllowed) {
+        item.dispense_qty = maxAllowed;
+      }
+      if (item.dispense_qty < 0 || isNaN(item.dispense_qty)) {
+        item.dispense_qty = 0;
+      }
+    },
+    async openReviewModal(req) {
+      await this.fetchMaterials();
       this.reviewData = JSON.parse(JSON.stringify(req));
       this.reviewData.items.forEach(item => {
-        item.dispense_qty = item.quantity; // Initialize dispense qty
+        const bal = this.getMaterialBalance(item.material_id);
+        if (bal <= 0) {
+          item.dispense_qty = 0; // ไม่มีของในคลัง -> ไม่สามารถให้จ่ายได้
+        } else {
+          // จำนวนจ่ายเริ่มต้นไม่เกินจำนวนที่มีในคลัง
+          item.dispense_qty = Math.min(Number(item.quantity), bal);
+        }
       });
       const modal = new bootstrap.Modal(document.getElementById('reviewRequestModal'));
       modal.show();
@@ -585,7 +708,7 @@ export default {
           items: this.editData.items
         };
 
-        const res = await axios.post('/api-digital/admin_material/admin_edit_request.php', payload);
+        const res = await axios.post('/api-digital/admin_material/admin_update_request.php', payload);
         
         if (res.data.success) {
           Swal.fire({
@@ -597,6 +720,7 @@ export default {
           });
           this.editModalInstance.hide();
           this.fetchRequests();
+          this.fetchMaterials();
         } else {
           Swal.fire('ข้อผิดพลาด', res.data.message || 'ไม่สามารถแก้ไขข้อมูลได้', 'error');
         }
@@ -606,15 +730,26 @@ export default {
       }
     },
     async approveRequest(req) {
-      // Validate items
+      // Validate items against real-time stock
       let hasError = false;
       let errorMsg = '';
+      let dispenseCount = 0;
+      let zeroCount = 0;
+
       for (const item of req.items) {
-        const checkQty = item.dispense_qty !== undefined ? item.dispense_qty : item.quantity;
-        if (checkQty > item.current_balance) {
+        const bal = this.getMaterialBalance(item.material_id);
+        const checkQty = Number(item.dispense_qty !== undefined ? item.dispense_qty : item.quantity);
+
+        if (checkQty > bal) {
           hasError = true;
-          errorMsg = `ยอดคงเหลือไม่พอสำหรับ ${item.material_name} (เหลือ ${item.current_balance}) จ่าย ${checkQty}`;
+          errorMsg = `ไม่สามารถจ่าย "${item.material_name}" ได้ เนื่องจากของในคลังไม่พอ (ในคลังคงเหลือ ${bal}, สั่งจ่าย ${checkQty})`;
           break;
+        }
+
+        if (checkQty > 0) {
+          dispenseCount++;
+        } else {
+          zeroCount++;
         }
       }
 
@@ -623,22 +758,40 @@ export default {
         return;
       }
 
+      if (dispenseCount === 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'ไม่สามารถจ่ายได้',
+          text: 'ไม่มีรายการที่พร้อมจ่ายของในคลัง (ของในคลังหมด หรือจำนวนจ่ายเป็น 0)'
+        });
+        return;
+      }
+
+      let confirmText = `คุณต้องการจ่ายวัสดุจำนวน ${dispenseCount} รายการ ให้แก่ ${req.requester_name} ใช่หรือไม่? (สต๊อกจะถูกตัดทันที)`;
+      if (zeroCount > 0) {
+        confirmText += `\n*หมายเหตุ: มี ${zeroCount} รายการที่ของในคลังหมด จะไม่ถูกจ่าย`;
+      }
+
       const confirm = await Swal.fire({
         title: 'ยืนยันการอนุมัติจ่ายวัสดุ?',
-        text: `คุณต้องการจ่ายวัสดุจำนวน ${req.items.length} รายการ ให้แก่ ${req.requester_name} ใช่หรือไม่? (สต๊อกจะถูกตัดทันที)`,
+        text: confirmText,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#198754',
-        confirmButtonText: 'ยืนยันอนุมัติจ่าย'
+        confirmButtonText: 'ยืนยันอนุมัติจ่าย',
+        cancelButtonText: 'ยกเลิก'
       });
 
       if (confirm.isConfirmed) {
         try {
-          const approvals = req.items.map(item => ({
-            id: item.id,
-            approved_quantity: item.dispense_qty !== undefined ? item.dispense_qty : item.quantity,
-            admin_note: 'อนุมัติผ่านระบบ'
-          }));
+          const approvals = req.items.map(item => {
+            const qty = Number(item.dispense_qty !== undefined ? item.dispense_qty : item.quantity);
+            return {
+              id: item.id,
+              approved_quantity: qty,
+              admin_note: qty > 0 ? 'อนุมัติจ่ายวัสดุผ่านระบบ' : 'สินค้าในคลังหมด ไม่สามารถจ่ายได้'
+            };
+          });
 
           const res = await axios.post('/api-digital/admin_material/admin_approve_request.php', {
             request_no: req.request_no,
@@ -646,18 +799,20 @@ export default {
             admin_note: 'อนุมัติผ่านระบบ'
           });
           if (res.data.success) {
+            await Promise.all([this.fetchRequests(), this.fetchMaterials()]);
             Swal.fire({
               icon: 'success',
               title: 'อนุมัติและจ่ายของสำเร็จ',
+              text: res.data.message || 'ระบบได้ตัดสต๊อกและแจ้งเตือนผู้เบิกเรียบร้อย',
               showConfirmButton: false,
               timer: 1500
             });
-            this.fetchRequests();
           } else {
             Swal.fire('ข้อผิดพลาด', res.data.message, 'error');
           }
         } catch (err) {
-          Swal.fire('Error', 'Failed to approve request', 'error');
+          const msg = err.response?.data?.message || err.message || 'Failed to approve request';
+          Swal.fire('ข้อผิดพลาด', msg, 'error');
         }
       }
     },

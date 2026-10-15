@@ -84,15 +84,52 @@ try {
         $admin_note = $approval['admin_note'] ?? 'Approved via system';
 
         if ($approved_quantity <= 0) {
-            throw new Exception("Approved quantity for Request ID $id must be greater than zero");
+            // รายการนี้ไม่สามารถให้จ่ายได้เนื่องจากของในคลังหมด หรือไม่ต้องการจ่าย
+            $rejectNote = !empty($admin_note) && $admin_note !== 'Approved via system' && $admin_note !== 'อนุมัติผ่านระบบ' 
+                ? $admin_note 
+                : 'สินค้าในคลังหมด ไม่สามารถจ่ายได้';
+
+            $stmtUpdate = $pdo2->prepare("
+                UPDATE mt_admin_requests 
+                SET status = 'rejected', 
+                    admin_note = :admin_note 
+                WHERE id = :id
+            ");
+            $stmtUpdate->execute([
+                ':admin_note' => $rejectNote,
+                ':id' => $id
+            ]);
+
+            // บันทึกเพื่อส่งแจ้งเตือนว่ารายการนี้ไม่ได้จ่าย
+            $reqNo = !empty($request['request_no']) ? $request['request_no'] : ('REQ-' . $id);
+            if (!isset($approvedGroups[$reqNo])) {
+                $approvedGroups[$reqNo] = [
+                    'request_no' => $reqNo,
+                    'requester_name' => $request['requester_name'],
+                    'requester_id' => $request['requester_id'] ?? null,
+                    'department' => $request['department'],
+                    'admin_note' => $admin_note,
+                    'items' => [],
+                    'rejected_items' => []
+                ];
+            }
+            if (!isset($approvedGroups[$reqNo]['rejected_items'])) {
+                $approvedGroups[$reqNo]['rejected_items'] = [];
+            }
+            $approvedGroups[$reqNo]['rejected_items'][] = [
+                'name' => $request['material_name'],
+                'quantity' => $originalQty,
+                'unit' => $request['material_unit'] ?? ''
+            ];
+            continue;
         }
 
         if ($approved_quantity > $originalQty) {
-            throw new Exception("Approved quantity for Request ID $id cannot exceed requested quantity ($originalQty)");
+            throw new Exception("จำนวนจ่ายของ {$request['material_name']} เกินจำนวนที่ขอเบิก (ขอเบิก $originalQty, สั่งจ่าย $approved_quantity)");
         }
 
         if ($approved_quantity > $request['balance']) {
-            throw new Exception("Insufficient stock for Material ID " . $request['material_id'] . " for Request ID $id. Available: " . $request['balance'] . ", Requested: " . $approved_quantity);
+            throw new Exception("ไม่สามารถจ่าย {$request['material_name']} ได้ เนื่องจากของในคลังไม่พอ (คงเหลือ {$request['balance']} " . ($request['material_unit'] ?? '') . ", สั่งจ่าย $approved_quantity)");
         }
 
         // 2. Update Request status and approved quantity
@@ -254,6 +291,32 @@ try {
                             ["type" => "text", "text" => (string)$item['quantity'] . $u, "color" => "#198754", "size" => "sm", "flex" => 2, "align" => "end", "weight" => "bold"]
                         ]
                     ];
+                }
+
+                if (!empty($grp['rejected_items'])) {
+                    $itemBoxes[] = [
+                        "type" => "separator",
+                        "margin" => "md"
+                    ];
+                    $itemBoxes[] = [
+                        "type" => "text",
+                        "text" => "❌ ไม่สามารถจ่ายได้ (ของหมด " . count($grp['rejected_items']) . " รายการ)",
+                        "weight" => "bold",
+                        "size" => "sm",
+                        "color" => "#dc3545",
+                        "margin" => "md"
+                    ];
+                    foreach ($grp['rejected_items'] as $rItem) {
+                        $itemBoxes[] = [
+                            "type" => "box",
+                            "layout" => "baseline",
+                            "spacing" => "sm",
+                            "contents" => [
+                                ["type" => "text", "text" => "- " . $rItem['name'], "wrap" => true, "color" => "#888888", "size" => "sm", "flex" => 4],
+                                ["type" => "text", "text" => "ของหมดในคลัง", "color" => "#dc3545", "size" => "xs", "flex" => 2, "align" => "end", "weight" => "bold"]
+                            ]
+                        ];
+                    }
                 }
 
                 $approverName = $userData['name'] ?? $userData['user_profile_name'] ?? $userData['user'] ?? 'เจ้าหน้าที่งานบริหารทั่วไป';

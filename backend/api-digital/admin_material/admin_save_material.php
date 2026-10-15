@@ -136,6 +136,17 @@ try {
                 ':qty1' => $balance,
                 ':qty2' => $balance
             ]);
+
+            $stmtTx = $pdo2->prepare("
+                INSERT INTO mt_admin_transactions (material_id, action_type, quantity, total_price, action_date, user_profile_name, receiver_name, reference_dest, note)
+                VALUES (:mid, 'IN', :qty, :total_price, NOW(), :user, 'ยอดยกมา', 'ยอดยกมาตั้งต้น', 'ยอดยกมาตั้งต้นจากการเพิ่มวัสดุใหม่')
+            ");
+            $stmtTx->execute([
+                ':mid' => $id,
+                ':qty' => $balance,
+                ':total_price' => $balance * $price_per_unit,
+                ':user' => $userData['name'] ?? $userData['user'] ?? 'System'
+            ]);
         }
 
         $username = $userData['name'] ?? $userData['user'] ?? 'Unknown User';

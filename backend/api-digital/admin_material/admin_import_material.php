@@ -89,6 +89,19 @@ try {
                     ':price' => $price_per_unit,
                     ':lot' => $lot_number
                 ]);
+
+                // Insert initial transaction record for report tracking
+                $stmtTx = $pdo2->prepare("INSERT INTO mt_admin_transactions 
+                    (material_id, action_type, quantity, total_price, action_date, user_profile_name, receiver_name, reference_dest, note, bill_number)
+                    VALUES 
+                    (:mid, 'IN', :qty, :total_price, NOW(), :user, 'ยอดยกมา', 'ยอดยกมาตั้งต้น', 'ยอดยกมาตั้งต้นจากการนำเข้า', :bill)");
+                $stmtTx->execute([
+                    ':mid' => $new_material_id,
+                    ':qty' => $balance,
+                    ':total_price' => $balance * $price_per_unit,
+                    ':user' => $userData['name'] ?? $userData['user'] ?? 'System',
+                    ':bill' => $lot_number
+                ]);
             }
         }
 

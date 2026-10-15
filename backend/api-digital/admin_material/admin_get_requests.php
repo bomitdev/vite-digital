@@ -25,7 +25,8 @@ try {
             r.*, 
             m.name AS material_name, 
             m.code AS material_code,
-            m.balance AS current_balance
+            m.balance AS current_balance,
+            m.unit AS unit
         FROM mt_admin_requests r
         JOIN mt_admin_materials m ON r.material_id = m.id
         WHERE 1=1
@@ -65,9 +66,10 @@ try {
             'material_id' => $row['material_id'],
             'material_name' => $row['material_name'],
             'material_code' => $row['material_code'],
-            'quantity' => $row['quantity'],
+            'quantity' => (int)$row['quantity'],
             'admin_note' => $row['admin_note'],
-            'current_balance' => $row['current_balance']
+            'current_balance' => (int)$row['current_balance'],
+            'unit' => $row['unit'] ?? ''
         ];
     }
 
