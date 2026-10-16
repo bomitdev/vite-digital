@@ -27,6 +27,11 @@
           <button @click="openCompanyModal" class="btn btn-outline-primary rounded-pill px-3 shadow-sm">
             <i class="bi bi-building me-1"></i> จัดการผู้จำหน่าย
           </button>
+          <button class="btn btn-outline-success rounded-pill px-3 shadow-sm d-flex align-items-center gap-1" :disabled="isExporting" @click="exportToExcel">
+            <span v-if="isExporting" class="spinner-border spinner-border-sm" role="status"></span>
+            <i v-else class="bi bi-file-earmark-excel-fill text-success"></i>
+            <span>ส่งออก Excel</span>
+          </button>
           <!-- <button class="btn btn-outline-primary rounded-pill px-3 shadow-sm" @click="downloadTemplate">
             <i class="bi bi-download me-1"></i> โหลด Template
           </button>
@@ -568,7 +573,6 @@
                           class="btn btn-sm btn-outline-danger border-0"
                           title="ลบประเภท"
                           @click="deleteCategory(cat)"
-                          :disabled="getCategoryMaterialCount(cat.name) > 0"
                         >
                           <i class="bi bi-trash"></i>
                         </button>
@@ -618,6 +622,7 @@ export default {
       search: '',
       selectedCategory: 'all',
       lowStockOnly: false,
+      isExporting: false,
       materials: [],
       expandedRowId: null,
       expandedLots: [],
@@ -706,6 +711,185 @@ export default {
         }
       } catch (err) {
         console.error(err);
+      }
+    },
+    async exportToExcel() {
+      if (!this.filteredMaterials || this.filteredMaterials.length === 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'ไม่พบข้อมูล',
+          text: 'ไม่มีรายการวัสดุสำหรับส่งออก Excel',
+          confirmButtonColor: '#0d6efd'
+        });
+        return;
+      }
+
+      this.isExporting = true;
+      try {
+        const materialMap = new Map();
+        const rows = this.filteredMaterials.map((item, index) => {
+          materialMap.set(item.id, item);
+          const balance = Number(item.balance) || 0;
+          const minAlert = Number(item.min_alert) || 0;
+          const pricePerUnit = Number(item.price_per_unit) || 0;
+          const totalValue = Math.round(balance * pricePerUnit * 100) / 100;
+
+          let stockStatus = 'ปกติ';
+          if (balance <= 0) {
+            stockStatus = 'หมดสต๊อก';
+          } else if (balance <= minAlert) {
+            stockStatus = 'ใกล้หมด';
+          }
+
+          return {
+            'ลำดับ': index + 1,
+            'รหัสวัสดุ': item.code || '',
+            'ชื่อวัสดุ/อุปกรณ์': item.name || '',
+            'หมวดหมู่/ประเภท': item.type || '-',
+            'ยอดคงเหลือ': balance,
+            'หน่วยนับ': item.unit || '-',
+            'เกณฑ์เตือนขั้นต่ำ': minAlert,
+            'ราคาต่อหน่วย (บาท)': pricePerUnit,
+            'มูลค่าคงเหลือรวม (บาท)': totalValue,
+            'สถานะสต๊อก': stockStatus,
+            'สถานะการใช้งาน': item.is_active == 1 ? 'เปิดใช้งาน' : 'ปิดการใช้งาน'
+          };
+        });
+
+        const totalBalance = rows.reduce((sum, r) => sum + (r['ยอดคงเหลือ'] || 0), 0);
+        const totalValue = rows.reduce((sum, r) => sum + (r['มูลค่าคงเหลือรวม (บาท)'] || 0), 0);
+
+        const finalSummaryRows = [
+          ...rows,
+          {
+            'ลำดับ': 'รวมทั้งสิ้น',
+            'รหัสวัสดุ': `${rows.length} รายการ`,
+            'ชื่อวัสดุ/อุปกรณ์': '',
+            'หมวดหมู่/ประเภท': '',
+            'ยอดคงเหลือ': totalBalance,
+            'หน่วยนับ': '',
+            'เกณฑ์เตือนขั้นต่ำ': '',
+            'ราคาต่อหน่วย (บาท)': '',
+            'มูลค่าคงเหลือรวม (บาท)': Math.round(totalValue * 100) / 100,
+            'สถานะสต๊อก': '',
+            'สถานะการใช้งาน': ''
+          }
+        ];
+
+        const workbook = XLSX.utils.book_new();
+
+        // 1. Sheet สรุปรายการคลังวัสดุ
+        const wsSummary = XLSX.utils.json_to_sheet(finalSummaryRows);
+        wsSummary['!cols'] = [
+          { wch: 10 }, // ลำดับ
+          { wch: 15 }, // รหัสวัสดุ
+          { wch: 38 }, // ชื่อวัสดุ/อุปกรณ์
+          { wch: 22 }, // หมวดหมู่/ประเภท
+          { wch: 14 }, // ยอดคงเหลือ
+          { wch: 10 }, // หน่วยนับ
+          { wch: 18 }, // เกณฑ์เตือนขั้นต่ำ
+          { wch: 18 }, // ราคาต่อหน่วย (บาท)
+          { wch: 22 }, // มูลค่าคงเหลือรวม (บาท)
+          { wch: 16 }, // สถานะสต๊อก
+          { wch: 16 }  // สถานะการใช้งาน
+        ];
+        XLSX.utils.book_append_sheet(workbook, wsSummary, 'รายการคลังวัสดุ');
+
+        // 2. Fetch active lots for Sheet รายละเอียดล็อต (Lots)
+        try {
+          const lotsRes = await axios.get('/api-digital/admin_material/admin_get_lots.php?all=1');
+          if (lotsRes.data && lotsRes.data.status === 'success' && Array.isArray(lotsRes.data.data) && lotsRes.data.data.length > 0) {
+            const allowedIds = new Set(this.filteredMaterials.map(m => m.id));
+            const relevantLots = lotsRes.data.data.filter(lot => allowedIds.has(Number(lot.material_id)));
+
+            if (relevantLots.length > 0) {
+              const lotRows = relevantLots.map((lot, idx) => {
+                const price = Number(lot.price_per_unit) || 0;
+                const remQty = Number(lot.remaining_qty) || 0;
+                const origQty = Number(lot.original_qty) || 0;
+                const lotValue = Math.round(price * remQty * 100) / 100;
+                const mat = materialMap.get(Number(lot.material_id)) || {};
+
+                return {
+                  'ลำดับ': idx + 1,
+                  'รหัสวัสดุ': lot.material_code || mat.code || '',
+                  'ชื่อวัสดุ/อุปกรณ์': lot.material_name || mat.name || '',
+                  'หมวดหมู่/ประเภท': lot.material_type || mat.type || '-',
+                  'เลขล็อต (Lot No.)': lot.lot_number || '-',
+                  'ผู้จัดจำหน่าย/บริษัท': lot.vendor || '-',
+                  'วันที่รับเข้า': lot.receive_date ? lot.receive_date.slice(0, 10) : '-',
+                  'ราคาต่อหน่วย (บาท)': price,
+                  'จำนวนรับเข้า': origQty,
+                  'ยอดคงเหลือในล็อต': remQty,
+                  'หน่วยนับ': lot.material_unit || mat.unit || '-',
+                  'มูลค่าคงเหลือในล็อต (บาท)': lotValue
+                };
+              });
+
+              const totalLotRemQty = lotRows.reduce((sum, r) => sum + (r['ยอดคงเหลือในล็อต'] || 0), 0);
+              const totalLotValue = lotRows.reduce((sum, r) => sum + (r['มูลค่าคงเหลือในล็อต (บาท)'] || 0), 0);
+
+              const finalLotRows = [
+                ...lotRows,
+                {
+                  'ลำดับ': 'รวมทั้งสิ้น',
+                  'รหัสวัสดุ': `${lotRows.length} รายการล็อต`,
+                  'ชื่อวัสดุ/อุปกรณ์': '',
+                  'หมวดหมู่/ประเภท': '',
+                  'เลขล็อต (Lot No.)': '',
+                  'ผู้จัดจำหน่าย/บริษัท': '',
+                  'วันที่รับเข้า': '',
+                  'ราคาต่อหน่วย (บาท)': '',
+                  'จำนวนรับเข้า': '',
+                  'ยอดคงเหลือในล็อต': totalLotRemQty,
+                  'หน่วยนับ': '',
+                  'มูลค่าคงเหลือในล็อต (บาท)': Math.round(totalLotValue * 100) / 100
+                }
+              ];
+
+              const wsLots = XLSX.utils.json_to_sheet(finalLotRows);
+              wsLots['!cols'] = [
+                { wch: 10 }, // ลำดับ
+                { wch: 15 }, // รหัสวัสดุ
+                { wch: 35 }, // ชื่อวัสดุ/อุปกรณ์
+                { wch: 20 }, // หมวดหมู่/ประเภท
+                { wch: 22 }, // เลขล็อต
+                { wch: 25 }, // ผู้จัดจำหน่าย
+                { wch: 15 }, // วันที่รับเข้า
+                { wch: 18 }, // ราคาต่อหน่วย
+                { wch: 14 }, // จำนวนรับเข้า
+                { wch: 18 }, // ยอดคงเหลือในล็อต
+                { wch: 12 }, // หน่วยนับ
+                { wch: 22 }  // มูลค่าคงเหลือในล็อต
+              ];
+              XLSX.utils.book_append_sheet(workbook, wsLots, 'รายละเอียดล็อต (Lots)');
+            }
+          }
+        } catch (lotErr) {
+          console.warn('Could not fetch lots for export', lotErr);
+        }
+
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        XLSX.writeFile(workbook, `รายการคลังวัสดุ_${dateStr}.xlsx`);
+
+        Swal.fire({
+          icon: 'success',
+          title: 'ส่งออก Excel สำเร็จ',
+          text: `ส่งออกข้อมูลรายการวัสดุจำนวน ${rows.length} รายการ เรียบร้อยแล้ว`,
+          timer: 2000,
+          showConfirmButton: false
+        });
+      } catch (err) {
+        console.error('Export error:', err);
+        Swal.fire({
+          icon: 'error',
+          title: 'เกิดข้อผิดพลาด',
+          text: 'ไม่สามารถส่งออกข้อมูล Excel ได้: ' + (err.message || ''),
+          confirmButtonColor: '#dc3545'
+        });
+      } finally {
+        this.isExporting = false;
       }
     },
     downloadTemplate() {
@@ -1208,34 +1392,65 @@ export default {
     },
     async deleteCategory(cat) {
       const count = this.getCategoryMaterialCount(cat.name);
+      let forceDelete = false;
+
       if (count > 0) {
-        Swal.fire('ไม่สามารถลบได้', `ประเภท "${cat.name}" มีวัสดุใช้งานอยู่ ${count} รายการ`, 'warning');
-        return;
+        const confirmWithItems = await Swal.fire({
+          title: 'หมวดหมู่นี้มีการใช้งานอยู่',
+          html: `
+            <div class="text-start">
+              <p class="mb-2">ประเภท <b>"${cat.name}"</b> กำลังถูกใช้งานโดยวัสดุจำนวน <span class="badge bg-danger fs-6">${count} รายการ</span></p>
+              <div class="alert alert-warning border-0 small mb-0">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                หากยืนยันการลบ ระบบจะลบประเภทนี้ออก และปลดประเภทของวัสดุทั้ง <b>${count} รายการ</b> ให้เป็น <i>"ยังไม่ระบุหมวดหมู่"</i> (ข้อมูลสต๊อกและประวัติของวัสดุยังคงอยู่ครบถ้วน)
+              </div>
+            </div>
+          `,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#dc3545',
+          cancelButtonColor: '#6c757d',
+          confirmButtonText: `<i class="bi bi-trash me-1"></i> ยืนยันลบและปลดวัสดุ (${count} รายการ)`,
+          cancelButtonText: 'ยกเลิก'
+        });
+
+        if (!confirmWithItems.isConfirmed) return;
+        forceDelete = true;
+      } else {
+        const confirm = await Swal.fire({
+          title: 'ยืนยันการลบประเภท?',
+          text: `ต้องการลบประเภท "${cat.name}" (${cat.prefix}-) ออกจากระบบหรือไม่?`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#dc3545',
+          cancelButtonColor: '#6c757d',
+          confirmButtonText: 'ยืนยันลบข้อมูล',
+          cancelButtonText: 'ยกเลิก'
+        });
+
+        if (!confirm.isConfirmed) return;
       }
 
-      const confirm = await Swal.fire({
-        title: 'ยืนยันการลบประเภท?',
-        text: `ต้องการลบประเภท "${cat.name}" (${cat.prefix}-) ออกจากระบบหรือไม่?`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'ลบข้อมูล',
-        cancelButtonText: 'ยกเลิก'
-      });
-
-      if (confirm.isConfirmed) {
-        try {
-          const res = await axios.post('/api-digital/admin_material/admin_delete_category.php', { id: cat.id });
-          if (res.data.status === 'success') {
-            Swal.fire('สำเร็จ', res.data.message, 'success');
-            this.fetchCategories();
-          } else {
-            Swal.fire('ผิดพลาด', res.data.message, 'error');
-          }
-        } catch (e) {
-          Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการลบประเภท', 'error');
+      try {
+        const res = await axios.post('/api-digital/admin_material/admin_delete_category.php', {
+          id: cat.id,
+          force: forceDelete
+        });
+        if (res.data.status === 'success') {
+          Swal.fire({
+            icon: 'success',
+            title: 'ลบสำเร็จ',
+            text: res.data.message,
+            timer: 1500,
+            showConfirmButton: false
+          });
+          await this.fetchCategories();
+          await this.fetchMaterials();
+        } else {
+          Swal.fire('ผิดพลาด', res.data.message, 'error');
         }
+      } catch (e) {
+        Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการลบประเภท', 'error');
       }
     },
     openLogModal() {

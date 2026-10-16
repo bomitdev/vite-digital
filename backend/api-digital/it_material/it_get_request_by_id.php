@@ -111,10 +111,14 @@ try {
                         CONCAT(pos.HR_POSITION_NAME, 
                             IF(hl.HR_LEVEL_NAME IS NOT NULL AND hl.HR_LEVEL_NAME != '', CONCAT(' ', hl.HR_LEVEL_NAME), '')
                         ) as position_name,
-                        pos.HR_POSITION_NAME as position_name2
+                        pos.HR_POSITION_NAME as position_name2,
+                        TRIM(ds.HR_DEPARTMENT_SUB_NAME) as hr_department_sub,
+                        TRIM(d.HR_DEPARTMENT_NAME) as hr_department
                     FROM hr_person p
                     LEFT JOIN hr_position pos ON p.HR_POSITION_ID = pos.HR_POSITION_ID
                     LEFT JOIN hr_level hl ON p.HR_LEVEL_ID = hl.HR_LEVEL_ID
+                    LEFT JOIN hr_department_sub ds ON p.HR_DEPARTMENT_SUB_ID = ds.HR_DEPARTMENT_SUB_ID
+                    LEFT JOIN hr_department d ON p.HR_DEPARTMENT_ID = d.HR_DEPARTMENT_ID
                     WHERE p.ID = :id
                     LIMIT 1
                 ";
@@ -128,27 +132,42 @@ try {
                         CONCAT(pos.HR_POSITION_NAME, 
                             IF(hl.HR_LEVEL_NAME IS NOT NULL AND hl.HR_LEVEL_NAME != '', CONCAT(' ', hl.HR_LEVEL_NAME), '')
                         ) as position_name,
-                        pos.HR_POSITION_NAME as position_name2
+                        pos.HR_POSITION_NAME as position_name2,
+                        TRIM(ds.HR_DEPARTMENT_SUB_NAME) as hr_department_sub,
+                        TRIM(d.HR_DEPARTMENT_NAME) as hr_department
                     FROM hr_person p
                     LEFT JOIN hr_prefix pfx ON p.HR_PREFIX_ID = pfx.HR_PREFIX_ID
                     LEFT JOIN hr_position pos ON p.HR_POSITION_ID = pos.HR_POSITION_ID
                     LEFT JOIN hr_level hl ON p.HR_LEVEL_ID = hl.HR_LEVEL_ID
+                    LEFT JOIN hr_department_sub ds ON p.HR_DEPARTMENT_SUB_ID = ds.HR_DEPARTMENT_SUB_ID
+                    LEFT JOIN hr_department d ON p.HR_DEPARTMENT_ID = d.HR_DEPARTMENT_ID
                     WHERE CONCAT(pfx.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) = :name
                        OR CONCAT(p.HR_FNAME, ' ', p.HR_LNAME) = :name2
+                       OR REPLACE(CONCAT(pfx.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME), ' ', '') = REPLACE(:name3, ' ', '')
                     LIMIT 1
                 ";
                 $posStmt = $pdo3->prepare($posSql);
                 $posStmt->execute([
                     ':name' => $requestData['requester_name'],
-                    ':name2' => $requestData['requester_name']
+                    ':name2' => $requestData['requester_name'],
+                    ':name3' => $requestData['requester_name']
                 ]);
                 $posData = $posStmt->fetch(PDO::FETCH_ASSOC);
             }
             $requestData['requester_position'] = $posData ? $posData['position_name'] : '';
             $requestData['position_name2'] = $posData ? $posData['position_name2'] : '';
+            $requestData['hr_department_sub'] = $posData ? ($posData['hr_department_sub'] ?? '') : '';
+            $requestData['hr_department'] = $posData ? ($posData['hr_department'] ?? '') : '';
+
+            // If request department is empty or matches admin default 'กลุ่มงานบริหารทั่วไป' but HR shows a more specific sub-department, use HR sub-department
+            if (!empty($requestData['hr_department_sub']) && (empty($requestData['department']) || $requestData['department'] === 'กลุ่มงานบริหารทั่วไป')) {
+                $requestData['department'] = $requestData['hr_department_sub'];
+            }
         } else {
             $requestData['requester_position'] = '';
             $requestData['position_name2'] = '';
+            $requestData['hr_department_sub'] = '';
+            $requestData['hr_department'] = '';
         }
 
         echo json_encode([

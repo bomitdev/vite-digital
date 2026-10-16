@@ -193,7 +193,21 @@
                   </div>
                   <div class="col-md-6">
                     <span class="text-muted small">หน่วยงาน:</span>
-                    <div class="fw-bold fs-6">{{ reviewData.department }}</div>
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                      <select v-if="isEditingDepartment" v-model="editDepartmentVal" class="form-select form-select-sm">
+                        <option v-for="dept in pastDepartments" :key="dept" :value="dept">{{ dept }}</option>
+                      </select>
+                      <div v-else class="fw-bold fs-6">{{ reviewData.department }}</div>
+                      <button v-if="!isEditingDepartment" type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-pill" @click="startEditDepartment" title="เปลี่ยนหน่วยงาน">
+                        <i class="bi bi-pencil-fill small me-1"></i>แก้ไข
+                      </button>
+                      <button v-if="isEditingDepartment" type="button" class="btn btn-sm btn-success py-0 px-2 rounded-pill" @click="saveEditDepartment">
+                        บันทึก
+                      </button>
+                      <button v-if="isEditingDepartment" type="button" class="btn btn-sm btn-secondary py-0 px-2 rounded-pill" @click="isEditingDepartment = false">
+                        ยกเลิก
+                      </button>
+                    </div>
                   </div>
                   <div class="col-md-6">
                     <span class="text-muted small">วันที่ขอเบิก:</span>
@@ -508,7 +522,9 @@ export default {
         items: []
       },
       editModalInstance: null,
-      reviewData: null
+      reviewData: null,
+      isEditingDepartment: false,
+      editDepartmentVal: ''
     };
   },
   computed: {
@@ -629,6 +645,7 @@ export default {
     },
     async openReviewModal(req) {
       await this.fetchMaterials();
+      this.isEditingDepartment = false;
       this.reviewData = JSON.parse(JSON.stringify(req));
       this.reviewData.items.forEach(item => {
         const bal = this.getMaterialBalance(item.material_id);
@@ -645,6 +662,40 @@ export default {
       const modalEl = document.getElementById('reviewRequestModal');
       const modal = bootstrap.Modal.getInstance(modalEl);
       if (modal) modal.hide();
+    },
+        startEditDepartment() {
+      this.editDepartmentVal = this.reviewData.department || '';
+      this.isEditingDepartment = true;
+    },
+    async saveEditDepartment() {
+      if (!this.editDepartmentVal || !this.editDepartmentVal.trim()) {
+        Swal.fire('แจ้งเตือน', 'กรุณาระบุหน่วยงาน', 'warning');
+        return;
+      }
+      try {
+        const res = await axios.post('/api-digital/it_material/it_update_request_department.php', {
+          request_no: this.reviewData.request_no || this.reviewData.group_id,
+          id: this.reviewData.id,
+          department: this.editDepartmentVal.trim()
+        });
+        if (res.data.success) {
+          this.reviewData.department = this.editDepartmentVal.trim();
+          this.isEditingDepartment = false;
+          Swal.fire({
+            icon: 'success',
+            title: 'สำเร็จ',
+            text: 'แก้ไขหน่วยงานเรียบร้อยแล้ว',
+            timer: 1500,
+            showConfirmButton: false
+          });
+          this.fetchRequests();
+        } else {
+          Swal.fire('ผิดพลาด', res.data.message || 'ไม่สามารถแก้ไขหน่วยงานได้', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        Swal.fire('ผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+      }
     },
     editFromReview(req) {
       this.closeReviewModal();
@@ -920,8 +971,22 @@ export default {
         const requestData = reqRes.data.data;
         const globalSettings = setRes.data.success ? setRes.data.global || {} : {};
         const departmentsConfig = setRes.data.success ? setRes.data.departments || [] : [];
-        const matchedConfig =
-          departmentsConfig.find((d) => (d.department_name || '').trim() === (requestData.department || '').trim()) || {};
+        const targetDepts = [
+          (requestData.department || '').trim(),
+          (requestData.hr_department_sub || '').trim(),
+          (requestData.hr_department || '').trim()
+        ].filter(Boolean);
+
+        let matchedConfig = {};
+        for (const deptName of targetDepts) {
+          const found = departmentsConfig.find(
+            (d) => (d.department_name || '').trim().toLowerCase() === deptName.toLowerCase()
+          );
+          if (found) {
+            matchedConfig = found;
+            break;
+          }
+        }
 
         const doc = new jsPDF();
 
@@ -993,7 +1058,8 @@ export default {
           30,
           75
         );
-        doc.text(requestData.department || '', 45, 74);
+        const printDept = matchedConfig.department_name || requestData.department || requestData.hr_department_sub || '';
+        doc.text(printDept, 45, 74);
 
         doc.text('ขอเบิกวัสดุคอมพิวเตอร์เพื่อใช้ในหน่วยงาน ดังต่อไปนี้', 30, 85);
 

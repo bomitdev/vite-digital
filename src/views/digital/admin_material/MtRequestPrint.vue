@@ -76,7 +76,9 @@
       <div class="mb-3">
         กลุ่มงาน
         <span class="dotted-line">{{
+          deptSigner.department_name ||
           request.department ||
+          request.hr_department_sub ||
           '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
         }}</span>
       </div>
@@ -286,12 +288,21 @@ export default {
       }
     },
     mapSigner() {
-      if (this.request && this.request.department) {
-        const matched = this.departmentsConfig.find(
-          (d) => (d.department_name || '').trim() === (this.request.department || '').trim()
-        );
-        if (matched) {
-          this.deptSigner = matched;
+      if (this.request) {
+        const targetDepts = [
+          (this.request.department || '').trim(),
+          (this.request.hr_department_sub || '').trim(),
+          (this.request.hr_department || '').trim()
+        ].filter(Boolean);
+
+        for (const dept of targetDepts) {
+          const matched = this.departmentsConfig.find(
+            (d) => (d.department_name || '').trim().toLowerCase() === dept.toLowerCase()
+          );
+          if (matched) {
+            this.deptSigner = matched;
+            break;
+          }
         }
       }
     },

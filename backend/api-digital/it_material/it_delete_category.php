@@ -30,24 +30,37 @@ try {
         exit;
     }
 
+    $force = isset($input['force']) && ($input['force'] === true || $input['force'] === 'true' || $input['force'] === 1 || $input['force'] === '1');
+
     $chkMat = $pdo2->prepare("SELECT COUNT(*) FROM mt_it_materials WHERE type = ?");
     $chkMat->execute([$cat['name']]);
-    $count = $chkMat->fetchColumn();
+    $count = intval($chkMat->fetchColumn());
 
-    if ($count > 0) {
+    if ($count > 0 && !$force) {
         echo json_encode([
-            'status' => 'error',
-            'message' => "ไม่สามารถลบได้เนื่องจากมีวัสดุจำนวน $count รายการ กำลังใช้งานประเภท \"{$cat['name']}\" อยู่"
+            'status' => 'has_materials',
+            'count' => $count,
+            'message' => "ไม่สามารถลบได้ทันที เนื่องจากมีวัสดุจำนวน $count รายการ กำลังใช้งานประเภท \"{$cat['name']}\" อยู่"
         ]);
         exit;
+    }
+
+    if ($count > 0 && $force) {
+        $updMat = $pdo2->prepare("UPDATE mt_it_materials SET type = '' WHERE type = ?");
+        $updMat->execute([$cat['name']]);
     }
 
     $delStmt = $pdo2->prepare("DELETE FROM mt_it_categories WHERE id = ?");
     $delStmt->execute([$id]);
 
+    $msg = "ลบประเภท \"{$cat['name']}\" เรียบร้อยแล้ว";
+    if ($count > 0 && $force) {
+        $msg .= " (ปลดประเภทของวัสดุ $count รายการเรียบร้อยแล้ว)";
+    }
+
     echo json_encode([
         'status' => 'success',
-        'message' => "ลบประเภท \"{$cat['name']}\" เรียบร้อยแล้ว"
+        'message' => $msg
     ]);
 } catch (PDOException $e) {
     http_response_code(500);
