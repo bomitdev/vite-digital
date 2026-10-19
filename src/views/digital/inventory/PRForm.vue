@@ -17,6 +17,9 @@
           </h2>
         </div>
         <div class="d-flex gap-2">
+          <button class="btn btn-outline-danger rounded-pill fw-bold shadow-sm" @click="$router.push('/inventory-po-form')">
+            <i class="bi bi-cart-check me-1"></i> ระบบสั่งซื้อเวชภัณฑ์ (PO)
+          </button>
           <button class="btn btn-outline-secondary rounded-pill fw-bold shadow-sm" @click="$router.go(-1)">
             <i class="bi bi-arrow-left me-2"></i>ย้อนกลับ
           </button>

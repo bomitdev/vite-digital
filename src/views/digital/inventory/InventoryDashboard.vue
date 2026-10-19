@@ -164,9 +164,13 @@
               <p class="text-muted small mb-4 flex-grow-1">
                 วางแผนจัดซื้อ จัดทำใบขอซื้อ (PR) ออกใบสั่งซื้อ (PO) ส่งผู้จำหน่าย และตรวจสอบรายการค้างรับตามแผน
               </p>
-              <div class="action-footer pt-3 border-top d-flex justify-content-between align-items-center text-danger fw-bold small">
-                <span>จัดการเอกสาร PR / PO</span>
-                <i class="bi bi-arrow-right-circle-fill fs-5 transition-transform"></i>
+              <div class="action-footer pt-3 border-top d-flex justify-content-between align-items-center fw-bold small">
+                <span @click.stop="$router.push('/inventory-pr')" class="text-secondary hover-underline">
+                  <i class="bi bi-file-earmark-text me-1"></i>ขอซื้อ (PR)
+                </span>
+                <span @click.stop="$router.push('/inventory-po-form')" class="text-danger hover-underline">
+                  <i class="bi bi-cart-check-fill me-1"></i>สั่งซื้อเวชภัณฑ์ (PO) <i class="bi bi-arrow-right-short"></i>
+                </span>
               </div>
             </div>
           </div>
