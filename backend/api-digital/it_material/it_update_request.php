@@ -146,6 +146,7 @@ try {
             VALUES (CURDATE(), :requester_name, :requester_id, :department, :material_id, :quantity, 'pending', :request_no)";
     $stmtInsert = $pdo2->prepare($sqlInsert);
 
+    $lineItems = [];
     foreach ($items as $item) {
         $mId = is_object($item) ? $item->material_id : $item['material_id'];
         $qty = is_object($item) ? $item->quantity : $item['quantity'];
@@ -173,9 +174,145 @@ try {
             ':quantity' => $qty,
             ':request_no' => $data->request_no
         ]);
+
+        $unitStr = !empty($materialRow['unit']) ? ' ' . $materialRow['unit'] : '';
+        $lineItems[] = [
+            "type" => "box",
+            "layout" => "baseline",
+            "spacing" => "sm",
+            "contents" => [
+                ["type" => "text", "text" => "- " . $materialRow['name'], "wrap" => true, "color" => "#555555", "size" => "sm", "flex" => 4],
+                ["type" => "text", "text" => (string)$qty . $unitStr, "color" => "#fd7e14", "size" => "sm", "flex" => 2, "align" => "end", "weight" => "bold"]
+            ]
+        ];
     }
 
     $pdo2->commit();
+
+    // --- MOPH NOTIFY START ---
+    try {
+        // กลุ่มงานสารสนเทศและศูนย์คอมพิวเตอร์ (IT Department) - ดึงจากไฟล์ .env
+        $client_key = $_ENV['MOPH_IT_CLIENT_KEY'] ?? getenv('MOPH_IT_CLIENT_KEY') ?: '151518fbb68266eb98604e010d4ffdb231365f32';
+        $secret_key = $_ENV['MOPH_IT_SECRET_KEY'] ?? getenv('MOPH_IT_SECRET_KEY') ?: 'KVQRE5QY6PEDRAQRX6UGQU7QOO5Y';
+        $url        = $_ENV['MOPH_NOTIFY_URL']    ?? getenv('MOPH_NOTIFY_URL')    ?: 'https://morpromt2f.moph.go.th/api/notify/send';
+
+        $linePayload = [
+            "messages" => [
+                [
+                    "type" => "flex",
+                    "altText" => "มีการแก้ไขคำขอเบิกวัสดุคอมพิวเตอร์ (เลขที่: " . $data->request_no . ")",
+                    "contents" => [
+                        "type" => "bubble",
+                        "direction" => "ltr",
+                        "header" => [
+                            "type" => "box",
+                            "layout" => "vertical",
+                            "backgroundColor" => "#fd7e14",
+                            "contents" => [
+                                [
+                                    "type" => "text",
+                                    "text" => "✏️ มีการแก้ไขคำขอเบิกวัสดุคอมพิวเตอร์",
+                                    "weight" => "bold",
+                                    "size" => "md",
+                                    "color" => "#ffffff",
+                                    "align" => "center"
+                                ],
+                                [
+                                    "type" => "text",
+                                    "text" => "งานสารสนเทศและศูนย์คอมพิวเตอร์",
+                                    "size" => "xs",
+                                    "color" => "#fff3cd",
+                                    "align" => "center",
+                                    "margin" => "xs"
+                                ]
+                            ]
+                        ],
+                        "body" => [
+                            "type" => "box",
+                            "layout" => "vertical",
+                            "contents" => array_merge([
+                                [
+                                    "type" => "box",
+                                    "layout" => "vertical",
+                                    "margin" => "md",
+                                    "spacing" => "sm",
+                                    "contents" => [
+                                        [
+                                            "type" => "box",
+                                            "layout" => "baseline",
+                                            "spacing" => "sm",
+                                            "contents" => [
+                                                ["type" => "text", "text" => "เลขที่คำขอ", "color" => "#aaaaaa", "size" => "sm", "flex" => 2],
+                                                ["type" => "text", "text" => $data->request_no, "wrap" => true, "color" => "#fd7e14", "size" => "sm", "weight" => "bold", "flex" => 5]
+                                            ]
+                                        ],
+                                        [
+                                            "type" => "box",
+                                            "layout" => "baseline",
+                                            "spacing" => "sm",
+                                            "contents" => [
+                                                ["type" => "text", "text" => "ผู้ขอเบิก", "color" => "#aaaaaa", "size" => "sm", "flex" => 2],
+                                                ["type" => "text", "text" => (string)$data->requester_name, "wrap" => true, "color" => "#333333", "size" => "sm", "weight" => "bold", "flex" => 5]
+                                            ]
+                                        ],
+                                        [
+                                            "type" => "box",
+                                            "layout" => "baseline",
+                                            "spacing" => "sm",
+                                            "contents" => [
+                                                ["type" => "text", "text" => "หน่วยงาน", "color" => "#aaaaaa", "size" => "sm", "flex" => 2],
+                                                ["type" => "text", "text" => (string)$data->department, "wrap" => true, "color" => "#666666", "size" => "sm", "flex" => 5]
+                                            ]
+                                        ],
+                                        [
+                                            "type" => "box",
+                                            "layout" => "baseline",
+                                            "spacing" => "sm",
+                                            "contents" => [
+                                                ["type" => "text", "text" => "วันที่แก้ไข", "color" => "#aaaaaa", "size" => "sm", "flex" => 2],
+                                                ["type" => "text", "text" => date('d/m/Y H:i น.'), "wrap" => true, "color" => "#666666", "size" => "sm", "flex" => 5]
+                                            ]
+                                        ]
+                                    ]
+                                ],
+                                [
+                                    "type" => "separator",
+                                    "margin" => "md"
+                                ],
+                                [
+                                    "type" => "text",
+                                    "text" => "รายการที่ขอเบิกใหม่ (" . count($items) . " รายการ)",
+                                    "weight" => "bold",
+                                    "size" => "sm",
+                                    "color" => "#fd7e14",
+                                    "margin" => "md"
+                                ]
+                            ], $lineItems)
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $headers = [
+            "Content-Type: application/json",
+            "client-key: {$client_key}",
+            "secret-key: {$secret_key}"
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($linePayload, JSON_UNESCAPED_UNICODE));
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_exec($ch);
+        unset($ch);
+    } catch (Exception $notifyEx) {
+        error_log("MOPH Notify Error in it_update_request: " . $notifyEx->getMessage());
+    }
 
     echo json_encode([
         'success' => true,

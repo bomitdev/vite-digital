@@ -441,11 +441,11 @@ try {
                     ]
                 ];
 
-                $url = 'https://notify-api.moph.go.th/api/v1/notify';
+                $url = $_ENV['MOPH_NOTIFY_URL'] ?? getenv('MOPH_NOTIFY_URL') ?: 'https://morpromt2f.moph.go.th/api/notify/send';
                 $headers = [
-                    'Content-Type: application/json',
-                    'client-key: ' . $mophClientKey,
-                    'secret-key: ' . $mophSecretKey
+                    "Content-Type: application/json",
+                    "client-key: {$mophClientKey}",
+                    "secret-key: {$mophSecretKey}"
                 ];
 
                 $ch = curl_init($url);

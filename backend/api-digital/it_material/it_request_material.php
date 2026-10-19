@@ -133,8 +133,10 @@ try {
 
     // --- MOPH NOTIFY START ---
     try {
-        $client_key = 'a883bc9bb2ff70b96fbd1285e581aa2edd7e81bc';
-        $secret_key = '52ZILLQKT4UZCQVZHMTCQGYQHPSA';
+        // กลุ่มงานสารสนเทศและศูนย์คอมพิวเตอร์ (IT Department) - ดึงจากไฟล์ .env
+        $client_key = $_ENV['MOPH_IT_CLIENT_KEY'] ?? getenv('MOPH_IT_CLIENT_KEY') ?: '151518fbb68266eb98604e010d4ffdb231365f32';
+        $secret_key = $_ENV['MOPH_IT_SECRET_KEY'] ?? getenv('MOPH_IT_SECRET_KEY') ?: 'KVQRE5QY6PEDRAQRX6UGQU7QOO5Y';
+        $url        = $_ENV['MOPH_NOTIFY_URL']    ?? getenv('MOPH_NOTIFY_URL')    ?: 'https://morpromt2f.moph.go.th/api/notify/send';
 
         $linePayload = [
             "messages" => [
@@ -156,36 +158,63 @@ try {
                                     "size" => "md",
                                     "color" => "#ffffff",
                                     "align" => "center"
+                                ],
+                                [
+                                    "type" => "text",
+                                    "text" => "งานสารสนเทศและศูนย์คอมพิวเตอร์",
+                                    "size" => "xs",
+                                    "color" => "#cfe2ff",
+                                    "align" => "center",
+                                    "margin" => "xs"
                                 ]
                             ]
                         ],
                         "body" => [
                             "type" => "box",
                             "layout" => "vertical",
-                            "spacing" => "sm",
-                            "contents" => [
+                            "contents" => array_merge([
                                 [
                                     "type" => "box",
-                                    "layout" => "horizontal",
+                                    "layout" => "vertical",
+                                    "margin" => "md",
+                                    "spacing" => "sm",
                                     "contents" => [
-                                        ["type" => "text", "text" => "ผู้ขอเบิก:", "color" => "#888888", "size" => "xs", "flex" => 2],
-                                        ["type" => "text", "text" => (string)$data->requester_name, "weight" => "bold", "color" => "#333333", "size" => "xs", "flex" => 4]
-                                    ]
-                                ],
-                                [
-                                    "type" => "box",
-                                    "layout" => "horizontal",
-                                    "contents" => [
-                                        ["type" => "text", "text" => "หน่วยงาน:", "color" => "#888888", "size" => "xs", "flex" => 2],
-                                        ["type" => "text", "text" => (string)$data->department, "weight" => "bold", "color" => "#333333", "size" => "xs", "flex" => 4]
-                                    ]
-                                ],
-                                [
-                                    "type" => "box",
-                                    "layout" => "horizontal",
-                                    "contents" => [
-                                        ["type" => "text", "text" => "เลขที่คำขอ:", "color" => "#888888", "size" => "xs", "flex" => 2],
-                                        ["type" => "text", "text" => $request_no, "color" => "#555555", "size" => "xs", "flex" => 4]
+                                        [
+                                            "type" => "box",
+                                            "layout" => "baseline",
+                                            "spacing" => "sm",
+                                            "contents" => [
+                                                ["type" => "text", "text" => "เลขที่คำขอ", "color" => "#aaaaaa", "size" => "sm", "flex" => 2],
+                                                ["type" => "text", "text" => $request_no, "wrap" => true, "color" => "#0d6efd", "size" => "sm", "weight" => "bold", "flex" => 5]
+                                            ]
+                                        ],
+                                        [
+                                            "type" => "box",
+                                            "layout" => "baseline",
+                                            "spacing" => "sm",
+                                            "contents" => [
+                                                ["type" => "text", "text" => "ผู้ขอเบิก", "color" => "#aaaaaa", "size" => "sm", "flex" => 2],
+                                                ["type" => "text", "text" => (string)$data->requester_name, "wrap" => true, "color" => "#333333", "size" => "sm", "weight" => "bold", "flex" => 5]
+                                            ]
+                                        ],
+                                        [
+                                            "type" => "box",
+                                            "layout" => "baseline",
+                                            "spacing" => "sm",
+                                            "contents" => [
+                                                ["type" => "text", "text" => "หน่วยงาน", "color" => "#aaaaaa", "size" => "sm", "flex" => 2],
+                                                ["type" => "text", "text" => (string)$data->department, "wrap" => true, "color" => "#666666", "size" => "sm", "flex" => 5]
+                                            ]
+                                        ],
+                                        [
+                                            "type" => "box",
+                                            "layout" => "baseline",
+                                            "spacing" => "sm",
+                                            "contents" => [
+                                                ["type" => "text", "text" => "วันที่ขอเบิก", "color" => "#aaaaaa", "size" => "sm", "flex" => 2],
+                                                ["type" => "text", "text" => date('d/m/Y H:i น.'), "wrap" => true, "color" => "#666666", "size" => "sm", "flex" => 5]
+                                            ]
+                                        ]
                                     ]
                                 ],
                                 [
@@ -194,31 +223,23 @@ try {
                                 ],
                                 [
                                     "type" => "text",
-                                    "text" => "รายการวัสดุ:",
+                                    "text" => "รายการที่ขอเบิก",
                                     "weight" => "bold",
-                                    "size" => "xs",
-                                    "color" => "#333333",
+                                    "size" => "sm",
+                                    "color" => "#0d6efd",
                                     "margin" => "md"
-                                ],
-                                [
-                                    "type" => "box",
-                                    "layout" => "vertical",
-                                    "margin" => "sm",
-                                    "spacing" => "xs",
-                                    "contents" => $lineItems
                                 ]
-                            ]
+                            ], $lineItems)
                         ]
                     ]
                 ]
             ]
         ];
 
-        $url = 'https://notify-api.moph.go.th/api/v1/notify';
         $headers = [
-            'Content-Type: application/json',
-            'client-key: ' . $client_key,
-            'secret-key: ' . $secret_key
+            "Content-Type: application/json",
+            "client-key: {$client_key}",
+            "secret-key: {$secret_key}"
         ];
 
         $ch = curl_init($url);
@@ -228,8 +249,10 @@ try {
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($linePayload, JSON_UNESCAPED_UNICODE));
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        curl_exec($ch);
+        $res = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr = curl_error($ch);
+        error_log("it_request_material Notify Result: HTTP $httpCode, Res: $res, Err: $curlErr, URL: $url, ClientKey: " . substr($client_key, 0, 8) . "...");
         unset($ch);
     } catch (Exception $notifyEx) {
         error_log("MOPH Notify Error in it_request_material: " . $notifyEx->getMessage());

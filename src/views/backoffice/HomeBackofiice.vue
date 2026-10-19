@@ -334,10 +334,7 @@
               </div>
 
               <!-- เบิกวัสดุการแพทย์ -->
-              <div
-                class="col-6 col-md-4 col-lg-3"
-                v-if="hasPermission(['backoffice_staff_all'])"
-              >
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['backoffice_staff_all'])">
                 <a
                   href="http://192.168.9.83:8602/"
                   target="_blank"
