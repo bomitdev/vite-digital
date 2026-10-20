@@ -19,6 +19,15 @@
         </div>
 
         <div class="d-flex align-items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-light rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-2"
+            @click="openHistoryModal"
+          >
+            <i class="bi bi-clock-history"></i>
+            <span>ประวัติการคำนวณ</span>
+            <span v-if="historyTotalCount > 0" class="badge bg-warning text-dark">{{ historyTotalCount }}</span>
+          </button>
           <button class="btn btn-sm btn-light rounded-pill px-3 fw-bold text-dark shadow-sm" @click="resetDefaults">
             <i class="bi bi-arrow-counterclockwise me-1"></i>รีเซ็ตค่า
           </button>
@@ -45,6 +54,74 @@
           </div>
 
           <div class="card-body p-3 p-md-4">
+            <!-- Patient Info Section (For Recording History) -->
+            <div class="p-3 rounded-4 mb-4 border bg-light shadow-xs">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="small fw-bold text-dark d-flex align-items-center gap-1">
+                  <i class="bi bi-person-badge-fill text-primary"></i> ข้อมูลผู้ป่วย & ผู้บันทึก
+                </span>
+                <span class="badge bg-white text-muted border small">ประวัติ & HOSxP</span>
+              </div>
+
+              <!-- HN & Auto Lookup -->
+              <div class="row g-2 mb-2">
+                <div class="col-12 col-sm-5">
+                  <label class="form-label small text-muted mb-1">HN ผู้ป่วย:</label>
+                  <div class="input-group input-group-sm">
+                    <input
+                      type="text"
+                      class="form-control font-monospace fw-bold"
+                      placeholder="เช่น 123456"
+                      v-model="patientHn"
+                      @keyup.enter="lookupPatient"
+                    />
+                    <button
+                      class="btn btn-primary"
+                      type="button"
+                      @click="lookupPatient"
+                      :disabled="loadingPatient || !patientHn"
+                      title="ค้นหาชื่อผู้ป่วยจาก HOSxP"
+                    >
+                      <span v-if="loadingPatient" class="spinner-border spinner-border-sm" role="status"></span>
+                      <i v-else class="bi bi-search"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="col-12 col-sm-7">
+                  <label class="form-label small text-muted mb-1">ชื่อ-นามสกุล ผู้ป่วย:</label>
+                  <input
+                    type="text"
+                    class="form-control form-control-sm font-monospace"
+                    placeholder="พิมพ์ชื่อหรือค้นจาก HN"
+                    v-model="patientName"
+                  />
+                </div>
+              </div>
+
+              <!-- Recorded By & Note -->
+              <div class="row g-2">
+                <div class="col-12 col-sm-6">
+                  <label class="form-label small text-muted mb-1">ผู้บันทึก / เภสัชกร:</label>
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    placeholder="ระบุชื่อผู้บันทึก"
+                    v-model="recordedBy"
+                  />
+                </div>
+                <div class="col-12 col-sm-6">
+                  <label class="form-label small text-muted mb-1">หมายเหตุ (Note):</label>
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    placeholder="เช่น นัด 2 สัปดาห์, ปรับตามแพทย์"
+                    v-model="calculationNote"
+                  />
+                </div>
+              </div>
+            </div>
+
             <!-- Input A: INR Blood Result -->
             <div class="mb-4">
               <label class="form-label fw-bold text-dark d-flex justify-content-between align-items-center mb-1">
@@ -543,6 +620,48 @@
                 {{ prescriptionText }}
               </div>
             </div>
+
+            <!-- Save Calculation Card -->
+            <div class="card border border-success-subtle bg-success-subtle bg-opacity-10 rounded-4 p-3 mt-3 shadow-xs">
+              <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
+                <div>
+                  <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="badge bg-success text-white rounded-circle p-1">
+                      <i class="bi bi-floppy-fill"></i>
+                    </span>
+                    <strong class="text-dark">บันทึกประวัติการคำนวณ (Save History)</strong>
+                  </div>
+                  <div class="small text-muted">
+                    บันทึกข้อมูล HN, ค่า INR, ขนาดยาเดิม-ใหม่ และตารางจัดยาลงฐานข้อมูล
+                  </div>
+                  <div v-if="lastSavedTime" class="text-success small mt-1 fw-bold">
+                    <i class="bi bi-check-circle-fill me-1"></i>บันทึกล่าสุดเมื่อ {{ lastSavedTime }} (รหัสบันทึก #{{ lastSavedId }})
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary rounded-pill px-3 py-2 fw-bold d-flex align-items-center gap-1 bg-white shadow-xs"
+                    @click="openHistoryModal"
+                  >
+                    <i class="bi bi-clock-history"></i>
+                    <span>ดูประวัติ</span>
+                    <span v-if="historyTotalCount > 0" class="badge bg-secondary text-white ms-1">{{ historyTotalCount }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-success btn-lg rounded-pill px-4 py-2 fw-bold d-flex align-items-center gap-2 shadow-sm text-white"
+                    :disabled="saving"
+                    @click="saveCalculation"
+                  >
+                    <span v-if="saving" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <i v-else class="bi bi-floppy2-fill"></i>
+                    <span>{{ saving ? 'กำลังบันทึก...' : 'บันทึกประวัติ (Save)' }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -715,10 +834,200 @@
         </div>
       </div>
     </div>
+
+    <!-- Calculation History Modal -->
+    <div v-if="showHistoryModal" class="history-modal-overlay" @click.self="closeHistoryModal">
+      <div class="history-modal-container">
+        <!-- Modal Header -->
+        <div class="d-flex align-items-center justify-content-between p-3 px-4 border-bottom bg-light">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-primary rounded-circle p-2 text-white">
+              <i class="bi bi-clock-history fs-6"></i>
+            </span>
+            <div>
+              <h5 class="fw-bold mb-0 text-dark">ประวัติการคำนวณปรับขนาดยา Warfarin</h5>
+              <small class="text-muted">รายการประวัติที่เคยบันทึกไว้ในระบบ สามารถค้นหา ดึงข้อมูลกลับมาคำนวณซ้ำ หรือส่งออก Excel ได้</small>
+            </div>
+          </div>
+          <button type="button" class="btn btn-close" @click="closeHistoryModal" aria-label="Close"></button>
+        </div>
+
+        <!-- Filter & Actions Bar -->
+        <div class="p-3 px-4 border-bottom bg-white">
+          <div class="row g-2 align-items-center">
+            <div class="col-12 col-md-4">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light text-muted border-end-0">
+                  <i class="bi bi-search"></i>
+                </span>
+                <input
+                  type="text"
+                  class="form-control form-control-sm border-start-0"
+                  placeholder="ค้นหา HN, ชื่อผู้ป่วย, หมายเหตุ, ผู้บันทึก..."
+                  v-model="historySearch"
+                  @keyup.enter="fetchHistory"
+                />
+              </div>
+            </div>
+
+            <div class="col-6 col-md-2">
+              <input
+                type="date"
+                class="form-control form-control-sm"
+                v-model="historyStartDate"
+                @change="fetchHistory"
+                title="ตั้งแต่วันที่"
+              />
+            </div>
+
+            <div class="col-6 col-md-2">
+              <input
+                type="date"
+                class="form-control form-control-sm"
+                v-model="historyEndDate"
+                @change="fetchHistory"
+                title="ถึงวันที่"
+              />
+            </div>
+
+            <div class="col-12 col-md-4 d-flex justify-content-md-end gap-2 flex-wrap">
+              <button class="btn btn-sm btn-primary rounded-pill px-3 fw-bold" @click="fetchHistory" :disabled="loadingHistory">
+                <span v-if="loadingHistory" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                <i v-else class="bi bi-arrow-clockwise me-1"></i>รีเฟรช
+              </button>
+              <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" @click="clearHistoryFilter">
+                ล้างค้นหา
+              </button>
+              <button class="btn btn-sm btn-success rounded-pill px-3 fw-bold text-white shadow-xs" @click="exportHistoryExcel" :disabled="historyList.length === 0">
+                <i class="bi bi-file-earmark-excel me-1"></i>ส่งออก Excel
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Body (Table) -->
+        <div class="history-modal-body p-3 px-4 overflow-y-auto flex-grow-1">
+          <div v-if="loadingHistory" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <div class="text-muted small mt-2">กำลังโหลดประวัติการคำนวณ...</div>
+          </div>
+
+          <div v-else-if="historyList.length === 0" class="text-center py-5">
+            <i class="bi bi-folder-x fs-1 text-muted opacity-50 d-block mb-2"></i>
+            <h6 class="text-secondary fw-bold">ไม่พบประวัติการคำนวณ</h6>
+            <small class="text-muted">เมื่อกดปุ่ม "บันทึกประวัติ (Save)" ในหน้าคำนวณ รายการจะมาแสดงที่นี่</small>
+          </div>
+
+          <div v-else class="table-responsive">
+            <table class="table table-hover table-striped align-middle small mb-0">
+              <thead class="table-light text-secondary sticky-top">
+                <tr>
+                  <th style="width: 140px;">วันที่-เวลา</th>
+                  <th style="width: 160px;">ผู้ป่วย</th>
+                  <th style="width: 110px;">INR (A)</th>
+                  <th style="width: 110px;">ยาเดิม (B)</th>
+                  <th style="width: 90px;">% ปรับ (C)</th>
+                  <th style="width: 130px;">ขนาดยาใหม่</th>
+                  <th style="width: 110px;">เฉลี่ย/วัน</th>
+                  <th>ผู้บันทึก & หมายเหตุ</th>
+                  <th style="width: 140px;" class="text-center">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in historyList" :key="item.id">
+                  <td>
+                    <div class="fw-bold text-dark">{{ formatDateTime(item.created_at) }}</div>
+                    <small class="text-muted font-monospace">#{{ item.id }}</small>
+                  </td>
+                  <td>
+                    <div class="fw-bold text-primary font-monospace">
+                      {{ item.hn || '-' }}
+                    </div>
+                    <div class="text-truncate" style="max-width: 160px;" :title="item.patient_name">
+                      {{ item.patient_name || '(ไม่ระบุชื่อ)' }}
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge px-2 py-1 font-monospace" :class="getInrBadgeClass(item.inr_value)">
+                      {{ item.inr_value }}
+                    </span>
+                    <small class="d-block text-muted text-truncate" style="max-width: 100px;">
+                      {{ item.formula_label }}
+                    </small>
+                  </td>
+                  <td>
+                    <strong class="font-monospace text-dark">{{ item.prev_weekly_dose }}</strong>
+                    <small class="text-muted d-block">มก./สัปดาห์</small>
+                  </td>
+                  <td>
+                    <span
+                      class="badge rounded-pill px-2 py-1 font-monospace"
+                      :class="Number(item.percent_change) > 0 ? 'bg-success text-white' : (Number(item.percent_change) < 0 ? 'bg-danger text-white' : 'bg-secondary text-white')"
+                    >
+                      {{ Number(item.percent_change) > 0 ? '+' + item.percent_change : item.percent_change }}%
+                    </span>
+                  </td>
+                  <td>
+                    <strong class="text-success font-monospace fs-6">{{ item.new_weekly_dose }}</strong>
+                    <small class="text-muted d-block">มก./สัปดาห์</small>
+                  </td>
+                  <td>
+                    <span class="font-monospace fw-bold">{{ item.daily_avg_dose }}</span>
+                    <small class="text-muted d-block">มก./วัน</small>
+                  </td>
+                  <td>
+                    <div class="d-flex align-items-center gap-1">
+                      <i class="bi bi-person text-muted"></i>
+                      <strong class="text-secondary">{{ item.created_by || '-' }}</strong>
+                    </div>
+                    <small v-if="item.note" class="text-muted d-block text-truncate" style="max-width: 220px;" :title="item.note">
+                      {{ item.note }}
+                    </small>
+                  </td>
+                  <td class="text-center">
+                    <div class="btn-group btn-group-sm" role="group">
+                      <button
+                        type="button"
+                        class="btn btn-outline-primary"
+                        @click="loadRecordIntoCalculator(item)"
+                        title="ดึงข้อมูลนี้กลับมาหน้าคำนวณ"
+                      >
+                        <i class="bi bi-arrow-repeat me-1"></i>ดึงค่า
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-outline-danger"
+                        @click="confirmDeleteRecord(item)"
+                        title="ลบรายการนี้"
+                      >
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="p-3 px-4 border-top bg-light d-flex justify-content-between align-items-center">
+          <small class="text-muted">
+            แสดงทั้งหมด <strong>{{ historyList.length }}</strong> รายการ
+          </small>
+          <button type="button" class="btn btn-secondary btn-sm rounded-pill px-4" @click="closeHistoryModal">
+            ปิดหน้าต่าง
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
+import axios from 'axios';
+import Swal from 'sweetalert2';
+
 export default {
   name: 'WarfarinCalculator',
   props: {
@@ -733,6 +1042,26 @@ export default {
   },
   data() {
     return {
+      // Patient & Recording Info
+      patientHn: '',
+      patientName: '',
+      recordedBy: localStorage.getItem('warfarin_calc_user') || '',
+      calculationNote: '',
+      loadingPatient: false,
+      saving: false,
+      lastSavedTime: null,
+      lastSavedId: null,
+
+      // History Modal State
+      showHistoryModal: false,
+      historyList: [],
+      historyTotalCount: 0,
+      loadingHistory: false,
+      historySearch: '',
+      historyStartDate: '',
+      historyEndDate: '',
+
+      // Calculator State
       inrValue: this.initialInr !== null ? this.initialInr : 2.5,
       inputDoseValue: this.initialDose || 21,
       doseUnit: 'weekly', // 'weekly' (mg/week) or 'daily' (mg/day)
@@ -753,6 +1082,9 @@ export default {
         { label: '≥ 9.0 (10.0)', val: 10.0 }
       ]
     };
+  },
+  mounted() {
+    this.fetchHistory();
   },
   watch: {
     'baseEvaluation.nodeKey'(newKey, oldKey) {
@@ -1356,10 +1688,312 @@ export default {
     async copyPrescriptionText() {
       try {
         await navigator.clipboard.writeText(this.prescriptionText);
-        alert('คัดลอกข้อความวิธีใช้ยาเรียบร้อยแล้ว: \n\n' + this.prescriptionText);
+        Swal.fire({
+          icon: 'success',
+          title: 'คัดลอกข้อความแล้ว',
+          text: this.prescriptionText,
+          timer: 2000,
+          showConfirmButton: false
+        });
       } catch (err) {
         prompt('คัดลอกข้อความนี้เพื่อนำไปใช้งาน:', this.prescriptionText);
       }
+    },
+
+    // Patient lookup from HOSxP
+    async lookupPatient() {
+      if (!this.patientHn || !this.patientHn.trim()) return;
+      this.loadingPatient = true;
+      try {
+        const res = await axios.get('/api-digital/warfarin/lookup_patient.php', {
+          params: { hn: this.patientHn.trim() }
+        });
+        if (res.data && res.data.status === 'success' && res.data.data) {
+          this.patientName = res.data.data.fullname || '';
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: `พบผู้ป่วย: ${res.data.data.fullname} (อายุ ${res.data.data.age || '-'} ปี)`,
+            showConfirmButton: false,
+            timer: 3000
+          });
+        } else {
+          Swal.fire({
+            icon: 'info',
+            title: 'ไม่พบข้อมูลใน HOSxP',
+            text: res.data?.message || 'ไม่พบข้อมูลผู้ป่วยสำหรับ HN นี้ ท่านสามารถพิมพ์ชื่อผู้ป่วยเองได้',
+            timer: 3000
+          });
+        }
+      } catch (err) {
+        console.error('Error looking up patient:', err);
+      } finally {
+        this.loadingPatient = false;
+      }
+    },
+
+    // Save calculation record
+    async saveCalculation() {
+      if (!this.inrValue || this.inrValue <= 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'กรุณากรอกค่า INR',
+          text: 'ต้องมีค่าผลเลือด INR (A) ก่อนทำการบันทึก'
+        });
+        return;
+      }
+
+      if (!this.computedCurrentWeeklyDose || this.computedCurrentWeeklyDose <= 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'กรุณากรอกขนาดยาเดิม',
+          text: 'ต้องมีขนาดยาเดิมของผู้ป่วย (B) ก่อนทำการบันทึก'
+        });
+        return;
+      }
+
+      this.saving = true;
+      if (this.recordedBy) {
+        localStorage.setItem('warfarin_calc_user', this.recordedBy.trim());
+      }
+
+      const payload = {
+        hn: this.patientHn ? this.patientHn.trim() : null,
+        patient_name: this.patientName ? this.patientName.trim() : null,
+        inr_value: Number(this.inrValue) || 0,
+        prev_weekly_dose: Number(this.computedCurrentWeeklyDose) || 0,
+        percent_change: Number(this.evaluation.percentChange) || 0,
+        new_weekly_dose: Number(this.evaluation.newWeeklyDose) || 0,
+        daily_avg_dose: Number((this.evaluation.newWeeklyDose / 7).toFixed(2)) || 0,
+        formula_label: this.evaluation.formulaLabel || '',
+        has_major_bleeding: this.hasMajorBleeding ? 1 : 0,
+        is_first_visit: this.isFirstVisitOffTarget ? 1 : 0,
+        primary_tablet_strength: Number(this.primaryTabletStrength) || 3,
+        daily_schedule_json: this.dailySchedule,
+        note: this.calculationNote ? this.calculationNote.trim() : null,
+        created_by: this.recordedBy ? this.recordedBy.trim() : 'Pharmacist'
+      };
+
+      try {
+        const res = await axios.post('/api-digital/warfarin/save_calculation.php', payload);
+        if (res.data && res.data.status === 'success') {
+          this.lastSavedId = res.data.id;
+          const now = new Date();
+          this.lastSavedTime = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+          Swal.fire({
+            icon: 'success',
+            title: 'บันทึกสำเร็จ!',
+            html: `บันทึกประวัติการคำนวณเรียบร้อยแล้ว<br><small class="text-muted">รหัสบันทึก: #${res.data.id}</small>`,
+            timer: 2500,
+            showConfirmButton: false
+          });
+
+          this.fetchHistory();
+        } else {
+          throw new Error(res.data?.message || 'ไม่สามารถบันทึกข้อมูลได้');
+        }
+      } catch (err) {
+        console.error('Error saving calculation:', err);
+        Swal.fire({
+          icon: 'error',
+          title: 'บันทึกไม่สำเร็จ',
+          text: err.response?.data?.message || err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์'
+        });
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    // Fetch calculation history list
+    async fetchHistory() {
+      this.loadingHistory = true;
+      try {
+        const res = await axios.get('/api-digital/warfarin/get_history.php', {
+          params: {
+            search: this.historySearch || '',
+            start_date: this.historyStartDate || '',
+            end_date: this.historyEndDate || '',
+            limit: 100
+          }
+        });
+        if (res.data && res.data.status === 'success') {
+          this.historyList = res.data.data || [];
+          this.historyTotalCount = res.data.count || this.historyList.length;
+        }
+      } catch (err) {
+        console.error('Error fetching history:', err);
+      } finally {
+        this.loadingHistory = false;
+      }
+    },
+
+    openHistoryModal() {
+      this.showHistoryModal = true;
+      this.fetchHistory();
+    },
+
+    closeHistoryModal() {
+      this.showHistoryModal = false;
+    },
+
+    clearHistoryFilter() {
+      this.historySearch = '';
+      this.historyStartDate = '';
+      this.historyEndDate = '';
+      this.fetchHistory();
+    },
+
+    // Load past record back into calculator
+    loadRecordIntoCalculator(item) {
+      if (!item) return;
+      this.patientHn = item.hn || '';
+      this.patientName = item.patient_name || '';
+      this.inrValue = Number(item.inr_value) || 2.5;
+      this.inputDoseValue = Number(item.prev_weekly_dose) || 21;
+      this.doseUnit = 'weekly';
+      this.hasMajorBleeding = item.has_major_bleeding == 1;
+      this.isFirstVisitOffTarget = item.is_first_visit == 1;
+      this.primaryTabletStrength = Number(item.primary_tablet_strength) || 3;
+      this.manualPercent = item.percent_change !== null ? Number(item.percent_change) : null;
+      this.calculationNote = item.note || '';
+      if (item.created_by) {
+        this.recordedBy = item.created_by;
+      }
+      this.showHistoryModal = false;
+
+      Swal.fire({
+        icon: 'info',
+        title: 'ดึงข้อมูลสำเร็จ',
+        html: `ดึงข้อมูลของ <b>${item.patient_name || item.hn || 'รายการ #' + item.id}</b> กลับมาที่หน้าคำนวณแล้ว`,
+        timer: 2000,
+        showConfirmButton: false
+      });
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+
+    // Delete record with confirmation
+    async confirmDeleteRecord(item) {
+      if (!item) return;
+      const result = await Swal.fire({
+        title: 'ยืนยันการลบรายการนี้?',
+        html: `ต้องการลบประวัติของ <b>${item.patient_name || item.hn || '#' + item.id}</b> ใช่หรือไม่?<br><small class="text-danger">เมื่อลบแล้วจะไม่สามารถกู้คืนได้</small>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="bi bi-trash me-1"></i>ยืนยันลบ',
+        cancelButtonText: 'ยกเลิก'
+      });
+
+      if (result.isConfirmed) {
+        try {
+          const res = await axios.post('/api-digital/warfarin/delete_calculation.php', { id: item.id });
+          if (res.data && res.data.status === 'success') {
+            Swal.fire({
+              toast: true,
+              position: 'top-end',
+              icon: 'success',
+              title: 'ลบรายการเรียบร้อยแล้ว',
+              showConfirmButton: false,
+              timer: 2500
+            });
+            this.fetchHistory();
+          } else {
+            throw new Error(res.data?.message || 'ไม่สามารถลบได้');
+          }
+        } catch (err) {
+          Swal.fire({
+            icon: 'error',
+            title: 'เกิดข้อผิดพลาด',
+            text: err.response?.data?.message || err.message || 'ไม่สามารถลบรายการได้'
+          });
+        }
+      }
+    },
+
+    // Export history to CSV (Excel compatible)
+    exportHistoryExcel() {
+      if (!this.historyList || this.historyList.length === 0) {
+        Swal.fire({ icon: 'warning', title: 'ไม่มีข้อมูล', text: 'ไม่มีรายการประวัติสำหรับส่งออก' });
+        return;
+      }
+
+      const headers = [
+        'ลำดับ',
+        'วันที่บันทึก',
+        'HN',
+        'ชื่อผู้ป่วย',
+        'ค่า INR (A)',
+        'ผลการประเมิน',
+        'ขนาดยาเดิม (มก./สัปดาห์)',
+        'เปอร์เซ็นต์ปรับยา (C %)',
+        'ขนาดยาใหม่ (มก./สัปดาห์)',
+        'เฉลี่ยต่อวัน (มก./วัน)',
+        'ขนาดเม็ดยาหลัก (มก.)',
+        'มีภาวะเลือดออกรุนแรง',
+        'พบหลุด Target ครั้งแรก',
+        'ผู้บันทึก',
+        'หมายเหตุ'
+      ];
+
+      const rows = this.historyList.map((item, index) => [
+        index + 1,
+        `"${item.created_at || ''}"`,
+        `"${item.hn || ''}"`,
+        `"${(item.patient_name || '').replace(/"/g, '""')}"`,
+        item.inr_value,
+        `"${(item.formula_label || '').replace(/"/g, '""')}"`,
+        item.prev_weekly_dose,
+        item.percent_change,
+        item.new_weekly_dose,
+        item.daily_avg_dose,
+        item.primary_tablet_strength,
+        item.has_major_bleeding == 1 ? 'ใช่' : 'ไม่ใช่',
+        item.is_first_visit == 1 ? 'ใช่' : 'ไม่ใช่',
+        `"${(item.created_by || '').replace(/"/g, '""')}"`,
+        `"${(item.note || '').replace(/"/g, '""')}"`
+      ]);
+
+      const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `warfarin_calc_history_${dateStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    },
+
+    formatDateTime(dtStr) {
+      if (!dtStr) return '-';
+      try {
+        const d = new Date(dtStr.replace(' ', 'T'));
+        if (isNaN(d.getTime())) return dtStr;
+        const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+        const day = d.getDate();
+        const month = months[d.getMonth()];
+        const year = d.getFullYear() + 543;
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${day} ${month} ${year} ${hours}:${minutes} น.`;
+      } catch (e) {
+        return dtStr;
+      }
+    },
+
+    getInrBadgeClass(val) {
+      const inr = Number(val);
+      if (!inr || inr <= 0) return 'bg-secondary text-white';
+      if (inr < 2.0) return 'bg-info text-white';
+      if (inr <= 3.0) return 'bg-success text-white';
+      if (inr <= 4.9) return 'bg-warning text-dark';
+      return 'bg-danger text-white';
     }
   }
 };
@@ -1524,6 +2158,51 @@ export default {
 @media (min-width: 768px) {
   .border-start-md {
     border-left: 1px solid #e2e8f0;
+  }
+}
+
+/* History Modal Overlay & Container */
+.history-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.history-modal-container {
+  background: #ffffff;
+  border-radius: 1.25rem;
+  max-width: 1200px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.history-modal-body {
+  max-height: 60vh;
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
   }
 }
 </style>
