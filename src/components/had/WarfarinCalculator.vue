@@ -232,10 +232,10 @@
 
           <div class="card-body p-3 p-md-4">
             <!-- Main Result Banner -->
-            <div class="result-banner p-3 p-md-4 rounded-4 mb-4 border" :class="evaluation.bannerBgClass">
+            <div class="result-banner p-3 p-md-4 rounded-4 mb-4 border shadow-xs" :class="evaluation.bannerBgClass">
               <div class="row g-3 align-items-center">
                 <div class="col-12 col-md-7">
-                  <div class="d-flex align-items-center gap-2 mb-1">
+                  <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                     <span class="badge bg-white text-dark shadow-xs fw-bold px-2 py-1">
                       {{ evaluation.formulaLabel }}
                     </span>
@@ -255,7 +255,7 @@
                   <div class="text-secondary small">
                     <span v-if="evaluation.percentChange !== 0">
                       <i class="bi me-1" :class="evaluation.percentChange > 0 ? 'bi-arrow-up-circle-fill text-success' : 'bi-arrow-down-circle-fill text-danger'"></i>
-                      ปรับขนาดยา {{ evaluation.percentText }} จากขนาดยาเดิม {{ computedCurrentWeeklyDose.toFixed(1) }} mg/สัปดาห์
+                      ปรับขนาดยา <strong>{{ evaluation.percentText }}</strong> จากขนาดยาเดิม {{ computedCurrentWeeklyDose.toFixed(1) }} mg/สัปดาห์
                     </span>
                     <span v-else>
                       <i class="bi bi-dash-circle-fill text-primary me-1"></i>
@@ -274,6 +274,68 @@
                     <small class="text-muted d-block mt-1">
                       ประมาณ <strong>{{ (evaluation.newWeeklyDose / (primaryTabletStrength || 3)).toFixed(1) }}</strong> เม็ด ({{ primaryTabletStrength }}mg)/สัปดาห์
                     </small>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Interactive Percentage Selector -->
+              <div v-if="baseEvaluation && baseEvaluation.allowAdjustment && computedCurrentWeeklyDose > 0" class="mt-3 pt-3 border-top border-secondary-subtle">
+                <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-2">
+                  <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="badge bg-white text-primary border shadow-xs fw-bold px-2 py-1">
+                      <i class="bi bi-percent me-1"></i>เลือก % ปรับขนาดยา
+                    </span>
+                    <span class="small text-secondary">
+                      เกณฑ์ตาม Protocol: <strong class="text-dark">{{ baseEvaluation.protocolRangeText }}</strong>
+                    </span>
+                  </div>
+
+                  <button
+                    v-if="isCustomPercent"
+                    type="button"
+                    class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1 bg-white shadow-xs"
+                    @click="resetPercentToDefault"
+                    title="คืนค่าเป็นค่าแนะนำตาม Protocol"
+                  >
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>คืนค่าแนะนำ ({{ defaultPercentText }})
+                  </button>
+                </div>
+
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                  <!-- Preset Buttons -->
+                  <div class="btn-group shadow-xs bg-white rounded-3 p-1 border" role="group">
+                    <button
+                      v-for="opt in baseEvaluation.percentOptions"
+                      :key="opt.value"
+                      type="button"
+                      class="btn btn-sm rounded-2 px-3 fw-bold transition-all"
+                      :class="currentPercent === opt.value ? 'btn-primary shadow-xs' : 'btn-light text-dark'"
+                      @click="setPercent(opt.value)"
+                    >
+                      {{ opt.label }}
+                      <span v-if="opt.isDefault" class="badge ms-1" :class="currentPercent === opt.value ? 'bg-white text-primary' : 'bg-primary-subtle text-primary'">
+                        แนะนำ
+                      </span>
+                    </button>
+                  </div>
+
+                  <!-- Stepper / Custom Number Input -->
+                  <div class="input-group input-group-sm shadow-xs bg-white rounded-3 border" style="width: 175px;">
+                    <button class="btn btn-light px-2 text-secondary" type="button" @click="stepPercent(-0.5)" title="ลด 0.5%">
+                      <i class="bi bi-dash"></i>
+                    </button>
+                    <input
+                      type="number"
+                      step="0.5"
+                      class="form-control text-center fw-bold font-monospace border-0 bg-transparent"
+                      :value="currentPercent"
+                      @input="onCustomPercentInput($event.target.value)"
+                      placeholder="%"
+                    />
+                    <span class="input-group-text bg-transparent border-0 px-1 fw-bold text-muted">%</span>
+                    <button class="btn btn-light px-2 text-secondary" type="button" @click="stepPercent(0.5)" title="เพิ่ม 0.5%">
+                      <i class="bi bi-plus"></i>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -624,6 +686,7 @@ export default {
       isFirstVisitOffTarget: false,
       dispenseDays: 14,
       primaryTabletStrength: 3, // 2, 3, or 5 mg
+      manualPercent: null, // User selected or typed percentage override
       inrPresets: [
         { label: '< 1.5 (1.3)', val: 1.3 },
         { label: '1.5-1.9 (1.7)', val: 1.7 },
@@ -634,6 +697,13 @@ export default {
         { label: '≥ 9.0 (10.0)', val: 10.0 }
       ]
     };
+  },
+  watch: {
+    'baseEvaluation.nodeKey'(newKey, oldKey) {
+      if (newKey !== oldKey) {
+        this.manualPercent = null;
+      }
+    }
   },
   computed: {
     computedCurrentWeeklyDose() {
@@ -656,7 +726,7 @@ export default {
       return { text: 'วิกฤต (Critical High)', class: 'bg-danger text-white animate-pulse' };
     },
 
-    evaluation() {
+    baseEvaluation() {
       const inr = Number(this.inrValue) || 0;
       const b = this.computedCurrentWeeklyDose;
       const bleeding = this.hasMajorBleeding;
@@ -669,9 +739,14 @@ export default {
           nodeLabel: 'RM (คงยาเดิม)',
           formulaLabel: '± 0.5 Target ครั้งแรก',
           title: 'คงขนาดยาเดิม (RM) & นัดตรวจซ้ำ',
-          percentChange: 0,
-          percentText: 'คงเดิม (0%)',
-          newWeeklyDose: b,
+          defaultPercent: 0,
+          protocolRangeText: 'คงขนาดยาเดิม (0%)',
+          percentOptions: [
+            { label: 'คงเดิม (0%)', value: 0, isDefault: true },
+            { label: '+5%', value: 5 },
+            { label: '-5%', value: -5 }
+          ],
+          allowAdjustment: true,
           actionRecommendation: 'ตรวจพบออกนอกเป้าหมายครั้งแรกไม่เกิน ±0.5 ให้คงขนาดยาเดิม และนัดตรวจติดตาม 1 - 2 สัปดาห์',
           omitDoseText: null,
           vitKText: null,
@@ -684,16 +759,21 @@ export default {
 
       // Branch 1: < 1.5 (Node C)
       if (inr > 0 && inr < 1.5) {
-        const change = 0.15; // +15%
-        const newDose = b * (1 + change);
         return {
           nodeKey: 'C',
           nodeLabel: 'เกณฑ์ C (+10-20% * B)',
           formulaLabel: 'C = B + (10 - 20%)',
           title: 'ปรับเพิ่มขนาดยา 10% - 20%',
-          percentChange: 15,
-          percentText: '+15%',
-          newWeeklyDose: Math.round(newDose * 2) / 2,
+          defaultPercent: 15,
+          protocolRangeText: 'ปรับเพิ่ม 10% ถึง 20%',
+          percentOptions: [
+            { label: '+10%', value: 10 },
+            { label: '+12.5%', value: 12.5 },
+            { label: '+15%', value: 15, isDefault: true },
+            { label: '+17.5%', value: 17.5 },
+            { label: '+20%', value: 20 }
+          ],
+          allowAdjustment: true,
           actionRecommendation: 'ปรับเพิ่มขนาดยา 10% - 20% ของขนาดยาเดิมต่อสัปดาห์ (แนะนำ +15%)',
           omitDoseText: null,
           vitKText: null,
@@ -706,16 +786,19 @@ export default {
 
       // Branch 2: 1.5 - 1.9 (Node D)
       if (inr >= 1.5 && inr <= 1.9) {
-        const change = 0.075; // +7.5%
-        const newDose = b * (1 + change);
         return {
           nodeKey: 'D',
           nodeLabel: 'เกณฑ์ D (+5-10% * B)',
           formulaLabel: 'D = B + (5 - 10%)',
           title: 'ปรับเพิ่มขนาดยา 5% - 10%',
-          percentChange: 7.5,
-          percentText: '+7.5%',
-          newWeeklyDose: Math.round(newDose * 2) / 2,
+          defaultPercent: 7.5,
+          protocolRangeText: 'ปรับเพิ่ม 5% ถึง 10%',
+          percentOptions: [
+            { label: '+5%', value: 5 },
+            { label: '+7.5%', value: 7.5, isDefault: true },
+            { label: '+10%', value: 10 }
+          ],
+          allowAdjustment: true,
           actionRecommendation: 'ปรับเพิ่มขนาดยา 5% - 10% ของขนาดยาเดิมต่อสัปดาห์ (แนะนำ +7.5% ถึง +10%)',
           omitDoseText: null,
           vitKText: null,
@@ -733,9 +816,14 @@ export default {
           nodeLabel: 'เกณฑ์ RM (คงยาเดิม)',
           formulaLabel: 'RM = B (คงเดิม)',
           title: 'อยู่ในเกณฑ์เป้าหมาย (คงขนาดยาเดิม)',
-          percentChange: 0,
-          percentText: 'คงเดิม (0%)',
-          newWeeklyDose: b,
+          defaultPercent: 0,
+          protocolRangeText: 'คงขนาดยาเดิม (0%)',
+          percentOptions: [
+            { label: 'คงเดิม (0%)', value: 0, isDefault: true },
+            { label: '+5%', value: 5 },
+            { label: '-5%', value: -5 }
+          ],
+          allowAdjustment: true,
           actionRecommendation: 'ระดับยาอยู่ในช่วงการรักษาที่เหมาะสม ให้รับประทานขนาดยาเดิมต่อไป',
           omitDoseText: null,
           vitKText: null,
@@ -748,16 +836,19 @@ export default {
 
       // Branch 4: 3.1 - 3.9 (Node E)
       if (inr >= 3.1 && inr <= 3.9) {
-        const change = -0.075; // -7.5%
-        const newDose = b * (1 + change);
         return {
           nodeKey: 'E',
           nodeLabel: 'เกณฑ์ E (ลด 5-10% * B)',
           formulaLabel: 'E = B - (5 - 10%)',
           title: 'ปรับลดขนาดยาลง 5% - 10%',
-          percentChange: -7.5,
-          percentText: '-7.5%',
-          newWeeklyDose: Math.round(newDose * 2) / 2,
+          defaultPercent: -7.5,
+          protocolRangeText: 'ปรับลด 5% ถึง 10%',
+          percentOptions: [
+            { label: '-5%', value: -5 },
+            { label: '-7.5%', value: -7.5, isDefault: true },
+            { label: '-10%', value: -10 }
+          ],
+          allowAdjustment: true,
           actionRecommendation: 'ปรับลดขนาดยาลง 5% - 10% ของขนาดยาเดิมต่อสัปดาห์',
           omitDoseText: null,
           vitKText: null,
@@ -770,16 +861,19 @@ export default {
 
       // Branch 5: 4.0 - 4.9 (Node F)
       if (inr >= 4.0 && inr <= 4.9) {
-        const change = -0.10; // -10%
-        const newDose = b * (1 + change);
         return {
           nodeKey: 'F',
           nodeLabel: 'เกณฑ์ F (ลด 10% + Omit 1 dose)',
           formulaLabel: 'F = B - 10% (+) Omit 1 dose',
           title: 'หยุดยา 1 มื้อ + ปรับลดลง 10%',
-          percentChange: -10,
-          percentText: '-10%',
-          newWeeklyDose: Math.round(newDose * 2) / 2,
+          defaultPercent: -10,
+          protocolRangeText: 'ปรับลด 10%',
+          percentOptions: [
+            { label: '-5%', value: -5 },
+            { label: '-10%', value: -10, isDefault: true },
+            { label: '-15%', value: -15 }
+          ],
+          allowAdjustment: true,
           actionRecommendation: 'หยุดยา Warfarin 1 มื้อในวันแรก แล้วจึงเริ่มทานขนาดใหม่ที่ปรับลดลง 10%',
           omitDoseText: 'หยุดยา 1 มื้อในวันแรก',
           vitKText: null,
@@ -793,16 +887,19 @@ export default {
       // Branch 6: 5.0 - 8.9 (Node G)
       if (inr >= 5.0 && inr <= 8.9) {
         if (!bleeding) {
-          const change = -0.20; // -20%
-          const newDose = b * (1 + change);
           return {
             nodeKey: 'G',
             nodeLabel: 'เกณฑ์ G (ลด 20% + Omit + Vit K)',
             formulaLabel: 'G = B - 20% (+) Omit 1-2 dose + Vit K1',
             title: 'หยุดยา 1-2 มื้อ + Vit K1 oral + ลด 20%',
-            percentChange: -20,
-            percentText: '-20%',
-            newWeeklyDose: Math.round(newDose * 2) / 2,
+            defaultPercent: -20,
+            protocolRangeText: 'ปรับลด 20%',
+            percentOptions: [
+              { label: '-15%', value: -15 },
+              { label: '-20%', value: -20, isDefault: true },
+              { label: '-25%', value: -25 }
+            ],
+            allowAdjustment: true,
             actionRecommendation: 'หยุดยา Warfarin 1 - 2 มื้อ + ให้ Vitamin K1 1 - 2.5 mg ชนิดรับประทาน (Oral) และปรับลดขนาดยาลง 20%',
             omitDoseText: 'หยุดยา 1 - 2 มื้อ',
             vitKText: 'ให้ Vitamin K1 1 - 2.5 mg รับประทาน (Oral)',
@@ -817,9 +914,10 @@ export default {
             nodeLabel: 'เกณฑ์ G (Major Bleeding)',
             formulaLabel: 'Emergency: Vit K 10 mg IV',
             title: '⚠️ ภาวะเลือดออกรุนแรง: หยุดยาทันที + Vit K 10 mg IV',
-            percentChange: -100,
-            percentText: 'หยุดยาทันที',
-            newWeeklyDose: 0,
+            defaultPercent: -100,
+            protocolRangeText: 'หยุดยาทันที',
+            percentOptions: [],
+            allowAdjustment: false,
             actionRecommendation: 'หยุดยา Warfarin ทันที + ให้ Vitamin K1 10 mg ทางหลอดเลือดดำ (IV ช้าๆ) และปรึกษาแพทย์ให้ FFP/PCC ด่วน',
             omitDoseText: 'หยุดยา Warfarin ทันที',
             vitKText: 'Vitamin K1 10 mg IV ช้าๆ (Infusion)',
@@ -834,16 +932,19 @@ export default {
       // Branch 7: >= 9.0
       if (inr >= 9.0) {
         if (!bleeding) {
-          const change = -0.25; // >20%
-          const newDose = b * (1 + change);
           return {
             nodeKey: 'GT9',
             nodeLabel: 'เกณฑ์ ≥ 9.0 (No Bleeding)',
             formulaLabel: 'Vit K 5-10 mg oral, ลด > 20%',
             title: 'หยุดยา + Vit K 5-10 mg oral + ลด > 20%',
-            percentChange: -25,
-            percentText: '-25% (ลด > 20%)',
-            newWeeklyDose: Math.round(newDose * 2) / 2,
+            defaultPercent: -25,
+            protocolRangeText: 'ปรับลด > 20%',
+            percentOptions: [
+              { label: '-20%', value: -20 },
+              { label: '-25%', value: -25, isDefault: true },
+              { label: '-30%', value: -30 }
+            ],
+            allowAdjustment: true,
             actionRecommendation: 'หยุดยา Warfarin ทันที + ให้ Vitamin K1 5 - 10 mg รับประทาน (Oral) เมื่อ INR ลดลงใกล้ Target จึงเริ่มยาใหม่ขนาดลดลง > 20%',
             omitDoseText: 'หยุดยา Warfarin ชั่วคราว',
             vitKText: 'ให้ Vitamin K1 5 - 10 mg รับประทาน (Oral)',
@@ -858,9 +959,10 @@ export default {
             nodeLabel: 'เกณฑ์ ≥ 9.0 (Major Bleeding)',
             formulaLabel: 'Emergency: Vit K 10 mg IV',
             title: '⚠️ วิกฤตเลือดออกรุนแรง: Vit K 10 mg IV + FFP',
-            percentChange: -100,
-            percentText: 'หยุดยาทันที',
-            newWeeklyDose: 0,
+            defaultPercent: -100,
+            protocolRangeText: 'หยุดยาทันที',
+            percentOptions: [],
+            allowAdjustment: false,
             actionRecommendation: 'หยุดยา Warfarin ทันที + ให้ Vitamin K1 10 mg IV ช้าๆ + เตรียมให้ FFP / Prothrombin Complex Concentrate',
             omitDoseText: 'หยุดยา Warfarin ทันที',
             vitKText: 'Vitamin K1 10 mg IV ช้าๆ',
@@ -878,9 +980,10 @@ export default {
         nodeLabel: '-',
         formulaLabel: '-',
         title: 'กรุณากรอกค่า INR',
-        percentChange: 0,
-        percentText: '-',
-        newWeeklyDose: b,
+        defaultPercent: 0,
+        protocolRangeText: '-',
+        percentOptions: [],
+        allowAdjustment: false,
         actionRecommendation: 'กรุณาระบุค่าผลเลือด INR เพื่อคำนวณขนาดยา',
         omitDoseText: null,
         vitKText: null,
@@ -888,6 +991,93 @@ export default {
         badgeClass: 'bg-secondary text-white',
         bannerBgClass: 'bg-light border',
         textClass: 'text-dark'
+      };
+    },
+
+    effectivePercent() {
+      if (this.manualPercent !== null && this.manualPercent !== undefined && !isNaN(this.manualPercent)) {
+        return Number(this.manualPercent);
+      }
+      return this.baseEvaluation ? this.baseEvaluation.defaultPercent : 0;
+    },
+
+    currentPercent() {
+      return this.effectivePercent;
+    },
+
+    isCustomPercent() {
+      return this.manualPercent !== null && this.baseEvaluation && this.manualPercent !== this.baseEvaluation.defaultPercent;
+    },
+
+    defaultPercentText() {
+      const def = this.baseEvaluation ? this.baseEvaluation.defaultPercent : 0;
+      if (def > 0) return `+${def}%`;
+      if (def < 0) return `${def}%`;
+      return `0%`;
+    },
+
+    evaluation() {
+      const base = this.baseEvaluation;
+      const b = this.computedCurrentWeeklyDose;
+      const pct = this.effectivePercent;
+
+      if (!base) {
+        return {
+          nodeKey: 'NONE',
+          nodeLabel: '-',
+          formulaLabel: '-',
+          title: 'กรุณากรอกค่า INR',
+          percentChange: 0,
+          percentText: '-',
+          newWeeklyDose: b,
+          actionRecommendation: 'กรุณาระบุค่าผลเลือด INR เพื่อคำนวณขนาดยา',
+          omitDoseText: null,
+          vitKText: null,
+          followUpText: '-',
+          badgeClass: 'bg-secondary text-white',
+          bannerBgClass: 'bg-light border',
+          textClass: 'text-dark'
+        };
+      }
+
+      if (base.nodeKey === 'G_BLEED' || base.nodeKey === 'GT9_BLEED' || !base.allowAdjustment) {
+        return {
+          ...base,
+          percentChange: base.defaultPercent,
+          percentText: 'หยุดยาทันที',
+          newWeeklyDose: 0,
+          rawNewDose: 0
+        };
+      }
+
+      if (base.nodeKey === 'NONE' || !b || b <= 0) {
+        return {
+          ...base,
+          percentChange: 0,
+          percentText: '-',
+          newWeeklyDose: 0,
+          rawNewDose: 0
+        };
+      }
+
+      const factor = 1 + (pct / 100);
+      let rawNewDose = b * factor;
+      if (rawNewDose < 0) rawNewDose = 0;
+      const roundedDose = Math.round(rawNewDose * 2) / 2;
+
+      let pctText = 'คงเดิม (0%)';
+      if (pct > 0) {
+        pctText = `+${pct}%`;
+      } else if (pct < 0) {
+        pctText = `${pct}%`;
+      }
+
+      return {
+        ...base,
+        percentChange: pct,
+        percentText: pctText,
+        newWeeklyDose: roundedDose,
+        rawNewDose: rawNewDose
       };
     },
 
@@ -1043,6 +1233,31 @@ export default {
       }
     },
 
+    setPercent(val) {
+      this.manualPercent = Number(val);
+    },
+
+    onCustomPercentInput(val) {
+      if (val === '' || val === null) {
+        this.manualPercent = null;
+        return;
+      }
+      const num = parseFloat(val);
+      if (!isNaN(num)) {
+        this.manualPercent = num;
+      }
+    },
+
+    stepPercent(step) {
+      const current = this.effectivePercent;
+      const next = Math.round((current + step) * 10) / 10;
+      this.manualPercent = next;
+    },
+
+    resetPercentToDefault() {
+      this.manualPercent = null;
+    },
+
     resetDefaults() {
       this.inrValue = 2.5;
       this.inputDoseValue = 21;
@@ -1051,6 +1266,7 @@ export default {
       this.isFirstVisitOffTarget = false;
       this.dispenseDays = 14;
       this.primaryTabletStrength = 3;
+      this.manualPercent = null;
     },
 
     getPillClass(strength) {
