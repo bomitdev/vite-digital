@@ -111,7 +111,15 @@
       <!-- Signatures Row 1 -->
       <div class="row text-center mt-3">
         <div class="col-6 mb-3">
-          <div class="mb-3">ผู้ขอใช้พัสดุ...........................................ลงชื่อ</div>
+          <div class="mb-3 position-relative d-inline-block">
+            <img
+              v-if="deptSigner.signature_image"
+              :src="deptSigner.signature_image"
+              alt="ลายเซ็น"
+              class="signature-overlay"
+            />
+            ผู้ขอใช้พัสดุ...........................................ลงชื่อ
+          </div>
 
           <div>
             (
@@ -150,7 +158,15 @@
       <!-- Signatures Row 2 -->
       <div class="row text-center mt-3">
         <div class="col-6 mb-3">
-          <div class="mb-3">ผู้เบิก...........................................ลงชื่อ</div>
+          <div class="mb-3 position-relative d-inline-block">
+            <img
+              v-if="deptSigner.signature_image"
+              :src="deptSigner.signature_image"
+              alt="ลายเซ็น"
+              class="signature-overlay"
+            />
+            ผู้เบิก...........................................ลงชื่อ
+          </div>
 
           <div>
             (
@@ -373,6 +389,17 @@ export default {
 .signature-line {
   border-bottom: 1px dotted #000;
   width: 250px;
+}
+
+.signature-overlay {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-height: 48px;
+  max-width: 120px;
+  object-fit: contain;
+  pointer-events: none;
 }
 
 .print-table th,

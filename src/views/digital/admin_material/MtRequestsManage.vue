@@ -1158,6 +1158,20 @@ export default {
           { align: 'center' }
         );
 
+        if (matchedConfig && matchedConfig.signature_image) {
+          try {
+            const sigFormat =
+              matchedConfig.signature_image.includes('image/jpeg') ||
+              matchedConfig.signature_image.includes('image/jpg')
+                ? 'JPEG'
+                : 'PNG';
+            doc.addImage(matchedConfig.signature_image, sigFormat, 47, finalY - 8, 26, 10);
+            doc.addImage(matchedConfig.signature_image, sigFormat, 47, finalY + 35 - 8, 26, 10);
+          } catch (sigErr) {
+            console.warn('Could not add signature image to PDF:', sigErr);
+          }
+        }
+
         doc.save(`material-request-${requestData.request_no || requestData.id}.pdf`);
         Swal.close();
       } catch (err) {

@@ -24,18 +24,22 @@ if (empty($data['department_name']) || empty($data['requester_name'])) {
 }
 
 try {
+    $sig = isset($data['signature_image']) ? $data['signature_image'] : null;
+
     $stmt = $pdo2->prepare("
-        INSERT INTO mt_department_signers (department_name, requester_name, requester_position) 
-        VALUES (:dept, :name, :pos) 
-        ON DUPLICATE KEY UPDATE requester_name = :name2, requester_position = :pos2
+        INSERT INTO mt_department_signers (department_name, requester_name, requester_position, signature_image) 
+        VALUES (:dept, :name, :pos, :sig) 
+        ON DUPLICATE KEY UPDATE requester_name = :name2, requester_position = :pos2, signature_image = :sig2
     ");
 
     $stmt->execute([
         ':dept' => trim($data['department_name']),
         ':name' => trim($data['requester_name']),
         ':pos' => isset($data['requester_position']) ? trim($data['requester_position']) : '',
+        ':sig' => $sig,
         ':name2' => trim($data['requester_name']),
-        ':pos2' => isset($data['requester_position']) ? trim($data['requester_position']) : ''
+        ':pos2' => isset($data['requester_position']) ? trim($data['requester_position']) : '',
+        ':sig2' => $sig
     ]);
 
     echo json_encode(['success' => true, 'message' => 'Department signer saved successfully']);

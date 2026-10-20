@@ -5,7 +5,7 @@
         <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
           <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
             <h5 class="fw-bold m-0 text-primary">
-              <i class="bi bi-pc-display me-2"></i>ทะเบียรครุภัณฑ์คอมพิวเตอร์
+              <i class="bi bi-pc-display me-2"></i>ทะเบียนครุภัณฑ์คอมพิวเตอร์
             </h5>
             <div class="d-flex gap-2">
               <button
@@ -95,14 +95,15 @@
               <table class="table table-hover align-middle">
                 <thead class="bg-light">
                   <tr>
-                    <th class="text-center" width="5%">#</th>
-                    <th width="10%">วันที่จัดซื้อ</th>
-                    <th width="15%">รหัสครุภัณฑ์</th>
-                    <th width="20%">ชื่อครุภัณฑ์</th>
-                    <th width="10%">ราคา</th>
-                    <th width="10%">วิธีการได้รับ</th>
-                    <th width="10%">สถานที่ติดตั้ง</th>
-                    <th width="10%">บริษัท</th>
+                    <th class="text-center" width="4%">#</th>
+                    <th width="9%">วันที่จัดซื้อ</th>
+                    <th width="14%">รหัสครุภัณฑ์</th>
+                    <th width="18%">ชื่อครุภัณฑ์</th>
+                    <th width="8%">ราคา</th>
+                    <th width="9%">วิธีการได้รับ</th>
+                    <th width="11%">สถานที่ติดตั้ง</th>
+                    <th width="8%">บริษัท</th>
+                    <th width="9%" class="text-center">สถานะ</th>
                     <th width="8%" class="text-center">อนุญาตยืม</th>
                     <th width="10%" class="text-center">จัดการ</th>
                   </tr>
@@ -132,6 +133,11 @@
                       <div class="small"><i class="bi bi-geo-alt me-1"></i>{{ asset.location || '-' }}</div>
                     </td>
                     <td>{{ asset.source || '-' }}</td>
+                    <td class="text-center">
+                      <span :class="['badge rounded-pill px-2 py-1', getStatusClass(asset.status)]">
+                        {{ getStatusText(asset.status) }}
+                      </span>
+                    </td>
                     <td class="text-center">
                       <div class="form-check form-switch d-flex justify-content-center" v-if="asset.status === 'Spare'">
                         <input class="form-check-input" type="checkbox" role="switch"
@@ -178,7 +184,7 @@
                     </td>
                   </tr>
                   <tr v-if="assets.length === 0">
-                    <td colspan="10" class="text-center py-5 text-muted">ไม่พบข้อมูล</td>
+                    <td colspan="11" class="text-center py-5 text-muted">ไม่พบข้อมูล</td>
                   </tr>
                 </tbody>
               </table>
@@ -380,19 +386,52 @@ export default {
     getStatusClass(status) {
       switch (status) {
         case 'Active':
+        case 'ใช้งานปกติ':
           return 'bg-success';
         case 'Spare':
+        case 'เครื่องสำรอง':
           return 'bg-primary';
         case 'Borrowed':
+        case 'ถูกยืม':
           return 'bg-info text-dark';
         case 'Repair':
+        case 'ส่งซ่อม':
           return 'bg-warning text-dark';
         case 'Write-off':
+        case 'ตัดจำหน่าย':
+        case 'แทงจำหน่าย':
           return 'bg-dark';
         case 'Sold':
+        case 'ขาย/โอน':
           return 'bg-secondary';
         default:
           return 'bg-secondary';
+      }
+    },
+    getStatusText(status) {
+      if (!status) return '-';
+      switch (status) {
+        case 'Active':
+        case 'ใช้งานปกติ':
+          return 'ใช้งานปกติ';
+        case 'Spare':
+        case 'เครื่องสำรอง':
+          return 'เครื่องสำรอง';
+        case 'Borrowed':
+        case 'ถูกยืม':
+          return 'ถูกยืม';
+        case 'Repair':
+        case 'ส่งซ่อม':
+          return 'ส่งซ่อม';
+        case 'Write-off':
+        case 'ตัดจำหน่าย':
+        case 'แทงจำหน่าย':
+          return 'ตัดจำหน่าย';
+        case 'Sold':
+        case 'ขาย/โอน':
+          return 'ขาย/โอน';
+        default:
+          return status;
       }
     },
     changePage(page) {
@@ -431,7 +470,9 @@ export default {
         'ราคา': asset.price ? Number(asset.price) : 0,
         'วิธีการได้รับ': asset.acquisition_method || '-',
         'สถานที่ติดตั้ง': asset.location || '-',
-        'บริษัท': asset.source || '-'
+        'บริษัท': asset.source || '-',
+        'สถานะ': this.getStatusText(asset.status),
+        'อนุญาตยืม': asset.status === 'Spare' ? (asset.allow_loan == 1 ? 'อนุญาต' : 'ไม่อนุญาต') : '-'
       }));
 
       // Create a new workbook and add the worksheet
@@ -446,7 +487,9 @@ export default {
         {wch: 15}, // ราคา
         {wch: 15}, // วิธีการได้รับ
         {wch: 20}, // สถานที่ติดตั้ง
-        {wch: 20}  // บริษัท
+        {wch: 20}, // บริษัท
+        {wch: 15}, // สถานะ
+        {wch: 12}  // อนุญาตยืม
       ];
       ws['!cols'] = wscols;
 

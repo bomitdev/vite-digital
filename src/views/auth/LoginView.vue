@@ -126,7 +126,8 @@ onMounted(() => {
       background: '#fff',
       iconColor: '#6f42c1'
     }).then(() => {
-      router.replace('/home-backoffice');
+      const redirectPath = route.query.redirect || '/home-backoffice';
+      router.replace(redirectPath);
     });
   } else if (route.query.error) {
     let errorMsg = 'เกิดข้อผิดพลาดในการเชื่อมต่อกับ Provider ID';
@@ -349,7 +350,8 @@ const handleLogin = async () => {
               background: '#fff',
               iconColor: '#6f42c1'
             }).then(() => {
-              router.push('/home-backoffice');
+              const redirectPath = route.query.redirect || '/home-backoffice';
+              router.push(redirectPath);
             });
           } else if (result.isDenied) {
             // Resend OTP by calling handleLogin again
@@ -373,7 +375,8 @@ const handleLogin = async () => {
           background: '#fff',
           iconColor: '#6f42c1'
         }).then(() => {
-          router.push('/home-backoffice');
+          const redirectPath = route.query.redirect || '/home-backoffice';
+          router.push(redirectPath);
         });
       }
     } else {

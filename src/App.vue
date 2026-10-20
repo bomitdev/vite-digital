@@ -128,19 +128,32 @@
             </a>
 
             <ul
-              class="dropdown-menu"
+              class="dropdown-menu shadow"
               :class="{ show: activeDropdown === 'ipd' }"
               aria-labelledby="mophDropdown"
             >
               <li>
                 <a class="dropdown-item" href="http://192.168.2.16/#/homePage2" target="_blank">
-                  IPDNurse
+                  <i class="bi bi-person-heart me-2 text-primary"></i>IPDNurse
                 </a>
               </li>
               <li>
                 <a class="dropdown-item" href="http://192.168.2.16:5000/" target="_blank">
-                  IPDDispensing
+                  <i class="bi bi-capsule me-2 text-info"></i>IPDDispensing
                 </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <RouterLink class="dropdown-item d-flex align-items-center" to="/had-dashboard" @click="activeDropdown = null">
+                  <i class="bi bi-shield-exclamation me-2 text-danger"></i>
+                  <span>ติดตามยาความเสี่ยงสูง (HAD)</span>
+                </RouterLink>
+              </li>
+              <li>
+                <RouterLink class="dropdown-item d-flex align-items-center" to="/had-calculator" @click="activeDropdown = null">
+                  <i class="bi bi-calculator-fill me-2 text-warning"></i>
+                  <span>คำนวณเม็ดยา Warfarin (INR)</span>
+                </RouterLink>
               </li>
             </ul>
           </li>

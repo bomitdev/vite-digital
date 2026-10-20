@@ -113,12 +113,13 @@
                   <tr>
                     <th>หน่วยงาน</th>
                     <th>ผู้เบิกพัสดุ</th>
+                    <th class="text-center" style="width: 130px;">ลายเซ็น</th>
                     <th class="text-end">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-if="departments.length === 0">
-                    <td colspan="3" class="text-center text-muted py-3">
+                    <td colspan="4" class="text-center text-muted py-3">
                       ยังไม่มีการตั้งค่าหน่วยงาน
                     </td>
                   </tr>
@@ -127,6 +128,12 @@
                     <td>
                       <div>{{ dept.requester_name || '-' }}</div>
                       <small class="text-muted">{{ dept.requester_position || '-' }}</small>
+                    </td>
+                    <td class="text-center">
+                      <div v-if="dept.signature_image" class="d-inline-block p-1 bg-white border rounded shadow-sm">
+                        <img :src="dept.signature_image" style="height: 32px; max-width: 90px; object-fit: contain;" alt="ลายเซ็น" />
+                      </div>
+                      <span v-else class="text-muted small">- ไม่มี -</span>
                     </td>
                     <td class="text-end">
                       <button
@@ -195,7 +202,7 @@
                   placeholder="เช่น นายแพทย์ใจดี รักษา"
                 />
               </div>
-              <div class="mb-4">
+              <div class="mb-3">
                 <label class="form-label fw-bold">ตำแหน่งผู้เบิก</label>
                 <input
                   type="text"
@@ -204,6 +211,60 @@
                   list="positionsList"
                   placeholder="เช่น นายแพทย์ปฏิบัติการ"
                 />
+              </div>
+
+              <!-- Upload Signature Image -->
+              <div class="mb-4">
+                <label class="form-label fw-bold">รูปภาพลายเซ็นผู้เบิก (PNG / JPG)</label>
+                <div class="d-flex align-items-center gap-3">
+                  <!-- Preview Box -->
+                  <div
+                    class="border rounded-3 p-2 bg-light d-flex align-items-center justify-content-center"
+                    style="width: 140px; height: 75px; border-style: dashed !important;"
+                  >
+                    <img
+                      v-if="deptForm.signature_image"
+                      :src="deptForm.signature_image"
+                      style="max-width: 100%; max-height: 100%; object-fit: contain;"
+                      alt="ลายเซ็น"
+                    />
+                    <div v-else class="text-muted small text-center">
+                      <i class="bi bi-pen d-block fs-5 text-secondary"></i>
+                      ไม่มีลายเซ็น
+                    </div>
+                  </div>
+
+                  <!-- Upload Actions -->
+                  <div class="flex-grow-1">
+                    <input
+                      type="file"
+                      ref="sigFileInput"
+                      class="d-none"
+                      accept="image/png, image/jpeg, image/jpg"
+                      @change="handleSignatureUpload"
+                    />
+                    <div class="d-flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-primary"
+                        @click="$refs.sigFileInput.click()"
+                      >
+                        <i class="bi bi-upload me-1"></i> อัปโหลดไฟล์ภาพลายเซ็น
+                      </button>
+                      <button
+                        v-if="deptForm.signature_image"
+                        type="button"
+                        class="btn btn-sm btn-outline-danger"
+                        @click="deptForm.signature_image = null"
+                      >
+                        <i class="bi bi-trash me-1"></i> ลบลายเซ็น
+                      </button>
+                    </div>
+                    <div class="form-text text-muted small mt-1">
+                      รองรับไฟล์ภาพ PNG หรือ JPG (แนะนำพื้นหลังโปร่งใส)
+                    </div>
+                  </div>
+                </div>
               </div>
               <div class="text-end">
                 <button type="button" class="btn btn-light me-2" data-bs-dismiss="modal">
@@ -258,7 +319,8 @@ export default {
       deptForm: {
         department_name: '',
         requester_name: '',
-        requester_position: ''
+        requester_position: '',
+        signature_image: null
       },
       apiNames: [],
       apiDepartments: [],
@@ -271,6 +333,27 @@ export default {
     this.deptModalInstance = new bootstrap.Modal(document.getElementById('deptModal'));
   },
   methods: {
+    handleSignatureUpload(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      if (!file.type.match(/image\/(png|jpeg|jpg)/)) {
+        Swal.fire('ข้อผิดพลาด', 'กรุณาอัปโหลดไฟล์รูปภาพ (PNG หรือ JPG) เท่านั้น', 'warning');
+        return;
+      }
+
+      if (file.size > 3 * 1024 * 1024) {
+        Swal.fire('ข้อผิดพลาด', 'ขนาดไฟล์รูปภาพต้องไม่เกิน 3MB', 'warning');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        this.deptForm.signature_image = event.target.result;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    },
     async fetchDropdownData() {
       try {
         const res = await axios.get('/api-digital/it_material/it_get_requesters_depts.php');
@@ -328,10 +411,20 @@ export default {
     openDeptModal(dept) {
       if (dept) {
         this.editingDept = true;
-        this.deptForm = { ...dept };
+        this.deptForm = { 
+          department_name: dept.department_name,
+          requester_name: dept.requester_name || '',
+          requester_position: dept.requester_position || '',
+          signature_image: dept.signature_image || null
+        };
       } else {
         this.editingDept = false;
-        this.deptForm = { department_name: '', requester_name: '', requester_position: '' };
+        this.deptForm = { 
+          department_name: '', 
+          requester_name: '', 
+          requester_position: '',
+          signature_image: null
+        };
       }
       this.deptModalInstance.show();
     },

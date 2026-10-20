@@ -26,6 +26,8 @@ const routes = [
   { path: '/physic-report', component: () => import('../views/reports/physic/PhysicReport.vue') },
   { path: '/telemedicine-report', component: () => import('../views/reports/telemedicine/TelemedicineReport.vue') },
   { path: '/ipd-report', component: () => import('../views/reports/ipd/IPDReport.vue') },
+  { path: '/had-dashboard', name: 'HadDashboard', component: () => import('../views/reports/had/HadDashboard.vue'), meta: { requiresAuth: true } },
+  { path: '/had-calculator', name: 'HadCalculator', component: () => import('../views/reports/had/WarfarinCalculatorView.vue') },
   {
     path: '/opddashboardchart',
     component: () => import('../views/reports/opd/OPDDashboardChart.vue')
@@ -432,7 +434,7 @@ router.beforeEach((to, from, next) => {
 
   // 1. ถ้าหน้าที่จะไปมีการตั้งค่า requiresAuth ไว้ แต่ยังไม่ได้ Login
   if (to.meta.requiresAuth && !isAuthenticated) {
-    next('/login'); // ส่งไปหน้า Login
+    next({ path: '/login', query: { redirect: to.fullPath } }); // ส่งไปหน้า Login
   }
   // 1.1 เช็ค Session Timeout สำหรับคนที่ Login แล้ว
   else if (isAuthenticated && lastActivity) {
@@ -442,14 +444,14 @@ router.beforeEach((to, from, next) => {
       localStorage.removeItem('user_token');
       localStorage.removeItem('user_name');
       localStorage.removeItem('last_activity');
-      next('/login');
+      next({ path: '/login', query: { redirect: to.fullPath } });
     } else {
       // ยังไม่หมดเวลา -> อัพเดทเวลาล่าสุด
       localStorage.setItem('last_activity', now);
 
       // 2. ถ้า Login อยู่แล้ว และกำลังจะไปหน้า Login
       if (to.path === '/login') {
-        next('/manager-schedule');
+        next(to.query.redirect || '/manager-schedule');
       } else {
         next();
       }
@@ -457,7 +459,7 @@ router.beforeEach((to, from, next) => {
   }
   // 2. ถ้า Login อยู่แล้ว และกำลังจะไปหน้า Login (กรณีไม่มี lastActivity หรือเคสอื่นๆ)
   else if (to.path === '/login' && isAuthenticated) {
-    next('/manager-schedule'); // ดีดไปหน้าจัดการทันที
+    next(to.query.redirect || '/manager-schedule'); // ดีดไปหน้าจัดการทันที
   }
   // 3. ปล่อยให้ไปหน้าอื่นๆ ได้ตามปกติ (เช่นหน้า Home หรือหน้าเปิดสาธารณะ)
   else {
