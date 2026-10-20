@@ -245,8 +245,8 @@
                   </div>
                   <h2 class="fw-bold mb-1 font-monospace" :class="evaluation.textClass">
                     <span v-if="evaluation.newWeeklyDose > 0">
-                      {{ evaluation.newWeeklyDose.toFixed(1) }}
-                      <small class="fs-6 fw-normal text-muted">mg / สัปดาห์</small>
+                      {{ evaluation.exactMathDoseFormatted }}
+                      <small class="fs-6 fw-normal text-muted">มก. / สัปดาห์</small>
                     </span>
                     <span v-else class="text-danger fs-4">
                       หยุดยาชั่วคราว
@@ -341,6 +341,59 @@
               </div>
             </div>
 
+            <!-- Mathematical Formula Calculation Card (ตรงตามสูตรที่กำหนด) -->
+            <div v-if="computedCurrentWeeklyDose > 0 && evaluation.newWeeklyDose > 0" class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden bg-white">
+              <div class="card-header bg-white py-3 px-4 border-bottom d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge bg-primary-subtle text-primary rounded-circle p-2">
+                    <i class="bi bi-calculator"></i>
+                  </span>
+                  <strong class="text-dark">สูตรการคำนวณตามคณิตศาสตร์</strong>
+                </div>
+                <span class="badge bg-light text-muted border font-monospace">ขนาดยาใหม่ = B &times; (1 + C/100)</span>
+              </div>
+
+              <div class="card-body p-3 p-md-4">
+                <!-- Mathematical Formula & Step-by-Step Substitution matching user prompt -->
+                <div class="p-3 mb-3 rounded-3 bg-light border text-center">
+                  <div class="text-muted small mb-1 fw-bold">สูตรที่ใช้คำนวณ:</div>
+                  <div class="fs-5 fw-bold text-dark font-monospace mb-2">
+                    ขนาดยาใหม่ = B &times; (1 + <span class="text-primary">C</span>/100)
+                  </div>
+                  <div class="text-muted small mb-1 fw-bold">แทนค่า:</div>
+                  <div class="fs-6 font-monospace text-secondary">
+                    = {{ computedCurrentWeeklyDose }} &times; (1 + <span :class="evaluation.percentChange >= 0 ? 'text-success fw-bold' : 'text-danger fw-bold'">{{ evaluation.percentChange >= 0 ? '+' + evaluation.percentChange : evaluation.percentChange }}</span>/100)
+                  </div>
+                  <div class="fs-5 font-monospace mt-2 text-dark">
+                    = {{ computedCurrentWeeklyDose }} &times; {{ evaluation.factorFormatted }} = <strong class="text-success border-bottom border-success border-2 pb-1">{{ evaluation.exactMathDoseFormatted }} มก./สัปดาห์</strong>
+                  </div>
+                </div>
+
+                <!-- Summary Breakdown Table (Exact match to User Screenshot) -->
+                <div class="border rounded-3 p-3 bg-white">
+                  <div class="small fw-bold text-muted mb-2 pb-1 border-bottom">
+                    ผลการคำนวณตัวอย่าง
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-secondary">ขนาดยาเดิม</span>
+                    <span class="fw-bold text-dark font-monospace fs-6">{{ computedCurrentWeeklyDose }} มก./สัปดาห์</span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-secondary">เปอร์เซ็นต์ที่เลือก</span>
+                    <span class="fw-bold font-monospace fs-6" :class="evaluation.percentChange >= 0 ? 'text-success' : 'text-danger'">
+                      {{ evaluation.percentText }}
+                    </span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center pt-2">
+                    <span class="fw-bold text-dark">ขนาดยาใหม่ตามคณิตศาสตร์</span>
+                    <span class="fw-bold fs-5 font-monospace text-success">
+                      {{ evaluation.exactMathDoseFormatted }} มก./สัปดาห์
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Clinical Recommendations Box -->
             <div class="card border rounded-3 mb-4 bg-light">
               <div class="card-body p-3">
@@ -398,7 +451,10 @@
                   <span>ตารางจัดเม็ดยารายวัน (Daily Schedule: จันทร์ - อาทิตย์)</span>
                 </label>
                 <span class="badge bg-light text-muted border small">
-                  เป้าหมาย: {{ evaluation.newWeeklyDose.toFixed(1) }} mg/สัปดาห์
+                  เป้าหมายตามสูตร: {{ evaluation.exactMathDoseFormatted }} มก./สัปดาห์
+                  <span v-if="scheduleWeeklyTotal > 0 && Math.abs(scheduleWeeklyTotal - evaluation.newWeeklyDose) >= 0.05" class="text-primary ms-1">
+                    (จัดเม็ดยารวมได้จริง: {{ scheduleWeeklyTotal }} มก.)
+                  </span>
                 </span>
               </div>
 
@@ -1063,7 +1119,20 @@ export default {
       const factor = 1 + (pct / 100);
       let rawNewDose = b * factor;
       if (rawNewDose < 0) rawNewDose = 0;
-      const roundedDose = Math.round(rawNewDose * 2) / 2;
+
+      // Exact mathematical calculation according to user formula: New Dose = B * (1 + C/100)
+      const mathDose = Math.round(rawNewDose * 100) / 100;
+
+      let formattedDose = '0';
+      if (mathDose > 0) {
+        if (mathDose % 1 === 0) {
+          formattedDose = mathDose.toFixed(0);
+        } else if (Math.abs((Math.round(mathDose * 10) / 10) - mathDose) < 0.0001) {
+          formattedDose = mathDose.toFixed(1);
+        } else {
+          formattedDose = mathDose.toFixed(2);
+        }
+      }
 
       let pctText = 'คงเดิม (0%)';
       if (pct > 0) {
@@ -1076,9 +1145,17 @@ export default {
         ...base,
         percentChange: pct,
         percentText: pctText,
-        newWeeklyDose: roundedDose,
-        rawNewDose: rawNewDose
+        newWeeklyDose: mathDose,
+        exactMathDoseFormatted: formattedDose,
+        rawNewDose: rawNewDose,
+        factorFormatted: (Math.round(factor * 1000) / 1000).toString()
       };
+    },
+
+    scheduleWeeklyTotal() {
+      if (!this.dailySchedule || this.dailySchedule.length === 0) return 0;
+      const sum = this.dailySchedule.reduce((acc, d) => acc + (Number(d.dose) || 0), 0);
+      return Math.round(sum * 10) / 10;
     },
 
     dailySchedule() {
