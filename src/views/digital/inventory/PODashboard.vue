@@ -84,9 +84,17 @@
                       {{ getStatusText(po.status) }}
                     </span>
                   </td>
-                  <td class="text-end pe-4">
-                    <button class="btn btn-sm btn-outline-primary rounded-pill me-1" @click="viewPO(po)">
+                  <td class="text-end pe-4 text-nowrap">
+                    <button class="btn btn-sm btn-outline-primary rounded-pill me-1" @click.stop="viewPO(po)">
                       <i class="bi bi-search"></i> ตรวจสอบ
+                    </button>
+                    <button 
+                      v-if="['ORDERED', 'PARTIAL_RECEIVED'].includes(po.status)"
+                      class="btn btn-sm btn-outline-danger rounded-pill" 
+                      @click.stop="cancelPO(po)" 
+                      title="ยกเลิกใบสั่งซื้อ"
+                    >
+                      <i class="bi bi-x-circle me-1"></i> ยกเลิก
                     </button>
                   </td>
                 </tr>
@@ -159,6 +167,46 @@ export default {
     },
     viewPO(po) {
       this.$router.push(`/inventory-po-form?id=${po.id}`);
+    },
+    async cancelPO(po) {
+      if (!po || !po.id) return;
+      const { value: reason, isConfirmed } = await Swal.fire({
+        title: 'ยืนยันการยกเลิกใบสั่งซื้อ?',
+        html: `คุณแน่ใจหรือไม่ว่าต้องการยกเลิกใบสั่งซื้อเลขที่ <strong class="text-danger">${po.po_number}</strong> ?<br><small class="text-muted">*หากใบสั่งซื้อนี้มาจากใบขอซื้อ (PR) ใบขอซื้อจะถูกปลดล็อกกลับมาให้ใช้งานใหม่ได้</small>`,
+        input: 'textarea',
+        inputPlaceholder: 'ระบุเหตุผลการยกเลิก (ถ้ามี)...',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="bi bi-x-circle me-1"></i> ยืนยันยกเลิกใบสั่งซื้อ',
+        cancelButtonText: 'ปิด'
+      });
+
+      if (!isConfirmed) return;
+
+      try {
+        const res = await axios.post('/api-digital/inventory/po_cancel.php', {
+          id: po.id,
+          reason: reason || ''
+        });
+
+        if (res.data.status === 'success') {
+          await Swal.fire({
+            icon: 'success',
+            title: 'ยกเลิกสำเร็จ!',
+            text: res.data.message,
+            timer: 1600,
+            showConfirmButton: false
+          });
+          this.fetchPOs();
+        } else {
+          Swal.fire('ไม่สามารถยกเลิกได้', res.data.message, 'error');
+        }
+      } catch (err) {
+        console.error('Cancel PO error:', err);
+        Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการยกเลิกใบสั่งซื้อ', 'error');
+      }
     }
   }
 }

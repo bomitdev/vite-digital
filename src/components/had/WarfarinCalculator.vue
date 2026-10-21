@@ -167,29 +167,346 @@
 
             <!-- Input B: Current Dose -->
             <div class="mb-4">
-              <div class="d-flex justify-content-between align-items-center mb-1">
-                <label class="form-label fw-bold text-dark mb-0">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label fw-bold text-dark mb-0 d-flex align-items-center gap-1">
                   <span class="badge bg-primary text-white rounded-circle me-1 px-2 py-1">B</span>
                   ขนาดยาเดิมของผู้ป่วย (Current Dose)
                 </label>
-                <div class="btn-group btn-group-sm" role="group">
+                <div class="d-flex align-items-center gap-2">
                   <button
                     type="button"
-                    class="btn btn-xs"
-                    :class="doseUnit === 'weekly' ? 'btn-primary' : 'btn-outline-secondary'"
-                    @click="setDoseUnit('weekly')"
+                    class="btn btn-xs rounded-pill px-2 py-1 shadow-2xs d-flex align-items-center gap-1"
+                    :class="showDoseCalculator ? 'btn-primary text-white' : 'btn-outline-primary'"
+                    @click="showDoseCalculator = !showDoseCalculator"
+                    title="เปิด/ปิด เครื่องมือคำนวณจากขนาดเม็ดยาและจำนวนวัน"
                   >
-                    มก./สัปดาห์
+                    <i class="bi" :class="showDoseCalculator ? 'bi-chevron-up' : 'bi-calculator'"></i>
+                    <span class="d-none d-sm-inline">{{ showDoseCalculator ? 'ซ่อนเครื่องมือคำนวณ' : 'เครื่องมือช่วยคำนวณ' }}</span>
                   </button>
-                  <button
-                    type="button"
-                    class="btn btn-xs"
-                    :class="doseUnit === 'daily' ? 'btn-primary' : 'btn-outline-secondary'"
-                    @click="setDoseUnit('daily')"
-                  >
-                    มก./วัน
-                  </button>
+                  <div class="btn-group btn-group-sm" role="group">
+                    <button
+                      type="button"
+                      class="btn btn-xs"
+                      :class="doseUnit === 'weekly' ? 'btn-primary' : 'btn-outline-secondary'"
+                      @click="setDoseUnit('weekly')"
+                    >
+                      มก./สัปดาห์
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-xs"
+                      :class="doseUnit === 'daily' ? 'btn-primary' : 'btn-outline-secondary'"
+                      @click="setDoseUnit('daily')"
+                    >
+                      มก./วัน
+                    </button>
+                  </div>
                 </div>
+              </div>
+
+              <!-- Dose Calculator Helper Card (กรอกขนาดยา * จำนวนวัน รวม 2 ขนาด) -->
+              <div
+                v-if="showDoseCalculator"
+                class="dose-helper-card p-3 rounded-4 mb-2 border shadow-xs position-relative"
+              >
+                <!-- Tool Header -->
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="badge bg-warning-subtle text-warning-emphasis rounded-circle p-1">
+                      <i class="bi bi-calculator-fill"></i>
+                    </div>
+                    <div>
+                      <div class="fw-bold text-dark small">เครื่องมือคำนวณขนาดยาเดิม (รายสัปดาห์)</div>
+                      <div class="text-muted" style="font-size: 11px;">
+                        กรอกขนาดเม็ดยา × จำนวนวัน แล้วรวมทั้ง 2 ขนาดยาเข้าด้วยกัน
+                      </div>
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-center gap-1">
+                    <button
+                      v-if="doseCalcTotalDays > 0"
+                      type="button"
+                      class="btn btn-link btn-xs text-secondary text-decoration-none p-0 d-flex align-items-center gap-1"
+                      @click="clearDoseCalc"
+                      title="ล้างค่าที่กรอกในเครื่องมือคำนวณ"
+                    >
+                      <i class="bi bi-arrow-counterclockwise"></i>
+                      <span>รีเซ็ต</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Table Rows + Curly Bracket + Total Card -->
+                <div class="d-flex flex-column flex-sm-row align-items-center justify-content-between gap-2">
+                  <!-- The 2 Rows -->
+                  <div class="flex-grow-1 w-100">
+                    <!-- Column Headers -->
+                    <div class="d-flex align-items-center gap-1 text-center small text-muted fw-bold mb-1 px-1">
+                      <div style="width: 46px;">ขนาด</div>
+                      <div class="flex-fill" style="min-width: 60px;">ขนาดเม็ดยา</div>
+                      <div style="width: 14px;"></div>
+                      <div class="flex-fill" style="min-width: 60px;">จำนวนวัน</div>
+                      <div style="width: 14px;"></div>
+                      <div class="flex-fill" style="min-width: 60px;">รวม</div>
+                    </div>
+
+                    <!-- Row 1: 2mg -->
+                    <div class="mb-2 p-2 rounded-3 bg-white border border-light-subtle shadow-2xs">
+                      <div class="d-flex align-items-center gap-1 mb-1">
+                        <div style="width: 46px;" class="text-center">
+                          <span class="badge rounded-pill px-2 py-1 pill-orange text-dark fw-bold w-100" title="Warfarin 2 mg (เม็ดสีส้ม)">
+                            2mg.
+                          </span>
+                        </div>
+                        <div class="flex-fill" style="min-width: 60px;">
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="0"
+                            class="form-control form-control-sm text-center font-monospace fw-bold bg-light shadow-2xs"
+                            v-model.number="doseCalc2mg_dose"
+                            @input="onDoseCalcInput"
+                            placeholder="2"
+                            title="ขนาดยาต่อวัน (มก.) เช่น 2, 4, 1"
+                          />
+                        </div>
+                        <div style="width: 14px;" class="text-center fw-bold text-muted small">✕</div>
+                        <div class="flex-fill" style="min-width: 60px;">
+                          <input
+                            type="number"
+                            step="1"
+                            min="0"
+                            max="7"
+                            class="form-control form-control-sm text-center font-monospace fw-bold bg-white border-primary-subtle shadow-2xs"
+                            v-model.number="doseCalc2mg_days"
+                            @input="onDoseCalcDaysChange(2)"
+                            placeholder="0 วัน"
+                            title="จำนวนวันที่รับประทาน (0-7 วัน)"
+                          />
+                        </div>
+                        <div style="width: 14px;" class="text-center fw-bold text-muted small">=</div>
+                        <div class="flex-fill" style="min-width: 60px;">
+                          <div
+                            class="form-control form-control-sm text-center font-monospace fw-bold border"
+                            :class="doseCalc2mg_total > 0 ? 'bg-primary-subtle border-primary-subtle text-primary' : 'bg-light text-muted'"
+                            title="รวมขนาดยา 2mg"
+                          >
+                            {{ doseCalc2mg_total > 0 ? doseCalc2mg_total.toFixed(1) : '-' }}
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Day Selector for 2mg -->
+                      <div class="d-flex align-items-center justify-content-between pt-1 border-top border-light gap-1 flex-wrap">
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                          <small class="text-muted fw-bold me-1" style="font-size: 11px;">เลือกวัน:</small>
+                          <button
+                            v-for="d in weekDayList"
+                            :key="'2mg-' + d.key"
+                            type="button"
+                            class="day-pill-btn"
+                            :class="{
+                              'day-pill-2mg-active': doseCalc2mg_selectedDays.includes(d.key),
+                              'day-pill-taken': doseCalc3mg_selectedDays.includes(d.key) && !doseCalc2mg_selectedDays.includes(d.key)
+                            }"
+                            @click="toggleDoseCalcDay(2, d.key)"
+                            :title="getDayTooltip(2, d)"
+                          >
+                            {{ d.label }}
+                          </button>
+                        </div>
+                        <div class="text-end">
+                          <span
+                            v-if="doseCalc2mg_days > 0 && doseCalc2mg_selectedDays.length === doseCalc2mg_days"
+                            class="badge bg-warning text-dark rounded-pill"
+                            style="font-size: 10px;"
+                          >
+                            <i class="bi bi-check-circle-fill me-1"></i>ครบ {{ doseCalc2mg_days }} วัน
+                          </span>
+                          <span
+                            v-else-if="doseCalc2mg_days > 0"
+                            class="badge bg-light text-muted border rounded-pill"
+                            style="font-size: 10px;"
+                          >
+                            เลือก {{ doseCalc2mg_selectedDays.length }}/{{ doseCalc2mg_days }} วัน
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Row 2: 3mg -->
+                    <div class="p-2 rounded-3 bg-white border border-light-subtle shadow-2xs">
+                      <div class="d-flex align-items-center gap-1 mb-1">
+                        <div style="width: 46px;" class="text-center">
+                          <span class="badge rounded-pill px-2 py-1 pill-blue text-dark fw-bold w-100" title="Warfarin 3 mg (เม็ดสีฟ้า)">
+                            3mg.
+                          </span>
+                        </div>
+                        <div class="flex-fill" style="min-width: 60px;">
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="0"
+                            class="form-control form-control-sm text-center font-monospace fw-bold bg-light shadow-2xs"
+                            v-model.number="doseCalc3mg_dose"
+                            @input="onDoseCalcInput"
+                            placeholder="3"
+                            title="ขนาดยาต่อวัน (มก.) เช่น 3, 6, 1.5"
+                          />
+                        </div>
+                        <div style="width: 14px;" class="text-center fw-bold text-muted small">✕</div>
+                        <div class="flex-fill" style="min-width: 60px;">
+                          <input
+                            type="number"
+                            step="1"
+                            min="0"
+                            max="7"
+                            class="form-control form-control-sm text-center font-monospace fw-bold bg-white border-primary-subtle shadow-2xs"
+                            v-model.number="doseCalc3mg_days"
+                            @input="onDoseCalcDaysChange(3)"
+                            placeholder="0 วัน"
+                            title="จำนวนวันที่รับประทาน (0-7 วัน)"
+                          />
+                        </div>
+                        <div style="width: 14px;" class="text-center fw-bold text-muted small">=</div>
+                        <div class="flex-fill" style="min-width: 60px;">
+                          <div
+                            class="form-control form-control-sm text-center font-monospace fw-bold border"
+                            :class="doseCalc3mg_total > 0 ? 'bg-primary-subtle border-primary-subtle text-primary' : 'bg-light text-muted'"
+                            title="รวมขนาดยา 3mg"
+                          >
+                            {{ doseCalc3mg_total > 0 ? doseCalc3mg_total.toFixed(1) : '-' }}
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Day Selector for 3mg -->
+                      <div class="d-flex align-items-center justify-content-between pt-1 border-top border-light gap-1 flex-wrap">
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                          <small class="text-muted fw-bold me-1" style="font-size: 11px;">เลือกวัน:</small>
+                          <button
+                            v-for="d in weekDayList"
+                            :key="'3mg-' + d.key"
+                            type="button"
+                            class="day-pill-btn"
+                            :class="{
+                              'day-pill-3mg-active': doseCalc3mg_selectedDays.includes(d.key),
+                              'day-pill-taken': doseCalc2mg_selectedDays.includes(d.key) && !doseCalc3mg_selectedDays.includes(d.key)
+                            }"
+                            @click="toggleDoseCalcDay(3, d.key)"
+                            :title="getDayTooltip(3, d)"
+                          >
+                            {{ d.label }}
+                          </button>
+                          <button
+                            v-if="doseCalc3mg_days > 0 && remainingDaysFor3mg.length > 0 && doseCalc3mg_selectedDays.length < doseCalc3mg_days"
+                            type="button"
+                            class="btn btn-xs btn-outline-info rounded-pill px-2 py-0 ms-1"
+                            @click="pickRemainingDaysFor3mg"
+                            title="เลือกวันที่เหลือจากแถว 2mg ให้อัตโนมัติ"
+                            style="font-size: 10px;"
+                          >
+                            <i class="bi bi-magic me-1"></i>เลือกวันที่เหลือ
+                          </button>
+                        </div>
+                        <div class="text-end">
+                          <span
+                            v-if="doseCalc3mg_days > 0 && doseCalc3mg_selectedDays.length === doseCalc3mg_days"
+                            class="badge bg-info text-white rounded-pill"
+                            style="font-size: 10px;"
+                          >
+                            <i class="bi bi-check-circle-fill me-1"></i>ครบ {{ doseCalc3mg_days }} วัน
+                          </span>
+                          <span
+                            v-else-if="doseCalc3mg_days > 0"
+                            class="badge bg-light text-muted border rounded-pill"
+                            style="font-size: 10px;"
+                          >
+                            เลือก {{ doseCalc3mg_selectedDays.length }}/{{ doseCalc3mg_days }} วัน
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Middle Connector Bracket (Curly Brace) -->
+                  <div class="dose-curly-col d-none d-sm-flex align-items-center justify-content-center px-1">
+                    <svg width="22" height="120" viewBox="0 0 22 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M4 6 C14 6, 13 55, 19 60 C13 65, 14 114, 4 114" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" fill="none" />
+                    </svg>
+                  </div>
+
+                  <!-- Right Side: รวมทั้งหมด Card -->
+                  <div class="total-summary-card text-center p-2 rounded-3 shadow-2xs d-flex flex-column justify-content-center" style="min-width: 105px;">
+                    <div class="small fw-bold text-muted text-nowrap" style="font-size: 11px;">รวมทั้งหมด</div>
+                    <div class="h5 fw-bolder font-monospace text-primary mb-0 my-1">
+                      {{ doseCalcGrandTotal > 0 ? doseCalcGrandTotal.toFixed(1) : '0' }}
+                      <small class="fs-7 text-muted fw-normal">มก.</small>
+                    </div>
+                    <div>
+                      <span v-if="doseCalcTotalDays === 7" class="badge bg-success text-white rounded-pill px-2" style="font-size: 10px;">
+                        <i class="bi bi-check-circle-fill me-1"></i>ครบ 7 วัน
+                      </span>
+                      <span v-else-if="doseCalcTotalDays > 0" class="badge bg-warning text-dark rounded-pill px-2" style="font-size: 10px;">
+                        {{ doseCalcTotalDays }}/7 วัน
+                      </span>
+                      <span v-else class="badge bg-secondary-subtle text-muted rounded-pill px-2" style="font-size: 10px;">
+                        0 วัน
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Selected Days Badges Summary -->
+                <div v-if="doseCalc2mg_selectedDays.length > 0 || doseCalc3mg_selectedDays.length > 0" class="mt-2 pt-2 border-top d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                  <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size: 11px;">
+                    <span v-if="doseCalc2mg_selectedDays.length > 0" class="badge rounded-pill px-2 py-1 pill-orange text-dark d-flex align-items-center gap-1">
+                      <span>2mg ({{ doseCalc2mg_selectedDays.length }} วัน):</span>
+                      <strong>{{ formatSelectedDays(doseCalc2mg_selectedDays) }}</strong>
+                    </span>
+                    <span v-if="doseCalc3mg_selectedDays.length > 0" class="badge rounded-pill px-2 py-1 pill-blue text-dark d-flex align-items-center gap-1">
+                      <span>3mg ({{ doseCalc3mg_selectedDays.length }} วัน):</span>
+                      <strong>{{ formatSelectedDays(doseCalc3mg_selectedDays) }}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Action & Auto-apply Bar -->
+                <div class="d-flex flex-wrap align-items-center justify-content-between pt-2 border-top mt-2 gap-2">
+                  <button
+                    type="button"
+                    class="btn btn-xs rounded-pill px-2 py-1 shadow-2xs d-flex align-items-center gap-1"
+                    :class="isDoseSynced ? 'btn-success text-white' : 'btn-primary text-white'"
+                    @click="applyDoseCalcToCurrent"
+                    :disabled="doseCalcGrandTotal === 0"
+                    title="นำค่าที่คำนวณได้ไปใส่ในช่องขนาดยาเดิม (Current Dose)"
+                  >
+                    <i class="bi" :class="isDoseSynced ? 'bi-check2-circle' : 'bi-arrow-down-circle-fill'"></i>
+                    <span>{{ isDoseSynced ? 'ซิงค์ลงช่อง B แล้ว (' + doseCalcGrandTotal.toFixed(1) + ' มก.)' : 'กรอกค่าลงช่อง B (' + (doseCalcGrandTotal > 0 ? doseCalcGrandTotal.toFixed(1) : '0') + ' มก.)' }}</span>
+                  </button>
+
+                  <div class="form-check form-switch mb-0 d-flex align-items-center gap-1" style="min-height: auto;">
+                    <input
+                      class="form-check-input mt-0"
+                      type="checkbox"
+                      role="switch"
+                      id="autoApplySwitch"
+                      v-model="doseCalcAutoApply"
+                      title="อัปเดตค่าลงช่อง B อัตโนมัติทันทีที่พิมพ์"
+                    />
+                    <label class="form-check-label small text-muted" for="autoApplySwitch" style="font-size: 11px;">
+                      อัปเดตลงช่อง B ทันที
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Down Pointer to Current Dose Input -->
+              <div v-if="showDoseCalculator" class="text-center mb-2">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 small fw-normal d-inline-flex align-items-center gap-1" style="font-size: 11px;">
+                  <i class="bi bi-arrow-down-short fs-6"></i>
+                  <span>ค่าจะถูกนำมาใส่ตรงขนาดยาเดิมของผู้ป่วย (Current Dose) ด้านล่าง</span>
+                </span>
               </div>
 
               <div class="input-group input-group-lg shadow-xs">
@@ -1080,7 +1397,26 @@ export default {
         { label: '4.0-4.9 (4.3)', val: 4.3 },
         { label: '5.0-8.9 (6.5)', val: 6.5 },
         { label: '≥ 9.0 (10.0)', val: 10.0 }
-      ]
+      ],
+
+      // Dose Calculator Helper (คำนวณจากขนาดเม็ดยา * จำนวนวัน รวม 2 ขนาด)
+      showDoseCalculator: true,
+      doseCalc2mg_dose: 2,
+      doseCalc2mg_days: null,
+      doseCalc3mg_dose: 3,
+      doseCalc3mg_days: null,
+      doseCalcAutoApply: true,
+      weekDayList: [
+        { key: 'sun', label: 'อา', fullName: 'อาทิตย์' },
+        { key: 'mon', label: 'จ', fullName: 'จันทร์' },
+        { key: 'tue', label: 'อ', fullName: 'อังคาร' },
+        { key: 'wed', label: 'พ', fullName: 'พุธ' },
+        { key: 'thu', label: 'พฤ', fullName: 'พฤหัสบดี' },
+        { key: 'fri', label: 'ศ', fullName: 'ศุกร์' },
+        { key: 'sat', label: 'ส', fullName: 'เสาร์' }
+      ],
+      doseCalc2mg_selectedDays: [],
+      doseCalc3mg_selectedDays: []
     };
   },
   mounted() {
@@ -1094,6 +1430,45 @@ export default {
     }
   },
   computed: {
+    // คำนวณขนาดยา 2mg: ขนาดเม็ดยา * จำนวนวัน
+    doseCalc2mg_total() {
+      const dose = Number(this.doseCalc2mg_dose) || 0;
+      const days = Number(this.doseCalc2mg_days) || 0;
+      return dose * days;
+    },
+
+    // คำนวณขนาดยา 3mg: ขนาดเม็ดยา * จำนวนวัน
+    doseCalc3mg_total() {
+      const dose = Number(this.doseCalc3mg_dose) || 0;
+      const days = Number(this.doseCalc3mg_days) || 0;
+      return dose * days;
+    },
+
+    // รวมจำนวนวันทั้งหมดของทั้ง 2 ขนาด
+    doseCalcTotalDays() {
+      const d1 = Number(this.doseCalc2mg_days) || 0;
+      const d2 = Number(this.doseCalc3mg_days) || 0;
+      return d1 + d2;
+    },
+
+    // รวมขนาดทั้ง 2 ขนาดเข้าด้วยกัน
+    doseCalcGrandTotal() {
+      return this.doseCalc2mg_total + this.doseCalc3mg_total;
+    },
+
+    // วันที่ยังว่างอยู่สำหรับแถว 3mg
+    remainingDaysFor3mg() {
+      return this.weekDayList
+        .map(d => d.key)
+        .filter(k => !this.doseCalc2mg_selectedDays.includes(k));
+    },
+
+    // ตรวจสอบว่าค่าใน B ซิงค์ตรงกับผลรวมของเครื่องมือคำนวณหรือไม่
+    isDoseSynced() {
+      if (this.doseCalcTotalDays === 0 || this.doseCalcGrandTotal === 0) return false;
+      return Math.abs(this.computedCurrentWeeklyDose - this.doseCalcGrandTotal) < 0.05;
+    },
+
     computedCurrentWeeklyDose() {
       const val = Number(this.inputDoseValue) || 0;
       if (this.doseUnit === 'daily') {
@@ -1667,6 +2042,151 @@ export default {
       this.manualPercent = null;
     },
 
+    // จัดการเมื่อพิมพ์หรือเปลี่ยนค่าในตารางเครื่องมือคำนวณ
+    onDoseCalcInput() {
+      if (this.doseCalcAutoApply && this.doseCalcTotalDays > 0 && this.doseCalcGrandTotal > 0) {
+        this.doseUnit = 'weekly';
+        this.inputDoseValue = Number(this.doseCalcGrandTotal.toFixed(2));
+      }
+    },
+
+    // นำค่าผลรวมจากเครื่องมือคำนวณไปใส่ในช่องขนาดยาเดิม (Current Dose)
+    applyDoseCalcToCurrent() {
+      if (this.doseCalcGrandTotal > 0) {
+        this.doseUnit = 'weekly';
+        this.inputDoseValue = Number(this.doseCalcGrandTotal.toFixed(2));
+        if (typeof Swal !== 'undefined') {
+          const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 2000,
+            timerProgressBar: true
+          });
+          Toast.fire({
+            icon: 'success',
+            title: `อัปเดตขนาดยาเดิม (B) เป็น ${this.inputDoseValue} มก./สัปดาห์ เรียบร้อย`
+          });
+        }
+      }
+    },
+
+    // จัดการเมื่อเปลี่ยนตัวเลขในช่องจำนวนวัน
+    onDoseCalcDaysChange(strength) {
+      const is2mg = strength === 2;
+      const days = Number(is2mg ? this.doseCalc2mg_days : this.doseCalc3mg_days) || 0;
+      let selectedList = is2mg ? this.doseCalc2mg_selectedDays : this.doseCalc3mg_selectedDays;
+
+      // ถ้าจำนวนวันที่เคยเลือกไว้เกินจำนวนวันที่กรอก ให้ตัดส่วนเกินออก
+      if (selectedList.length > days) {
+        selectedList = selectedList.slice(0, days);
+        if (is2mg) {
+          this.doseCalc2mg_selectedDays = selectedList;
+        } else {
+          this.doseCalc3mg_selectedDays = selectedList;
+        }
+      }
+      this.onDoseCalcInput();
+    },
+
+    // คลิกเลือกวัน (อา, จ, อ, พ, พฤ, ศ, ส) ให้สอดคล้องกับจำนวนวันที่กรอก
+    toggleDoseCalcDay(strength, dayKey) {
+      const is2mg = strength === 2;
+      let selectedList = [...(is2mg ? this.doseCalc2mg_selectedDays : this.doseCalc3mg_selectedDays)];
+      const targetDays = Number(is2mg ? this.doseCalc2mg_days : this.doseCalc3mg_days) || 0;
+
+      const idx = selectedList.indexOf(dayKey);
+      if (idx > -1) {
+        // ถ้าเลือกไว้อยู่แล้ว ให้ยกเลิกการเลือก
+        selectedList.splice(idx, 1);
+      } else {
+        // ยังไม่ได้เลือก
+        if (targetDays > 0) {
+          // จำกัดจำนวนวันตามที่กรอก
+          if (selectedList.length < targetDays) {
+            selectedList.push(dayKey);
+          } else {
+            // เลือกครบตามจำนวนแล้ว ให้เปลี่ยนวันแรกสุดออกแล้วใส่วันใหม่แทน (FIFO)
+            selectedList.shift();
+            selectedList.push(dayKey);
+          }
+        } else {
+          // ถ้ายังไม่ได้กรอกจำนวนวัน ให้บวกวันเพิ่มและอัปเดตจำนวนวันให้อัตโนมัติ
+          selectedList.push(dayKey);
+          if (is2mg) {
+            this.doseCalc2mg_days = selectedList.length;
+          } else {
+            this.doseCalc3mg_days = selectedList.length;
+          }
+        }
+      }
+
+      // เรียงวันตามสัปดาห์: อา -> ส
+      const dayOrder = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+      selectedList.sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
+
+      if (is2mg) {
+        this.doseCalc2mg_selectedDays = selectedList;
+      } else {
+        this.doseCalc3mg_selectedDays = selectedList;
+      }
+
+      this.onDoseCalcInput();
+    },
+
+    // เลือกวันที่เหลือจากแถว 2mg ให้แถว 3mg อัตโนมัติ
+    pickRemainingDaysFor3mg() {
+      const target = Number(this.doseCalc3mg_days) || 0;
+      if (target <= 0) return;
+      const remaining = this.weekDayList
+        .map(d => d.key)
+        .filter(k => !this.doseCalc2mg_selectedDays.includes(k));
+
+      this.doseCalc3mg_selectedDays = remaining.slice(0, target);
+      this.onDoseCalcInput();
+    },
+
+    // แสดง Tooltip คำอธิบายเมื่อชี้ที่ปุ่มวัน
+    getDayTooltip(strength, d) {
+      const is2mg = strength === 2;
+      const isSelected = is2mg ? this.doseCalc2mg_selectedDays.includes(d.key) : this.doseCalc3mg_selectedDays.includes(d.key);
+      const isTakenByOther = is2mg ? this.doseCalc3mg_selectedDays.includes(d.key) : this.doseCalc2mg_selectedDays.includes(d.key);
+      const otherLabel = is2mg ? '3mg' : '2mg';
+
+      if (isSelected) {
+        return `วัน${d.fullName} (เลือกอยู่)`;
+      }
+      if (isTakenByOther) {
+        return `วัน${d.fullName} (เลือกอยู่ในแถว ${otherLabel})`;
+      }
+      return `คลิกเพื่อเลือกวัน${d.fullName}`;
+    },
+
+    // จัดรูปแบบชื่อย่อวัน เช่น จ., อ., พ.
+    formatSelectedDays(keys) {
+      if (!keys || keys.length === 0) return '';
+      const map = {
+        sun: 'อา.',
+        mon: 'จ.',
+        tue: 'อ.',
+        wed: 'พ.',
+        thu: 'พฤ.',
+        fri: 'ศ.',
+        sat: 'ส.'
+      };
+      return keys.map(k => map[k] || k).join(', ');
+    },
+
+    // ล้างค่าที่กรอกในเครื่องมือคำนวณ
+    clearDoseCalc() {
+      this.doseCalc2mg_dose = 2;
+      this.doseCalc2mg_days = null;
+      this.doseCalc3mg_dose = 3;
+      this.doseCalc3mg_days = null;
+      this.doseCalc2mg_selectedDays = [];
+      this.doseCalc3mg_selectedDays = [];
+    },
+
     resetDefaults() {
       this.inrValue = 2.5;
       this.inputDoseValue = 21;
@@ -1676,6 +2196,7 @@ export default {
       this.dispenseDays = 14;
       this.primaryTabletStrength = 3;
       this.manualPercent = null;
+      this.clearDoseCalc();
     },
 
     getPillClass(strength) {
@@ -1861,6 +2382,7 @@ export default {
       if (item.created_by) {
         this.recordedBy = item.created_by;
       }
+      this.clearDoseCalc();
       this.showHistoryModal = false;
 
       Swal.fire({
@@ -2039,6 +2561,71 @@ export default {
 .btn-xs {
   font-size: 11px;
   padding: 2px 8px;
+}
+
+.shadow-2xs {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.dose-helper-card {
+  background: linear-gradient(180deg, #fbfcfe 0%, #f1f5f9 100%);
+  border-color: #cbd5e1 !important;
+}
+
+.dose-curly-col {
+  min-width: 22px;
+}
+
+.total-summary-card {
+  min-width: 105px;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 1.5px dashed #f59e0b !important;
+}
+
+.day-pill-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50% !important;
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  line-height: 1;
+}
+
+.day-pill-btn:hover {
+  background-color: #e2e8f0;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+}
+
+.day-pill-2mg-active {
+  background: linear-gradient(135deg, #fed7aa, #fb923c) !important;
+  color: #7c2d12 !important;
+  border-color: #f97316 !important;
+  box-shadow: 0 2px 4px rgba(249, 115, 22, 0.35);
+  font-weight: 800;
+}
+
+.day-pill-3mg-active {
+  background: linear-gradient(135deg, #bae6fd, #38bdf8) !important;
+  color: #0369a1 !important;
+  border-color: #0284c7 !important;
+  box-shadow: 0 2px 4px rgba(2, 132, 199, 0.35);
+  font-weight: 800;
+}
+
+.day-pill-taken {
+  opacity: 0.55;
+  border-style: dashed;
+  background-color: #f8fafc;
 }
 
 .pill-visual-circle {

@@ -16,7 +16,7 @@ try {
             LEFT JOIN inv_warehouses w ON pr.warehouse_id = w.id
             WHERE pr.status = 'DIR_APPROVED'
             AND NOT EXISTS (
-                SELECT 1 FROM inv_purchase_orders po WHERE po.pr_id = pr.id
+                SELECT 1 FROM inv_purchase_orders po WHERE po.pr_id = pr.id AND po.status != 'CANCELLED'
             )
             ORDER BY pr.created_at DESC";
     

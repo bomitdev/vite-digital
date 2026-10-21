@@ -37,14 +37,14 @@ try {
         $stmt->execute([$pr_id]);
         $current = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        if (!$current || $current['status'] !== 'PENDING') {
-            throw new Exception("ไม่สามารถแก้ไข PR นี้ได้ (ไม่อยู่ในสถานะ PENDING)");
+        if (!$current) {
+            throw new Exception("ไม่พบใบขอซื้อนี้");
         }
         
         $stmt = $pdo2->prepare("UPDATE inv_purchase_requests SET warehouse_id=?, request_date=?, requester_name=?, reason=? WHERE id=?");
         $stmt->execute([$warehouse_id, $request_date, $requester_name, $reason, $pr_id]);
         
-        // Delete old items
+        // Delete old items and insert updated ones
         $pdo2->prepare("DELETE FROM inv_purchase_request_items WHERE pr_id=?")->execute([$pr_id]);
         
     } else {
@@ -63,7 +63,8 @@ try {
         }
         $pr_number = "PR-{$ym}-{$new_num}";
         
-        $stmt = $pdo2->prepare("INSERT INTO inv_purchase_requests (pr_number, warehouse_id, request_date, requester_name, reason, status) VALUES (?, ?, ?, ?, ?, 'PENDING')");
+        // สร้างเอกสารพร้อมพิมพ์เสนอ ผอ. ลงนาม (สถานะ DIR_APPROVED พร้อมเปิด PO)
+        $stmt = $pdo2->prepare("INSERT INTO inv_purchase_requests (pr_number, warehouse_id, request_date, requester_name, reason, status) VALUES (?, ?, ?, ?, ?, 'DIR_APPROVED')");
         $stmt->execute([$pr_number, $warehouse_id, $request_date, $requester_name, $reason]);
         $pr_id = $pdo2->lastInsertId();
     }

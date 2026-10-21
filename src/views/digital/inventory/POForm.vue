@@ -73,11 +73,21 @@
           <div class="card-body p-4 p-md-5">
 
             <!-- Edit Notice if applicable -->
-            <div v-if="isEdit" class="alert alert-info d-flex align-items-center mb-4 rounded-3">
-              <i class="bi bi-info-circle-fill fs-4 me-2"></i>
-              <div>
-                <strong>กำลังดูใบสั่งซื้อ: {{ form.po_number }}</strong>
-                <span class="badge ms-2" :class="getStatusBadgeClass(form.status)">{{ getStatusText(form.status) }}</span>
+            <div v-if="isEdit" class="alert d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 mb-4 rounded-3 shadow-xs" :class="form.status === 'CANCELLED' ? 'alert-danger' : 'alert-info'">
+              <div class="d-flex align-items-center">
+                <i class="bi fs-4 me-2" :class="form.status === 'CANCELLED' ? 'bi-x-octagon-fill text-danger' : 'bi-info-circle-fill text-primary'"></i>
+                <div>
+                  <strong>กำลังดูใบสั่งซื้อ: {{ form.po_number }}</strong>
+                  <span class="badge ms-2" :class="getStatusBadgeClass(form.status)">{{ getStatusText(form.status) }}</span>
+                  <div v-if="form.status === 'CANCELLED'" class="small mt-1 text-danger fw-semibold">
+                    <i class="bi bi-exclamation-triangle me-1"></i> เอกสารใบสั่งซื้อนี้ถูกยกเลิกแล้ว
+                  </div>
+                </div>
+              </div>
+              <div v-if="form.status !== 'CANCELLED'">
+                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" @click="cancelCurrentPO">
+                  <i class="bi bi-x-circle me-1"></i> ยกเลิกใบสั่งซื้อนี้
+                </button>
               </div>
             </div>
 
@@ -401,13 +411,24 @@
 
               <!-- Action Buttons (Bottom) -->
               <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 pt-3 border-top">
-                <button 
-                  type="button" 
-                  class="btn btn-outline-secondary rounded-pill px-4 shadow-sm fw-medium"
-                  @click="activeTab = 'list'"
-                >
-                  <i class="bi bi-arrow-left me-1"></i> กลับหน้ารายการ
-                </button>
+                <div class="d-flex gap-2">
+                  <button 
+                    type="button" 
+                    class="btn btn-outline-secondary rounded-pill px-4 shadow-sm fw-medium"
+                    @click="activeTab = 'list'"
+                  >
+                    <i class="bi bi-arrow-left me-1"></i> กลับหน้ารายการ
+                  </button>
+
+                  <button 
+                    v-if="isEdit && form.status !== 'CANCELLED'" 
+                    type="button" 
+                    class="btn btn-outline-danger rounded-pill px-4 shadow-sm fw-medium"
+                    @click="cancelCurrentPO"
+                  >
+                    <i class="bi bi-x-circle me-1"></i> ยกเลิกใบสั่งซื้อนี้
+                  </button>
+                </div>
 
                 <div class="d-flex gap-2 flex-wrap justify-content-end">
                   <!-- Print Attachment (รายละเอียดแนบท้ายรายงานขอซื้อ/ขอจ้าง) -->
@@ -561,6 +582,14 @@
                           title="ไปหน้ารับเข้าคลัง"
                         >
                           <i class="bi bi-box-arrow-in-down"></i>
+                        </button>
+                        <button 
+                          v-if="['ORDERED', 'PARTIAL_RECEIVED'].includes(po.status)"
+                          class="btn btn-outline-danger" 
+                          @click="cancelPO(po)"
+                          title="ยกเลิกใบสั่งซื้อ"
+                        >
+                          <i class="bi bi-x-circle"></i>
                         </button>
                       </div>
                     </td>
@@ -1262,6 +1291,86 @@ export default {
       this.loadPO(po.id).then(() => {
         this.openPrintPOModal();
       });
+    },
+    async cancelCurrentPO() {
+      if (!this.form.id) return;
+      const { value: reason, isConfirmed } = await Swal.fire({
+        title: 'ยืนยันการยกเลิกใบสั่งซื้อ?',
+        html: `คุณแน่ใจหรือไม่ว่าต้องการยกเลิกใบสั่งซื้อเลขที่ <strong class="text-danger">${this.form.po_number}</strong> ?<br><small class="text-muted">*หากใบสั่งซื้อนี้มาจากใบขอซื้อ (PR) ใบขอซื้อจะถูกปลดล็อกกลับมาให้ใช้งานใหม่ได้</small>`,
+        input: 'textarea',
+        inputPlaceholder: 'ระบุเหตุผลการยกเลิก (ถ้ามี)...',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="bi bi-x-circle me-1"></i> ยืนยันยกเลิกใบสั่งซื้อ',
+        cancelButtonText: 'ปิด'
+      });
+
+      if (!isConfirmed) return;
+
+      try {
+        const res = await axios.post('/api-digital/inventory/po_cancel.php', {
+          id: this.form.id,
+          reason: reason || ''
+        });
+
+        if (res.data.status === 'success') {
+          await Swal.fire({
+            icon: 'success',
+            title: 'ยกเลิกสำเร็จ!',
+            text: res.data.message,
+            timer: 1600,
+            showConfirmButton: false
+          });
+          await this.loadPO(this.form.id);
+        } else {
+          Swal.fire('ไม่สามารถยกเลิกได้', res.data.message, 'error');
+        }
+      } catch (err) {
+        console.error('Cancel PO error:', err);
+        Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการยกเลิกใบสั่งซื้อ', 'error');
+      }
+    },
+    async cancelPO(po) {
+      if (!po || !po.id) return;
+      const { value: reason, isConfirmed } = await Swal.fire({
+        title: 'ยืนยันการยกเลิกใบสั่งซื้อ?',
+        html: `คุณแน่ใจหรือไม่ว่าต้องการยกเลิกใบสั่งซื้อเลขที่ <strong class="text-danger">${po.po_number}</strong> ?<br><small class="text-muted">*หากใบสั่งซื้อนี้มาจากใบขอซื้อ (PR) ใบขอซื้อจะถูกปลดล็อกกลับมาให้ใช้งานใหม่ได้</small>`,
+        input: 'textarea',
+        inputPlaceholder: 'ระบุเหตุผลการยกเลิก (ถ้ามี)...',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="bi bi-x-circle me-1"></i> ยืนยันยกเลิกใบสั่งซื้อ',
+        cancelButtonText: 'ปิด'
+      });
+
+      if (!isConfirmed) return;
+
+      try {
+        const res = await axios.post('/api-digital/inventory/po_cancel.php', {
+          id: po.id,
+          reason: reason || ''
+        });
+
+        if (res.data.status === 'success') {
+          await Swal.fire({
+            icon: 'success',
+            title: 'ยกเลิกสำเร็จ!',
+            text: res.data.message,
+            timer: 1600,
+            showConfirmButton: false
+          });
+          this.fetchPOs();
+        } else {
+          Swal.fire('ไม่สามารถยกเลิกได้', res.data.message, 'error');
+        }
+      } catch (err) {
+        console.error('Cancel PO error:', err);
+        Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการยกเลิกใบสั่งซื้อ', 'error');
+      }
     },
     switchToInvsTab() {
       this.activeTab = 'invs';
