@@ -22,6 +22,15 @@
           <button
             type="button"
             class="btn btn-sm btn-outline-light rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-2"
+            @click="openPrintModal()"
+            title="พิมพ์ตารางการรับประทานยา (WF SmartDose)"
+          >
+            <i class="bi bi-printer-fill"></i>
+            <span>พิมพ์ตารางยา</span>
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-light rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-2"
             @click="openHistoryModal"
           >
             <i class="bi bi-clock-history"></i>
@@ -251,179 +260,91 @@
                     </div>
 
                     <!-- Row 1: 2mg -->
-                    <div class="mb-2 p-2 rounded-3 bg-white border border-light-subtle shadow-2xs">
-                      <div class="d-flex align-items-center gap-1 mb-1">
-                        <div style="width: 46px;" class="text-center">
-                          <span class="badge rounded-pill px-2 py-1 pill-orange text-dark fw-bold w-100" title="Warfarin 2 mg (เม็ดสีส้ม)">
-                            2mg.
-                          </span>
-                        </div>
-                        <div class="flex-fill" style="min-width: 60px;">
-                          <input
-                            type="number"
-                            step="0.5"
-                            min="0"
-                            class="form-control form-control-sm text-center font-monospace fw-bold bg-light shadow-2xs"
-                            v-model.number="doseCalc2mg_dose"
-                            @input="onDoseCalcInput"
-                            placeholder="2"
-                            title="ขนาดยาต่อวัน (มก.) เช่น 2, 4, 1"
-                          />
-                        </div>
-                        <div style="width: 14px;" class="text-center fw-bold text-muted small">✕</div>
-                        <div class="flex-fill" style="min-width: 60px;">
-                          <input
-                            type="number"
-                            step="1"
-                            min="0"
-                            max="7"
-                            class="form-control form-control-sm text-center font-monospace fw-bold bg-white border-primary-subtle shadow-2xs"
-                            v-model.number="doseCalc2mg_days"
-                            @input="onDoseCalcDaysChange(2)"
-                            placeholder="0 วัน"
-                            title="จำนวนวันที่รับประทาน (0-7 วัน)"
-                          />
-                        </div>
-                        <div style="width: 14px;" class="text-center fw-bold text-muted small">=</div>
-                        <div class="flex-fill" style="min-width: 60px;">
-                          <div
-                            class="form-control form-control-sm text-center font-monospace fw-bold border"
-                            :class="doseCalc2mg_total > 0 ? 'bg-primary-subtle border-primary-subtle text-primary' : 'bg-light text-muted'"
-                            title="รวมขนาดยา 2mg"
-                          >
-                            {{ doseCalc2mg_total > 0 ? doseCalc2mg_total.toFixed(1) : '-' }}
-                          </div>
-                        </div>
+                    <div class="d-flex align-items-center gap-1 mb-2">
+                      <div style="width: 46px;" class="text-center">
+                        <span class="badge rounded-pill px-2 py-1 pill-orange text-dark fw-bold w-100" title="Warfarin 2 mg (เม็ดสีส้ม)">
+                          2mg.
+                        </span>
                       </div>
-
-                      <!-- Day Selector for 2mg -->
-                      <div class="d-flex align-items-center justify-content-between pt-1 border-top border-light gap-1 flex-wrap">
-                        <div class="d-flex align-items-center gap-1 flex-wrap">
-                          <small class="text-muted fw-bold me-1" style="font-size: 11px;">เลือกวัน:</small>
-                          <button
-                            v-for="d in weekDayList"
-                            :key="'2mg-' + d.key"
-                            type="button"
-                            class="day-pill-btn"
-                            :class="{
-                              'day-pill-2mg-active': doseCalc2mg_selectedDays.includes(d.key),
-                              'day-pill-taken': doseCalc3mg_selectedDays.includes(d.key) && !doseCalc2mg_selectedDays.includes(d.key)
-                            }"
-                            @click="toggleDoseCalcDay(2, d.key)"
-                            :title="getDayTooltip(2, d)"
-                          >
-                            {{ d.label }}
-                          </button>
-                        </div>
-                        <div class="text-end">
-                          <span
-                            v-if="doseCalc2mg_days > 0 && doseCalc2mg_selectedDays.length === doseCalc2mg_days"
-                            class="badge bg-warning text-dark rounded-pill"
-                            style="font-size: 10px;"
-                          >
-                            <i class="bi bi-check-circle-fill me-1"></i>ครบ {{ doseCalc2mg_days }} วัน
-                          </span>
-                          <span
-                            v-else-if="doseCalc2mg_days > 0"
-                            class="badge bg-light text-muted border rounded-pill"
-                            style="font-size: 10px;"
-                          >
-                            เลือก {{ doseCalc2mg_selectedDays.length }}/{{ doseCalc2mg_days }} วัน
-                          </span>
+                      <div class="flex-fill" style="min-width: 60px;">
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          class="form-control form-control-sm text-center font-monospace fw-bold bg-light shadow-2xs"
+                          v-model.number="doseCalc2mg_dose"
+                          @input="onDoseCalcInput"
+                          placeholder="2"
+                          title="ขนาดยาต่อวัน (มก.) เช่น 2, 4, 1"
+                        />
+                      </div>
+                      <div style="width: 14px;" class="text-center fw-bold text-muted small">✕</div>
+                      <div class="flex-fill" style="min-width: 60px;">
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="7"
+                          class="form-control form-control-sm text-center font-monospace fw-bold bg-white border-primary-subtle shadow-2xs"
+                          v-model.number="doseCalc2mg_days"
+                          @input="onDoseCalcInput"
+                          placeholder="0 วัน"
+                          title="จำนวนวันที่รับประทาน (0-7 วัน)"
+                        />
+                      </div>
+                      <div style="width: 14px;" class="text-center fw-bold text-muted small">=</div>
+                      <div class="flex-fill" style="min-width: 60px;">
+                        <div
+                          class="form-control form-control-sm text-center font-monospace fw-bold border"
+                          :class="doseCalc2mg_total > 0 ? 'bg-primary-subtle border-primary-subtle text-primary' : 'bg-light text-muted'"
+                          title="รวมขนาดยา 2mg"
+                        >
+                          {{ doseCalc2mg_total > 0 ? doseCalc2mg_total.toFixed(1) : '-' }}
                         </div>
                       </div>
                     </div>
 
                     <!-- Row 2: 3mg -->
-                    <div class="p-2 rounded-3 bg-white border border-light-subtle shadow-2xs">
-                      <div class="d-flex align-items-center gap-1 mb-1">
-                        <div style="width: 46px;" class="text-center">
-                          <span class="badge rounded-pill px-2 py-1 pill-blue text-dark fw-bold w-100" title="Warfarin 3 mg (เม็ดสีฟ้า)">
-                            3mg.
-                          </span>
-                        </div>
-                        <div class="flex-fill" style="min-width: 60px;">
-                          <input
-                            type="number"
-                            step="0.5"
-                            min="0"
-                            class="form-control form-control-sm text-center font-monospace fw-bold bg-light shadow-2xs"
-                            v-model.number="doseCalc3mg_dose"
-                            @input="onDoseCalcInput"
-                            placeholder="3"
-                            title="ขนาดยาต่อวัน (มก.) เช่น 3, 6, 1.5"
-                          />
-                        </div>
-                        <div style="width: 14px;" class="text-center fw-bold text-muted small">✕</div>
-                        <div class="flex-fill" style="min-width: 60px;">
-                          <input
-                            type="number"
-                            step="1"
-                            min="0"
-                            max="7"
-                            class="form-control form-control-sm text-center font-monospace fw-bold bg-white border-primary-subtle shadow-2xs"
-                            v-model.number="doseCalc3mg_days"
-                            @input="onDoseCalcDaysChange(3)"
-                            placeholder="0 วัน"
-                            title="จำนวนวันที่รับประทาน (0-7 วัน)"
-                          />
-                        </div>
-                        <div style="width: 14px;" class="text-center fw-bold text-muted small">=</div>
-                        <div class="flex-fill" style="min-width: 60px;">
-                          <div
-                            class="form-control form-control-sm text-center font-monospace fw-bold border"
-                            :class="doseCalc3mg_total > 0 ? 'bg-primary-subtle border-primary-subtle text-primary' : 'bg-light text-muted'"
-                            title="รวมขนาดยา 3mg"
-                          >
-                            {{ doseCalc3mg_total > 0 ? doseCalc3mg_total.toFixed(1) : '-' }}
-                          </div>
-                        </div>
+                    <div class="d-flex align-items-center gap-1">
+                      <div style="width: 46px;" class="text-center">
+                        <span class="badge rounded-pill px-2 py-1 pill-blue text-dark fw-bold w-100" title="Warfarin 3 mg (เม็ดสีฟ้า)">
+                          3mg.
+                        </span>
                       </div>
-
-                      <!-- Day Selector for 3mg -->
-                      <div class="d-flex align-items-center justify-content-between pt-1 border-top border-light gap-1 flex-wrap">
-                        <div class="d-flex align-items-center gap-1 flex-wrap">
-                          <small class="text-muted fw-bold me-1" style="font-size: 11px;">เลือกวัน:</small>
-                          <button
-                            v-for="d in weekDayList"
-                            :key="'3mg-' + d.key"
-                            type="button"
-                            class="day-pill-btn"
-                            :class="{
-                              'day-pill-3mg-active': doseCalc3mg_selectedDays.includes(d.key),
-                              'day-pill-taken': doseCalc2mg_selectedDays.includes(d.key) && !doseCalc3mg_selectedDays.includes(d.key)
-                            }"
-                            @click="toggleDoseCalcDay(3, d.key)"
-                            :title="getDayTooltip(3, d)"
-                          >
-                            {{ d.label }}
-                          </button>
-                          <button
-                            v-if="doseCalc3mg_days > 0 && remainingDaysFor3mg.length > 0 && doseCalc3mg_selectedDays.length < doseCalc3mg_days"
-                            type="button"
-                            class="btn btn-xs btn-outline-info rounded-pill px-2 py-0 ms-1"
-                            @click="pickRemainingDaysFor3mg"
-                            title="เลือกวันที่เหลือจากแถว 2mg ให้อัตโนมัติ"
-                            style="font-size: 10px;"
-                          >
-                            <i class="bi bi-magic me-1"></i>เลือกวันที่เหลือ
-                          </button>
-                        </div>
-                        <div class="text-end">
-                          <span
-                            v-if="doseCalc3mg_days > 0 && doseCalc3mg_selectedDays.length === doseCalc3mg_days"
-                            class="badge bg-info text-white rounded-pill"
-                            style="font-size: 10px;"
-                          >
-                            <i class="bi bi-check-circle-fill me-1"></i>ครบ {{ doseCalc3mg_days }} วัน
-                          </span>
-                          <span
-                            v-else-if="doseCalc3mg_days > 0"
-                            class="badge bg-light text-muted border rounded-pill"
-                            style="font-size: 10px;"
-                          >
-                            เลือก {{ doseCalc3mg_selectedDays.length }}/{{ doseCalc3mg_days }} วัน
-                          </span>
+                      <div class="flex-fill" style="min-width: 60px;">
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          class="form-control form-control-sm text-center font-monospace fw-bold bg-light shadow-2xs"
+                          v-model.number="doseCalc3mg_dose"
+                          @input="onDoseCalcInput"
+                          placeholder="3"
+                          title="ขนาดยาต่อวัน (มก.) เช่น 3, 6, 1.5"
+                        />
+                      </div>
+                      <div style="width: 14px;" class="text-center fw-bold text-muted small">✕</div>
+                      <div class="flex-fill" style="min-width: 60px;">
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="7"
+                          class="form-control form-control-sm text-center font-monospace fw-bold bg-white border-primary-subtle shadow-2xs"
+                          v-model.number="doseCalc3mg_days"
+                          @input="onDoseCalcInput"
+                          placeholder="0 วัน"
+                          title="จำนวนวันที่รับประทาน (0-7 วัน)"
+                        />
+                      </div>
+                      <div style="width: 14px;" class="text-center fw-bold text-muted small">=</div>
+                      <div class="flex-fill" style="min-width: 60px;">
+                        <div
+                          class="form-control form-control-sm text-center font-monospace fw-bold border"
+                          :class="doseCalc3mg_total > 0 ? 'bg-primary-subtle border-primary-subtle text-primary' : 'bg-light text-muted'"
+                          title="รวมขนาดยา 3mg"
+                        >
+                          {{ doseCalc3mg_total > 0 ? doseCalc3mg_total.toFixed(1) : '-' }}
                         </div>
                       </div>
                     </div>
@@ -431,8 +352,8 @@
 
                   <!-- Middle Connector Bracket (Curly Brace) -->
                   <div class="dose-curly-col d-none d-sm-flex align-items-center justify-content-center px-1">
-                    <svg width="22" height="120" viewBox="0 0 22 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M4 6 C14 6, 13 55, 19 60 C13 65, 14 114, 4 114" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" fill="none" />
+                    <svg width="22" height="74" viewBox="0 0 22 74" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M4 4 C14 4, 13 33, 19 37 C13 41, 14 70, 4 70" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" fill="none" />
                     </svg>
                   </div>
 
@@ -454,20 +375,6 @@
                         0 วัน
                       </span>
                     </div>
-                  </div>
-                </div>
-
-                <!-- Selected Days Badges Summary -->
-                <div v-if="doseCalc2mg_selectedDays.length > 0 || doseCalc3mg_selectedDays.length > 0" class="mt-2 pt-2 border-top d-flex flex-wrap gap-2 justify-content-between align-items-center">
-                  <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size: 11px;">
-                    <span v-if="doseCalc2mg_selectedDays.length > 0" class="badge rounded-pill px-2 py-1 pill-orange text-dark d-flex align-items-center gap-1">
-                      <span>2mg ({{ doseCalc2mg_selectedDays.length }} วัน):</span>
-                      <strong>{{ formatSelectedDays(doseCalc2mg_selectedDays) }}</strong>
-                    </span>
-                    <span v-if="doseCalc3mg_selectedDays.length > 0" class="badge rounded-pill px-2 py-1 pill-blue text-dark d-flex align-items-center gap-1">
-                      <span>3mg ({{ doseCalc3mg_selectedDays.length }} วัน):</span>
-                      <strong>{{ formatSelectedDays(doseCalc3mg_selectedDays) }}</strong>
-                    </span>
                   </div>
                 </div>
 
@@ -893,13 +800,25 @@
                   <i class="bi bi-box-seam-fill text-success"></i>
                   <span>สรุปจำนวนเม็ดยาที่ต้องจ่าย (Dispense Quantity สำหรับ {{ dispenseDays }} วัน)</span>
                 </strong>
-                <button
-                  type="button"
-                  class="btn btn-sm btn-outline-primary rounded-pill px-3"
-                  @click="copyPrescriptionText"
-                >
-                  <i class="bi bi-clipboard me-1"></i>คัดลอกวิธีใช้ยา
-                </button>
+                <div class="d-flex align-items-center gap-2">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-success rounded-pill px-3 d-flex align-items-center gap-1"
+                    @click="openPrintModal()"
+                    title="พิมพ์ตารางการรับประทานยา (WF SmartDose)"
+                  >
+                    <i class="bi bi-printer-fill"></i>
+                    <span>พิมพ์ตารางยา</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-primary rounded-pill px-3 d-flex align-items-center gap-1"
+                    @click="copyPrescriptionText"
+                  >
+                    <i class="bi bi-clipboard"></i>
+                    <span>คัดลอกวิธีใช้ยา</span>
+                  </button>
+                </div>
               </div>
 
               <div class="row g-3 align-items-center">
@@ -956,7 +875,16 @@
                   </div>
                 </div>
 
-                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                <div class="d-flex align-items-center gap-2 flex-shrink-0 flex-wrap">
+                  <button
+                    type="button"
+                    class="btn btn-outline-primary rounded-pill px-3 py-2 fw-bold d-flex align-items-center gap-1 bg-white shadow-xs"
+                    @click="openPrintModal()"
+                    title="พิมพ์ตารางการรับประทานยา (WF SmartDose)"
+                  >
+                    <i class="bi bi-printer-fill text-primary"></i>
+                    <span>พิมพ์ตารางยา</span>
+                  </button>
                   <button
                     type="button"
                     class="btn btn-outline-secondary rounded-pill px-3 py-2 fw-bold d-flex align-items-center gap-1 bg-white shadow-xs"
@@ -1305,6 +1233,14 @@
                     <div class="btn-group btn-group-sm" role="group">
                       <button
                         type="button"
+                        class="btn btn-outline-success"
+                        @click="printPastRecord(item)"
+                        title="พิมพ์ตารางการรับประทานยา (WF SmartDose)"
+                      >
+                        <i class="bi bi-printer-fill"></i>
+                      </button>
+                      <button
+                        type="button"
                         class="btn btn-outline-primary"
                         @click="loadRecordIntoCalculator(item)"
                         title="ดึงข้อมูลนี้กลับมาหน้าคำนวณ"
@@ -1338,6 +1274,145 @@
         </div>
       </div>
     </div>
+
+    <!-- WF SmartDose Print Modal (แบบตารางการรับประทานยาตามรูป) -->
+    <div v-if="showPrintModal" class="wf-print-modal-overlay" @click.self="closePrintModal">
+      <div class="wf-print-modal-dialog">
+        <!-- Modal Top Bar (Non-printable controls) -->
+        <div class="wf-print-modal-header p-3 px-4 border-bottom bg-white d-flex align-items-center justify-content-between gap-3 no-print">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-primary-subtle text-primary rounded-circle p-2">
+              <i class="bi bi-printer-fill fs-5"></i>
+            </span>
+            <div>
+              <h5 class="fw-bold mb-0 text-dark">พิมพ์ตารางการรับประทานยา (WF SmartDose)</h5>
+              <small class="text-muted">เอกสารแนะนำขนาดยาและการรับประทานยา Warfarin สำหรับผู้ป่วย</small>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="badge bg-light text-dark border px-3 py-2 fw-semibold d-flex align-items-center gap-1">
+              <i class="bi bi-hospital text-primary"></i>
+              <span>กลุ่มงานเภสัชกรรม โรงพยาบาลชานุมาน</span>
+            </span>
+
+            <button
+              type="button"
+              class="btn btn-primary rounded-pill px-4 py-2 fw-bold d-flex align-items-center gap-2 shadow-sm text-white"
+              @click="triggerBrowserPrint"
+            >
+              <i class="bi bi-printer-fill"></i>
+              <span>สั่งพิมพ์ (Print)</span>
+            </button>
+            <button
+              type="button"
+              class="btn btn-outline-secondary rounded-pill px-3 py-2"
+              @click="closePrintModal"
+            >
+              ปิด
+            </button>
+          </div>
+        </div>
+
+        <!-- Modal Body (Printable Sheet) -->
+        <div class="wf-print-modal-body p-3 p-md-4 overflow-y-auto">
+          <!-- The EXACT Sheet Layout Matching Photo -->
+          <div class="wf-smartdose-sheet mx-auto bg-white shadow-sm">
+            <!-- Header Title -->
+            <div class="text-center mb-1">
+              <h3 class="wf-sheet-title fw-bold text-dark mb-1">WF SmartDose: ตารางการรับประทานยา</h3>
+              <h5 class="wf-sheet-hospital text-secondary fw-semibold mb-2">กลุ่มงานเภสัชกรรม โรงพยาบาลชานุมาน</h5>
+            </div>
+
+            <!-- Dose & Info Line -->
+            <div class="wf-sheet-dose-line text-center mb-3">
+              <div class="wf-dose-meta">
+                เดิม: <strong>{{ activePrintData.prevWeeklyDose.toFixed(1) }} mg/wk</strong>
+                &nbsp;&nbsp;&nbsp;&nbsp;
+                ใหม่: <strong>{{ activePrintData.newWeeklyDose.toFixed(1) }} mg/wk</strong>
+                &nbsp;&nbsp;&nbsp;&nbsp;
+                ปรับ: <strong>{{ printPercentChangeText }}</strong>
+              </div>
+              <div v-if="activePrintData.hn || activePrintData.patientName" class="wf-patient-meta small text-muted mt-1">
+                <span v-if="activePrintData.hn">HN: <strong>{{ activePrintData.hn }}</strong>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                <span v-if="activePrintData.patientName">ชื่อ-สกุล: <strong>{{ activePrintData.patientName }}</strong>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                <span v-if="printDateFormatted">วันที่: <strong>{{ printDateFormatted }}</strong></span>
+              </div>
+            </div>
+
+            <!-- 7-Day Table Container -->
+            <div class="wf-schedule-table border rounded-3 mb-3">
+              <div
+                v-for="(row, rIdx) in printScheduleRows"
+                :key="rIdx"
+                class="wf-schedule-row"
+                :class="{ 'wf-row-omit': row.isOmit }"
+              >
+                <!-- Day Badge -->
+                <div class="wf-col-day">
+                  <span class="wf-day-badge">{{ row.dayName }}</span>
+                </div>
+
+                <!-- Middle: Pills with dots -->
+                <div class="wf-col-pills">
+                  <div v-if="row.isOmit" class="wf-pill-omit text-danger fw-bold">
+                    งดยา 1 มื้อ
+                  </div>
+                  <div v-else class="wf-pills-list">
+                    <div
+                      v-for="(pill, pIdx) in row.pills"
+                      :key="pIdx"
+                      class="wf-pill-item d-flex align-items-center"
+                    >
+                      <span class="wf-pill-text">Warfarin {{ pill.strength }} mg ({{ pill.colorName }}) {{ pill.qtyText }}</span>
+                      <span class="wf-pill-circle" :class="pill.circleClass"></span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Right: Timing Badge -->
+                <div class="wf-col-timing text-end">
+                  <span class="wf-timing-badge">ก่อนนอน</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Instruction Box below Table -->
+            <div class="wf-instruction-box p-3 rounded-3 mb-3">
+              <div
+                v-for="(line, lIdx) in printInstructions"
+                :key="lIdx"
+                class="wf-inst-line"
+              >
+                {{ line }}
+              </div>
+            </div>
+
+            <!-- Footer Warning -->
+            <div class="wf-footer-warning text-center">
+              <small class="text-secondary fst-italic">
+                *อย่าหยุดยาเองโดยไม่ปรึกษาแพทย์หรือเภสัชกร หากมีอาการเลือดออกผิดปกติให้รีบพบแพทย์
+              </small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Footer Controls (Non-printable) -->
+        <div class="wf-print-modal-footer p-3 px-4 border-top bg-light d-flex justify-content-between align-items-center no-print">
+          <small class="text-muted">
+            <i class="bi bi-info-circle me-1"></i>ขนาดกระดาษแนะนำ: A4 แนวตั้ง (ระบบจะจัดหน้าพิมพ์เฉพาะใบตารางยาให้อัตโนมัติ)
+          </small>
+          <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" @click="closePrintModal">
+              ปิด
+            </button>
+            <button type="button" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold text-white shadow-xs" @click="triggerBrowserPrint">
+              <i class="bi bi-printer me-1"></i>สั่งพิมพ์ (Print)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1368,6 +1443,11 @@ export default {
       saving: false,
       lastSavedTime: null,
       lastSavedId: null,
+
+      // Print Modal State (WF SmartDose Sheet)
+      showPrintModal: false,
+      hospitalName: 'กลุ่มงานเภสัชกรรม โรงพยาบาลชานุมาน',
+      printRecordData: null,
 
       // History Modal State
       showHistoryModal: false,
@@ -1405,18 +1485,7 @@ export default {
       doseCalc2mg_days: null,
       doseCalc3mg_dose: 3,
       doseCalc3mg_days: null,
-      doseCalcAutoApply: true,
-      weekDayList: [
-        { key: 'sun', label: 'อา', fullName: 'อาทิตย์' },
-        { key: 'mon', label: 'จ', fullName: 'จันทร์' },
-        { key: 'tue', label: 'อ', fullName: 'อังคาร' },
-        { key: 'wed', label: 'พ', fullName: 'พุธ' },
-        { key: 'thu', label: 'พฤ', fullName: 'พฤหัสบดี' },
-        { key: 'fri', label: 'ศ', fullName: 'ศุกร์' },
-        { key: 'sat', label: 'ส', fullName: 'เสาร์' }
-      ],
-      doseCalc2mg_selectedDays: [],
-      doseCalc3mg_selectedDays: []
+      doseCalcAutoApply: true
     };
   },
   mounted() {
@@ -1454,13 +1523,6 @@ export default {
     // รวมขนาดทั้ง 2 ขนาดเข้าด้วยกัน
     doseCalcGrandTotal() {
       return this.doseCalc2mg_total + this.doseCalc3mg_total;
-    },
-
-    // วันที่ยังว่างอยู่สำหรับแถว 3mg
-    remainingDaysFor3mg() {
-      return this.weekDayList
-        .map(d => d.key)
-        .filter(k => !this.doseCalc2mg_selectedDays.includes(k));
     },
 
     // ตรวจสอบว่าค่าใน B ซิงค์ตรงกับผลรวมของเครื่องมือคำนวณหรือไม่
@@ -1880,67 +1942,137 @@ export default {
       if (!targetWeekly || targetWeekly <= 0) {
         return days.map(d => ({
           name: d.name,
+          key: d.key,
           dose: 0,
           isOmit: true,
+          pills: [],
           pillsDescription: 'งดยา'
         }));
       }
 
       // Check if day 1 is omitted (for branch F or G)
       const omitFirstDay = this.evaluation.nodeKey === 'F' || this.evaluation.nodeKey === 'G';
-      const availableDaysCount = omitFirstDay ? 6 : 7;
-      const avgDaily = targetWeekly / availableDaysCount;
+      const doses = this.computeOptimalDailyDoses(targetWeekly, omitFirstDay);
 
-      // Primary strength, e.g. 3 mg or 2 mg
-      const strength = this.primaryTabletStrength || 3;
+      return days.map((d, i) => {
+        const dayDose = doses[i] !== undefined ? doses[i] : 0;
+        const isOmit = (i === 0 && omitFirstDay) || dayDose === 0;
+        const pills = isOmit ? [] : this.getDayPillBreakdown(dayDose);
 
-      // Distribute integer or half-tablet doses across days to match targetWeekly
-      // Standard distribution: try steps of 0.5 or 1 pill
-      const result = [];
-      let accumulated = 0;
-
-      for (let i = 0; i < 7; i++) {
-        if (i === 0 && omitFirstDay) {
-          result.push({
-            name: days[i].name,
-            dose: 0,
-            isOmit: true,
-            pillsDescription: 'งดยา 1 มื้อ'
-          });
-          continue;
-        }
-
-        // Calculate proportional day dose
-        const remainingDays = 7 - result.length;
-        const remainingDose = targetWeekly - accumulated;
-        let dayDose = Math.round((remainingDose / remainingDays) * 2) / 2;
-        if (dayDose < 0) dayDose = 0;
-
-        accumulated += dayDose;
-
-        // Pill breakdown description
         let desc = '';
-        if (dayDose === strength) {
-          desc = `1 เม็ด (${strength}mg)`;
-        } else if (dayDose === strength * 2) {
-          desc = `2 เม็ด (${strength}mg)`;
-        } else if (dayDose === strength / 2) {
-          desc = `1/2 เม็ด (${strength}mg)`;
-        } else if (dayDose === 0) {
-          desc = 'งดยา';
+        if (isOmit) {
+          desc = i === 0 && omitFirstDay ? 'งดยา 1 มื้อ' : 'งดยา';
+        } else if (pills && pills.length > 0) {
+          desc = pills.map(p => `${p.strength}mg (${p.qtyText})`).join(' + ');
         } else {
           desc = `${dayDose} mg`;
         }
 
-        result.push({
-          name: days[i].name,
+        return {
+          name: d.name,
+          key: d.key,
           dose: dayDose,
-          isOmit: false,
+          isOmit: isOmit,
+          pills: pills,
           pillsDescription: desc
+        };
+      });
+    },
+
+    // Active dataset for printable WF SmartDose sheet (either current calculation or past history item)
+    activePrintData() {
+      if (this.printRecordData) {
+        return {
+          hn: this.printRecordData.hn || '',
+          patientName: this.printRecordData.patient_name || '',
+          prevWeeklyDose: Number(this.printRecordData.prev_weekly_dose) || 0,
+          newWeeklyDose: Number(this.printRecordData.new_weekly_dose) || 0,
+          percentChange: this.printRecordData.percent_change !== null ? Number(this.printRecordData.percent_change) : 0,
+          schedule: this.printRecordData.daily_schedule || [],
+          createdDate: this.printRecordData.created_at || null,
+          createdBy: this.printRecordData.created_by || ''
+        };
+      }
+      return {
+        hn: this.patientHn || '',
+        patientName: this.patientName || '',
+        prevWeeklyDose: Number(this.computedCurrentWeeklyDose) || 0,
+        newWeeklyDose: Number(this.evaluation.newWeeklyDose) || 0,
+        percentChange: Number(this.evaluation.percentChange) || 0,
+        schedule: this.dailySchedule || [],
+        createdDate: new Date().toISOString(),
+        createdBy: this.recordedBy || ''
+      };
+    },
+
+    printPercentChangeText() {
+      const p = this.activePrintData.percentChange;
+      if (p === null || p === undefined) return '0%';
+      const sign = p > 0 ? '+' : '';
+      return `${sign}${Number(p).toFixed(1)}%`;
+    },
+
+    printDateFormatted() {
+      const dtStr = this.activePrintData.createdDate;
+      const d = dtStr ? new Date(typeof dtStr === 'string' ? dtStr.replace(' ', 'T') : dtStr) : new Date();
+      if (isNaN(d.getTime())) return '';
+      const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+      return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
+    },
+
+    printScheduleRows() {
+      const data = this.activePrintData;
+      const schedule = data.schedule;
+      if (!schedule || schedule.length === 0) return [];
+
+      return schedule.map(day => {
+        const dose = Number(day.dose) || 0;
+        const isOmit = day.isOmit || dose === 0;
+        const pills = isOmit ? [] : this.getDayPillBreakdown(dose);
+        return {
+          dayName: day.name,
+          dose: dose,
+          isOmit: isOmit,
+          pills: pills
+        };
+      });
+    },
+
+    printInstructions() {
+      const rows = this.printScheduleRows;
+      if (!rows || rows.length === 0) return [];
+
+      const map = new Map();
+      const omitDays = [];
+
+      rows.forEach(row => {
+        if (row.isOmit || row.dose <= 0) {
+          omitDays.push(row.dayName);
+          return;
+        }
+        (row.pills || []).forEach(pill => {
+          const key = `Warfarin ${pill.strength} mg (${pill.colorName}) รับประทาน ครั้งละ ${pill.qtyText} ก่อนนอน`;
+          if (!map.has(key)) {
+            map.set(key, []);
+          }
+          map.get(key).push(row.dayName);
         });
+      });
+
+      const lines = [];
+      if (omitDays.length > 0) {
+        lines.push(`งดยา วัน${omitDays.join(' ')}`);
       }
 
-      return result;
+      for (const [key, days] of map.entries()) {
+        if (days.length === 7) {
+          lines.push(`${key} ทุกวัน (จันทร์ - อาทิตย์)`);
+        } else {
+          lines.push(`${key} วัน${days.join(' ')}`);
+        }
+      }
+
+      return lines;
     },
 
     dispensePillBreakdown() {
@@ -2072,119 +2204,12 @@ export default {
     },
 
     // จัดการเมื่อเปลี่ยนตัวเลขในช่องจำนวนวัน
-    onDoseCalcDaysChange(strength) {
-      const is2mg = strength === 2;
-      const days = Number(is2mg ? this.doseCalc2mg_days : this.doseCalc3mg_days) || 0;
-      let selectedList = is2mg ? this.doseCalc2mg_selectedDays : this.doseCalc3mg_selectedDays;
-
-      // ถ้าจำนวนวันที่เคยเลือกไว้เกินจำนวนวันที่กรอก ให้ตัดส่วนเกินออก
-      if (selectedList.length > days) {
-        selectedList = selectedList.slice(0, days);
-        if (is2mg) {
-          this.doseCalc2mg_selectedDays = selectedList;
-        } else {
-          this.doseCalc3mg_selectedDays = selectedList;
-        }
-      }
-      this.onDoseCalcInput();
-    },
-
-    // คลิกเลือกวัน (อา, จ, อ, พ, พฤ, ศ, ส) ให้สอดคล้องกับจำนวนวันที่กรอก
-    toggleDoseCalcDay(strength, dayKey) {
-      const is2mg = strength === 2;
-      let selectedList = [...(is2mg ? this.doseCalc2mg_selectedDays : this.doseCalc3mg_selectedDays)];
-      const targetDays = Number(is2mg ? this.doseCalc2mg_days : this.doseCalc3mg_days) || 0;
-
-      const idx = selectedList.indexOf(dayKey);
-      if (idx > -1) {
-        // ถ้าเลือกไว้อยู่แล้ว ให้ยกเลิกการเลือก
-        selectedList.splice(idx, 1);
-      } else {
-        // ยังไม่ได้เลือก
-        if (targetDays > 0) {
-          // จำกัดจำนวนวันตามที่กรอก
-          if (selectedList.length < targetDays) {
-            selectedList.push(dayKey);
-          } else {
-            // เลือกครบตามจำนวนแล้ว ให้เปลี่ยนวันแรกสุดออกแล้วใส่วันใหม่แทน (FIFO)
-            selectedList.shift();
-            selectedList.push(dayKey);
-          }
-        } else {
-          // ถ้ายังไม่ได้กรอกจำนวนวัน ให้บวกวันเพิ่มและอัปเดตจำนวนวันให้อัตโนมัติ
-          selectedList.push(dayKey);
-          if (is2mg) {
-            this.doseCalc2mg_days = selectedList.length;
-          } else {
-            this.doseCalc3mg_days = selectedList.length;
-          }
-        }
-      }
-
-      // เรียงวันตามสัปดาห์: อา -> ส
-      const dayOrder = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-      selectedList.sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
-
-      if (is2mg) {
-        this.doseCalc2mg_selectedDays = selectedList;
-      } else {
-        this.doseCalc3mg_selectedDays = selectedList;
-      }
-
-      this.onDoseCalcInput();
-    },
-
-    // เลือกวันที่เหลือจากแถว 2mg ให้แถว 3mg อัตโนมัติ
-    pickRemainingDaysFor3mg() {
-      const target = Number(this.doseCalc3mg_days) || 0;
-      if (target <= 0) return;
-      const remaining = this.weekDayList
-        .map(d => d.key)
-        .filter(k => !this.doseCalc2mg_selectedDays.includes(k));
-
-      this.doseCalc3mg_selectedDays = remaining.slice(0, target);
-      this.onDoseCalcInput();
-    },
-
-    // แสดง Tooltip คำอธิบายเมื่อชี้ที่ปุ่มวัน
-    getDayTooltip(strength, d) {
-      const is2mg = strength === 2;
-      const isSelected = is2mg ? this.doseCalc2mg_selectedDays.includes(d.key) : this.doseCalc3mg_selectedDays.includes(d.key);
-      const isTakenByOther = is2mg ? this.doseCalc3mg_selectedDays.includes(d.key) : this.doseCalc2mg_selectedDays.includes(d.key);
-      const otherLabel = is2mg ? '3mg' : '2mg';
-
-      if (isSelected) {
-        return `วัน${d.fullName} (เลือกอยู่)`;
-      }
-      if (isTakenByOther) {
-        return `วัน${d.fullName} (เลือกอยู่ในแถว ${otherLabel})`;
-      }
-      return `คลิกเพื่อเลือกวัน${d.fullName}`;
-    },
-
-    // จัดรูปแบบชื่อย่อวัน เช่น จ., อ., พ.
-    formatSelectedDays(keys) {
-      if (!keys || keys.length === 0) return '';
-      const map = {
-        sun: 'อา.',
-        mon: 'จ.',
-        tue: 'อ.',
-        wed: 'พ.',
-        thu: 'พฤ.',
-        fri: 'ศ.',
-        sat: 'ส.'
-      };
-      return keys.map(k => map[k] || k).join(', ');
-    },
-
     // ล้างค่าที่กรอกในเครื่องมือคำนวณ
     clearDoseCalc() {
       this.doseCalc2mg_dose = 2;
       this.doseCalc2mg_days = null;
       this.doseCalc3mg_dose = 3;
       this.doseCalc3mg_days = null;
-      this.doseCalc2mg_selectedDays = [];
-      this.doseCalc3mg_selectedDays = [];
     },
 
     resetDefaults() {
@@ -2306,9 +2331,24 @@ export default {
           Swal.fire({
             icon: 'success',
             title: 'บันทึกสำเร็จ!',
-            html: `บันทึกประวัติการคำนวณเรียบร้อยแล้ว<br><small class="text-muted">รหัสบันทึก: #${res.data.id}</small>`,
-            timer: 2500,
-            showConfirmButton: false
+            html: `
+              <div class="mb-2">บันทึกประวัติการคำนวณเรียบร้อยแล้ว <small class="text-muted">(รหัส: #${res.data.id})</small></div>
+              <div class="p-2 rounded bg-light border text-start small mb-3">
+                <div><strong>ผู้ป่วย:</strong> ${this.patientName ? this.patientName : (this.patientHn ? 'HN ' + this.patientHn : 'ทั่วไป')}</div>
+                <div><strong>ขนาดยาใหม่:</strong> ${this.evaluation.newWeeklyDose} mg/wk (${this.evaluation.percentChange >= 0 ? '+' : ''}${this.evaluation.percentChange}%)</div>
+              </div>
+              <div class="fw-bold text-primary">ต้องการพิมพ์ตารางการรับประทานยา (WF SmartDose) เลยหรือไม่?</div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-printer-fill me-1"></i> พิมพ์ตารางยา (WF SmartDose)',
+            cancelButtonText: 'ไว้คราวหลัง',
+            confirmButtonColor: '#0d6efd',
+            cancelButtonColor: '#6c757d',
+            focusConfirm: true
+          }).then((result) => {
+            if (result.isConfirmed) {
+              this.openPrintModal();
+            }
           });
 
           this.fetchHistory();
@@ -2516,6 +2556,249 @@ export default {
       if (inr <= 3.0) return 'bg-success text-white';
       if (inr <= 4.9) return 'bg-warning text-dark';
       return 'bg-danger text-white';
+    },
+
+    // Clinically optimal weekly dose distribution (Weekdays 5d / Weekends 2d like WF SmartDose nomogram)
+    computeOptimalDailyDoses(targetWeekly, omitFirstDay = false) {
+      if (!targetWeekly || targetWeekly <= 0) {
+        return [0, 0, 0, 0, 0, 0, 0];
+      }
+
+      // If omitFirstDay (Monday = 0):
+      if (omitFirstDay) {
+        const avg = targetWeekly / 6;
+        const roundedAvg = Math.round(avg * 2) / 2;
+        if (Math.abs(roundedAvg * 6 - targetWeekly) < 0.05) {
+          return [0, roundedAvg, roundedAvg, roundedAvg, roundedAvg, roundedAvg, roundedAvg];
+        }
+        for (let delta = -1.0; delta <= 1.0; delta += 0.5) {
+          const A = Math.round((avg + delta) * 2) / 2;
+          const B = (targetWeekly - 4 * A) / 2;
+          const roundedB = Math.round(B * 2) / 2;
+          if (A > 0 && B > 0 && Math.abs(B - roundedB) < 0.001 && Math.abs(A - roundedB) <= 1.0) {
+            return [0, A, A, A, A, roundedB, roundedB];
+          }
+        }
+      } else {
+        const avg = targetWeekly / 7;
+        // 1. Equal all 7 days
+        const roundedAvg = Math.round(avg * 2) / 2;
+        if (Math.abs(roundedAvg * 7 - targetWeekly) < 0.05) {
+          return [roundedAvg, roundedAvg, roundedAvg, roundedAvg, roundedAvg, roundedAvg, roundedAvg];
+        }
+
+        // 2. Weekday (5 days: Mon-Fri) at A, Weekend (2 days: Sat-Sun) at B
+        let bestCandidate = null;
+        let minDiff = 999;
+        for (let delta = -1.0; delta <= 1.0; delta += 0.5) {
+          const A = Math.round((avg + delta) * 2) / 2;
+          const B = (targetWeekly - 5 * A) / 2;
+          const roundedB = Math.round(B * 2) / 2;
+          if (A > 0 && B > 0 && Math.abs(B - roundedB) < 0.001) {
+            const diff = Math.abs(A - roundedB);
+            if (diff <= 1.0 && diff < minDiff) {
+              minDiff = diff;
+              bestCandidate = [A, A, A, A, A, roundedB, roundedB];
+            }
+          }
+        }
+        if (bestCandidate) {
+          return bestCandidate;
+        }
+
+        // 3. Mon-Thu (4 days) at A, Fri-Sun (3 days) at B
+        for (let delta = -1.0; delta <= 1.0; delta += 0.5) {
+          const A = Math.round((avg + delta) * 2) / 2;
+          const B = (targetWeekly - 4 * A) / 3;
+          const roundedB = Math.round(B * 2) / 2;
+          if (A > 0 && B > 0 && Math.abs(B - roundedB) < 0.001) {
+            const diff = Math.abs(A - roundedB);
+            if (diff <= 1.0 && diff < minDiff) {
+              minDiff = diff;
+              bestCandidate = [A, A, A, A, roundedB, roundedB, roundedB];
+            }
+          }
+        }
+        if (bestCandidate) {
+          return bestCandidate;
+        }
+
+        // 4. 6 days at A, 1 day at B (Sunday)
+        for (let delta = -1.0; delta <= 1.0; delta += 0.5) {
+          const A = Math.round((avg + delta) * 2) / 2;
+          const B = targetWeekly - 6 * A;
+          const roundedB = Math.round(B * 2) / 2;
+          if (A > 0 && B > 0 && Math.abs(B - roundedB) < 0.001 && Math.abs(A - roundedB) <= 1.0) {
+            return [A, A, A, A, A, A, roundedB];
+          }
+        }
+      }
+
+      // 5. Fallback greedy
+      const res = [];
+      let accumulated = 0;
+      for (let i = 0; i < 7; i++) {
+        if (i === 0 && omitFirstDay) {
+          res.push(0);
+          continue;
+        }
+        const remainingDays = 7 - res.length;
+        const remainingDose = targetWeekly - accumulated;
+        let dayDose = Math.round((remainingDose / remainingDays) * 2) / 2;
+        if (dayDose < 0) dayDose = 0;
+        accumulated += dayDose;
+        res.push(dayDose);
+      }
+      return res;
+    },
+
+    // Daily dose breakdown into standard hospital Warfarin pills (2mg orange & 3mg blue)
+    getDayPillBreakdown(dose) {
+      if (!dose || dose <= 0) return [];
+      const rounded = Math.round(dose * 10) / 10;
+
+      switch (rounded) {
+        case 1.0:
+          return [
+            { strength: 2, colorName: 'สีส้ม', qtyText: 'ครึ่งเม็ด', qtyNum: 0.5, circleClass: 'wf-circle-orange-half' }
+          ];
+        case 1.5:
+          return [
+            { strength: 3, colorName: 'สีฟ้า', qtyText: 'ครึ่งเม็ด', qtyNum: 0.5, circleClass: 'wf-circle-blue-half' }
+          ];
+        case 2.0:
+          return [
+            { strength: 2, colorName: 'สีส้ม', qtyText: '1 เม็ด', qtyNum: 1.0, circleClass: 'wf-circle-orange-full' }
+          ];
+        case 2.5:
+          return [
+            { strength: 2, colorName: 'สีส้ม', qtyText: 'ครึ่งเม็ด', qtyNum: 0.5, circleClass: 'wf-circle-orange-half' },
+            { strength: 3, colorName: 'สีฟ้า', qtyText: 'ครึ่งเม็ด', qtyNum: 0.5, circleClass: 'wf-circle-blue-half' }
+          ];
+        case 3.0:
+          return [
+            { strength: 3, colorName: 'สีฟ้า', qtyText: '1 เม็ด', qtyNum: 1.0, circleClass: 'wf-circle-blue-full' }
+          ];
+        case 3.5:
+          return [
+            { strength: 2, colorName: 'สีส้ม', qtyText: '1 เม็ด', qtyNum: 1.0, circleClass: 'wf-circle-orange-full' },
+            { strength: 3, colorName: 'สีฟ้า', qtyText: 'ครึ่งเม็ด', qtyNum: 0.5, circleClass: 'wf-circle-blue-half' }
+          ];
+        case 4.0:
+          return [
+            { strength: 2, colorName: 'สีส้ม', qtyText: '2 เม็ด', qtyNum: 2.0, circleClass: 'wf-circle-orange-full' }
+          ];
+        case 4.5:
+          return [
+            { strength: 3, colorName: 'สีฟ้า', qtyText: '1 เม็ดครึ่ง', qtyNum: 1.5, circleClass: 'wf-circle-blue-full' }
+          ];
+        case 5.0:
+          return [
+            { strength: 2, colorName: 'สีส้ม', qtyText: '1 เม็ด', qtyNum: 1.0, circleClass: 'wf-circle-orange-full' },
+            { strength: 3, colorName: 'สีฟ้า', qtyText: '1 เม็ด', qtyNum: 1.0, circleClass: 'wf-circle-blue-full' }
+          ];
+        case 5.5:
+          return [
+            { strength: 2, colorName: 'สีส้ม', qtyText: '2 เม็ด', qtyNum: 2.0, circleClass: 'wf-circle-orange-full' },
+            { strength: 3, colorName: 'สีฟ้า', qtyText: 'ครึ่งเม็ด', qtyNum: 0.5, circleClass: 'wf-circle-blue-half' }
+          ];
+        case 6.0:
+          return [
+            { strength: 3, colorName: 'สีฟ้า', qtyText: '2 เม็ด', qtyNum: 2.0, circleClass: 'wf-circle-blue-full' }
+          ];
+        case 6.5:
+          return [
+            { strength: 2, colorName: 'สีส้ม', qtyText: '1 เม็ด', qtyNum: 1.0, circleClass: 'wf-circle-orange-full' },
+            { strength: 3, colorName: 'สีฟ้า', qtyText: '1 เม็ดครึ่ง', qtyNum: 1.5, circleClass: 'wf-circle-blue-full' }
+          ];
+        case 7.0:
+          return [
+            { strength: 2, colorName: 'สีส้ม', qtyText: '2 เม็ด', qtyNum: 2.0, circleClass: 'wf-circle-orange-full' },
+            { strength: 3, colorName: 'สีฟ้า', qtyText: '1 เม็ด', qtyNum: 1.0, circleClass: 'wf-circle-blue-full' }
+          ];
+        case 7.5:
+          return [
+            { strength: 2, colorName: 'สีส้ม', qtyText: '3 เม็ด', qtyNum: 3.0, circleClass: 'wf-circle-orange-full' },
+            { strength: 3, colorName: 'สีฟ้า', qtyText: 'ครึ่งเม็ด', qtyNum: 0.5, circleClass: 'wf-circle-blue-half' }
+          ];
+        case 8.0:
+          return [
+            { strength: 2, colorName: 'สีส้ม', qtyText: '1 เม็ด', qtyNum: 1.0, circleClass: 'wf-circle-orange-full' },
+            { strength: 3, colorName: 'สีฟ้า', qtyText: '2 เม็ด', qtyNum: 2.0, circleClass: 'wf-circle-blue-full' }
+          ];
+        default: {
+          const items = [];
+          let rem = rounded;
+          const count3 = Math.floor(rem / 3);
+          if (count3 > 0) {
+            items.push({
+              strength: 3,
+              colorName: 'สีฟ้า',
+              qtyText: `${count3} เม็ด`,
+              qtyNum: count3,
+              circleClass: 'wf-circle-blue-full'
+            });
+            rem -= count3 * 3;
+          }
+          rem = Math.round(rem * 10) / 10;
+          if (rem === 2.0) {
+            items.push({
+              strength: 2,
+              colorName: 'สีส้ม',
+              qtyText: '1 เม็ด',
+              qtyNum: 1.0,
+              circleClass: 'wf-circle-orange-full'
+            });
+          } else if (rem === 1.5) {
+            items.push({
+              strength: 3,
+              colorName: 'สีฟ้า',
+              qtyText: 'ครึ่งเม็ด',
+              qtyNum: 0.5,
+              circleClass: 'wf-circle-blue-half'
+            });
+          } else if (rem === 1.0) {
+            items.push({
+              strength: 2,
+              colorName: 'สีส้ม',
+              qtyText: 'ครึ่งเม็ด',
+              qtyNum: 0.5,
+              circleClass: 'wf-circle-orange-half'
+            });
+          } else if (rem > 0) {
+            items.push({
+              strength: 3,
+              colorName: 'สีฟ้า',
+              qtyText: `${rem} mg`,
+              qtyNum: rem / 3,
+              circleClass: 'wf-circle-blue-full'
+            });
+          }
+          return items;
+        }
+      }
+    },
+
+    openPrintModal(customData = null) {
+      if (customData) {
+        this.printRecordData = customData;
+      } else {
+        this.printRecordData = null;
+      }
+      this.showPrintModal = true;
+    },
+
+    closePrintModal() {
+      this.showPrintModal = false;
+      this.printRecordData = null;
+    },
+
+    triggerBrowserPrint() {
+      window.print();
+    },
+
+    printPastRecord(item) {
+      this.openPrintModal(item);
     }
   }
 };
@@ -2580,52 +2863,6 @@ export default {
   min-width: 105px;
   background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
   border: 1.5px dashed #f59e0b !important;
-}
-
-.day-pill-btn {
-  width: 26px;
-  height: 26px;
-  border-radius: 50% !important;
-  border: 1px solid #cbd5e1;
-  background-color: #ffffff;
-  color: #475569;
-  font-size: 11px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  cursor: pointer;
-  transition: all 0.15s ease-in-out;
-  line-height: 1;
-}
-
-.day-pill-btn:hover {
-  background-color: #e2e8f0;
-  border-color: #94a3b8;
-  transform: translateY(-1px);
-}
-
-.day-pill-2mg-active {
-  background: linear-gradient(135deg, #fed7aa, #fb923c) !important;
-  color: #7c2d12 !important;
-  border-color: #f97316 !important;
-  box-shadow: 0 2px 4px rgba(249, 115, 22, 0.35);
-  font-weight: 800;
-}
-
-.day-pill-3mg-active {
-  background: linear-gradient(135deg, #bae6fd, #38bdf8) !important;
-  color: #0369a1 !important;
-  border-color: #0284c7 !important;
-  box-shadow: 0 2px 4px rgba(2, 132, 199, 0.35);
-  font-weight: 800;
-}
-
-.day-pill-taken {
-  opacity: 0.55;
-  border-style: dashed;
-  background-color: #f8fafc;
 }
 
 .pill-visual-circle {
@@ -2790,6 +3027,282 @@ export default {
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
+  }
+}
+
+/* ==========================================================================
+   WF SmartDose Print Modal & Sheet Styles (Matching Hospital Layout)
+   ========================================================================== */
+.wf-print-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 1060;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.wf-print-modal-dialog {
+  background: #f8fafc;
+  border-radius: 1.25rem;
+  max-width: 820px;
+  width: 100%;
+  max-height: 94vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wf-print-modal-body {
+  max-height: 80vh;
+  background-color: #f1f5f9;
+}
+
+/* Printable Paper Sheet */
+.wf-smartdose-sheet {
+  max-width: 680px;
+  width: 100%;
+  padding: 32px 36px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  color: #1e293b;
+  font-family: 'Sarabun', 'Prompt', -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.5;
+}
+
+.wf-sheet-title {
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: #1e293b;
+}
+
+.wf-sheet-hospital {
+  font-size: 15px;
+  color: #475569;
+}
+
+.wf-sheet-dose-line {
+  font-size: 13.5px;
+  color: #334155;
+}
+
+.wf-dose-meta strong {
+  color: #0f172a;
+}
+
+/* 7-Day Table */
+.wf-schedule-table {
+  background-color: #ffffff;
+  border-color: #e2e8f0 !important;
+  overflow: hidden;
+}
+
+.wf-schedule-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  transition: background-color 0.15s ease;
+}
+
+.wf-schedule-row:last-child {
+  border-bottom: none;
+}
+
+.wf-col-day {
+  width: 110px;
+  flex-shrink: 0;
+}
+
+.wf-day-badge {
+  display: inline-block;
+  min-width: 88px;
+  padding: 5px 12px;
+  background-color: #64748b;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13.5px;
+  text-align: center;
+  border-radius: 6px;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+.wf-col-pills {
+  flex: 1;
+  padding: 0 16px;
+}
+
+.wf-pill-item {
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+  margin: 2px 0;
+}
+
+.wf-pill-circle {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  margin-left: 8px;
+  flex-shrink: 0;
+  vertical-align: middle;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+/* Orange pills: 2 mg */
+.wf-circle-orange-full {
+  background-color: #f97316;
+  border: 1.5px solid #c2410c;
+}
+
+.wf-circle-orange-half {
+  background: linear-gradient(90deg, #f97316 50%, #ffffff 50%);
+  border: 1.5px solid #c2410c;
+}
+
+/* Blue pills: 3 mg */
+.wf-circle-blue-full {
+  background-color: #0284c7;
+  border: 1.5px solid #0369a1;
+}
+
+.wf-circle-blue-half {
+  background: linear-gradient(90deg, #0284c7 50%, #ffffff 50%);
+  border: 1.5px solid #0369a1;
+}
+
+.wf-col-timing {
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.wf-timing-badge {
+  display: inline-block;
+  padding: 4px 16px;
+  background-color: #f1f5f9;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 50px;
+  border: 1px solid #e2e8f0;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+/* Instruction box */
+.wf-instruction-box {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-size: 13.5px;
+  line-height: 1.85;
+  color: #334155;
+}
+
+.wf-inst-line {
+  margin-bottom: 2px;
+}
+
+.wf-inst-line:last-child {
+  margin-bottom: 0;
+}
+
+.wf-footer-warning {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* ==========================================================================
+   Print Rules (@media print)
+   ========================================================================== */
+@media print {
+  /* Hide all calculator and application UI */
+  body, html {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .calc-header,
+  .card,
+  .row,
+  .history-modal-overlay,
+  .no-print,
+  nav,
+  .navbar,
+  footer,
+  .footer,
+  .AppFooter {
+    display: none !important;
+  }
+
+  .wf-print-modal-overlay {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    backdrop-filter: none !important;
+    z-index: auto !important;
+  }
+
+  .wf-print-modal-dialog {
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .wf-print-modal-body {
+    background: transparent !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  .wf-smartdose-sheet {
+    display: block !important;
+    box-shadow: none !important;
+    border: 1px solid #94a3b8 !important;
+    border-radius: 8px !important;
+    padding: 24px 28px !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 680px !important;
+    page-break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .wf-day-badge,
+  .wf-pill-circle,
+  .wf-timing-badge,
+  .wf-instruction-box {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
 </style>
