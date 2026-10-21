@@ -27,7 +27,7 @@ const routes = [
   { path: '/telemedicine-report', component: () => import('../views/reports/telemedicine/TelemedicineReport.vue') },
   { path: '/ipd-report', component: () => import('../views/reports/ipd/IPDReport.vue') },
   { path: '/had-dashboard', name: 'HadDashboard', component: () => import('../views/reports/had/HadDashboard.vue'), meta: { requiresAuth: true } },
-  { path: '/had-calculator', name: 'HadCalculator', component: () => import('../views/reports/had/WarfarinCalculatorView.vue') },
+  { path: '/had-calculator', name: 'HadCalculator', component: () => import('../views/reports/had/WarfarinCalculatorView.vue'), meta: { requiresAuth: true }  },
   {
     path: '/opddashboardchart',
     component: () => import('../views/reports/opd/OPDDashboardChart.vue')
