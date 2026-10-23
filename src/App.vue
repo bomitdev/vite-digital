@@ -150,11 +150,16 @@
                 </RouterLink>
               </li>
               <li>
+                <a class="dropdown-item" href="http://192.168.7.12:3000/" target="_blank">
+                  <i class="bi bi-calculator-fill me-2 text-warning"></i>คำนวณเม็ดยา Warfarin (INR)
+                </a>
+              </li>
+              <!-- <li>
                 <RouterLink class="dropdown-item d-flex align-items-center" to="/had-calculator" @click="activeDropdown = null">
                   <i class="bi bi-calculator-fill me-2 text-warning"></i>
                   <span>คำนวณเม็ดยา Warfarin (INR)</span>
                 </RouterLink>
-              </li>
+              </li> -->
             </ul>
           </li>
 
