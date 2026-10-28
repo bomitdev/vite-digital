@@ -11,7 +11,16 @@ if (!isset($pdo2)) {
 
 try {
     // 1. Vendors list from inv_vendors
-    $stmt = $pdo2->query("SELECT id, vendor_code, vendor_name, tax_id, address, phone FROM inv_vendors WHERE active = 1 ORDER BY vendor_name ASC");
+    $warehouse_id = isset($_GET['warehouse_id']) && $_GET['warehouse_id'] !== '' ? (int)$_GET['warehouse_id'] : 0;
+    $sqlVen = "SELECT id, vendor_code, vendor_name, tax_id, address, phone FROM inv_vendors WHERE active = 1";
+    $paramsVen = [];
+    if ($warehouse_id > 0) {
+        $sqlVen .= " AND (warehouse_id = ? OR warehouse_id IS NULL)";
+        $paramsVen[] = $warehouse_id;
+    }
+    $sqlVen .= " ORDER BY vendor_name ASC";
+    $stmt = $pdo2->prepare($sqlVen);
+    $stmt->execute($paramsVen);
     $vendors = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // If inv_vendors has fewer than 5 rows, also load/sync from INVS COMPANY
@@ -32,14 +41,33 @@ try {
     }
 
     // 2. Buy Methods (วิธีจัดซื้อ)
-    $buy_methods = [
-        ['code' => '13', 'name' => '13 : วิธีเฉพาะเจาะจง', 'default' => true],
-        ['code' => '14', 'name' => '14 : วิธีเฉพาะเจาะจง (สัญญา)', 'default' => false],
-        ['code' => '8',  'name' => '8 : วิธีประกวดราคาอิเล็กทรอนิกส์ (e-Bidding)', 'default' => false],
-        ['code' => '12', 'name' => '12 : วิธีคัดเลือก', 'default' => false],
-        ['code' => '1',  'name' => '1 : ตกลงราคา', 'default' => false],
-        ['code' => '99', 'name' => '99 : รับบริจาค / รับสนับสนุน', 'default' => false]
-    ];
+    $buy_methods = [];
+    try {
+        $stmtBM = $pdo2->query("SELECT code, name, is_default, active FROM inv_buy_methods WHERE active = 1 ORDER BY is_default DESC, CAST(code AS UNSIGNED) ASC, code ASC");
+        $rowsBM = $stmtBM->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rowsBM as $rbm) {
+            $displayName = $rbm['name'];
+            if (!str_starts_with($displayName, $rbm['code'] . ' :') && !str_starts_with($displayName, $rbm['code'] . ':')) {
+                $displayName = $rbm['code'] . ' : ' . $displayName;
+            }
+            $buy_methods[] = [
+                'code' => (string)$rbm['code'],
+                'name' => $displayName,
+                'default' => (bool)$rbm['is_default']
+            ];
+        }
+    } catch (Exception $e) {}
+
+    if (empty($buy_methods)) {
+        $buy_methods = [
+            ['code' => '13', 'name' => '13 : วิธีเฉพาะเจาะจง', 'default' => true],
+            ['code' => '14', 'name' => '14 : วิธีเฉพาะเจาะจง (สัญญา)', 'default' => false],
+            ['code' => '8',  'name' => '8 : วิธีประกวดราคาอิเล็กทรอนิกส์ (e-Bidding)', 'default' => false],
+            ['code' => '12', 'name' => '12 : วิธีคัดเลือก', 'default' => false],
+            ['code' => '1',  'name' => '1 : ตกลงราคา', 'default' => false],
+            ['code' => '99', 'name' => '99 : รับบริจาค / รับสนับสนุน', 'default' => false]
+        ];
+    }
 
     // 3. Budget Types (ประเภทงบประมาณ)
     $budget_types = [

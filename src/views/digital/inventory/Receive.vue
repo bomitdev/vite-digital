@@ -37,7 +37,7 @@
                   <div class="row g-3">
                     <div class="col-md-3">
                       <label class="form-label">เลือกคลังวัสดุ <span class="text-danger">*</span></label>
-                      <select class="form-select form-select-lg fw-bold text-primary" v-model="form.warehouse_id" @change="fetchItems" required>
+                      <select class="form-select form-select-lg fw-bold text-primary" v-model="form.warehouse_id" @change="onWarehouseChange" required>
                         <option value="">-- กรุณาเลือกคลัง --</option>
                         <option v-for="w in warehouses" :key="w.id" :value="w.id">[{{ w.code }}] {{ w.name }}</option>
                       </select>
@@ -327,13 +327,32 @@ export default {
             Swal.fire('Info', 'PO นี้รับวัสดุครบหมดแล้ว', 'info');
           } else {
             Swal.fire('Success', 'ดึงข้อมูลรายการวัสดุจาก PO สำเร็จ กรุณาระบุ Lot/Expiry (ถ้ามี)', 'success');
-            // Fetch items for this warehouse to allow manual additions if needed
+            // Fetch items and vendors for this warehouse
             this.fetchItems();
+            this.fetchVendors();
           }
         }
       } catch (err) {
         console.error(err);
         Swal.fire('Error', 'ไม่สามารถดึงข้อมูล PO ได้', 'error');
+      }
+    },
+    async onWarehouseChange() {
+      await Promise.all([
+        this.fetchItems(),
+        this.fetchVendors()
+      ]);
+    },
+    async fetchVendors() {
+      this.vendors = [];
+      if (!this.form.warehouse_id) return;
+      try {
+        const res = await axios.get(`/api-digital/inventory/vendors.php?warehouse_id=${this.form.warehouse_id}`);
+        if (res.data?.status === 'success') {
+          this.vendors = res.data.data || [];
+        }
+      } catch (err) {
+        console.error('Error fetching vendors in Receive:', err);
       }
     },
     async fetchItems() {

@@ -21,10 +21,17 @@
                 <i class="bi bi-clock-history me-1"></i> ประวัติยืม-คืน
               </button>
               <button
+                class="btn btn-warning text-dark fw-bold rounded-pill px-3 shadow-sm"
+                @click="exportProvinceReport"
+                title="ส่งออกรายงานทะเบียนครุภัณฑ์แบบฟอร์มส่งจังหวัด"
+              >
+                <i class="bi bi-file-earmark-spreadsheet-fill me-1 text-danger"></i> รายงานส่งจังหวัด (Excel)
+              </button>
+              <button
                 class="btn btn-success text-white rounded-pill px-3"
                 @click="exportExcel"
               >
-                <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
+                <i class="bi bi-file-earmark-excel me-1"></i> Export ทั่วไป
               </button>
               <button class="btn btn-primary rounded-pill px-4" @click="openForm()">
                 <i class="bi bi-plus-lg me-2"></i>เพิ่มรายการ
@@ -239,6 +246,7 @@
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
+import { exportProvinceAssetReport } from '../../utils/exportProvinceAssetReport.js';
 import AssetForm from './AssetForm.vue';
 import AssetDetail from './AssetDetail.vue';
 import AssetQrPrint from './AssetQrPrint.vue';
@@ -498,6 +506,40 @@ export default {
 
       // Download the file
       XLSX.writeFile(wb, "Computer_Assets.xlsx");
+    },
+    async exportProvinceReport() {
+      if (!this.assets || this.assets.length === 0) {
+        Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลสำหรับจัดทำรายงาน', 'warning');
+        return;
+      }
+
+      try {
+        Swal.fire({
+          title: 'กำลังจัดทำรายงานส่งจังหวัด...',
+          text: 'กำลังประมวลผลข้อมูลและคำนวณค่าเสื่อมราคาตามแบบฟอร์ม',
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+
+        const categoryTitle = 'ครุภัณฑ์คอมพิวเตอร์';
+        const thaiYear = new Date().getFullYear() + 543;
+        const fileName = `รายงานทะเบียนครุภัณฑ์คอมพิวเตอร์_ส่งจังหวัด_${thaiYear}.xlsx`;
+
+        await exportProvinceAssetReport(this.assets, categoryTitle, fileName);
+
+        Swal.fire({
+          icon: 'success',
+          title: 'ส่งออกรายงานสำเร็จ',
+          text: `ดาวน์โหลดไฟล์ ${fileName} เรียบร้อยแล้ว`,
+          timer: 2500,
+          showConfirmButton: false
+        });
+      } catch (err) {
+        console.error(err);
+        Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถสร้างรายงาน Excel ได้: ' + err.message, 'error');
+      }
     }
   },
   computed: {

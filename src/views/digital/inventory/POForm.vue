@@ -52,7 +52,8 @@
               <span v-if="pos.length > 0" class="badge bg-primary-subtle text-primary ms-1 rounded-pill">{{ pos.length }}</span>
             </button>
           </li>
-          <li class="nav-item">
+          <!-- แท็บประวัติ INVS (ยกเลิกการดึงชั่วคราว) -->
+          <li class="nav-item" v-if="false">
             <button 
               class="nav-link custom-tab-btn" 
               :class="{ 'active fw-bold text-primary': activeTab === 'invs' }"
@@ -603,9 +604,9 @@
       </div>
 
       <!-- ======================================================= -->
-      <!-- TAB 3: ประวัติใบสั่งซื้อ (INVS) - SQL Server History   -->
+      <!-- TAB 3: ประวัติใบสั่งซื้อ (INVS) - ยกเลิกการดึงชั่วคราว  -->
       <!-- ======================================================= -->
-      <div v-show="activeTab === 'invs'">
+      <div v-if="false">
         <div class="card border-0 shadow-sm rounded-4 mb-4">
           <div class="card-header bg-white p-4 border-bottom d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
             <div>
@@ -1038,14 +1039,17 @@ export default {
       this.activeTab = 'list';
       await this.fetchPOs();
     } else if (tab === 'invs') {
-      this.activeTab = 'invs';
-      await this.fetchInvsPOs();
+      this.activeTab = 'list';
+      await this.fetchPOs();
     }
   },
   methods: {
     async fetchMeta() {
       try {
-        const res = await axios.get('/api-digital/inventory/po_meta.php');
+        const whId = this.$route.query.warehouse_id || localStorage.getItem('selected_warehouse_id') || '';
+        const params = new URLSearchParams();
+        if (whId) params.append('warehouse_id', whId);
+        const res = await axios.get(`/api-digital/inventory/po_meta.php?${params.toString()}`);
         if (res.data.status === 'success') {
           const d = res.data.data;
           this.vendors = d.vendors || [];
@@ -1373,24 +1377,13 @@ export default {
       }
     },
     switchToInvsTab() {
-      this.activeTab = 'invs';
-      if (this.invsPOs.length === 0) {
-        this.fetchInvsPOs();
-      }
+      this.activeTab = 'list';
+      this.fetchPOs();
     },
     async fetchInvsPOs() {
-      this.loadingInvs = true;
-      try {
-        const q = encodeURIComponent(this.invsFilter.search || '');
-        const res = await axios.get(`/api-digital/inventory/po_invs_history.php?search=${q}&limit=60`);
-        if (res.data.status === 'success') {
-          this.invsPOs = res.data.data || [];
-        }
-      } catch (err) {
-        console.error('Error fetching INVS POs:', err);
-      } finally {
-        this.loadingInvs = false;
-      }
+      // ยกเลิกการดึงประวัติใบสั่งซื้อจาก INVS ชั่วคราว
+      this.invsPOs = [];
+      this.loadingInvs = false;
     },
     async viewInvsItems(po) {
       this.selectedInvsPO = po;

@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router';
 import HomeView from '../views/public/HomeView.vue';
 
 const routes = [
@@ -414,7 +414,7 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: typeof window !== 'undefined' && window.location.protocol === 'file:' ? createWebHashHistory() : createWebHistory(),
   routes,
   scrollBehavior(to, from, savedPosition) {
     // If returning from history (back/forward), keep the saved position

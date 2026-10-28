@@ -13,7 +13,7 @@
           </div>
           <div class="sidebar-brand-text text-truncate">
             <div class="fw-bold text-dark lh-1">คลังพัสดุและเวชภัณฑ์</div>
-            <small class="text-muted" style="font-size: 0.72rem;">INVS Standard Workflow</small>
+            <small class="text-muted" style="font-size: 0.72rem;">Inventory Management System</small>
           </div>
         </div>
         <div v-show="isCollapsed" class="sidebar-brand-icon mx-auto" title="ระบบบริหารคลังพัสดุ">
@@ -52,8 +52,8 @@
             <i class="bi bi-grid-1x2-fill"></i>
           </div>
           <div class="menu-text" v-show="!isCollapsed">
-            <div class="fw-bold">ผังขั้นตอนและภาพรวม</div>
-            <small class="text-muted">Workflow Overview</small>
+            <div class="fw-bold">Dashboard Inventory</div>
+            <small class="text-muted">ระบบบริหารคลังพัสดุ</small>
           </div>
         </div>
 
@@ -246,6 +246,26 @@
           </div>
         </div>
 
+        <!-- Step 7: รายงาน (Reports) -->
+        <div
+          class="menu-item"
+          :class="{ active: currentTab === 'reports' }"
+          @click="selectTab('reports')"
+          :title="isCollapsed ? '7. รายงาน (Reports)' : ''"
+        >
+          <div class="menu-icon bg-secondary-subtle text-secondary position-relative">
+            <i class="bi bi-file-earmark-bar-graph-fill"></i>
+            <span class="mini-step-badge bg-secondary">7</span>
+          </div>
+          <div class="menu-text" v-show="!isCollapsed">
+            <div class="d-flex align-items-center justify-content-between">
+              <span class="fw-bold">7. รายงาน</span>
+              <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0 small">Reports</span>
+            </div>
+            <small class="text-muted">สรุปยอด / รับ-จ่าย / เคลื่อนไหว</small>
+          </div>
+        </div>
+
         <!-- Section: Settings (Master Data) -->
         <template v-if="isAdmin">
           <div class="menu-section-label mt-3" v-show="!isCollapsed">การจัดการระบบ</div>
@@ -263,7 +283,7 @@
                 <span class="fw-bold">ตั้งค่าระบบ</span>
                 <span class="badge text-white rounded-pill px-2 py-0 small" style="background: #7c3aed;">Master</span>
               </div>
-              <small class="text-muted">คลัง, หมวดหมู่, พัสดุ</small>
+              <small class="text-muted">คลัง, หมวดหมู่, หน่วยนับ, วิธีจัดซื้อ, พัสดุ</small>
             </div>
           </div>
         </template>
@@ -336,9 +356,9 @@
                   class="form-select form-select-sm border-0 bg-transparent fw-bold text-dark py-0"
                   style="min-width: 170px; outline: none; box-shadow: none;"
                   v-model="selectedWarehouse"
-                  @change="fetchDashboardSummary"
+                  @change="onWarehouseChange"
                 >
-                  <option value="">-- คลังทั้งหมด (All) --</option>
+                  <option v-if="isAdminUser" value="">-- คลังทั้งหมด (All) --</option>
                   <option v-for="w in warehouses" :key="w.id" :value="w.id">
                     [{{ w.code }}] {{ w.name }}
                   </option>
@@ -628,8 +648,12 @@
           <StockCard />
         </div>
 
+        <div v-else-if="currentTab === 'reports'" class="tab-pane-content">
+          <InventoryReports :warehouse-id="selectedWarehouse" @back-to-dashboard="selectTab('overview')" />
+        </div>
+
         <div v-else-if="currentTab === 'settings'" class="tab-pane-content">
-          <InventorySettings />
+          <InventorySettings :warehouse-id="selectedWarehouse" />
         </div>
       </div>
     </main>
@@ -652,6 +676,7 @@ const TransferDashboard = defineAsyncComponent(() => import('./TransferDashboard
 const TransferForm = defineAsyncComponent(() => import('./TransferForm.vue'));
 const ReturnDashboard = defineAsyncComponent(() => import('./ReturnDashboard.vue'));
 const StockCard = defineAsyncComponent(() => import('./StockCard.vue'));
+const InventoryReports = defineAsyncComponent(() => import('./InventoryReports.vue'));
 const InventorySettings = defineAsyncComponent(() => import('./InventorySettings.vue'));
 
 export default {
@@ -667,6 +692,7 @@ export default {
     TransferForm,
     ReturnDashboard,
     StockCard,
+    InventoryReports,
     InventorySettings
   },
   data() {
@@ -679,6 +705,7 @@ export default {
         transfer: false
       },
       isAdminUser: false,
+      currentUserId: '',
       selectedWarehouse: '',
       warehouses: [],
       metrics: {
@@ -719,14 +746,27 @@ export default {
       }
     }
   },
-  mounted() {
+  async mounted() {
     if (['pr', 'pr_form', 'po', 'po_form'].includes(this.currentTab)) {
       this.openGroups.pr_po = true;
     } else if (['transfer', 'transfer_form'].includes(this.currentTab)) {
       this.openGroups.transfer = true;
     }
-    this.checkAdminStatus();
-    this.fetchDashboardSummary();
+    await this.checkAdminStatus();
+
+    // Read warehouse from route query or localStorage
+    const qWh = this.$route.query.warehouse_id;
+    if (qWh !== undefined && qWh !== null && qWh !== '') {
+      this.selectedWarehouse = parseInt(qWh) || qWh;
+      localStorage.setItem('selected_warehouse_id', this.selectedWarehouse);
+    } else {
+      const savedWh = localStorage.getItem('selected_warehouse_id');
+      if (savedWh) {
+        this.selectedWarehouse = parseInt(savedWh) || savedWh;
+      }
+    }
+
+    await this.fetchDashboardSummary();
   },
   beforeUnmount() {
     if (this.movementChart) this.movementChart.destroy();
@@ -735,8 +775,14 @@ export default {
   methods: {
     async fetchDashboardSummary() {
       try {
-        const whParam = this.selectedWarehouse ? `?warehouse_id=${this.selectedWarehouse}` : '';
-        const res = await axios.get(`/api-digital/inventory/dashboard_summary.php${whParam}`);
+        const userId = this.currentUserId || localStorage.getItem('user_id') || '';
+        const isAdmin = this.isAdminUser ? 1 : 0;
+        const params = new URLSearchParams();
+        if (this.selectedWarehouse) params.append('warehouse_id', this.selectedWarehouse);
+        if (userId) params.append('user_id', userId);
+        params.append('is_admin', isAdmin);
+
+        const res = await axios.get(`/api-digital/inventory/dashboard_summary.php?${params.toString()}`);
         if (res.data && res.data.status === 'success') {
           const d = res.data.data;
           this.metrics = d.metrics || this.metrics;
@@ -744,6 +790,22 @@ export default {
           this.monthlyTrends = d.monthly_trends || [];
           this.categoryDistribution = d.category_distribution || [];
           this.warehouses = d.warehouses || [];
+
+          // Sync warehouse name to localStorage
+          if (this.warehouses.length > 0 && this.selectedWarehouse) {
+            const currentObj = this.warehouses.find(w => w.id == this.selectedWarehouse);
+            if (currentObj) {
+              localStorage.setItem('selected_warehouse_name', currentObj.name);
+            } else if (!this.isAdminUser) {
+              this.selectedWarehouse = this.warehouses[0].id;
+              localStorage.setItem('selected_warehouse_id', this.selectedWarehouse);
+              localStorage.setItem('selected_warehouse_name', this.warehouses[0].name);
+            }
+          } else if (this.warehouses.length > 0 && !this.selectedWarehouse && !this.isAdminUser) {
+            this.selectedWarehouse = this.warehouses[0].id;
+            localStorage.setItem('selected_warehouse_id', this.selectedWarehouse);
+            localStorage.setItem('selected_warehouse_name', this.warehouses[0].name);
+          }
 
           if (this.currentTab === 'overview') {
             this.$nextTick(() => {
@@ -754,6 +816,21 @@ export default {
       } catch (err) {
         console.error('Failed to load dashboard summary:', err);
       }
+    },
+    onWarehouseChange() {
+      if (this.selectedWarehouse) {
+        localStorage.setItem('selected_warehouse_id', this.selectedWarehouse);
+        const whObj = this.warehouses.find(w => w.id == this.selectedWarehouse);
+        if (whObj) localStorage.setItem('selected_warehouse_name', whObj.name);
+        this.$router.replace({ query: { ...this.$route.query, warehouse_id: this.selectedWarehouse } });
+      } else {
+        localStorage.removeItem('selected_warehouse_id');
+        localStorage.setItem('selected_warehouse_name', 'คลังทั้งหมด');
+        const q = { ...this.$route.query };
+        delete q.warehouse_id;
+        this.$router.replace({ query: q });
+      }
+      this.fetchDashboardSummary();
     },
     renderCharts() {
       this.renderMovementChart();
@@ -925,6 +1002,7 @@ export default {
         const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
         const response = await axios.get('/api-hosoffice/get_user_profile.php', config);
         if (response.data && response.data.status === 'success') {
+          this.currentUserId = response.data.id || response.data.user_id || '';
           const accessUser = response.data.access_user ? response.data.access_user.split(':') : [];
           this.isAdminUser =
             accessUser.includes('administrator') ||

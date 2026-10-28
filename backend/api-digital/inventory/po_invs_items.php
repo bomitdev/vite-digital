@@ -4,6 +4,10 @@ require_once '../../cors.php';
 
 header("Content-Type: application/json; charset=utf-8");
 
+// ยกเลิกการดึงรายการเวชภัณฑ์ INVS ชั่วคราว
+echo json_encode(['status' => 'success', 'data' => [], 'message' => 'Temporarily disabled'], JSON_UNESCAPED_UNICODE);
+exit;
+
 $po_no = trim($_GET['po_no'] ?? '');
 
 if (empty($po_no)) {

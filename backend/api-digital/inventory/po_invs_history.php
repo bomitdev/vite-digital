@@ -4,6 +4,10 @@ require_once '../../cors.php';
 
 header("Content-Type: application/json; charset=utf-8");
 
+// ยกเลิกการดึงข้อมูลประวัติ INVS ชั่วคราว
+echo json_encode(['status' => 'success', 'data' => [], 'count' => 0, 'message' => 'Temporarily disabled'], JSON_UNESCAPED_UNICODE);
+exit;
+
 $search = trim($_GET['search'] ?? '');
 $limit  = intval($_GET['limit'] ?? 100);
 if ($limit <= 0 || $limit > 500) $limit = 100;

@@ -11,10 +11,33 @@ if (!isset($pdo2)) {
 
 try {
     $warehouse_id = isset($_GET['warehouse_id']) && $_GET['warehouse_id'] !== '' ? (int)$_GET['warehouse_id'] : null;
+    $user_id = isset($_GET['user_id']) ? $_GET['user_id'] : '';
+    $is_admin = isset($_GET['is_admin']) ? (int)$_GET['is_admin'] : 0;
 
-    // 1. Warehouses list
-    $stmtWh = $pdo2->query("SELECT id, code, name FROM inv_warehouses ORDER BY name ASC");
-    $warehouses = $stmtWh->fetchAll(PDO::FETCH_ASSOC);
+    // 1. Warehouses list based on permissions
+    if ($user_id !== '' && !$is_admin) {
+        $stmtWh = $pdo2->prepare("
+            SELECT w.id, w.code, w.name, uw.access_level 
+            FROM inv_warehouses w
+            JOIN inv_user_warehouses uw ON w.id = uw.warehouse_id
+            WHERE uw.user_id = ? AND w.active = 1
+            ORDER BY w.code ASC
+        ");
+        $stmtWh->execute([$user_id]);
+        $warehouses = $stmtWh->fetchAll(PDO::FETCH_ASSOC);
+
+        // If warehouse_id not in permitted warehouses, pick the first permitted warehouse
+        $permittedIds = array_map(function($w) { return (int)$w['id']; }, $warehouses);
+        if ($warehouse_id !== null && !in_array($warehouse_id, $permittedIds)) {
+            $warehouse_id = !empty($permittedIds) ? $permittedIds[0] : -1;
+        } elseif ($warehouse_id === null && !empty($permittedIds)) {
+            // Non-admin default to their first warehouse instead of seeing all warehouses
+            $warehouse_id = $permittedIds[0];
+        }
+    } else {
+        $stmtWh = $pdo2->query("SELECT id, code, name, 'ADMIN' as access_level FROM inv_warehouses WHERE active = 1 ORDER BY code ASC");
+        $warehouses = $stmtWh->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     // 2. Metrics calculation
     $whBalWhere = $warehouse_id ? "WHERE b.warehouse_id = " . $warehouse_id : "";

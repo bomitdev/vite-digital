@@ -468,7 +468,7 @@
               <div class="col-6 col-md-4 col-lg-3">
                 <div
                   class="nav-card h-100 bg-gradient-blue text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
-                  @click="$router.push('/inventory-dashboard')"
+                  @click="openWarehouseSelectModal"
                 >
                   <div
                     class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
@@ -1032,6 +1032,162 @@
         </div>
       </div>
     </div>
+
+    <!-- ======================================================= -->
+    <!-- WAREHOUSE SELECTION MODAL (ตามสิทธิ์ผู้ใช้งาน)         -->
+    <!-- ======================================================= -->
+    <div v-if="showWarehouseModal" class="modal-backdrop fade show" style="backdrop-filter: blur(8px); background-color: rgba(15, 23, 42, 0.65); z-index: 1055;"></div>
+    <div v-if="showWarehouseModal" class="modal fade show d-block" tabindex="-1" style="z-index: 1056;" @click.self="showWarehouseModal = false">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden animate-fade-in-up">
+          
+          <!-- Modal Header -->
+          <div class="modal-header border-0 p-4 text-white position-relative" style="background: linear-gradient(135deg, #1e3a8a 0%, #0284c7 100%);">
+            <div class="d-flex align-items-center gap-3">
+              <div class="rounded-3 p-3 bg-white bg-opacity-20 d-flex align-items-center justify-content-center shadow-sm backdrop-blur" style="width: 52px; height: 52px;">
+                <i class="bi bi-box-seam-fill fs-3 text-white"></i>
+              </div>
+              <div>
+                <h5 class="modal-title fw-bold text-white mb-1">เลือกคลังวัสดุที่ต้องการเข้าใช้งาน</h5>
+                <p class="text-white-50 small mb-0">ระบบคลังวัสดุรวมศูนย์ • เลือกระบบคลังตามสิทธิ์ที่คุณได้รับ</p>
+              </div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" @click="showWarehouseModal = false"></button>
+          </div>
+
+          <!-- Modal Body -->
+          <div class="modal-body p-4 bg-light">
+            
+            <!-- User Info Badge & Admin Indicator -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 px-1">
+              <div class="small text-secondary d-flex align-items-center gap-2">
+                <i class="bi bi-person-circle fs-5 text-primary"></i>
+                <span>ผู้ใช้งาน: <strong class="text-dark">{{ userProfile?.fullname || 'ผู้ใช้งาน' }}</strong></span>
+                <span class="text-muted" v-if="userProfile?.department">({{ userProfile.department }})</span>
+              </div>
+              <div v-if="isAdmin">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 rounded-pill">
+                  <i class="bi bi-shield-check me-1"></i> สิทธิ์ผู้ดูแลระบบ (เข้าถึงได้ทุกคลัง)
+                </span>
+              </div>
+            </div>
+
+            <!-- Loading State -->
+            <div v-if="loadingWarehouses" class="text-center py-5">
+              <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <div class="fw-semibold text-secondary">กำลังตรวจสอบสิทธิ์การเข้าถึงคลังวัสดุ...</div>
+            </div>
+
+            <!-- Empty / No Access State -->
+            <div v-else-if="userWarehouses.length === 0" class="text-center py-5 bg-white rounded-4 border p-4 shadow-xs">
+              <div class="text-warning mb-3">
+                <i class="bi bi-exclamation-triangle-fill" style="font-size: 3.5rem;"></i>
+              </div>
+              <h5 class="fw-bold text-dark mb-2">ไม่พบคลังที่คุณมีสิทธิ์เข้าใช้งาน</h5>
+              <p class="text-muted small mx-auto mb-4" style="max-width: 460px;">
+                บัญชีผู้ใช้งานของคุณยังไม่ได้รับการกำหนดสิทธิ์ในการเข้าถึงคลังวัสดุใดๆ 
+                กรุณาติดต่อผู้ดูแลระบบ (Admin) หรือหัวหน้างานเพื่อมอบหมายสิทธิ์การใช้งานคลังพัสดุ
+              </p>
+              <button class="btn btn-outline-secondary rounded-pill px-4" @click="showWarehouseModal = false">
+                <i class="bi bi-x-lg me-1"></i> ปิดหน้าต่าง
+              </button>
+            </div>
+
+            <!-- Warehouses List -->
+            <div v-else class="row g-3">
+              
+              <!-- Option for Admin: All Warehouses -->
+              <div class="col-12" v-if="isAdmin">
+                <div 
+                  class="warehouse-card p-3 rounded-4 bg-white border border-2 border-primary-subtle shadow-sm cursor-pointer position-relative d-flex align-items-center justify-content-between transition-all"
+                  @click="selectWarehouseAndEnter(null)"
+                >
+                  <div class="d-flex align-items-center gap-3">
+                    <div class="wh-icon-box bg-primary text-white rounded-3 d-flex align-items-center justify-content-center shadow-xs">
+                      <i class="bi bi-grid-fill fs-4"></i>
+                    </div>
+                    <div>
+                      <div class="d-flex align-items-center gap-2">
+                        <h6 class="fw-bold text-dark mb-0">ภาพรวมทุกคลัง (All Warehouses)</h6>
+                        <span class="badge bg-primary text-white rounded-pill px-2">Admin View</span>
+                      </div>
+                      <small class="text-muted">ดูยอดสต็อก การรับ-จ่าย และรายงานรวมของทุกคลังในระบบ</small>
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-center gap-2 text-primary fw-semibold small pe-2">
+                    <span>เข้าสู่ภาพรวม</span>
+                    <i class="bi bi-arrow-right-circle-fill fs-5"></i>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Available Warehouses -->
+              <div 
+                v-for="wh in userWarehouses" 
+                :key="wh.id" 
+                class="col-12 col-md-6"
+              >
+                <div 
+                  class="warehouse-card p-3 rounded-4 bg-white border shadow-sm cursor-pointer position-relative h-100 d-flex flex-column justify-content-between transition-all"
+                  @click="selectWarehouseAndEnter(wh)"
+                >
+                  <div class="d-flex align-items-start gap-3 mb-3">
+                    <div class="wh-icon-box bg-gradient-blue text-white rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs">
+                      <span class="fw-bold fs-5">{{ wh.code }}</span>
+                    </div>
+                    <div class="flex-grow-1 overflow-hidden">
+                      <div class="d-flex align-items-center justify-content-between gap-1 mb-1">
+                        <span class="badge bg-light text-secondary border small">รหัส: {{ wh.code }}</span>
+                        <span 
+                          v-if="wh.access_level === 'MANAGER'" 
+                          class="badge bg-success-subtle text-success border border-success-subtle rounded-pill"
+                        >
+                          <i class="bi bi-person-badge-fill me-1"></i> ผู้ดูแลคลัง
+                        </span>
+                        <span 
+                          v-else-if="wh.access_level === 'STAFF'" 
+                          class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill"
+                        >
+                          <i class="bi bi-person-fill me-1"></i> เจ้าหน้าที่
+                        </span>
+                        <span 
+                          v-else-if="wh.access_level === 'ADMIN'" 
+                          class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill"
+                        >
+                          <i class="bi bi-shield-check me-1"></i> ผู้ดูแลระบบ
+                        </span>
+                      </div>
+                      <h6 class="fw-bold text-dark mb-1 text-truncate" :title="wh.name">{{ wh.name }}</h6>
+                      <small class="text-muted d-block">คลิกเพื่อเข้าจัดการสต็อก รับ-จ่าย</small>
+                    </div>
+                  </div>
+
+                  <div class="pt-2 border-top d-flex align-items-center justify-content-between text-primary fw-semibold small">
+                    <span>เข้าสู่คลังนี้</span>
+                    <i class="bi bi-arrow-right"></i>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- Modal Footer -->
+          <div class="modal-footer border-0 bg-white px-4 py-3 d-flex justify-content-between">
+            <small class="text-muted">
+              <i class="bi bi-info-circle me-1"></i> สามารถสลับคลังได้อีกครั้งภายในหน้าระบบคลัง
+            </small>
+            <button type="button" class="btn btn-secondary rounded-pill px-4" @click="showWarehouseModal = false">
+              ยกเลิก
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1047,7 +1203,10 @@ export default {
         fullname: '',
         department: '',
         image: ''
-      }
+      },
+      showWarehouseModal: false,
+      loadingWarehouses: false,
+      userWarehouses: []
     };
   },
   computed: {
@@ -1219,6 +1378,43 @@ export default {
 
     goToComputerLoanForm() {
       this.$router.push({ path: '/computer-loan' });
+    },
+    async openWarehouseSelectModal() {
+      if (!this.userProfile || !this.userProfile.id) {
+        await this.fetchUserProfile();
+      }
+
+      this.showWarehouseModal = true;
+      this.loadingWarehouses = true;
+      this.userWarehouses = [];
+
+      try {
+        const userId = this.userProfile?.id || this.userProfile?.user_id || '';
+        const isAdmin = this.isAdmin ? 1 : 0;
+        const res = await axios.get(`/api-digital/inventory/warehouses.php?user_id=${userId}&is_admin=${isAdmin}`);
+        if (res.data && res.data.status === 'success') {
+          this.userWarehouses = res.data.data || [];
+        }
+      } catch (err) {
+        console.error('Error fetching user warehouses:', err);
+      } finally {
+        this.loadingWarehouses = false;
+      }
+    },
+    selectWarehouseAndEnter(wh) {
+      if (wh) {
+        localStorage.setItem('selected_warehouse_id', wh.id);
+        localStorage.setItem('selected_warehouse_code', wh.code);
+        localStorage.setItem('selected_warehouse_name', wh.name);
+        this.showWarehouseModal = false;
+        this.$router.push({ path: '/inventory-dashboard', query: { warehouse_id: wh.id } });
+      } else {
+        localStorage.removeItem('selected_warehouse_id');
+        localStorage.removeItem('selected_warehouse_code');
+        localStorage.setItem('selected_warehouse_name', 'คลังทั้งหมด');
+        this.showWarehouseModal = false;
+        this.$router.push({ path: '/inventory-dashboard' });
+      }
     },
     logout() {
       if (confirm('คุณต้องการออกจากระบบใช่หรือไม่?')) {
@@ -1431,6 +1627,34 @@ export default {
   from {
     opacity: 0;
     transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Warehouse Selection Modal Styles */
+.warehouse-card {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid #e2e8f0;
+}
+.warehouse-card:hover {
+  transform: translateY(-3px);
+  border-color: #0284c7 !important;
+  box-shadow: 0 10px 25px -5px rgba(2, 132, 199, 0.15), 0 8px 10px -6px rgba(2, 132, 199, 0.1) !important;
+}
+.wh-icon-box {
+  width: 48px;
+  height: 48px;
+}
+.animate-fade-in-up {
+  animation: fadeInUpModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes fadeInUpModal {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
   }
   to {
     opacity: 1;

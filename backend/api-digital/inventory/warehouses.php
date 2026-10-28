@@ -18,17 +18,17 @@ try {
         
         if ($user_id !== '' && !$is_admin) {
             $stmt = $pdo2->prepare("
-                SELECT w.* 
+                SELECT w.*, uw.access_level 
                 FROM inv_warehouses w
                 JOIN inv_user_warehouses uw ON w.id = uw.warehouse_id
-                WHERE uw.user_id = ?
+                WHERE uw.user_id = ? AND w.active = 1
                 ORDER BY w.code ASC
             ");
             $stmt->execute([$user_id]);
-            $warehouses = $stmt->fetchAll();
+            $warehouses = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } else {
-            $stmt = $pdo2->query("SELECT * FROM inv_warehouses ORDER BY code ASC");
-            $warehouses = $stmt->fetchAll();
+            $stmt = $pdo2->query("SELECT w.*, 'ADMIN' as access_level FROM inv_warehouses w ORDER BY w.code ASC");
+            $warehouses = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
         
         echo json_encode(['status' => 'success', 'data' => $warehouses]);
