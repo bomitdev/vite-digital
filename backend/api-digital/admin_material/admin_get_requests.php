@@ -55,6 +55,7 @@ try {
                 'request_date' => $row['request_date'],
                 'requester_name' => $row['requester_name'],
                 'requester_id' => $row['requester_id'] ?? null,
+                'requester_position' => $row['requester_position'] ?? '',
                 'department' => $row['department'],
                 'status' => $row['status'],
                 'items' => []

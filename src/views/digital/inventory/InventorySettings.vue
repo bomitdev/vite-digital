@@ -66,9 +66,18 @@
             
             <!-- Warehouses Tab -->
             <div class="tab-pane fade show active" id="wh" role="tabpanel">
-              <div class="d-flex justify-content-between mb-3">
-                <h5 class="fw-bold">รายชื่อคลังวัสดุทั้งหมด</h5>
-                <button class="btn btn-primary rounded-pill" @click="openWarehouseModal()"><i class="bi bi-plus-lg"></i> เพิ่มคลังใหม่</button>
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <h5 class="fw-bold mb-1">รายชื่อคลังวัสดุทั้งหมด</h5>
+                  <p class="text-muted small mb-0">ผู้ดูแลระบบและผู้ดูแลคลัง (Manager) สามารถสร้างและตั้งค่าคลังได้</p>
+                </div>
+                <button 
+                  v-if="canCreateWarehouse" 
+                  class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold" 
+                  @click="openWarehouseModal()"
+                >
+                  <i class="bi bi-plus-lg me-1"></i> เพิ่มคลังใหม่
+                </button>
               </div>
               <div class="table-responsive">
                 <table class="table table-hover align-middle">
@@ -77,21 +86,52 @@
                       <th>รหัสคลัง</th>
                       <th>ชื่อคลัง</th>
                       <th>สถานะ</th>
+                      <th>ระดับสิทธิ์ของคุณ</th>
                       <th>จัดการ</th>
                     </tr>
                   </thead>
                   <tbody>
+                    <tr v-if="warehouses.length === 0">
+                      <td colspan="5" class="text-center text-muted py-4">ไม่พบคลังวัสดุที่คุณมีสิทธิ์เข้าถึง</td>
+                    </tr>
                     <tr v-for="wh in warehouses" :key="wh.id">
-                      <td><span class="badge bg-secondary">{{ wh.code }}</span></td>
-                      <td class="fw-bold">{{ wh.name }}</td>
+                      <td><span class="badge bg-secondary font-monospace">{{ wh.code }}</span></td>
+                      <td class="fw-bold text-dark">{{ wh.name }}</td>
                       <td>
-                        <span class="badge" :class="wh.active ? 'bg-success' : 'bg-danger'">
-                          {{ wh.active ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}
+                        <span class="badge" :class="Number(wh.active) ? 'bg-success' : 'bg-danger'">
+                          {{ Number(wh.active) ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}
                         </span>
                       </td>
                       <td>
-                        <button class="btn btn-sm btn-outline-primary me-2" @click="openWarehouseModal(wh)" title="แก้ไขคลัง"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-sm btn-outline-info" @click="openAccessModal(wh)" title="จัดการสิทธิ์เข้าถึง"><i class="bi bi-person-lines-fill"></i> สิทธิ์เข้าถึง</button>
+                        <span v-if="isAdminUser || wh.access_level === 'ADMIN'" class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1">
+                          <i class="bi bi-shield-check me-1"></i> ผู้ดูแลระบบ
+                        </span>
+                        <span v-else-if="wh.access_level === 'MANAGER'" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1">
+                          <i class="bi bi-person-badge-fill me-1"></i> ผู้ดูแลคลัง
+                        </span>
+                        <span v-else class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-3 py-1">
+                          <i class="bi bi-person-fill me-1"></i> เจ้าหน้าที่
+                        </span>
+                      </td>
+                      <td>
+                        <div class="d-flex align-items-center gap-1">
+                          <button 
+                            class="btn btn-sm btn-outline-primary" 
+                            @click="openWarehouseModal(wh)" 
+                            :disabled="!canManageWarehouse(wh)"
+                            :title="canManageWarehouse(wh) ? 'แก้ไขคลัง' : 'เฉพาะผู้ดูแลคลัง/Admin'"
+                          >
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                          <button 
+                            class="btn btn-sm btn-outline-info" 
+                            @click="openAccessModal(wh)" 
+                            :disabled="!canManageWarehouse(wh)"
+                            :title="canManageWarehouse(wh) ? 'จัดการสิทธิ์เข้าถึง' : 'เฉพาะผู้ดูแลคลัง/Admin'"
+                          >
+                            <i class="bi bi-person-lines-fill me-1"></i> สิทธิ์เข้าถึง
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   </tbody>
@@ -851,16 +891,24 @@
                   <label class="form-label">ระดับสิทธิ์</label>
                   <select class="form-select" v-model="accessForm.access_level">
                     <option value="STAFF">เจ้าหน้าที่ (Staff)</option>
-                    <option value="MANAGER">หัวหน้าคลัง (Manager)</option>
+                    <option value="MANAGER">ผู้ดูแลคลัง (Manager)</option>
                   </select>
                 </div>
                 <div class="col-md-2">
-                  <button type="submit" class="btn btn-primary w-100" :disabled="isSavingAccess">
+                  <button type="submit" class="btn btn-primary w-100 fw-bold" :disabled="isSavingAccess">
                     เพิ่มสิทธิ์
                   </button>
                 </div>
               </div>
             </form>
+
+            <div class="alert alert-info py-2 px-3 small rounded-3 mb-3 d-flex align-items-center gap-2">
+              <i class="bi bi-info-circle-fill fs-5 text-info flex-shrink-0"></i>
+              <div>
+                <strong>คำอธิบายระดับสิทธิ์:</strong>
+                <span class="ms-1"><strong>ผู้ดูแลคลัง (Manager)</strong> สามารถสร้างคลังใหม่ ตั้งค่าหมวดหมู่/วัสดุ/ผู้จำหน่าย และกำหนดสิทธิ์เจ้าหน้าที่ในคลังนี้ได้ | <strong>เจ้าหน้าที่ (Staff)</strong> มีสิทธิ์ทำรายการรับ-จ่าย-โอนในคลังนี้</span>
+              </div>
+            </div>
 
             <h6 class="fw-bold mb-3">รายชื่อผู้มีสิทธิ์เข้าถึงคลังนี้</h6>
             <div class="table-responsive">
@@ -877,14 +925,18 @@
                     <td colspan="3" class="text-center text-muted py-3">ยังไม่มีผู้ได้รับสิทธิ์</td>
                   </tr>
                   <tr v-for="u in warehouseUsers" :key="u.id">
-                    <td>{{ u.user_name }}</td>
                     <td>
-                      <span class="badge" :class="u.access_level === 'MANAGER' ? 'bg-primary' : 'bg-secondary'">
-                        {{ u.access_level }}
+                      <div class="fw-bold">{{ u.user_name }}</div>
+                      <small class="text-muted" v-if="u.created_at">บันทึกเมื่อ: {{ u.created_at }}</small>
+                    </td>
+                    <td>
+                      <span class="badge px-3 py-2 rounded-pill" :class="u.access_level === 'MANAGER' ? 'bg-primary' : 'bg-secondary'">
+                        <i :class="u.access_level === 'MANAGER' ? 'bi bi-person-badge-fill me-1' : 'bi bi-person-fill me-1'"></i>
+                        {{ u.access_level === 'MANAGER' ? 'ผู้ดูแลคลัง (MANAGER)' : 'เจ้าหน้าที่ (STAFF)' }}
                       </span>
                     </td>
                     <td class="text-center">
-                      <button class="btn btn-sm btn-outline-danger" @click="removeAccessUser(u.id)">
+                      <button class="btn btn-sm btn-outline-danger" @click="removeAccessUser(u.id)" title="ลบสิทธิ์">
                         <i class="bi bi-trash"></i>
                       </button>
                     </td>
@@ -1075,6 +1127,8 @@ export default {
   data() {
     return {
       activeTab: 'wh',
+      currentUserId: '',
+      isAdminUser: false,
       isSaving: false,
       isSavingCategory: false,
       isSavingWarehouse: false,
@@ -1227,6 +1281,12 @@ export default {
         );
       }
       return list;
+    },
+    isManagerUser() {
+      return this.isAdminUser || this.warehouses.some(w => w.access_level === 'MANAGER');
+    },
+    canCreateWarehouse() {
+      return this.isAdminUser || this.isManagerUser;
     }
   },
   watch: {
@@ -1237,7 +1297,8 @@ export default {
       }
     }
   },
-  mounted() {
+  async mounted() {
+    await this.checkUserPermissions();
     const qWh = this.warehouseId || this.$route.query.warehouse_id || localStorage.getItem('selected_warehouse_id');
     if (qWh) {
       this.selectedVendorWarehouse = String(qWh);
@@ -1259,14 +1320,52 @@ export default {
     this.fetchData();
   },
   methods: {
+    async checkUserPermissions() {
+      try {
+        const token = localStorage.getItem('user_token');
+        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+        const response = await axios.get('/api-hosoffice/get_user_profile.php', config);
+        if (response.data && response.data.status === 'success') {
+          this.currentUserId = response.data.id || response.data.user_id || '';
+          const accessUser = response.data.access_user ? response.data.access_user.split(':') : [];
+          this.isAdminUser =
+            accessUser.includes('administrator') ||
+            accessUser.includes('menu_inventory_manage') ||
+            accessUser.includes('menu_inventory_admin') ||
+            accessUser.includes('menu_it_material_manage') ||
+            accessUser.includes('menu_gm_material_manage') ||
+            localStorage.getItem('user_role') === 'admin' ||
+            localStorage.getItem('is_admin') === 'true';
+        } else {
+          this.currentUserId = localStorage.getItem('user_id') || '';
+          this.isAdminUser =
+            localStorage.getItem('user_role') === 'admin' ||
+            localStorage.getItem('is_admin') === 'true';
+        }
+      } catch (err) {
+        this.currentUserId = localStorage.getItem('user_id') || '';
+        this.isAdminUser =
+          localStorage.getItem('user_role') === 'admin' ||
+          localStorage.getItem('is_admin') === 'true';
+      }
+    },
+    canManageWarehouse(wh) {
+      if (this.isAdminUser) return true;
+      if (!wh) return false;
+      return wh.access_level === 'MANAGER' || wh.access_level === 'ADMIN';
+    },
     async fetchData() {
       try {
         const vendorParams = new URLSearchParams();
         if (this.selectedVendorWarehouse) {
           vendorParams.append('warehouse_id', this.selectedVendorWarehouse);
         }
+        const whUrl = this.isAdminUser
+          ? '/api-digital/inventory/warehouses.php?is_admin=1'
+          : `/api-digital/inventory/warehouses.php?user_id=${this.currentUserId || localStorage.getItem('user_id') || ''}&include_inactive=1`;
+
         const [whRes, catRes, itemRes, unitRes, staffRes, vendorRes, buyMethodRes] = await Promise.all([
-          axios.get('/api-digital/inventory/warehouses.php?is_admin=1'),
+          axios.get(whUrl),
           axios.get('/api-digital/inventory/categories.php'),
           axios.get('/api-digital/inventory/items.php'),
           axios.get('/api-digital/inventory/units.php'),
@@ -1301,12 +1400,16 @@ export default {
       this.isSavingWarehouse = true;
       try {
         const method = this.isEditWarehouse ? 'put' : 'post';
-        const res = await axios[method]('/api-digital/inventory/warehouses.php', this.warehouseForm);
+        const payload = {
+          ...this.warehouseForm,
+          user_id: this.currentUserId || localStorage.getItem('user_id') || ''
+        };
+        const res = await axios[method]('/api-digital/inventory/warehouses.php', payload);
         
         if (res.data.status === 'success') {
           Swal.fire({
             title: 'บันทึกสำเร็จ!',
-            text: 'ข้อมูลคลังวัสดุถูกบันทึกเรียบร้อยแล้ว',
+            text: 'ข้อมูลคลังวัสดุถูกบันทึกเรียบร้อยแล้ว' + (!this.isEditWarehouse ? ' (คุณได้รับสิทธิ์ผู้ดูแลคลังนี้โดยอัตโนมัติ)' : ''),
             icon: 'success',
             confirmButtonColor: '#0d6efd'
           });
@@ -1315,7 +1418,7 @@ export default {
           const modalInstance = bootstrap.Modal.getInstance(modalEl);
           if (modalInstance) modalInstance.hide();
           
-          this.fetchData();
+          await this.fetchData();
         } else {
           Swal.fire('ข้อผิดพลาด', res.data.message || 'บันทึกไม่สำเร็จ', 'error');
         }

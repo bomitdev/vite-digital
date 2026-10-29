@@ -52,16 +52,27 @@ try {
         $pdo2->exec("ALTER TABLE mt_admin_requests ADD COLUMN requester_id INT NULL AFTER requester_name");
     }
 
-    // Resolve requester_id
+    // Migration: Add requester_position if missing
+    $checkColPos = $pdo2->query("SHOW COLUMNS FROM mt_admin_requests LIKE 'requester_position'")->fetch();
+    if (!$checkColPos) {
+        $pdo2->exec("ALTER TABLE mt_admin_requests ADD COLUMN requester_position VARCHAR(255) NULL AFTER requester_id");
+    }
+
+    // Resolve requester_id and requester_position
     $requester_id = isset($data->requester_id) && !empty($data->requester_id) ? intval($data->requester_id) : null;
-    if (!$requester_id && isset($pdo3) && !empty($data->requester_name)) {
+    $requester_position = isset($data->requester_position) && !empty($data->requester_position) ? trim($data->requester_position) : '';
+
+    if ((!$requester_id || empty($requester_position)) && isset($pdo3) && !empty($data->requester_name)) {
         $cleanName = trim($data->requester_name);
         $stmtP = $pdo3->prepare("
-            SELECT p.ID, TRIM(ds.HR_DEPARTMENT_SUB_NAME) as dept_sub, TRIM(d.HR_DEPARTMENT_NAME) as dept_main 
+            SELECT p.ID, TRIM(ds.HR_DEPARTMENT_SUB_NAME) as dept_sub, TRIM(d.HR_DEPARTMENT_NAME) as dept_main,
+                   CONCAT(IFNULL(pos.HR_POSITION_NAME, ''), IF(hl.HR_LEVEL_NAME IS NOT NULL AND hl.HR_LEVEL_NAME != '', CONCAT(' ', hl.HR_LEVEL_NAME), '')) as position_name
             FROM hr_person p 
             LEFT JOIN hr_prefix pf ON p.HR_PREFIX_ID = pf.HR_PREFIX_ID 
             LEFT JOIN hr_department_sub ds ON p.HR_DEPARTMENT_SUB_ID = ds.HR_DEPARTMENT_SUB_ID
             LEFT JOIN hr_department d ON p.HR_DEPARTMENT_ID = d.HR_DEPARTMENT_ID
+            LEFT JOIN hr_position pos ON p.HR_POSITION_ID = pos.HR_POSITION_ID
+            LEFT JOIN hr_level hl ON p.HR_LEVEL_ID = hl.HR_LEVEL_ID
             WHERE p.ID = :pid
                OR CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) = :name1
                OR CONCAT(p.HR_FNAME, ' ', p.HR_LNAME) = :name2
@@ -78,12 +89,17 @@ try {
         ]);
         $personFound = $stmtP->fetch(PDO::FETCH_ASSOC);
         if ($personFound) {
-            $requester_id = intval($personFound['ID']);
+            if (!$requester_id) {
+                $requester_id = intval($personFound['ID']);
+            }
+            if (empty($requester_position) && !empty($personFound['position_name'])) {
+                $requester_position = $personFound['position_name'];
+            }
             $hrDept = !empty($personFound['dept_sub']) ? $personFound['dept_sub'] : $personFound['dept_main'];
             if (!empty($hrDept) && (empty($data->department) || trim($data->department) === 'กลุ่มงานบริหารทั่วไป')) {
                 $data->department = $hrDept;
             }
-        } elseif (isset($userData['uid'])) {
+        } elseif (isset($userData['uid']) && !$requester_id) {
             $requester_id = intval($userData['uid']);
         }
     } elseif (!$requester_id && isset($userData['uid'])) {
@@ -96,8 +112,8 @@ try {
 
     $stmtCheck = $pdo2->prepare("SELECT id, name, unit, balance FROM mt_admin_materials WHERE id = :id");
 
-    $sqlInsert = "INSERT INTO mt_admin_requests (request_date, requester_name, requester_id, department, material_id, quantity, status, request_no) 
-            VALUES (CURDATE(), :requester_name, :requester_id, :department, :material_id, :quantity, 'pending', :request_no)";
+    $sqlInsert = "INSERT INTO mt_admin_requests (request_date, requester_name, requester_id, requester_position, department, material_id, quantity, status, request_no) 
+            VALUES (CURDATE(), :requester_name, :requester_id, :requester_position, :department, :material_id, :quantity, 'pending', :request_no)";
     $stmtInsert = $pdo2->prepare($sqlInsert);
 
     $lineItems = [];
@@ -126,6 +142,7 @@ try {
         $stmtInsert->execute([
             ':requester_name' => $data->requester_name,
             ':requester_id' => $requester_id,
+            ':requester_position' => $requester_position,
             ':department' => trim($data->department),
             ':material_id' => $item->material_id,
             ':quantity' => $item->quantity,

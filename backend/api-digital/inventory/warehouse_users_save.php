@@ -28,9 +28,13 @@ try {
             exit;
         }
 
-        $stmt = $pdo2->prepare("INSERT IGNORE INTO inv_user_warehouses (warehouse_id, user_id, access_level) VALUES (?, ?, ?)");
+        $stmt = $pdo2->prepare("
+            INSERT INTO inv_user_warehouses (warehouse_id, user_id, access_level) 
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE access_level = VALUES(access_level)
+        ");
         $stmt->execute([$warehouse_id, $user_id, $access_level]);
-        echo json_encode(['status' => 'success', 'message' => 'User added successfully.']);
+        echo json_encode(['status' => 'success', 'message' => 'User access saved successfully.']);
         
     } elseif ($action === 'remove') {
         $id = (int)($data['id'] ?? 0);

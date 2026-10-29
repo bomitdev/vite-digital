@@ -456,7 +456,8 @@
               isAdmin ||
               hasPermission('menu_pharmacy_material_manage') ||
               hasPermission('menu_med_material_manage') ||
-              hasPermission('menu_gm_material_manage')
+              hasPermission('menu_gm_material_manage') ||
+              hasWarehouseAccess
             "
           >
             <h6 class="fw-bold text-secondary mb-3 mt-4 border-bottom pb-2">
@@ -1065,9 +1066,12 @@
                 <span>ผู้ใช้งาน: <strong class="text-dark">{{ userProfile?.fullname || 'ผู้ใช้งาน' }}</strong></span>
                 <span class="text-muted" v-if="userProfile?.department">({{ userProfile.department }})</span>
               </div>
-              <div v-if="isAdmin">
-                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 rounded-pill">
+              <div class="d-flex gap-2">
+                <span v-if="isAdmin" class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 rounded-pill">
                   <i class="bi bi-shield-check me-1"></i> สิทธิ์ผู้ดูแลระบบ (เข้าถึงได้ทุกคลัง)
+                </span>
+                <span v-else-if="userWarehouses.some(w => w.access_level === 'MANAGER')" class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill">
+                  <i class="bi bi-person-badge-fill me-1"></i> สิทธิ์ผู้ดูแลคลัง (สร้าง/ตั้งค่าคลังได้)
                 </span>
               </div>
             </div>
@@ -1176,13 +1180,23 @@
           </div>
 
           <!-- Modal Footer -->
-          <div class="modal-footer border-0 bg-white px-4 py-3 d-flex justify-content-between">
+          <div class="modal-footer border-0 bg-white px-4 py-3 d-flex justify-content-between flex-wrap gap-2">
             <small class="text-muted">
               <i class="bi bi-info-circle me-1"></i> สามารถสลับคลังได้อีกครั้งภายในหน้าระบบคลัง
             </small>
-            <button type="button" class="btn btn-secondary rounded-pill px-4" @click="showWarehouseModal = false">
-              ยกเลิก
-            </button>
+            <div class="d-flex gap-2">
+              <button 
+                v-if="isAdmin || userWarehouses.some(w => w.access_level === 'MANAGER')"
+                type="button" 
+                class="btn btn-outline-primary rounded-pill px-3 fw-bold small"
+                @click="goToSettingsDirectly"
+              >
+                <i class="bi bi-gear-fill me-1"></i> ตั้งค่าระบบคลัง / สร้างคลังใหม่
+              </button>
+              <button type="button" class="btn btn-secondary rounded-pill px-4" @click="showWarehouseModal = false">
+                ยกเลิก
+              </button>
+            </div>
           </div>
 
         </div>
@@ -1206,7 +1220,8 @@ export default {
       },
       showWarehouseModal: false,
       loadingWarehouses: false,
-      userWarehouses: []
+      userWarehouses: [],
+      hasWarehouseAccess: false
     };
   },
   computed: {
@@ -1264,6 +1279,15 @@ export default {
         const response = await axios.get('/api-hosoffice/get_user_profile.php');
         if (response.data.status === 'success') {
           this.userProfile = response.data;
+          const userId = response.data.id || response.data.user_id || '';
+          if (userId) {
+            axios.get(`/api-digital/inventory/warehouses.php?user_id=${userId}&is_admin=${this.isAdmin ? 1 : 0}`)
+              .then(wRes => {
+                if (wRes.data && wRes.data.status === 'success' && wRes.data.data?.length > 0) {
+                  this.hasWarehouseAccess = true;
+                }
+              }).catch(() => {});
+          }
         }
       } catch (error) {
         console.error('Failed to load profile', error);
@@ -1406,6 +1430,9 @@ export default {
         localStorage.setItem('selected_warehouse_id', wh.id);
         localStorage.setItem('selected_warehouse_code', wh.code);
         localStorage.setItem('selected_warehouse_name', wh.name);
+        if (wh.access_level) {
+          localStorage.setItem('selected_warehouse_access_level', wh.access_level);
+        }
         this.showWarehouseModal = false;
         this.$router.push({ path: '/inventory-dashboard', query: { warehouse_id: wh.id } });
       } else {
@@ -1415,6 +1442,10 @@ export default {
         this.showWarehouseModal = false;
         this.$router.push({ path: '/inventory-dashboard' });
       }
+    },
+    goToSettingsDirectly() {
+      this.showWarehouseModal = false;
+      this.$router.push({ path: '/inventory-dashboard', query: { tab: 'settings' } });
     },
     logout() {
       if (confirm('คุณต้องการออกจากระบบใช่หรือไม่?')) {

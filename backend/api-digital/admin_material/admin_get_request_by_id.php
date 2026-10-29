@@ -113,8 +113,11 @@ try {
                 ]);
                 $posData = $posStmt->fetch(PDO::FETCH_ASSOC);
             }
-            $request['requester_position'] = $posData ? $posData['position_name'] : '';
-            $request['position_name2'] = $posData ? $posData['position_name2'] : '';
+            $posName = $posData ? ($posData['position_name'] ?? '') : '';
+            $posName2 = $posData ? ($posData['position_name2'] ?? '') : '';
+
+            $request['requester_position'] = !empty($request['requester_position']) ? $request['requester_position'] : $posName;
+            $request['position_name2'] = !empty($posName2) ? $posName2 : $request['requester_position'];
             $request['hr_department_sub'] = $posData ? ($posData['hr_department_sub'] ?? '') : '';
             $request['hr_department'] = $posData ? ($posData['hr_department'] ?? '') : '';
 
@@ -123,8 +126,8 @@ try {
                 $request['department'] = $request['hr_department_sub'];
             }
         } else {
-            $request['requester_position'] = '';
-            $request['position_name2'] = '';
+            $request['requester_position'] = $request['requester_position'] ?? '';
+            $request['position_name2'] = $request['requester_position'];
             $request['hr_department_sub'] = '';
             $request['hr_department'] = '';
         }

@@ -65,7 +65,7 @@
                 </div>
 
                 <!-- Requester Info Fields -->
-                <div class="col-md-6 mt-0">
+                <div class="col-md-4 mt-0">
                   <label
                     class="form-label fw-bold text-secondary small text-uppercase letter-spacing-1"
                     >ชื่อผู้เบิก <span class="text-danger">*</span></label
@@ -92,7 +92,33 @@
                   </datalist>
                 </div>
 
-                <div class="col-md-6 mt-0">
+                <div class="col-md-4 mt-0">
+                  <label
+                    class="form-label fw-bold text-secondary small text-uppercase letter-spacing-1"
+                    >ตำแหน่ง <small class="text-muted">(ระบุได้)</small></label
+                  >
+                  <div class="input-group input-group-custom shadow-sm">
+                    <span class="input-group-text bg-white border-end-0 text-primary px-3">
+                      <i class="bi bi-person-badge"></i>
+                    </span>
+                    <input
+                      type="text"
+                      v-model="form.requester_position"
+                      class="form-control border-start-0 ps-0 form-control-lg fs-6"
+                      placeholder="เช่น พยาบาลวิชาชีพ, ผอ.รพ.สต."
+                      list="position_list"
+                    />
+                  </div>
+                  <datalist id="position_list">
+                    <option
+                      v-for="(pos, index) in pastPositions"
+                      :key="index"
+                      :value="pos"
+                    ></option>
+                  </datalist>
+                </div>
+
+                <div class="col-md-4 mt-0">
                   <label
                     class="form-label fw-bold text-secondary small text-uppercase letter-spacing-1"
                     >หน่วยงาน/แผนก <span class="text-danger">*</span></label
@@ -106,7 +132,7 @@
                       v-model="form.department"
                       class="form-control border-start-0 ps-0 form-control-lg fs-6"
                       required
-                      placeholder="ระบุหน่วยงาน"
+                      placeholder="ระบุหน่วยงาน เช่น รพ.สต..."
                       list="department_list"
                     />
                   </div>
@@ -375,12 +401,16 @@
                 <p class="text-muted mb-0">กรุณาตรวจสอบความถูกต้องก่อนกดยืนยัน</p>
               </div>
               
-              <div class="row mb-4 g-3 bg-light rounded-3 p-3 mx-0 border">
-                <div class="col-sm-6 border-sm-end">
+              <div class="row mb-4 g-3 bg-light rounded-3 p-3 mx-0 border align-items-center">
+                <div class="col-sm-4 border-sm-end">
                   <div class="small text-muted mb-1"><i class="bi bi-person me-1"></i>ชื่อผู้เบิก</div>
                   <div class="fw-bold text-dark fs-5">{{ form.requester_name }}</div>
                 </div>
-                <div class="col-sm-6 text-sm-end">
+                <div class="col-sm-4 border-sm-end text-sm-center">
+                  <div class="small text-muted mb-1"><i class="bi bi-person-badge me-1"></i>ตำแหน่ง</div>
+                  <div class="fw-bold text-dark fs-6">{{ form.requester_position || '-' }}</div>
+                </div>
+                <div class="col-sm-4 text-sm-end">
                   <div class="small text-muted mb-1"><i class="bi bi-building me-1"></i>หน่วยงาน/แผนก</div>
                   <div class="fw-bold text-dark fs-5">{{ form.department }}</div>
                 </div>
@@ -443,10 +473,12 @@ export default {
       materials: [],
       pastRequesters: [],
       pastDepartments: [],
+      pastPositions: [],
       form: {
-        requester_name: localStorage.getItem('user_name') || localStorage.getItem('last_requester_name_admin') || '',
+        requester_name: localStorage.getItem('user_name') || '',
         requester_id: null,
-        department: localStorage.getItem('user_department') || localStorage.getItem('last_department_admin') || '',
+        requester_position: '',
+        department: '',
         items: []
       },
       loading: false,
@@ -511,12 +543,35 @@ export default {
   watch: {
     'form.requester_name'(newName) {
       if (newName) {
-        const found = this.pastRequesters.find((req) => req.name === newName);
+        const found = this.pastRequesters.find(
+          (req) => req.name && req.name.trim().toLowerCase() === newName.trim().toLowerCase()
+        );
         if (found) {
           if (found.department) {
             this.form.department = found.department;
           }
+          if (found.position) {
+            this.form.requester_position = found.position;
+          }
           if (found.id) {
+            this.form.requester_id = found.id;
+          }
+        }
+      }
+    },
+    'form.department'(newDept) {
+      if (newDept) {
+        const found = this.pastRequesters.find(
+          (req) => req.department && req.department.trim().toLowerCase() === newDept.trim().toLowerCase()
+        );
+        if (found) {
+          if (!this.form.requester_name || this.form.requester_name.trim() === '') {
+            this.form.requester_name = found.name || '';
+          }
+          if (!this.form.requester_position || this.form.requester_position.trim() === '') {
+            this.form.requester_position = found.position || '';
+          }
+          if (found.id && !this.form.requester_id) {
             this.form.requester_id = found.id;
           }
         }
@@ -536,13 +591,22 @@ export default {
           
           if (response.data.fullname) {
             this.currentUserFullname = response.data.fullname;
+            if (!this.form.requester_name) {
+              this.form.requester_name = response.data.fullname;
+            }
           }
           if (response.data.user_id) {
             this.currentUserId = response.data.user_id;
+            if (!this.form.requester_id) {
+              this.form.requester_id = response.data.user_id;
+            }
           }
 
-          if (!this.form.department && response.data.department) {
+          if (response.data.department) {
             this.form.department = response.data.department;
+          }
+          if (response.data.position) {
+            this.form.requester_position = response.data.position;
           }
         }
       } catch (error) {
@@ -576,10 +640,21 @@ export default {
         if (res.data.success) {
           this.pastRequesters = res.data.requesters || [];
           this.pastDepartments = res.data.departments || [];
-          if (this.form.requester_name && !this.form.requester_id) {
-            const found = this.pastRequesters.find((req) => req.name === this.form.requester_name);
-            if (found && found.id) {
-              this.form.requester_id = found.id;
+          this.pastPositions = res.data.positions || [];
+          if (this.form.requester_name) {
+            const found = this.pastRequesters.find(
+              (req) => req.name && req.name.trim().toLowerCase() === this.form.requester_name.trim().toLowerCase()
+            );
+            if (found) {
+              if (found.id) {
+                this.form.requester_id = found.id;
+              }
+              if (found.department) {
+                this.form.department = found.department;
+              }
+              if (found.position) {
+                this.form.requester_position = found.position;
+              }
             }
           }
         }
@@ -670,6 +745,7 @@ export default {
       this.editingRequestNo = req.request_no;
       this.form.requester_name = req.requester_name;
       this.form.requester_id = req.requester_id || null;
+      this.form.requester_position = req.requester_position || '';
       this.form.department = req.department;
       this.form.items = req.items.map(it => ({
         material_id: it.material_id,
@@ -682,13 +758,19 @@ export default {
       this.form = {
         requester_name: localStorage.getItem('user_name') || localStorage.getItem('last_requester_name_admin') || '',
         requester_id: null,
+        requester_position: localStorage.getItem('last_requester_position_admin') || '',
         department: localStorage.getItem('user_department') || localStorage.getItem('last_department_admin') || '',
         items: []
       };
       if (this.form.requester_name) {
         const found = this.pastRequesters.find((req) => req.name === this.form.requester_name);
-        if (found && found.id) {
-          this.form.requester_id = found.id;
+        if (found) {
+          if (found.id) {
+            this.form.requester_id = found.id;
+          }
+          if (found.position && !this.form.requester_position) {
+            this.form.requester_position = found.position;
+          }
         }
       }
     },
@@ -810,8 +892,9 @@ export default {
 
         const res = await axios.post(endpoint, payload);
         if (res.data.success) {
-          // Save last requester name and dept
+          // Save last requester name, position and dept
           localStorage.setItem('last_requester_name_admin', this.form.requester_name);
+          localStorage.setItem('last_requester_position_admin', this.form.requester_position || '');
           localStorage.setItem('last_department_admin', this.form.department);
 
           this.showPreviewModal = false; // Hide modal
@@ -829,13 +912,15 @@ export default {
           this.form = {
             requester_name: localStorage.getItem('user_name') || localStorage.getItem('last_requester_name_admin') || '',
             requester_id: null,
+            requester_position: localStorage.getItem('last_requester_position_admin') || '',
             department: localStorage.getItem('user_department') || localStorage.getItem('last_department_admin') || '',
             items: []
           };
           if (this.form.requester_name) {
             const found = this.pastRequesters.find((req) => req.name === this.form.requester_name);
-            if (found && found.id) {
-              this.form.requester_id = found.id;
+            if (found) {
+              if (found.id) this.form.requester_id = found.id;
+              if (found.position) this.form.requester_position = found.position;
             }
           }
           this.fetchRequests(); // Refresh the history list

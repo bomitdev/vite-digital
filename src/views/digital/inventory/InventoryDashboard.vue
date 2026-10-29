@@ -267,7 +267,7 @@
         </div>
 
         <!-- Section: Settings (Master Data) -->
-        <template v-if="isAdmin">
+        <template v-if="canManageSettings">
           <div class="menu-section-label mt-3" v-show="!isCollapsed">การจัดการระบบ</div>
           <div
             class="menu-item"
@@ -365,13 +365,13 @@
                 </select>
               </div>
 
-              <!-- Master Data Button (Admin Only) -->
+              <!-- Master Data Button (Admin or Warehouse Manager) -->
               <button
-                v-if="isAdmin"
+                v-if="canManageSettings"
                 class="btn text-white rounded-pill px-3 shadow-sm fw-bold d-flex align-items-center gap-2 hover-scale"
                 style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); border: none;"
                 @click="selectTab('settings')"
-                title="ตั้งค่าคลังวัสดุ, หมวดหมู่ และรายการวัสดุ"
+                title="ตั้งค่าคลังวัสดุ, หมวดหมู่ และรายการวัสดุ (เฉพาะผู้ดูแลระบบและผู้ดูแลคลัง)"
               >
                 <i class="bi bi-gear-fill"></i>
                 <span>ตั้งค่าระบบ</span>
@@ -729,6 +729,12 @@ export default {
   computed: {
     isAdmin() {
       return this.isAdminUser;
+    },
+    isManager() {
+      return this.isAdminUser || this.warehouses.some(w => w.access_level === 'MANAGER');
+    },
+    canManageSettings() {
+      return this.isAdminUser || this.isManager;
     }
   },
   watch: {
