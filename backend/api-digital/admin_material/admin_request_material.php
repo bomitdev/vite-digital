@@ -62,7 +62,7 @@ try {
     $requester_id = isset($data->requester_id) && !empty($data->requester_id) ? intval($data->requester_id) : null;
     $requester_position = isset($data->requester_position) && !empty($data->requester_position) ? trim($data->requester_position) : '';
 
-    if ((!$requester_id || empty($requester_position)) && isset($pdo3) && !empty($data->requester_name)) {
+    if (isset($pdo3) && !empty($data->requester_name)) {
         $cleanName = trim($data->requester_name);
         $stmtP = $pdo3->prepare("
             SELECT p.ID, TRIM(ds.HR_DEPARTMENT_SUB_NAME) as dept_sub, TRIM(d.HR_DEPARTMENT_NAME) as dept_main,
@@ -73,15 +73,13 @@ try {
             LEFT JOIN hr_department d ON p.HR_DEPARTMENT_ID = d.HR_DEPARTMENT_ID
             LEFT JOIN hr_position pos ON p.HR_POSITION_ID = pos.HR_POSITION_ID
             LEFT JOIN hr_level hl ON p.HR_LEVEL_ID = hl.HR_LEVEL_ID
-            WHERE p.ID = :pid
-               OR CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) = :name1
+            WHERE CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) = :name1
                OR CONCAT(p.HR_FNAME, ' ', p.HR_LNAME) = :name2
                OR REPLACE(CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME), ' ', '') = REPLACE(:name3, ' ', '')
                OR :name4 LIKE CONCAT('%', p.HR_FNAME, '%', p.HR_LNAME, '%')
             LIMIT 1
         ");
         $stmtP->execute([
-            ':pid' => $requester_id ?: 0,
             ':name1' => $cleanName,
             ':name2' => $cleanName,
             ':name3' => $cleanName,
@@ -89,9 +87,7 @@ try {
         ]);
         $personFound = $stmtP->fetch(PDO::FETCH_ASSOC);
         if ($personFound) {
-            if (!$requester_id) {
-                $requester_id = intval($personFound['ID']);
-            }
+            $requester_id = intval($personFound['ID']);
             if (empty($requester_position) && !empty($personFound['position_name'])) {
                 $requester_position = $personFound['position_name'];
             }
@@ -99,11 +95,7 @@ try {
             if (!empty($hrDept) && (empty($data->department) || trim($data->department) === 'กลุ่มงานบริหารทั่วไป')) {
                 $data->department = $hrDept;
             }
-        } elseif (isset($userData['uid']) && !$requester_id) {
-            $requester_id = intval($userData['uid']);
         }
-    } elseif (!$requester_id && isset($userData['uid'])) {
-        $requester_id = intval($userData['uid']);
     }
 
     $pdo2->beginTransaction();

@@ -102,33 +102,48 @@ try {
             $requestData['status'] = 'rejected';
         }
 
+        $savedPosition = !empty($requestData['requester_position']) ? trim($requestData['requester_position']) : '';
+
         if (isset($pdo3) && !empty($requestData['requester_name'])) {
             $posData = false;
+            $cleanName = trim($requestData['requester_name']);
+
+            // 1. Search by name first
+            $posSql = "
+                SELECT 
+                    p.ID,
+                    CONCAT(pos.HR_POSITION_NAME, 
+                        IF(hl.HR_LEVEL_NAME IS NOT NULL AND hl.HR_LEVEL_NAME != '', CONCAT(' ', hl.HR_LEVEL_NAME), '')
+                    ) as position_name,
+                    pos.HR_POSITION_NAME as position_name2,
+                    TRIM(ds.HR_DEPARTMENT_SUB_NAME) as hr_department_sub,
+                    TRIM(d.HR_DEPARTMENT_NAME) as hr_department
+                FROM hr_person p
+                LEFT JOIN hr_prefix pfx ON p.HR_PREFIX_ID = pfx.HR_PREFIX_ID
+                LEFT JOIN hr_position pos ON p.HR_POSITION_ID = pos.HR_POSITION_ID
+                LEFT JOIN hr_level hl ON p.HR_LEVEL_ID = hl.HR_LEVEL_ID
+                LEFT JOIN hr_department_sub ds ON p.HR_DEPARTMENT_SUB_ID = ds.HR_DEPARTMENT_SUB_ID
+                LEFT JOIN hr_department d ON p.HR_DEPARTMENT_ID = d.HR_DEPARTMENT_ID
+                WHERE CONCAT(pfx.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) = :name
+                   OR CONCAT(p.HR_FNAME, ' ', p.HR_LNAME) = :name2
+                   OR REPLACE(CONCAT(pfx.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME), ' ', '') = REPLACE(:name3, ' ', '')
+                LIMIT 1
+            ";
+            $posStmt = $pdo3->prepare($posSql);
+            $posStmt->execute([
+                ':name' => $cleanName,
+                ':name2' => $cleanName,
+                ':name3' => $cleanName
+            ]);
+            $posData = $posStmt->fetch(PDO::FETCH_ASSOC);
+
+            // 2. If not matched by name, check by requester_id if name matches/resembles
             $reqId = !empty($requestData['requester_id']) ? intval($requestData['requester_id']) : 0;
-            if ($reqId > 0) {
-                $posSql = "
+            if (!$posData && $reqId > 0) {
+                $posSqlId = "
                     SELECT 
-                        CONCAT(pos.HR_POSITION_NAME, 
-                            IF(hl.HR_LEVEL_NAME IS NOT NULL AND hl.HR_LEVEL_NAME != '', CONCAT(' ', hl.HR_LEVEL_NAME), '')
-                        ) as position_name,
-                        pos.HR_POSITION_NAME as position_name2,
-                        TRIM(ds.HR_DEPARTMENT_SUB_NAME) as hr_department_sub,
-                        TRIM(d.HR_DEPARTMENT_NAME) as hr_department
-                    FROM hr_person p
-                    LEFT JOIN hr_position pos ON p.HR_POSITION_ID = pos.HR_POSITION_ID
-                    LEFT JOIN hr_level hl ON p.HR_LEVEL_ID = hl.HR_LEVEL_ID
-                    LEFT JOIN hr_department_sub ds ON p.HR_DEPARTMENT_SUB_ID = ds.HR_DEPARTMENT_SUB_ID
-                    LEFT JOIN hr_department d ON p.HR_DEPARTMENT_ID = d.HR_DEPARTMENT_ID
-                    WHERE p.ID = :id
-                    LIMIT 1
-                ";
-                $posStmt = $pdo3->prepare($posSql);
-                $posStmt->execute([':id' => $reqId]);
-                $posData = $posStmt->fetch(PDO::FETCH_ASSOC);
-            }
-            if (!$posData) {
-                $posSql = "
-                    SELECT 
+                        p.ID,
+                        CONCAT(pfx.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) as full_name,
                         CONCAT(pos.HR_POSITION_NAME, 
                             IF(hl.HR_LEVEL_NAME IS NOT NULL AND hl.HR_LEVEL_NAME != '', CONCAT(' ', hl.HR_LEVEL_NAME), '')
                         ) as position_name,
@@ -141,21 +156,32 @@ try {
                     LEFT JOIN hr_level hl ON p.HR_LEVEL_ID = hl.HR_LEVEL_ID
                     LEFT JOIN hr_department_sub ds ON p.HR_DEPARTMENT_SUB_ID = ds.HR_DEPARTMENT_SUB_ID
                     LEFT JOIN hr_department d ON p.HR_DEPARTMENT_ID = d.HR_DEPARTMENT_ID
-                    WHERE CONCAT(pfx.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) = :name
-                       OR CONCAT(p.HR_FNAME, ' ', p.HR_LNAME) = :name2
-                       OR REPLACE(CONCAT(pfx.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME), ' ', '') = REPLACE(:name3, ' ', '')
+                    WHERE p.ID = :id
                     LIMIT 1
                 ";
-                $posStmt = $pdo3->prepare($posSql);
-                $posStmt->execute([
-                    ':name' => $requestData['requester_name'],
-                    ':name2' => $requestData['requester_name'],
-                    ':name3' => $requestData['requester_name']
-                ]);
-                $posData = $posStmt->fetch(PDO::FETCH_ASSOC);
+                $posStmtId = $pdo3->prepare($posSqlId);
+                $posStmtId->execute([':id' => $reqId]);
+                $candidate = $posStmtId->fetch(PDO::FETCH_ASSOC);
+                if ($candidate) {
+                    $cName = preg_replace('/\s+/', '', $candidate['full_name'] ?? '');
+                    $rName = preg_replace('/\s+/', '', $cleanName);
+                    if (strpos($cName, $rName) !== false || strpos($rName, $cName) !== false) {
+                        $posData = $candidate;
+                    }
+                }
             }
-            $requestData['requester_position'] = $posData ? $posData['position_name'] : '';
-            $requestData['position_name2'] = $posData ? $posData['position_name2'] : '';
+
+            $posName = $posData ? ($posData['position_name'] ?? '') : '';
+            $posName2 = $posData ? ($posData['position_name2'] ?? '') : '';
+
+            if (!empty($savedPosition)) {
+                $requestData['requester_position'] = $savedPosition;
+                $requestData['position_name2'] = $savedPosition;
+            } else {
+                $requestData['requester_position'] = $posName ?: $posName2;
+                $requestData['position_name2'] = $posName2 ?: $posName;
+            }
+
             $requestData['hr_department_sub'] = $posData ? ($posData['hr_department_sub'] ?? '') : '';
             $requestData['hr_department'] = $posData ? ($posData['hr_department'] ?? '') : '';
 
@@ -164,8 +190,13 @@ try {
                 $requestData['department'] = $requestData['hr_department_sub'];
             }
         } else {
-            $requestData['requester_position'] = '';
-            $requestData['position_name2'] = '';
+            if (!empty($savedPosition)) {
+                $requestData['requester_position'] = $savedPosition;
+                $requestData['position_name2'] = $savedPosition;
+            } else {
+                $requestData['requester_position'] = '';
+                $requestData['position_name2'] = '';
+            }
             $requestData['hr_department_sub'] = '';
             $requestData['hr_department'] = '';
         }

@@ -1051,7 +1051,7 @@ export default {
           65
         );
         doc.text(requestData.requester_name || '', 44, 64);
-        doc.text(requestData.position_name2 || '', 128, 64);
+        doc.text(requestData.requester_position || requestData.position_name2 || '', 128, 64);
 
         doc.text(
           `กลุ่มงาน  .....................................................................................................`,
@@ -1110,7 +1110,7 @@ export default {
           requestData.requester_name ||
           '...........................................';
         const reqPos =
-          (matchedConfig.requester_name ? matchedConfig.requester_position : (requestData.position_name2 || requestData.requester_position)) || matchedConfig.requester_position || requestData.position_name2 || requestData.requester_position ||
+          (matchedConfig.requester_name ? matchedConfig.requester_position : (requestData.requester_position || requestData.position_name2)) || matchedConfig.requester_position || requestData.requester_position || requestData.position_name2 ||
           '.....................................................';
 
         const payerName =
@@ -1158,7 +1158,7 @@ export default {
         });
         doc.text(`( ${requestData.requester_name} )`, 60, finalY + 80, { align: 'center' });
         doc.text(
-          `ตำแหน่ง ${requestData.position_name2 || '.....................................................'}`,
+          `ตำแหน่ง ${requestData.requester_position || requestData.position_name2 || '.....................................................'}`,
           60,
           finalY + 88,
           { align: 'center' }

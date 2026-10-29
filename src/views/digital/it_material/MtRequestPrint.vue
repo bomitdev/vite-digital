@@ -67,7 +67,6 @@
         ตำแหน่ง
         <span class="dotted-line">{{
           request.requester_position ||
-          (deptSigner && deptSigner.requester_position) ||
           request.position_name2 ||
           '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
         }}</span>
@@ -135,9 +134,9 @@
           <div>
             ตำแหน่ง
             {{
-              request.requester_position ||
-              (deptSigner.requester_name ? deptSigner.requester_position : null) ||
+              (deptSigner.requester_name ? deptSigner.requester_position : (request.requester_position || request.position_name2)) ||
               deptSigner.requester_position ||
+              request.requester_position ||
               request.position_name2 ||
               '.....................................................'
             }}
@@ -184,8 +183,8 @@
           <div>
             ตำแหน่ง
             {{
-              (deptSigner.requester_name ? deptSigner.requester_position : (request.position_name2 || request.requester_position)) ||
-              deptSigner.requester_position || request.position_name2 || request.requester_position ||
+              (deptSigner.requester_name ? deptSigner.requester_position : (request.requester_position || request.position_name2)) ||
+              deptSigner.requester_position || request.requester_position || request.position_name2 ||
               '.....................................................'
             }}
           </div>
@@ -215,7 +214,7 @@
           </div>
           <div>
             ตำแหน่ง
-            {{ request.position_name2 || '.....................................................' }}
+            {{ request.requester_position || request.position_name2 || '.....................................................' }}
           </div>
         </div>
       </div>

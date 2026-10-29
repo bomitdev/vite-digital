@@ -553,10 +553,17 @@ export default {
           if (found.position) {
             this.form.requester_position = found.position;
           }
-          if (found.id) {
-            this.form.requester_id = found.id;
+          this.form.requester_id = found.id || null;
+        } else {
+          const myName = (this.currentUserFullname || '').trim().toLowerCase();
+          if (myName && newName.trim().toLowerCase() === myName) {
+            this.form.requester_id = this.currentUserId;
+          } else {
+            this.form.requester_id = null;
           }
         }
+      } else {
+        this.form.requester_id = null;
       }
     },
     'form.department'(newDept) {
