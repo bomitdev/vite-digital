@@ -64,7 +64,7 @@
                 />
               </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
               <label class="form-label small fw-bold text-muted">เลือกเดือน/ปี :</label>
               <div
                 class="d-flex align-items-center justify-content-between border rounded-3 bg-white p-1"
@@ -94,6 +94,18 @@
             <div class="col-md-2">
               <label class="form-label small fw-bold text-muted">วันที่สิ้นสุด :</label>
               <input type="date" class="form-control" v-model="endDate" />
+            </div>
+            <div class="col-md-1">
+              <label class="form-label small fw-bold text-muted text-nowrap">วันทำการ :</label>
+              <input
+                type="number"
+                class="form-control text-center px-1"
+                v-model.number="requiredWorkDays"
+                min="1"
+                max="31"
+                placeholder="15"
+                title="เกณฑ์วันทำการสำหรับบันทึกข้อความสรุป (ค่าเริ่มต้น 15 วัน)"
+              />
             </div>
             <div class="col-md-2 d-flex gap-2">
               <button
@@ -212,6 +224,7 @@ export default {
       yearList,
       startDate: startDate,
       endDate: endDate,
+      requiredWorkDays: 15,
       userProfile: {
         fullname: '',
         id: null
@@ -742,11 +755,11 @@ export default {
         theme: 'grid'
       });
 
-      // Summary Counts (New Section)
-      let finalY = doc.lastAutoTable.finalY + 10;
+      // Summary Counts & Workdays Checkboxes
+      let finalY = doc.lastAutoTable.finalY + 8;
 
-      // Check page break for summary
-      if (finalY > doc.internal.pageSize.height - 28) {
+      // Check page break for summary & checkboxes (need at least 25mm above signature)
+      if (finalY > doc.internal.pageSize.height - 48) {
         doc.addPage();
         finalY = 20;
       }
@@ -760,6 +773,42 @@ export default {
           16,
           finalY
         );
+
+        // Checkboxes: วันทำการครบ / ไม่ครบ (แบบในรูป)
+        const targetDays = this.requiredWorkDays || 15;
+        const boxX = 112;
+        const textX = 121;
+        const boxSize = 4.5;
+        const redColor = [218, 41, 28]; // สีแดงขอบหนา
+
+        // แถวที่ 1: วันทำการครบ ... วัน
+        doc.setDrawColor(redColor[0], redColor[1], redColor[2]);
+        doc.setLineWidth(0.8);
+        doc.rect(boxX, finalY - 4.2, boxSize, boxSize, 'S');
+
+        doc.setFont('Sarabun', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`วันทำการครบ ${targetDays} วัน`, textX, finalY);
+
+        // แถวที่ 2: วันทำการไม่ครบ ... วัน
+        const finalY2 = finalY + 7.5;
+        doc.setDrawColor(redColor[0], redColor[1], redColor[2]);
+        doc.setLineWidth(0.8);
+        doc.rect(boxX, finalY2 - 4.2, boxSize, boxSize, 'S');
+
+        doc.setFont('Sarabun', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
+        doc.text(
+          `วันทำการไม่ครบ ${targetDays} วัน ....................................................`,
+          textX,
+          finalY2
+        );
+
+        // รีเซ็ต Draw Color และ Line Width
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.2);
       }
 
       // --- Footer: Printer Name & Page Number ---

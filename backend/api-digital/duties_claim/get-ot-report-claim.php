@@ -154,12 +154,31 @@ try {
         $monthDaysInfo[$i] = $isWorkingDay ? 'X' : 'O';
     }
 
+    // Calculate last government working day before this month
+    $prevTime = strtotime(sprintf("%04d-%02d-01 -1 month", $year, $month));
+    $prevYear = (int)date('Y', $prevTime);
+    $prevMonth = (int)date('n', $prevTime);
+
+    $stmtPreGov = $pdo3->prepare("SELECT MAX(gov_date) FROM 10985_hos_government_date WHERE YEAR(gov_date) = :year AND MONTH(gov_date) = :month");
+    $stmtPreGov->execute([':year' => $prevYear, ':month' => $prevMonth]);
+    $preDutyDate = $stmtPreGov->fetchColumn();
+
+    if (!$preDutyDate) {
+        $lastDayOfMonth = (int)date('t', $prevTime);
+        $d = new DateTime(sprintf("%04d-%02d-%02d", $prevYear, $prevMonth, $lastDayOfMonth));
+        while ((int)$d->format('N') >= 6) {
+            $d->modify('-1 day');
+        }
+        $preDutyDate = $d->format('Y-m-d');
+    }
+
     echo json_encode([
         "status" => "success",
         "year" => $year,
         "month" => $month,
         "daysInMonth" => $daysInMonth,
         "monthDaysInfo" => $monthDaysInfo,
+        "preDutyDate" => $preDutyDate,
         "data" => array_values($employees)
     ]);
 } catch (PDOException $e) {

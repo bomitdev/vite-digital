@@ -36,6 +36,16 @@
                 </option>
               </select>
             </div>
+            <div class="col-md-3">
+              <label class="form-label fw-bold small text-muted">
+                วันที่บันทึกข้อความ (ขอขึ้นเวร):
+              </label>
+              <input
+                type="date"
+                class="form-control"
+                v-model="memoDate"
+              />
+            </div>
           </div>
 
           <div class="row mt-3 border-top pt-3 d-print-none">
@@ -687,10 +697,19 @@ export default {
   name: 'OTReportOpdCardView',
   data() {
     const today = new Date();
+    const dFallback = new Date(today.getFullYear(), today.getMonth(), 0);
+    while (dFallback.getDay() === 0 || dFallback.getDay() === 6) {
+      dFallback.setDate(dFallback.getDate() - 1);
+    }
+    const initY = dFallback.getFullYear();
+    const initM = String(dFallback.getMonth() + 1).padStart(2, '0');
+    const initDay = String(dFallback.getDate()).padStart(2, '0');
+
     return {
       selectedMonth: today.getMonth() + 1,
       selectedYear: today.getFullYear(),
       currentYear: today.getFullYear(),
+      memoDate: `${initY}-${initM}-${initDay}`,
       monthNames: [
         'มกราคม',
         'กุมภาพันธ์',
@@ -789,6 +808,11 @@ export default {
             });
           this.daysInMonth = response.data.daysInMonth;
           this.monthDaysInfo = response.data.monthDaysInfo;
+          if (response.data.preDutyDate) {
+            this.memoDate = response.data.preDutyDate;
+          } else {
+            this.memoDate = this.calculateFallbackPreDutyDate(this.selectedYear, this.selectedMonth);
+          }
         } else {
           console.error(response.data.error);
         }
@@ -821,10 +845,32 @@ export default {
         return amount.toLocaleString() + ' บาทถ้วน';
       }
     },
+    calculateFallbackPreDutyDate(year, month) {
+      const d = new Date(year, month - 1, 0);
+      while (d.getDay() === 0 || d.getDay() === 6) {
+        d.setDate(d.getDate() - 1);
+      }
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    },
     getPreDutyDate() {
-      // Last day of previous month
-      const d = new Date(this.selectedYear, this.selectedMonth - 1, 0);
-      return `${d.getDate()} ${this.monthNames[d.getMonth()]} ${d.getFullYear() + 543}`;
+      if (this.memoDate) {
+        const parts = this.memoDate.split('-');
+        if (parts.length === 3) {
+          const y = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10);
+          const day = parseInt(parts[2], 10);
+          return `${day} ${this.monthNames[m - 1]} ${y + 543}`;
+        }
+      }
+      const fallbackStr = this.calculateFallbackPreDutyDate(this.selectedYear, this.selectedMonth);
+      const parts = fallbackStr.split('-');
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      const day = parseInt(parts[2], 10);
+      return `${day} ${this.monthNames[m - 1]} ${y + 543}`;
     },
     hideDropdown() {
       setTimeout(() => {
