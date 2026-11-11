@@ -48,57 +48,13 @@ try {
         $data = json_decode(file_get_contents("php://input"), true) ?: $_POST;
         $action = trim($data['action'] ?? '');
 
-        // Action 1: Import from INVS SQL Server BUYMETHOD table
+        // Action 1: Import from INVS (Disabled)
         if ($action === 'import_invs') {
-            $sqlSrvHost = "192.168.2.19, 1433";
-            $sqlSrvDb   = "invs";
-            $sqlSrvUser = "sa";
-            $sqlSrvPass = "Cnm@10985";
-
-            try {
-                $connSqlSrv = new PDO("sqlsrv:server=$sqlSrvHost;Database=$sqlSrvDb", $sqlSrvUser, $sqlSrvPass);
-                $connSqlSrv->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-                $q = "SELECT RTRIM(BUYMET_CODE) as code, RTRIM(BUYMET_DES) as name, DEAL_DAYS, HIDE, DEFAULT_FLAG 
-                      FROM BUYMETHOD 
-                      WHERE BUYMET_DES IS NOT NULL AND LTRIM(RTRIM(BUYMET_DES)) <> '' AND LTRIM(RTRIM(BUYMET_DES)) <> '-'
-                      ORDER BY CAST(BUYMET_CODE AS INT) ASC";
-                $s = $connSqlSrv->query($q);
-                $invsMethods = $s->fetchAll(PDO::FETCH_ASSOC);
-
-                $existingCodes = $pdo2->query("SELECT code FROM inv_buy_methods")->fetchAll(PDO::FETCH_COLUMN);
-                $existingMap = array_fill_keys(array_map('trim', $existingCodes), true);
-
-                $insStmt = $pdo2->prepare("INSERT INTO inv_buy_methods (code, name, is_default, deal_days, active) VALUES (?, ?, ?, ?, ?)");
-                $imported = 0;
-
-                foreach ($invsMethods as $im) {
-                    $c = trim($im['code'] ?? '');
-                    $n = trim($im['name'] ?? '');
-                    if (empty($c) || empty($n) || isset($existingMap[$c])) {
-                        continue;
-                    }
-                    $isDef = (isset($im['DEFAULT_FLAG']) && strtoupper(trim($im['DEFAULT_FLAG'])) === 'Y') ? 1 : 0;
-                    $dealDays = !empty($im['DEAL_DAYS']) ? (int)$im['DEAL_DAYS'] : 30;
-                    $active = (isset($im['HIDE']) && strtoupper(trim($im['HIDE'])) === 'Y') ? 0 : 1;
-
-                    $insStmt->execute([$c, $n, $isDef, $dealDays, $active]);
-                    $existingMap[$c] = true;
-                    $imported++;
-                }
-
-                echo json_encode([
-                    'status' => 'success',
-                    'message' => "นำเข้าวิธีจัดซื้อจาก INVS สำเร็จ {$imported} รายการ (จากทั้งหมด " . count($invsMethods) . " รายการ)",
-                    'imported' => $imported
-                ], JSON_UNESCAPED_UNICODE);
-                exit;
-
-            } catch (Exception $e) {
-                http_response_code(500);
-                echo json_encode(['status' => 'error', 'message' => 'ไม่สามารถเชื่อมต่อฐานข้อมูล INVS: ' . $e->getMessage()]);
-                exit;
-            }
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'การเชื่อมต่อระบบ INVS ถูกตัดการเชื่อมต่อแล้ว'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
         }
 
         // Action 2: Seed default procurement methods

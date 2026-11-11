@@ -75,10 +75,16 @@ import Swal from 'sweetalert2';
 
 export default {
   name: 'TransferDashboard',
+  props: ['warehouseId'],
   data() {
     return {
       transfers: [],
       loading: true
+    }
+  },
+  watch: {
+    warehouseId() {
+      this.fetchTransfers();
     }
   },
   mounted() {
@@ -88,7 +94,9 @@ export default {
     async fetchTransfers() {
       this.loading = true;
       try {
-        const res = await axios.get('/api-digital/inventory/transfer_list.php');
+        const wh = this.warehouseId || this.$route.query.warehouse_id || localStorage.getItem('selected_warehouse_id');
+        const url = wh ? `/api-digital/inventory/transfer_list.php?warehouse_id=${wh}` : '/api-digital/inventory/transfer_list.php';
+        const res = await axios.get(url);
         if (res.data.status === 'success') {
           this.transfers = res.data.data;
         }

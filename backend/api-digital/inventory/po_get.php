@@ -19,7 +19,8 @@ if ($id <= 0) {
 try {
     // Get Header
     $stmt = $pdo2->prepare("
-        SELECT po.*, pr.pr_number, pr.warehouse_id,
+        SELECT po.*, pr.pr_number, 
+               COALESCE(po.warehouse_id, pr.warehouse_id) as warehouse_id,
                COALESCE(po.vendor_name, v.vendor_name, 'ไม่ระบุ') as display_vendor_name,
                v.address as vendor_address, v.phone as vendor_phone, v.tax_id as vendor_tax_id
         FROM inv_purchase_orders po
@@ -37,9 +38,11 @@ try {
     // Get Items
     $stmt = $pdo2->prepare("
         SELECT poi.*, 
+               COALESCE(poi.item_name_en, i.item_name_en, '') as item_name_en,
                COALESCE(poi.item_name, i.item_name, 'ไม่ระบุชื่อ') as item_name,
                COALESCE(poi.item_code, i.item_code, '-') as item_code,
-               COALESCE(poi.unit_name, u.name, 'หน่วย') as unit_name
+               COALESCE(poi.unit_name, u.name, 'หน่วย') as unit_name,
+               i.unit_id as item_unit_id
         FROM inv_purchase_order_items poi
         LEFT JOIN inv_items i ON poi.item_id = i.id
         LEFT JOIN inv_units u ON i.unit_id = u.id

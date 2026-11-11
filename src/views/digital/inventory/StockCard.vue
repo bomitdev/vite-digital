@@ -33,42 +33,86 @@
               <div class="row g-3 align-items-end">
                 <div class="col-md-4">
                   <label class="form-label fw-bold">1. เลือกคลังวัสดุ <span class="text-danger">*</span></label>
-                  <select class="form-select form-select-lg" v-model="filters.warehouse_id" @change="fetchItems">
+                  <select class="form-select form-select-lg" v-model="filters.warehouse_id" @change="onWarehouseChange">
                     <option value="">-- กรุณาเลือกคลัง --</option>
                     <option v-for="w in warehouses" :key="w.id" :value="w.id">[{{ w.code }}] {{ w.name }}</option>
                   </select>
                 </div>
-                <div class="col-md-5 position-relative">
+                <div class="col-md-5 position-relative" ref="searchContainer">
                   <label class="form-label fw-bold">2. ค้นหารหัส/ชื่อวัสดุ <span class="text-danger">*</span></label>
-                  <input 
-                    type="text" 
-                    class="form-control form-control-lg" 
-                    v-model="searchQuery" 
-                    @focus="isDropdownOpen = true"
-                    placeholder="พิมพ์ชื่อหรือรหัสวัสดุ..."
-                    :disabled="!filters.warehouse_id"
-                  />
+                  <div class="input-group input-group-lg">
+                    <span class="input-group-text bg-white text-muted border-end-0">
+                      <i class="bi bi-search"></i>
+                    </span>
+                    <input 
+                      type="text" 
+                      class="form-control border-start-0" 
+                      v-model="searchQuery" 
+                      @focus="isDropdownOpen = true"
+                      @input="isDropdownOpen = true"
+                      @keydown.enter.prevent="fetchStockCard"
+                      placeholder="พิมพ์ชื่อหรือรหัสวัสดุ..."
+                      :disabled="!filters.warehouse_id"
+                    />
+                    <button 
+                      class="btn btn-outline-secondary" 
+                      type="button" 
+                      v-if="searchQuery || filters.item_id" 
+                      @click="clearSearch"
+                      title="ล้างข้อมูลการค้นหา"
+                    >
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+                  </div>
+
+                  <!-- Dropdown ผลลัพธ์การค้นหา -->
                   <div 
                     v-if="isDropdownOpen && filters.warehouse_id" 
-                    class="position-absolute w-100 bg-white border rounded shadow mt-1" 
-                    style="max-height: 250px; overflow-y: auto; z-index: 1050;"
+                    class="position-absolute w-100 bg-white border rounded-3 shadow-lg mt-1" 
+                    style="max-height: 280px; overflow-y: auto; z-index: 1050; left: 0;"
                   >
-                    <div class="d-flex justify-content-between p-2 border-bottom bg-light">
-                      <button type="button" class="btn btn-sm btn-outline-secondary" @click="isDropdownOpen = false">ปิดหน้าต่าง</button>
+                    <div class="d-flex justify-content-between align-items-center p-2 px-3 border-bottom bg-light">
+                      <small class="text-muted fw-bold">
+                        <span v-if="isLoadingItems"><span class="spinner-border spinner-border-sm me-1"></span>กำลังโหลดรายการ...</span>
+                        <span v-else>พบ {{ filteredItems.length }} รายการ (คลิกเพื่อเลือก)</span>
+                      </small>
+                      <button type="button" class="btn btn-sm btn-link text-secondary p-0 text-decoration-none" @click="isDropdownOpen = false">
+                        <i class="bi bi-x-circle me-1"></i>ปิด
+                      </button>
                     </div>
-                    <div v-if="filteredItems.length === 0" class="p-2 text-muted text-center">ไม่พบข้อมูลในคลังนี้</div>
+                    <div v-if="isLoadingItems" class="p-3 text-center text-muted">
+                      <div class="spinner-border spinner-border-sm text-primary me-2"></div> กำลังโหลดข้อมูลพัสดุ...
+                    </div>
+                    <div v-else-if="filteredItems.length === 0" class="p-3 text-muted text-center">
+                      <i class="bi bi-inbox me-1"></i> ไม่พบข้อมูลในคลังนี้
+                    </div>
                     <div 
                       v-for="m in filteredItems" 
                       :key="m.id" 
-                      class="p-2 border-bottom dropdown-item-custom"
+                      class="p-2 px-3 border-bottom dropdown-item-custom d-flex justify-content-between align-items-center"
+                      :class="{'bg-primary-subtle text-primary fw-bold': String(filters.item_id) === String(m.id)}"
                       @click="selectItem(m)"
                     >
-                      [{{ m.item_code }}] {{ m.item_name }} 
+                      <div>
+                        <span class="badge bg-light text-primary border border-primary-subtle font-monospace me-2">{{ m.item_code }}</span>
+                        <span class="fw-semibold text-dark">{{ m.item_name }}</span>
+                        <small class="text-muted ms-2" v-if="m.item_name_en">({{ m.item_name_en }})</small>
+                      </div>
+                      <div class="text-end ps-2">
+                        <span class="badge bg-light text-secondary border">
+                          คงเหลือ: <strong class="text-primary">{{ formatQty(m.on_hand) }}</strong> {{ m.unit_name || '' }}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <button type="button" class="btn btn-primary btn-lg w-100 fw-bold" @click="fetchStockCard" :disabled="!filters.item_id || isLoading">
+                  <button 
+                    type="button" 
+                    class="btn btn-primary btn-lg w-100 fw-bold shadow-sm" 
+                    @click="fetchStockCard" 
+                    :disabled="isLoading"
+                  >
                     <span v-if="isLoading" class="spinner-border spinner-border-sm me-2"></span>
                     <i class="bi bi-search me-1" v-else></i> ค้นหาสต๊อกการ์ด
                   </button>
@@ -83,7 +127,11 @@
               <div class="row mb-4 align-items-center">
                 <div class="col-md-8">
                   <h4 class="fw-bold mb-1 text-primary">[{{ selectedItem.item_code }}] {{ selectedItem.item_name }}</h4>
-                  <p class="text-muted mb-0">คลัง: {{ warehouseName }}</p>
+                  <p class="text-muted mb-0">
+                    <i class="bi bi-building me-1"></i>คลัง: <strong>{{ warehouseName }}</strong>
+                    <span class="mx-2">•</span>
+                    หน่วยนับ: <strong>{{ selectedItem.unit_name }}</strong>
+                  </p>
                 </div>
                 <div class="col-md-4 text-end">
                   <div class="p-3 bg-light rounded-3 border">
@@ -150,6 +198,15 @@
               </div>
             </div>
           </div>
+
+          <!-- Empty State (ก่อนเลือกพัสดุ) -->
+          <div class="card border-0 shadow-sm rounded-4 text-center py-5 text-muted bg-white" v-else>
+            <div class="py-5">
+              <i class="bi bi-card-checklist fs-1 d-block mb-3 text-secondary opacity-50"></i>
+              <h5 class="fw-bold text-dark">กรุณาเลือกหรือค้นหารายการพัสดุ</h5>
+              <p class="small text-muted mb-0">พิมพ์ชื่อหรือรหัสพัสดุด้านบน แล้วเลือกรายการเพื่อตรวจสอบยอดคงเหลือและสต๊อกการ์ด</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -159,9 +216,16 @@
 <script>
 import axios from 'axios';
 import moment from 'moment';
+import Swal from 'sweetalert2';
 
 export default {
   name: 'InventoryStockCard',
+  props: {
+    warehouseId: {
+      type: [String, Number],
+      default: ''
+    }
+  },
   data() {
     return {
       warehouses: [],
@@ -169,6 +233,7 @@ export default {
       searchQuery: '',
       isDropdownOpen: false,
       isLoading: false,
+      isLoadingItems: false,
       hasSearched: false,
       
       filters: {
@@ -186,15 +251,33 @@ export default {
   computed: {
     filteredItems() {
       if (!this.searchQuery) return this.items;
-      const q = this.searchQuery.toLowerCase();
+      const q = this.searchQuery.toLowerCase().trim();
       return this.items.filter(m => 
-        m.item_name.toLowerCase().includes(q) || 
-        m.item_code.toLowerCase().includes(q)
+        (m.item_name && m.item_name.toLowerCase().includes(q)) || 
+        (m.item_code && m.item_code.toLowerCase().includes(q)) ||
+        (m.item_name_en && m.item_name_en.toLowerCase().includes(q))
       );
+    }
+  },
+  watch: {
+    warehouseId: {
+      immediate: true,
+      handler(newVal) {
+        if (newVal) {
+          this.filters.warehouse_id = parseInt(newVal) || newVal;
+          if (this.warehouses.length > 0) {
+            this.fetchItems();
+          }
+        }
+      }
     }
   },
   mounted() {
     this.fetchWarehouses();
+    document.addEventListener('click', this.handleClickOutside);
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this.handleClickOutside);
   },
   methods: {
     formatQty(val) {
@@ -208,16 +291,29 @@ export default {
       if (!dateStr) return false;
       return moment(dateStr).isBefore(moment(), 'day');
     },
+    handleClickOutside(e) {
+      if (this.$refs.searchContainer && !this.$refs.searchContainer.contains(e.target)) {
+        this.isDropdownOpen = false;
+      }
+    },
     async fetchWarehouses() {
       try {
         const userId = localStorage.getItem('user_id') || '';
         const res = await axios.get(`/api-digital/inventory/warehouses.php?user_id=${userId}`);
         if (res.data.status === 'success') {
           this.warehouses = res.data.data.filter(w => w.active === 1);
+          const targetWh = this.warehouseId || localStorage.getItem('selected_warehouse_id') || (this.warehouses[0]?.id || '');
+          if (targetWh) {
+            this.filters.warehouse_id = parseInt(targetWh) || targetWh;
+            await this.fetchItems();
+          }
         }
       } catch (err) {
         console.error(err);
       }
+    },
+    onWarehouseChange() {
+      this.fetchItems();
     },
     async fetchItems() {
       this.items = [];
@@ -226,30 +322,77 @@ export default {
       this.hasSearched = false;
       if (!this.filters.warehouse_id) return;
       
-      const wh = this.warehouses.find(w => w.id === this.filters.warehouse_id);
+      const wh = this.warehouses.find(w => String(w.id) === String(this.filters.warehouse_id));
       this.warehouseName = wh ? wh.name : '';
       
+      this.isLoadingItems = true;
       try {
         const res = await axios.get(`/api-digital/inventory/items.php?warehouse_id=${this.filters.warehouse_id}`);
         if (res.data.status === 'success') {
-          this.items = res.data.data; // include inactive to view history
+          this.items = res.data.data || [];
         }
       } catch (err) {
         console.error(err);
+      } finally {
+        this.isLoadingItems = false;
       }
     },
-    selectItem(m) {
+    selectItem(m, autoFetch = true) {
       this.filters.item_id = m.id;
       this.selectedItem = {
+        id: m.id,
         item_code: m.item_code,
         item_name: m.item_name,
-        unit_name: m.unit_name
+        unit_name: m.unit_name || 'หน่วย'
       };
       this.searchQuery = `[${m.item_code}] ${m.item_name}`;
       this.isDropdownOpen = false;
+      if (autoFetch) {
+        this.fetchStockCard();
+      }
+    },
+    clearSearch() {
+      this.searchQuery = '';
+      this.filters.item_id = '';
+      this.selectedItem = {};
+      this.hasSearched = false;
+      this.isDropdownOpen = true;
     },
     async fetchStockCard() {
-      if (!this.filters.warehouse_id || !this.filters.item_id) return;
+      if (!this.filters.warehouse_id) {
+        Swal.fire('แจ้งเตือน', 'กรุณาเลือกคลังพัสดุ', 'warning');
+        return;
+      }
+
+      // If user typed something in search box but hasn't explicitly clicked a dropdown item:
+      if (!this.filters.item_id && this.searchQuery.trim()) {
+        const q = this.searchQuery.toLowerCase().trim();
+        const match = this.items.find(m => 
+          (m.item_code && m.item_code.toLowerCase() === q) || 
+          (m.item_name && m.item_name.toLowerCase() === q) ||
+          `[${m.item_code?.toLowerCase()}] ${m.item_name?.toLowerCase()}` === q
+        ) || this.filteredItems[0];
+
+        if (match) {
+          this.selectItem(match, false);
+        }
+      }
+
+      if (!this.filters.item_id) {
+        this.isDropdownOpen = true;
+        if (this.items.length === 0) {
+          Swal.fire('แจ้งเตือน', 'ไม่พบรายการพัสดุในคลังนี้', 'info');
+        } else {
+          Swal.fire({
+            title: 'กรุณาเลือกรายการพัสดุ',
+            text: 'กรุณาพิมพ์หรือคลิกเลือกรายการพัสดุที่ต้องการตรวจสอบสต๊อกการ์ด',
+            icon: 'info',
+            timer: 2000,
+            showConfirmButton: false
+          });
+        }
+        return;
+      }
       
       this.isLoading = true;
       try {
@@ -257,18 +400,19 @@ export default {
         const res = await axios.get(`/api-digital/inventory/stock_card.php?item_id=${this.filters.item_id}&warehouse_id=${this.filters.warehouse_id}`);
         if (res.data.status === 'success') {
           this.currentBalance = res.data.current_balance;
-          this.transactions = res.data.data;
+          this.transactions = res.data.data || [];
         }
 
         // Fetch Lots
         const lotRes = await axios.get(`/api-digital/inventory/get_lots.php?item_id=${this.filters.item_id}&warehouse_id=${this.filters.warehouse_id}`);
         if (lotRes.data.status === 'success') {
-           this.lots = lotRes.data.data;
+          this.lots = lotRes.data.data || [];
         }
 
         this.hasSearched = true;
       } catch (err) {
         console.error(err);
+        Swal.fire('ข้อผิดพลาด', 'ไม่สามารถดึงข้อมูลสต๊อกการ์ดได้', 'error');
       } finally {
         this.isLoading = false;
       }
@@ -280,8 +424,9 @@ export default {
 <style scoped>
 .dropdown-item-custom {
   cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
 }
 .dropdown-item-custom:hover {
-  background-color: #f8f9fa;
+  background-color: #f1f5f9;
 }
 </style>

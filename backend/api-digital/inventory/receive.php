@@ -81,14 +81,79 @@ try {
 
     // 2. Process Items
     foreach ($items as $item) {
-        $item_id = (int)$item['item_id'];
+        $po_item_id = !empty($item['po_item_id']) ? (int)$item['po_item_id'] : null;
+        $item_id = (int)($item['item_id'] ?? 0);
         $qty = (float)$item['qty'];
-        $unit_id = (int)$item['unit_id'];
+        $unit_id = (int)($item['unit_id'] ?? 0);
         $unit_cost = (float)($item['unit_cost'] ?? 0);
         $total_price = $qty * $unit_cost;
         $lot_number = trim($item['lot_number'] ?? '');
         $expiry_date = !empty($item['expiry_date']) ? $item['expiry_date'] : null;
-        
+        $item_name = trim($item['item_name'] ?? '');
+        $item_name_en = trim($item['item_name_en'] ?? '');
+
+        // Auto-resolve unit_id if missing or 0
+        if ($unit_id <= 0 && !empty($item['unit_name'])) {
+            $unitName = trim($item['unit_name']);
+            $uStmt = $pdo2->prepare("SELECT id FROM inv_units WHERE name = ? AND (warehouse_id = ? OR warehouse_id IS NULL) ORDER BY warehouse_id DESC LIMIT 1");
+            $uStmt->execute([$unitName, $warehouse_id]);
+            $unit_id = (int)$uStmt->fetchColumn();
+            if (!$unit_id) {
+                // Find next unit code for this warehouse
+                $stmtMax = $pdo2->prepare("SELECT MAX(CAST(SUBSTRING(code, 2) AS UNSIGNED)) as max_num FROM inv_units WHERE warehouse_id <=> ? AND code LIKE 'U%'");
+                $stmtMax->execute([$warehouse_id]);
+                $nextNum = (int)$stmtMax->fetchColumn() + 1;
+                $uCode = 'U' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+
+                $insU = $pdo2->prepare("INSERT INTO inv_units (warehouse_id, name, code, active) VALUES (?, ?, ?, 1)");
+                $insU->execute([$warehouse_id, $unitName, $uCode]);
+                $unit_id = (int)$pdo2->lastInsertId();
+            }
+        }
+
+        // Auto-resolve or register item_id if 0 or null (e.g. from quotation custom items)
+        if ($item_id <= 0 && $item_name !== '') {
+            $chkItem = $pdo2->prepare("SELECT id FROM inv_items WHERE warehouse_id = ? AND (item_name = ? OR item_name_en = ?) LIMIT 1");
+            $chkItem->execute([$warehouse_id, $item_name, $item_name]);
+            $existingItemId = (int)$chkItem->fetchColumn();
+
+            if ($existingItemId > 0) {
+                $item_id = $existingItemId;
+            } else {
+                // Generate next item code
+                $category_id = !empty($item['category_id']) ? (int)$item['category_id'] : 0;
+                $catPrefix = 'C';
+                if ($category_id > 0) {
+                    $cStmt = $pdo2->prepare("SELECT code FROM inv_categories WHERE id = ?");
+                    $cStmt->execute([$category_id]);
+                    $catCode = trim($cStmt->fetchColumn() ?: '');
+                    if (preg_match('/^([A-Za-z]+)/', $catCode, $cm)) {
+                        $catPrefix = strtoupper($cm[1]);
+                    }
+                }
+                $maxCodeStmt = $pdo2->prepare("SELECT item_code FROM inv_items WHERE warehouse_id = ? AND item_code LIKE ? ORDER BY id DESC LIMIT 1");
+                $maxCodeStmt->execute([$warehouse_id, $catPrefix . '%']);
+                $lastCode = $maxCodeStmt->fetchColumn();
+                $nextNum = 1;
+                if ($lastCode && preg_match('/(\d+)$/', $lastCode, $mDigits)) {
+                    $nextNum = (int)$mDigits[1] + 1;
+                }
+                $newItemCode = $catPrefix . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+
+                $insItem = $pdo2->prepare("
+                    INSERT INTO inv_items (item_code, item_name, item_name_en, warehouse_id, unit_id, standard_price, last_purchase_price, active)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+                ");
+                $insItem->execute([$newItemCode, $item_name, $item_name_en ?: $item_name, $warehouse_id, $unit_id ?: 24, $unit_cost, $unit_cost]);
+                $item_id = (int)$pdo2->lastInsertId();
+            }
+
+            // If linked to PO item, update po item's item_id
+            if ($po_item_id) {
+                $pdo2->prepare("UPDATE inv_purchase_order_items SET item_id = ? WHERE id = ?")->execute([$item_id, $po_item_id]);
+            }
+        }
+
         // Insert Receipt Item
         $stmtReceiptItem->execute([$receipt_id, $item_id, $lot_number, $expiry_date, $qty, $unit_id, $unit_cost, $total_price]);
         
@@ -124,9 +189,16 @@ try {
             $warehouse_id, $item_id, $lot_id, $receipt_id, $qty, $unit_cost, $new_balance, $receipt_date, $user_name, 'RECEIVE from ' . $receipt_no
         ]);
         
-        // Update PO Item
-        if ($stmtUpdatePOItem) {
+        // Update PO Item received qty
+        if ($po_item_id) {
+            $pdo2->prepare("UPDATE inv_purchase_order_items SET qty_received = COALESCE(qty_received, 0) + ? WHERE id = ?")->execute([$qty, $po_item_id]);
+        } elseif ($stmtUpdatePOItem && $item_id > 0) {
             $stmtUpdatePOItem->execute([$qty, $po_id, $item_id]);
+        }
+
+        // Update item's last purchase price
+        if ($item_id > 0 && $unit_cost > 0) {
+            $pdo2->prepare("UPDATE inv_items SET last_purchase_price = ? WHERE id = ?")->execute([$unit_cost, $item_id]);
         }
     }
     

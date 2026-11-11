@@ -395,6 +395,12 @@ import * as bootstrap from 'bootstrap';
 
 export default {
   name: 'PRForm',
+  props: {
+    warehouseId: {
+      type: [String, Number],
+      default: ''
+    }
+  },
   data() {
     return {
       pr: {
@@ -463,6 +469,11 @@ export default {
   },
   async mounted() {
     await this.fetchWarehouses();
+    const targetWh = this.warehouseId || localStorage.getItem('selected_warehouse_id');
+    if (targetWh) {
+      this.pr.warehouse_id = parseInt(targetWh) || targetWh;
+      await this.fetchItemsForWarehouse();
+    }
     const prId = this.$route.query.id;
     if (prId) {
       this.isEdit = true;

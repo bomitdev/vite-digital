@@ -16,6 +16,10 @@
           </h2>
         </div>
         <div class="d-flex gap-2">
+          <button type="button" class="btn btn-warning text-dark fw-bold rounded-pill px-3 shadow-sm d-flex align-items-center gap-2" @click="openAIDeliveryModal">
+            <i class="bi bi-stars text-primary fs-5"></i>
+            <span>AI สแกนอ่านใบส่งของ</span>
+          </button>
           <button class="btn btn-outline-secondary rounded-pill fw-bold shadow-sm" @click="$router.go(-1)">
             <i class="bi bi-arrow-left me-2"></i>ย้อนกลับ
           </button>
@@ -33,7 +37,14 @@
                 
                 <!-- Section 1: ข้อมูลบิล / ใบสั่งซื้อ -->
                 <div class="mb-4">
-                  <h5 class="fw-bold mb-3 border-bottom pb-2">1. ข้อมูลบิล / ใบสั่งซื้อ (เอกสารอ้างอิง)</h5>
+                  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 border-bottom pb-2 gap-2">
+                    <h5 class="fw-bold mb-0">1. ข้อมูลบิล / ใบสั่งซื้อ (เอกสารอ้างอิง)</h5>
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold shadow-sm d-flex align-items-center gap-2" @click="openAIDeliveryModal">
+                      <i class="bi bi-camera-fill text-primary"></i>
+                      <i class="bi bi-stars text-warning"></i>
+                      <span>อัปโหลดใบส่งของให้ AI อ่านบิล</span>
+                    </button>
+                  </div>
                   <div class="row g-3">
                     <div class="col-md-3">
                       <label class="form-label">เลือกคลังวัสดุ <span class="text-danger">*</span></label>
@@ -79,7 +90,14 @@
 
                 <!-- Section 2: เพิ่มรายการวัสดุ -->
                 <div class="mb-4 bg-light p-3 rounded-3" :class="{'opacity-50 pointer-events-none': !form.warehouse_id}">
-                  <h5 class="fw-bold mb-3 border-bottom pb-2">2. ค้นหาและระบุรายการวัสดุเข้าคลัง</h5>
+                  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 border-bottom pb-2 gap-2">
+                    <h5 class="fw-bold mb-0">2. ค้นหาและระบุรายการวัสดุเข้าคลัง</h5>
+                    <button type="button" class="btn btn-sm btn-warning text-dark fw-bold rounded-pill px-3 shadow-sm d-flex align-items-center gap-2" @click="openAIDeliveryModal" :disabled="!form.warehouse_id">
+                      <i class="bi bi-file-earmark-arrow-up-fill text-danger"></i>
+                      <i class="bi bi-stars text-primary"></i>
+                      <span>นำเข้าอัตโนมัติจากใบส่งของ (AI)</span>
+                    </button>
+                  </div>
                   <div class="row g-2 align-items-end">
                     <div class="col-md-3 position-relative">
                       <label class="form-label mb-1">ค้นหารหัส/ชื่อวัสดุ</label>
@@ -201,6 +219,265 @@
         </div>
       </div>
     </div>
+
+    <!-- ========================================== -->
+    <!-- AI Delivery Note Upload & Scan Modal -->
+    <!-- ========================================== -->
+    <div v-if="showAIModal" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.65); z-index: 1060;" @paste="handlePaste">
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+          <!-- Header -->
+          <div class="modal-header bg-gradient-ai text-white py-3 px-4 border-0 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+              <div class="p-2 bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                <i class="bi bi-stars fs-4 text-warning"></i>
+              </div>
+              <div>
+                <h5 class="modal-title fw-bold mb-0">AI สแกนอ่านใบส่งของ & เพิ่มรายการรับเข้า</h5>
+                <small class="opacity-75">อัปโหลดรูปถ่ายใบส่งของ / ใบกำกับภาษี หรือ PDF แล้วให้ AI ตรวจสอบและดึงรายการลงตารางรับเข้าอัตโนมัติ</small>
+              </div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" @click="closeAIModal"></button>
+          </div>
+
+          <!-- Body -->
+          <div class="modal-body p-4 bg-light">
+            <!-- Warning if warehouse not picked -->
+            <div v-if="!form.warehouse_id" class="alert alert-warning border-0 shadow-sm rounded-3 d-flex align-items-center gap-2 mb-3">
+              <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+              <div>กรุณาเลือกคลังวัสดุที่ต้องการรับเข้าก่อน เพื่อให้ AI จับคู่รหัสพัสดุในคลังได้อย่างแม่นยำ</div>
+            </div>
+
+            <!-- Upload Area & File Preview -->
+            <div class="row g-4 mb-3">
+              <div :class="parsedData ? 'col-lg-4' : 'col-12'">
+                <div 
+                  class="upload-dropzone p-4 text-center rounded-4 border-2 border-dashed bg-white shadow-sm cursor-pointer position-relative h-100 d-flex flex-column justify-content-center align-items-center"
+                  :class="{ 'border-primary bg-primary-subtle': isDragging }"
+                  @dragover.prevent="isDragging = true"
+                  @dragleave.prevent="isDragging = false"
+                  @drop.prevent="onFileDrop"
+                  @click="triggerFileInput"
+                >
+                  <input 
+                    type="file" 
+                    ref="fileInputRef" 
+                    class="d-none" 
+                    accept="image/*,application/pdf"
+                    @change="onFileChange"
+                  />
+
+                  <!-- Image Preview -->
+                  <div v-if="previewUrl" class="mb-2 w-100 text-center position-relative">
+                    <img :src="previewUrl" alt="ใบส่งของ" class="img-fluid rounded-3 shadow-sm border" style="max-height: 220px; object-fit: contain;" />
+                    <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 rounded-circle" @click.stop="clearFile" title="ลบรูป">
+                      <i class="bi bi-x"></i>
+                    </button>
+                  </div>
+
+                  <!-- PDF Preview Icon -->
+                  <div v-else-if="deliveryFile && deliveryFile.type === 'application/pdf'" class="mb-2 text-center position-relative w-100">
+                    <i class="bi bi-file-earmark-pdf-fill text-danger display-4"></i>
+                    <div class="fw-bold mt-2 text-dark text-truncate px-2">{{ deliveryFile.name }}</div>
+                    <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 rounded-circle" @click.stop="clearFile" title="ลบไฟล์">
+                      <i class="bi bi-x"></i>
+                    </button>
+                  </div>
+
+                  <!-- Empty upload state -->
+                  <div v-else class="py-4">
+                    <div class="icon-circle bg-primary-subtle text-primary mx-auto mb-3" style="width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                      <i class="bi bi-cloud-arrow-up-fill fs-2"></i>
+                    </div>
+                    <h6 class="fw-bold text-dark mb-1">ลากไฟล์ใบส่งของมาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์</h6>
+                    <small class="text-muted d-block mb-2">รองรับรูปถ่าย JPG, PNG, WEBP หรือไฟล์ PDF</small>
+                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1">
+                      <i class="bi bi-clipboard-check me-1"></i> สามารถกด Ctrl + V เพื่อวางรูปภาพที่คัดลอกมาได้เลย
+                    </span>
+                  </div>
+
+                  <!-- File name badge if selected -->
+                  <div v-if="deliveryFile" class="small text-muted text-truncate w-100 mt-2">
+                    <i class="bi bi-file-earmark-check text-success me-1"></i>{{ deliveryFile.name }} ({{ formatFileSize(deliveryFile.size) }})
+                  </div>
+                </div>
+              </div>
+
+              <!-- Action button when file selected but not yet scanned -->
+              <div v-if="deliveryFile && !parsedData" class="col-12 text-center mt-3">
+                <button 
+                  type="button" 
+                  class="btn btn-primary btn-lg rounded-pill px-5 fw-bold shadow"
+                  :disabled="isScanning"
+                  @click="scanDeliveryNote"
+                >
+                  <span v-if="isScanning" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                  <i v-else class="bi bi-stars text-warning me-2 fs-5"></i>
+                  {{ isScanning ? 'AI กำลังอ่านและวิเคราะห์ใบส่งของ...' : 'เริ่มให้ AI อ่านรายการในเอกสาร' }}
+                </button>
+              </div>
+
+              <!-- Header Summary extracted by AI -->
+              <div v-if="parsedData" class="col-lg-8">
+                <div class="card border-0 shadow-sm rounded-4 h-100">
+                  <div class="card-header bg-white py-3 px-4 border-bottom d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                      <i class="bi bi-receipt text-primary"></i> ข้อมูลหัวบิลที่ AI ตรวจพบ
+                    </h6>
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" @click="scanDeliveryNote" :disabled="isScanning">
+                      <i class="bi bi-arrow-clockwise me-1"></i> สแกนใหม่
+                    </button>
+                  </div>
+                  <div class="card-body p-4">
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label class="form-label small text-muted mb-1">ผู้จำหน่าย / ร้านค้า</label>
+                        <div class="d-flex align-items-center gap-2">
+                          <input type="text" class="form-control form-control-sm fw-bold" v-model="parsedData.vendor_name" />
+                          <span v-if="parsedData.matched_vendor" class="badge bg-success-subtle text-success border border-success-subtle text-nowrap">
+                            <i class="bi bi-check-circle me-1"></i>จับคู่ร้านค้าสำเร็จ
+                          </span>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label small text-muted mb-1">เลขที่ใบส่งของ / Invoice</label>
+                        <input type="text" class="form-control form-control-sm fw-bold text-primary" v-model="parsedData.invoice_no" placeholder="เช่น IV-69001" />
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label small text-muted mb-1">วันที่ในใบส่งของ</label>
+                        <input type="date" class="form-control form-control-sm" v-model="parsedData.delivery_date" />
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label small text-muted mb-1">เลขที่ PO อ้างอิง</label>
+                        <input type="text" class="form-control form-control-sm" v-model="parsedData.po_number" placeholder="ถ้ามี" />
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label small text-muted mb-1">ยอดรวมทั้งสิ้น (บิล)</label>
+                        <input type="text" class="form-control form-control-sm fw-bold text-danger text-end" :value="formatCurrency(parsedData.total_amount) + ' ฿'" readonly />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Items Table extracted by AI -->
+            <div v-if="parsedData && parsedData.items && parsedData.items.length > 0" class="card border-0 shadow-sm rounded-4 overflow-hidden mb-3">
+              <div class="card-header bg-white py-3 px-4 border-bottom d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                  <h6 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-boxes text-success me-1"></i> รายการวัสดุที่ AI อ่านได้
+                  </h6>
+                  <span class="badge bg-primary-subtle text-primary rounded-pill">
+                    {{ parsedData.items.length }} รายการ (เลือกนำเข้า {{ selectedParsedCount }} รายการ)
+                  </span>
+                </div>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 text-primary fw-bold" @click="toggleSelectAllItems(true)">เลือกทั้งหมด</button>
+                  <span class="text-muted">|</span>
+                  <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 text-secondary" @click="toggleSelectAllItems(false)">ยกเลิกทั้งหมด</button>
+                </div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light small text-secondary">
+                    <tr>
+                      <th class="text-center" style="width: 45px;">
+                        <input type="checkbox" class="form-check-input" :checked="isAllParsedSelected" @change="toggleSelectAllItems($event.target.checked)" />
+                      </th>
+                      <th style="width: 50px;" class="text-center">ลำดับ</th>
+                      <th style="min-width: 200px;">ชื่อรายการตามใบส่งของ</th>
+                      <th style="min-width: 240px;">จับคู่กับพัสดุในคลัง</th>
+                      <th style="width: 130px;">Lot No.</th>
+                      <th style="width: 140px;">วันหมดอายุ</th>
+                      <th style="width: 110px;" class="text-end">จำนวน</th>
+                      <th style="width: 100px;">หน่วยนับ</th>
+                      <th style="width: 120px;" class="text-end">ราคา/หน่วย</th>
+                      <th style="width: 120px;" class="text-end pe-4">รวม (บาท)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(it, idx) in parsedData.items" :key="idx" :class="{ 'table-light text-muted': !it.selected }">
+                      <td class="text-center">
+                        <input type="checkbox" class="form-check-input" v-model="it.selected" />
+                      </td>
+                      <td class="text-center small">{{ idx + 1 }}</td>
+                      <td>
+                        <div class="fw-bold text-dark">{{ it.item_name }}</div>
+                        <small class="text-muted" v-if="it.item_code">รหัส/รุ่น: {{ it.item_code }}</small>
+                      </td>
+                      <td>
+                        <!-- Matching Dropdown -->
+                        <select class="form-select form-select-sm" v-model="it.matched_item_id" @change="onItemMatchChange(it)">
+                          <option :value="0">✨ [สร้างเป็นพัสดุใหม่ตามบิลนี้]</option>
+                          <option v-for="m in items" :key="m.id" :value="m.id">
+                            [{{ m.item_code }}] {{ m.item_name }}
+                          </option>
+                        </select>
+                        <small v-if="it.matched_item_id > 0" class="text-success d-block mt-1">
+                          <i class="bi bi-check-circle-fill me-1"></i>ตรงกับพัสดุเดิมในคลัง
+                        </small>
+                        <small v-else class="text-primary d-block mt-1">
+                          <i class="bi bi-plus-circle-fill me-1"></i>ระบบจะสร้างรหัสวัสดุใหม่อัตโนมัติ
+                        </small>
+                      </td>
+                      <td>
+                        <input type="text" class="form-control form-control-sm" v-model="it.lot_number" placeholder="Lot No." />
+                      </td>
+                      <td>
+                        <input type="date" class="form-control form-control-sm" v-model="it.expiry_date" />
+                      </td>
+                      <td>
+                        <input type="number" step="0.0001" min="0.0001" class="form-control form-control-sm text-end fw-bold text-success" v-model.number="it.qty" />
+                      </td>
+                      <td>
+                        <input type="text" class="form-control form-control-sm" v-model="it.unit_name" placeholder="หน่วย" />
+                      </td>
+                      <td>
+                        <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end text-primary" v-model.number="it.unit_price" />
+                      </td>
+                      <td class="text-end fw-bold pe-4">
+                        {{ formatCurrency(it.qty * it.unit_price) }}
+                      </td>
+                    </tr>
+                  </tbody>
+                  <tfoot class="table-light">
+                    <tr>
+                      <td colspan="9" class="text-end fw-bold">ยอดรวมรายการที่เลือกนำเข้า:</td>
+                      <td class="text-end fw-bold text-danger pe-4 fs-6">{{ formatCurrency(selectedParsedTotal) }} ฿</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            <!-- Error message if scan failed -->
+            <div v-if="scanError" class="alert alert-danger border-0 shadow-sm rounded-3 mt-3 d-flex align-items-center gap-2">
+              <i class="bi bi-exclamation-octagon-fill fs-5"></i>
+              <div>{{ scanError }}</div>
+            </div>
+
+          </div>
+
+          <!-- Footer -->
+          <div class="modal-footer bg-white px-4 py-3 border-top d-flex justify-content-between align-items-center">
+            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" @click="closeAIModal">
+              ยกเลิก
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-success rounded-pill px-4 fw-bold shadow-sm d-flex align-items-center gap-2"
+              :disabled="!parsedData || selectedParsedCount === 0"
+              @click="applyAIDataToReceiveForm"
+            >
+              <i class="bi bi-box-arrow-in-down-right fs-5"></i>
+              <span>นำเข้ารายการวัสดุสู่แบบฟอร์มรับเข้า ({{ selectedParsedCount }} รายการ)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -211,6 +488,12 @@ import Swal from 'sweetalert2';
 
 export default {
   name: 'InventoryReceive',
+  props: {
+    warehouseId: {
+      type: [String, Number],
+      default: ''
+    }
+  },
   data() {
     return {
       warehouses: [],
@@ -245,7 +528,16 @@ export default {
         unit_cost: 0,
         lot_control: 0,
         expiry_control: 0
-      }
+      },
+
+      // AI Delivery Note Scanning
+      showAIModal: false,
+      isDragging: false,
+      isScanning: false,
+      scanError: '',
+      deliveryFile: null,
+      previewUrl: null,
+      parsedData: null
     };
   },
   computed: {
@@ -259,10 +551,29 @@ export default {
     },
     totalAmount() {
       return this.selectedItems.reduce((sum, item) => sum + (item.qty * item.unit_cost), 0);
+    },
+    selectedParsedCount() {
+      if (!this.parsedData || !this.parsedData.items) return 0;
+      return this.parsedData.items.filter(it => it.selected).length;
+    },
+    selectedParsedTotal() {
+      if (!this.parsedData || !this.parsedData.items) return 0;
+      return this.parsedData.items
+        .filter(it => it.selected)
+        .reduce((sum, it) => sum + ((Number(it.qty) || 0) * (Number(it.unit_price) || 0)), 0);
+    },
+    isAllParsedSelected() {
+      if (!this.parsedData || !this.parsedData.items || this.parsedData.items.length === 0) return false;
+      return this.parsedData.items.every(it => it.selected);
     }
   },
   mounted() {
     this.fetchMasters();
+  },
+  beforeUnmount() {
+    if (this.previewUrl) {
+      URL.revokeObjectURL(this.previewUrl);
+    }
   },
   methods: {
     formatCurrency(val) {
@@ -271,13 +582,19 @@ export default {
     async fetchMasters() {
       try {
         const userId = localStorage.getItem('user_id') || '';
+        const wh = this.warehouseId || localStorage.getItem('selected_warehouse_id');
+        const poUrl = wh ? `/api-digital/inventory/po_active_list.php?warehouse_id=${wh}` : '/api-digital/inventory/po_active_list.php';
         const [whRes, poRes] = await Promise.all([
           axios.get(`/api-digital/inventory/warehouses.php?user_id=${userId}`),
-          axios.get('/api-digital/inventory/po_active_list.php')
+          axios.get(poUrl)
         ]);
         if (whRes.data.status === 'success') {
           // Filter only active warehouses
           this.warehouses = whRes.data.data.filter(w => parseInt(w.active) === 1);
+          if (wh) {
+            this.form.warehouse_id = parseInt(wh);
+            this.onWarehouseChange();
+          }
         }
         if (poRes.data.status === 'success') {
           this.activePOs = poRes.data.data;
@@ -308,9 +625,13 @@ export default {
             
             if (qtyRemaining > 0) {
               this.selectedItems.push({
+                po_item_id: i.id,
                 item_id: i.item_id,
                 item_code: i.item_code,
-                item_name: i.item_name,
+                item_name: i.item_name_en && i.item_name && i.item_name !== i.item_name_en 
+                  ? `${i.item_name} (${i.item_name_en})` 
+                  : (i.item_name_en || i.item_name || 'ไม่ระบุชื่อ'),
+                item_name_en: i.item_name_en || '',
                 unit_id: i.unit_id,
                 unit_name: i.unit_name,
                 qty: qtyRemaining, // Suggest remaining
@@ -449,6 +770,264 @@ export default {
       } finally {
         this.isSubmitting = false;
       }
+    },
+
+    // ==========================================
+    // AI Delivery Note Scanning Methods
+    // ==========================================
+    openAIDeliveryModal() {
+      if (!this.form.warehouse_id && this.warehouses.length > 0) {
+        // Auto-select first active warehouse if not yet chosen
+        this.form.warehouse_id = this.warehouses[0].id;
+        this.onWarehouseChange();
+      }
+      this.showAIModal = true;
+    },
+    closeAIModal() {
+      this.showAIModal = false;
+      this.isScanning = false;
+      this.scanError = '';
+    },
+    triggerFileInput() {
+      if (this.$refs.fileInputRef) {
+        this.$refs.fileInputRef.click();
+      }
+    },
+    onFileChange(e) {
+      const file = e.target.files?.[0];
+      if (file) {
+        this.setDeliveryFile(file);
+      }
+    },
+    onFileDrop(e) {
+      this.isDragging = false;
+      const file = e.dataTransfer?.files?.[0];
+      if (file) {
+        this.setDeliveryFile(file);
+      }
+    },
+    handlePaste(e) {
+      const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.indexOf('image') !== -1) {
+          const blob = item.getAsFile();
+          if (blob) {
+            this.setDeliveryFile(blob, `pasted-delivery-note-${Date.now()}.png`);
+            break;
+          }
+        }
+      }
+    },
+    setDeliveryFile(file, customName) {
+      this.deliveryFile = file;
+      if (customName && !file.name) {
+        try {
+          Object.defineProperty(file, 'name', { value: customName });
+        } catch (e) {}
+      }
+      this.parsedData = null;
+      this.scanError = '';
+
+      if (this.previewUrl) {
+        URL.revokeObjectURL(this.previewUrl);
+        this.previewUrl = null;
+      }
+
+      if (file.type && file.type.startsWith('image/')) {
+        this.previewUrl = URL.createObjectURL(file);
+      }
+    },
+    clearFile() {
+      this.deliveryFile = null;
+      if (this.previewUrl) {
+        URL.revokeObjectURL(this.previewUrl);
+        this.previewUrl = null;
+      }
+      this.parsedData = null;
+      this.scanError = '';
+      if (this.$refs.fileInputRef) {
+        this.$refs.fileInputRef.value = '';
+      }
+    },
+    formatFileSize(bytes) {
+      if (!bytes) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    },
+    async scanDeliveryNote() {
+      if (!this.deliveryFile) {
+        this.scanError = 'กรุณาเลือกไฟล์ใบส่งของก่อนดำเนินการ';
+        return;
+      }
+
+      this.isScanning = true;
+      this.scanError = '';
+
+      try {
+        const formData = new FormData();
+        formData.append('file', this.deliveryFile);
+        formData.append('warehouse_id', this.form.warehouse_id || '');
+
+        const res = await axios.post('/api-digital/inventory/parse_delivery_note.php', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        if (res.data.status === 'success') {
+          this.parsedData = res.data.data;
+          this.scanError = '';
+
+          // Sync matched items with current active catalog in this.items
+          if (this.parsedData.items) {
+            for (const it of this.parsedData.items) {
+              if (it.matched_item_id > 0) {
+                const found = this.items.find(m => m.id == it.matched_item_id);
+                if (found) {
+                  it.matched_item_code = found.item_code;
+                  it.matched_item_name = found.item_name;
+                  it.matched_unit_id = found.unit_id;
+                  it.matched_unit_name = found.unit_name || it.unit_name;
+                  it.lot_control = found.lot_control;
+                  it.expiry_control = found.expiry_control;
+                }
+              }
+            }
+          }
+        } else if (res.data.status === 'need_key') {
+          this.scanError = res.data.message;
+        } else {
+          this.scanError = res.data.message || 'เกิดข้อผิดพลาดในการสแกนอ่านเอกสาร';
+        }
+      } catch (err) {
+        console.error('Scan error:', err);
+        this.scanError = 'ไม่สามารถติดต่อเซิร์ฟเวอร์ AI ได้: ' + (err.response?.data?.message || err.message);
+      } finally {
+        this.isScanning = false;
+      }
+    },
+    onItemMatchChange(it) {
+      if (it.matched_item_id > 0) {
+        const found = this.items.find(m => m.id == it.matched_item_id);
+        if (found) {
+          it.matched_item_code = found.item_code;
+          it.matched_item_name = found.item_name;
+          it.matched_unit_id = found.unit_id;
+          it.matched_unit_name = found.unit_name || it.unit_name;
+          it.lot_control = found.lot_control;
+          it.expiry_control = found.expiry_control;
+          if (!it.unit_price || it.unit_price <= 0) {
+            it.unit_price = parseFloat(found.standard_price) || 0;
+          }
+        }
+      } else {
+        it.matched_item_code = '';
+        it.matched_item_name = '';
+        it.matched_unit_id = 0;
+        it.lot_control = 0;
+        it.expiry_control = 0;
+      }
+    },
+    toggleSelectAllItems(val) {
+      if (this.parsedData?.items) {
+        this.parsedData.items.forEach(it => {
+          it.selected = val;
+        });
+      }
+    },
+    applyAIDataToReceiveForm() {
+      if (!this.parsedData || !this.parsedData.items) return;
+
+      // 1. Header Information
+      if (this.parsedData.invoice_no && !this.form.invoice_no) {
+        this.form.invoice_no = this.parsedData.invoice_no;
+      }
+      if (this.parsedData.delivery_date) {
+        this.form.receipt_date = moment(this.parsedData.delivery_date).format('YYYY-MM-DDTHH:mm');
+      }
+
+      // Match Vendor
+      if (this.parsedData.vendor_id && !this.form.vendor_id) {
+        this.form.vendor_id = this.parsedData.vendor_id;
+      } else if (!this.form.vendor_id && this.parsedData.vendor_name) {
+        const vName = this.parsedData.vendor_name.toLowerCase();
+        const foundV = this.vendors.find(v => 
+          v.vendor_name.toLowerCase().includes(vName) || vName.includes(v.vendor_name.toLowerCase())
+        );
+        if (foundV) {
+          this.form.vendor_id = foundV.id;
+        }
+      }
+
+      // Match PO if PO number recognized
+      if (this.parsedData.po_number && !this.form.po_id) {
+        const pNum = this.parsedData.po_number.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const matchedPO = this.activePOs.find(p => 
+          p.po_number.toLowerCase().replace(/[^a-z0-9]/g, '').includes(pNum)
+        );
+        if (matchedPO) {
+          this.form.po_id = matchedPO.id;
+        }
+      }
+
+      if (this.parsedData.remark && !this.form.remark) {
+        this.form.remark = `[นำเข้าจากใบส่งของ AI] ${this.parsedData.remark}`;
+      }
+
+      // 2. Add Selected Items into Receive List
+      let count = 0;
+      for (const it of this.parsedData.items) {
+        if (!it.selected) continue;
+
+        let itemId = it.matched_item_id || 0;
+        let itemCode = '';
+        let itemName = it.item_name;
+        let unitId = it.matched_unit_id || 0;
+        let unitName = it.matched_unit_name || it.unit_name || 'หน่วย';
+        let lotControl = it.lot_control || 0;
+        let expiryControl = it.expiry_control || 0;
+
+        if (itemId > 0) {
+          const m = this.items.find(x => x.id == itemId);
+          if (m) {
+            itemCode = m.item_code;
+            itemName = m.item_name;
+            unitId = m.unit_id;
+            unitName = m.unit_name || unitName;
+            lotControl = m.lot_control;
+            expiryControl = m.expiry_control;
+          }
+        } else {
+          itemCode = it.item_code || '';
+        }
+
+        this.selectedItems.push({
+          item_id: itemId,
+          item_code: itemCode,
+          item_name: itemName,
+          item_name_en: it.item_code || '',
+          lot_number: it.lot_number || '',
+          expiry_date: it.expiry_date || '',
+          qty: Number(it.qty) || 1,
+          unit_id: unitId,
+          unit_name: unitName,
+          unit_cost: Number(it.unit_price) || 0,
+          lot_control: lotControl,
+          expiry_control: expiryControl
+        });
+        count++;
+      }
+
+      this.closeAIModal();
+
+      Swal.fire({
+        icon: 'success',
+        title: 'นำเข้ารายการวัสดุสำเร็จ!',
+        html: `AI ได้อ่านและนำเข้ารายการวัสดุจากใบส่งของจำนวน <strong>${count}</strong> รายการ ลงในตารางรับเข้าเรียบร้อยแล้ว`,
+        timer: 2500,
+        showConfirmButton: false
+      });
     }
   }
 };
@@ -463,5 +1042,22 @@ export default {
 }
 .pointer-events-none {
   pointer-events: none;
+}
+.bg-gradient-ai {
+  background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%);
+}
+.upload-dropzone {
+  transition: all 0.25s ease;
+  min-height: 220px;
+}
+.upload-dropzone:hover {
+  border-color: #0d6efd !important;
+  background-color: #f8faff !important;
+}
+.cursor-pointer {
+  cursor: pointer;
+}
+.border-dashed {
+  border-style: dashed !important;
 }
 </style>

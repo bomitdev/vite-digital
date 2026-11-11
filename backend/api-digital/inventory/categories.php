@@ -35,6 +35,8 @@ try {
         $warehouse_id = (int)($data['warehouse_id'] ?? 0);
         $code = trim($data['code'] ?? '');
         $name = trim($data['name'] ?? '');
+        $gpsc_code = trim($data['gpsc_code'] ?? '');
+        $gpsc_name = trim($data['gpsc_name'] ?? '');
         $active = isset($data['active']) ? (int)$data['active'] : 1;
 
         if (!$warehouse_id || !$code || !$name) {
@@ -49,8 +51,8 @@ try {
             exit;
         }
 
-        $stmt = $pdo2->prepare("INSERT INTO inv_categories (warehouse_id, code, name, active) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$warehouse_id, $code, $name, $active]);
+        $stmt = $pdo2->prepare("INSERT INTO inv_categories (warehouse_id, code, name, gpsc_code, gpsc_name, active) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$warehouse_id, $code, $name, $gpsc_code, $gpsc_name, $active]);
         echo json_encode(['status' => 'success', 'message' => 'บันทึกข้อมูลหมวดหมู่เรียบร้อยแล้ว']);
     } elseif ($method === 'PUT') {
         $data = json_decode(file_get_contents("php://input"), true) ?: [];
@@ -58,6 +60,8 @@ try {
         $warehouse_id = (int)($data['warehouse_id'] ?? 0);
         $code = trim($data['code'] ?? '');
         $name = trim($data['name'] ?? '');
+        $gpsc_code = trim($data['gpsc_code'] ?? '');
+        $gpsc_name = trim($data['gpsc_name'] ?? '');
         $active = isset($data['active']) ? (int)$data['active'] : 1;
 
         if (!$id || !$warehouse_id || !$code || !$name) {
@@ -72,8 +76,8 @@ try {
             exit;
         }
 
-        $stmt = $pdo2->prepare("UPDATE inv_categories SET warehouse_id=?, code=?, name=?, active=? WHERE id=?");
-        $stmt->execute([$warehouse_id, $code, $name, $active, $id]);
+        $stmt = $pdo2->prepare("UPDATE inv_categories SET warehouse_id=?, code=?, name=?, gpsc_code=?, gpsc_name=?, active=? WHERE id=?");
+        $stmt->execute([$warehouse_id, $code, $name, $gpsc_code, $gpsc_name, $active, $id]);
         echo json_encode(['status' => 'success', 'message' => 'อัปเดตข้อมูลหมวดหมู่เรียบร้อยแล้ว']);
     } elseif ($method === 'DELETE') {
         $id = (int)($_GET['id'] ?? 0);

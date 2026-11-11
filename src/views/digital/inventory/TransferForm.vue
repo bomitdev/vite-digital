@@ -190,6 +190,7 @@ import Swal from 'sweetalert2';
 
 export default {
   name: 'TransferForm',
+  props: ['warehouseId'],
   data() {
     return {
       activeWarehouses: [],
@@ -219,6 +220,14 @@ export default {
       }
     }
   },
+  watch: {
+    warehouseId(newWh) {
+      if (newWh && !this.isEdit && !this.transfer.from_warehouse_id) {
+        this.transfer.from_warehouse_id = parseInt(newWh) || newWh;
+        this.fetchItems();
+      }
+    }
+  },
   computed: {
     filteredItems() {
       if (!this.searchQuery) return this.items;
@@ -235,6 +244,12 @@ export default {
     if (id) {
       this.isEdit = true;
       await this.fetchTransfer(id);
+    } else {
+      const wh = this.warehouseId || this.$route.query.warehouse_id || localStorage.getItem('selected_warehouse_id');
+      if (wh) {
+        this.transfer.from_warehouse_id = parseInt(wh) || wh;
+        this.fetchItems();
+      }
     }
   },
   methods: {

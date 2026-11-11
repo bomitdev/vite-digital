@@ -10,15 +10,22 @@ if (!isset($pdo2)) {
 }
 
 try {
-    $sql = "SELECT po.*, pr.pr_number, pr.warehouse_id, w.name as warehouse_name
+    $warehouse_id = isset($_GET['warehouse_id']) ? intval($_GET['warehouse_id']) : 0;
+    $sql = "SELECT po.*, pr.pr_number, COALESCE(po.warehouse_id, pr.warehouse_id) as warehouse_id, w.name as warehouse_name
             FROM inv_purchase_orders po
             LEFT JOIN inv_purchase_requests pr ON po.pr_id = pr.id
-            LEFT JOIN inv_warehouses w ON pr.warehouse_id = w.id
-            WHERE po.status IN ('ORDERED', 'PARTIAL_RECEIVED')
-            ORDER BY po.created_at DESC";
+            LEFT JOIN inv_warehouses w ON COALESCE(po.warehouse_id, pr.warehouse_id) = w.id
+            WHERE po.status IN ('ORDERED', 'PARTIAL_RECEIVED')";
+    $params = [];
+    if ($warehouse_id > 0) {
+        $sql .= " AND (po.warehouse_id = ? OR pr.warehouse_id = ?)";
+        $params[] = $warehouse_id;
+        $params[] = $warehouse_id;
+    }
+    $sql .= " ORDER BY po.created_at DESC";
     
     $stmt = $pdo2->prepare($sql);
-    $stmt->execute();
+    $stmt->execute($params);
     $pos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode(['status' => 'success', 'data' => $pos]);

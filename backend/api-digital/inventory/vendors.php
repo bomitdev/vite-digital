@@ -60,100 +60,171 @@ try {
         $data = json_decode(file_get_contents("php://input"), true) ?: $_POST;
         $action = trim($data['action'] ?? '');
 
-        // Action: Import from INVS SQL Server COMPANY table
+        // Action: Import from INVS (Disabled)
         if ($action === 'import_invs') {
-            $importWarehouseId = !empty($data['warehouse_id']) ? (int)$data['warehouse_id'] : null;
-            $sqlSrvHost = "192.168.2.19, 1433";
-            $sqlSrvDb   = "invs";
-            $sqlSrvUser = "sa";
-            $sqlSrvPass = "Cnm@10985";
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'การเชื่อมต่อระบบ INVS ถูกตัดการเชื่อมต่อแล้ว'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // Action: Batch Import from Excel / JSON
+        if ($action === 'batch_import') {
+            $items = $data['items'] ?? [];
+            if (!is_array($items) || empty($items)) {
+                echo json_encode(['status' => 'error', 'message' => 'ไม่พบรายการข้อมูลสำหรับนำเข้า'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            $targetWarehouseId = !empty($data['warehouse_id']) ? (int)$data['warehouse_id'] : null;
+            $updateExisting = isset($data['update_existing']) ? (bool)$data['update_existing'] : true;
+
+            $insertedCount = 0;
+            $updatedCount = 0;
+            $skippedCount = 0;
+            $errors = [];
+
+            // Pre-fetch max ID for auto-generating VND-xxxx codes
+            $maxId = (int)$pdo2->query("SELECT COALESCE(MAX(id), 0) FROM inv_vendors")->fetchColumn();
+
+            // Prepared statements
+            $stmtFindByCode = $pdo2->prepare("SELECT id, vendor_code, vendor_name FROM inv_vendors WHERE vendor_code = ?");
+            $stmtFindByName = $pdo2->prepare("SELECT id, vendor_code, vendor_name FROM inv_vendors WHERE vendor_name = ? AND (warehouse_id = ? OR warehouse_id IS NULL)");
+            $stmtFindByNameNoWh = $pdo2->prepare("SELECT id, vendor_code, vendor_name FROM inv_vendors WHERE vendor_name = ?");
+
+            $stmtInsert = $pdo2->prepare("
+                INSERT INTO inv_vendors 
+                (warehouse_id, vendor_code, vendor_name, tax_id, address, phone, email, contact_person, bank_info, active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+
+            $stmtUpdate = $pdo2->prepare("
+                UPDATE inv_vendors SET 
+                    vendor_name = COALESCE(NULLIF(?, ''), vendor_name),
+                    tax_id = COALESCE(NULLIF(?, ''), tax_id),
+                    address = COALESCE(NULLIF(?, ''), address),
+                    phone = COALESCE(NULLIF(?, ''), phone),
+                    email = COALESCE(NULLIF(?, ''), email),
+                    contact_person = COALESCE(NULLIF(?, ''), contact_person),
+                    bank_info = COALESCE(NULLIF(?, ''), bank_info),
+                    active = ?,
+                    warehouse_id = COALESCE(?, warehouse_id)
+                WHERE id = ?
+            ");
+
+            $pdo2->beginTransaction();
 
             try {
-                $connSqlSrv = new PDO("sqlsrv:server=$sqlSrvHost;Database=$sqlSrvDb", $sqlSrvUser, $sqlSrvPass);
-                $connSqlSrv->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-                $q = "SELECT 
-                        RTRIM(COMPANY_CODE) as vendor_code,
-                        RTRIM(COMPANY_NAME) as vendor_name,
-                        RTRIM(ADDRESS) as address1,
-                        RTRIM(ADDRESS2) as address2,
-                        RTRIM(TEL) as phone,
-                        RTRIM(TAX_ID) as tax_id,
-                        RTRIM(EMAIL) as email,
-                        RTRIM(DETAILER) as contact_person,
-                        RTRIM(BANK_NAME) as bank_name,
-                        RTRIM(BANK_ACC_NO) as bank_acc_no,
-                        RTRIM(BANK_ACC_NAME) as bank_acc_name
-                      FROM COMPANY 
-                      WHERE (HIDE = 'N' OR HIDE IS NULL) AND COMPANY_NAME IS NOT NULL AND LTRIM(RTRIM(COMPANY_NAME)) <> ''
-                      ORDER BY COMPANY_NAME ASC";
-
-                $s = $connSqlSrv->query($q);
-                $invsCompanies = $s->fetchAll(PDO::FETCH_ASSOC);
-
-                // Check existing codes & names
-                $existingRows = $pdo2->query("SELECT vendor_code, vendor_name FROM inv_vendors")->fetchAll(PDO::FETCH_ASSOC);
-                $existingCodes = [];
-                $existingNames = [];
-                foreach ($existingRows as $er) {
-                    if (!empty($er['vendor_code'])) $existingCodes[trim($er['vendor_code'])] = true;
-                    if (!empty($er['vendor_name'])) $existingNames[trim($er['vendor_name'])] = true;
-                }
-
-                $insStmt = $pdo2->prepare("
-                    INSERT INTO inv_vendors 
-                    (warehouse_id, vendor_code, vendor_name, tax_id, address, phone, email, contact_person, bank_info, active) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-                ");
-
-                $imported = 0;
-                foreach ($invsCompanies as $c) {
-                    $code = trim($c['vendor_code'] ?? '');
-                    $name = trim($c['vendor_name'] ?? '');
-
-                    if (empty($name)) continue;
-                    if (isset($existingNames[$name])) continue;
-                    if (!empty($code) && isset($existingCodes[$code])) continue;
-
-                    $addr = trim(($c['address1'] ?? '') . ' ' . ($c['address2'] ?? ''));
-                    $tax = trim($c['tax_id'] ?? '');
-                    $phone = trim($c['phone'] ?? '');
-                    $email = trim($c['email'] ?? '');
-                    $contact = trim($c['contact_person'] ?? '');
-
-                    $bankInfo = '';
-                    if (!empty($c['bank_name']) || !empty($c['bank_acc_no'])) {
-                        $bankInfo = trim(($c['bank_name'] ?? '') . ' ' . ($c['bank_acc_no'] ?? '') . ' ' . ($c['bank_acc_name'] ?? ''));
+                foreach ($items as $idx => $item) {
+                    $rowNum = $idx + 1;
+                    $name = trim($item['vendor_name'] ?? '');
+                    if (empty($name)) {
+                        $errors[] = "แถวที่ {$rowNum}: ไม่พบชื่อบริษัท / ผู้จำหน่าย (ข้าม)";
+                        $skippedCount++;
+                        continue;
                     }
 
-                    $insStmt->execute([
-                        $importWarehouseId,
-                        $code ?: null,
-                        $name,
-                        $tax ?: null,
-                        $addr ?: null,
-                        $phone ?: null,
-                        $email ?: null,
-                        $contact ?: null,
-                        $bankInfo ?: null
-                    ]);
+                    $code = trim($item['vendor_code'] ?? '');
+                    $tax_id = trim($item['tax_id'] ?? '');
+                    $phone = trim($item['phone'] ?? '');
+                    $email = trim($item['email'] ?? '');
+                    $contact = trim($item['contact_person'] ?? '');
+                    $address = trim($item['address'] ?? '');
+                    $bank = trim($item['bank_info'] ?? '');
+                    $active = isset($item['active']) ? (int)$item['active'] : 1;
+                    $whId = isset($item['warehouse_id']) && $item['warehouse_id'] !== '' ? (int)$item['warehouse_id'] : $targetWarehouseId;
 
-                    if (!empty($code)) $existingCodes[$code] = true;
-                    $existingNames[$name] = true;
-                    $imported++;
+                    $existingId = null;
+
+                    // 1. Check if vendor_code exists
+                    if (!empty($code)) {
+                        $stmtFindByCode->execute([$code]);
+                        $found = $stmtFindByCode->fetch(PDO::FETCH_ASSOC);
+                        if ($found) {
+                            $existingId = (int)$found['id'];
+                        }
+                    }
+
+                    // 2. If no existing by code, check by name
+                    if (!$existingId) {
+                        if ($whId) {
+                            $stmtFindByName->execute([$name, $whId]);
+                            $found = $stmtFindByName->fetch(PDO::FETCH_ASSOC);
+                        } else {
+                            $stmtFindByNameNoWh->execute([$name]);
+                            $found = $stmtFindByNameNoWh->fetch(PDO::FETCH_ASSOC);
+                        }
+                        if ($found) {
+                            $existingId = (int)$found['id'];
+                        }
+                    }
+
+                    if ($existingId) {
+                        if ($updateExisting) {
+                            $stmtUpdate->execute([
+                                $name,
+                                $tax_id ?: null,
+                                $address ?: null,
+                                $phone ?: null,
+                                $email ?: null,
+                                $contact ?: null,
+                                $bank ?: null,
+                                $active,
+                                $whId ?: null,
+                                $existingId
+                            ]);
+                            $updatedCount++;
+                        } else {
+                            $skippedCount++;
+                        }
+                    } else {
+                        // Generate code if empty
+                        if (empty($code)) {
+                            $maxId++;
+                            $code = 'VND-' . str_pad($maxId, 4, '0', STR_PAD_LEFT);
+                            // Safety check code uniqueness
+                            $stmtFindByCode->execute([$code]);
+                            while ($stmtFindByCode->fetch()) {
+                                $maxId++;
+                                $code = 'VND-' . str_pad($maxId, 4, '0', STR_PAD_LEFT);
+                                $stmtFindByCode->execute([$code]);
+                            }
+                        }
+
+                        $stmtInsert->execute([
+                            $whId ?: null,
+                            $code,
+                            $name,
+                            $tax_id ?: null,
+                            $address ?: null,
+                            $phone ?: null,
+                            $email ?: null,
+                            $contact ?: null,
+                            $bank ?: null,
+                            $active
+                        ]);
+                        $insertedCount++;
+                    }
                 }
+
+                $pdo2->commit();
 
                 echo json_encode([
                     'status' => 'success',
-                    'message' => "นำเข้าข้อมูลบริษัทจาก INVS สำเร็จ {$imported} รายการ",
-                    'imported_count' => $imported
+                    'message' => "นำเข้าข้อมูลบริษัทสำเร็จ (เพิ่มใหม่ {$insertedCount} รายการ, อัปเดต {$updatedCount} รายการ, ข้าม {$skippedCount} รายการ)",
+                    'inserted_count' => $insertedCount,
+                    'updated_count' => $updatedCount,
+                    'skipped_count' => $skippedCount,
+                    'errors' => $errors
                 ], JSON_UNESCAPED_UNICODE);
                 exit;
 
             } catch (Exception $e) {
+                $pdo2->rollBack();
                 echo json_encode([
                     'status' => 'error',
-                    'message' => 'ไม่สามารถเชื่อมต่อ INVS SQL Server ได้: ' . $e->getMessage()
+                    'message' => 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage()
                 ], JSON_UNESCAPED_UNICODE);
                 exit;
             }

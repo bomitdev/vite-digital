@@ -69,6 +69,7 @@ import Swal from 'sweetalert2';
 
 export default {
   name: 'ReturnDashboard',
+  props: ['warehouseId'],
   data() {
     return {
       returns: []

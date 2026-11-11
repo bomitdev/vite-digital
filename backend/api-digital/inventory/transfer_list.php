@@ -10,17 +10,27 @@ if (!isset($pdo2)) {
 }
 
 try {
+    $warehouse_id = isset($_GET['warehouse_id']) && $_GET['warehouse_id'] !== '' ? (int)$_GET['warehouse_id'] : 0;
+    
     $sql = "SELECT t.*, 
             wf.name as from_warehouse, 
             wt.name as to_warehouse,
             (SELECT COUNT(*) FROM inv_transfer_items WHERE transfer_id = t.id) as item_count
             FROM inv_transfers t
             LEFT JOIN inv_warehouses wf ON t.from_warehouse_id = wf.id
-            LEFT JOIN inv_warehouses wt ON t.to_warehouse_id = wt.id
-            ORDER BY t.created_at DESC";
+            LEFT JOIN inv_warehouses wt ON t.to_warehouse_id = wt.id ";
+    
+    $params = [];
+    if ($warehouse_id > 0) {
+        $sql .= "WHERE (t.from_warehouse_id = ? OR t.to_warehouse_id = ?) ";
+        $params[] = $warehouse_id;
+        $params[] = $warehouse_id;
+    }
+    
+    $sql .= "ORDER BY t.created_at DESC";
     
     $stmt = $pdo2->prepare($sql);
-    $stmt->execute();
+    $stmt->execute($params);
     $transfers = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode(['status' => 'success', 'data' => $transfers]);

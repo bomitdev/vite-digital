@@ -89,9 +89,11 @@ function handleSummary($pdo, $warehouse_id) {
         ? "COALESCE((SELECT SUM(b.balance_qty) FROM inv_stock_balances b WHERE b.item_id = i.id AND b.warehouse_id = $warehouse_id), 0)"
         : "COALESCE((SELECT SUM(b.balance_qty) FROM inv_stock_balances b WHERE b.item_id = i.id), 0)";
 
+    $whItemFilter = $warehouse_id ? " AND i.warehouse_id = " . (int)$warehouse_id : "";
+
     $sqlLow = "
         SELECT COUNT(*) FROM inv_items i 
-        WHERE i.active = 1 AND i.minimum_stock > 0 AND $whOnHandSub <= i.minimum_stock
+        WHERE i.active = 1 AND i.minimum_stock > 0 $whItemFilter AND $whOnHandSub <= i.minimum_stock
     ";
     $lowCount = (int)$pdo->query($sqlLow)->fetchColumn();
 
@@ -131,7 +133,7 @@ function handleBalance($pdo, $warehouse_id, $category_id, $status, $search) {
     $params = [];
 
     if ($warehouse_id) {
-        $where[] = "b.warehouse_id = ?";
+        $where[] = "i.warehouse_id = ?";
         $params[] = $warehouse_id;
     }
 
@@ -148,11 +150,13 @@ function handleBalance($pdo, $warehouse_id, $category_id, $status, $search) {
     }
 
     $whereClause = implode(" AND ", $where);
+    $whBalJoin = $warehouse_id ? "AND b.warehouse_id = " . (int)$warehouse_id : "";
+    $targetWhId = $warehouse_id ? (int)$warehouse_id : "i.warehouse_id";
 
     $sql = "
         SELECT 
-            b.item_id,
-            b.warehouse_id,
+            i.id as item_id,
+            $targetWhId as warehouse_id,
             w.name as warehouse_name,
             w.code as warehouse_code,
             i.item_code,
@@ -165,13 +169,13 @@ function handleBalance($pdo, $warehouse_id, $category_id, $status, $search) {
             COALESCE(NULLIF(i.standard_price, 0), NULLIF(i.last_purchase_price, 0), 0) as unit_price,
             COALESCE(SUM(b.balance_qty), 0) as balance_qty,
             COALESCE(SUM(b.balance_qty * COALESCE(NULLIF(i.standard_price, 0), NULLIF(i.last_purchase_price, 0), 0)), 0) as total_value
-        FROM inv_stock_balances b
-        JOIN inv_items i ON b.item_id = i.id
-        LEFT JOIN inv_warehouses w ON b.warehouse_id = w.id
+        FROM inv_items i
+        LEFT JOIN inv_stock_balances b ON b.item_id = i.id $whBalJoin
+        LEFT JOIN inv_warehouses w ON w.id = $targetWhId
         LEFT JOIN inv_categories c ON i.category_id = c.id
         LEFT JOIN inv_units u ON i.unit_id = u.id
         WHERE $whereClause
-        GROUP BY b.item_id, b.warehouse_id
+        GROUP BY i.id
         ORDER BY i.item_code ASC
     ";
 
@@ -415,6 +419,11 @@ function handleMovement($pdo, $warehouse_id, $category_id, $start_date, $end_dat
 
     $whereItem = ["i.active = 1"];
     $params = [];
+
+    if ($warehouse_id) {
+        $whereItem[] = "i.warehouse_id = ?";
+        $params[] = $warehouse_id;
+    }
 
     if ($category_id) {
         $whereItem[] = "i.category_id = ?";

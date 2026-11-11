@@ -191,6 +191,12 @@ import Swal from 'sweetalert2';
 
 export default {
   name: 'InventoryIssue',
+  props: {
+    warehouseId: {
+      type: [String, Number],
+      default: ''
+    }
+  },
   data() {
     return {
       warehouses: [],
@@ -241,6 +247,11 @@ export default {
         const whRes = await axios.get(`/api-digital/inventory/warehouses.php?user_id=${userId}`);
         if (whRes.data.status === 'success') {
           this.warehouses = whRes.data.data.filter(w => w.active === 1);
+          const targetWh = this.warehouseId || localStorage.getItem('selected_warehouse_id');
+          if (targetWh) {
+            this.form.warehouse_id = parseInt(targetWh);
+            this.fetchItems();
+          }
         }
         
         // Mock departments or fetch from actual API if exists

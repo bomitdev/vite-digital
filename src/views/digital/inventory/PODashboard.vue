@@ -85,8 +85,16 @@
                     </span>
                   </td>
                   <td class="text-end pe-4 text-nowrap">
-                    <button class="btn btn-sm btn-outline-primary rounded-pill me-1" @click.stop="viewPO(po)">
-                      <i class="bi bi-search"></i> ตรวจสอบ
+                    <button 
+                      v-if="po.status === 'ORDERED'"
+                      class="btn btn-sm btn-outline-warning text-dark rounded-pill me-1 fw-medium" 
+                      @click.stop="editPO(po)" 
+                      title="แก้ไขใบสั่งซื้อ (ยังไม่รับของ)"
+                    >
+                      <i class="bi bi-pencil-square me-1"></i> แก้ไข
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary rounded-pill me-1" @click.stop="viewPO(po)" title="ตรวจสอบ / พิมพ์">
+                      <i class="bi bi-search me-1"></i> ตรวจสอบ
                     </button>
                     <button 
                       v-if="['ORDERED', 'PARTIAL_RECEIVED'].includes(po.status)"
@@ -113,10 +121,21 @@ import Swal from 'sweetalert2';
 
 export default {
   name: 'PODashboard',
+  props: {
+    warehouseId: {
+      type: [String, Number],
+      default: ''
+    }
+  },
   data() {
     return {
       pos: [],
       loading: true
+    }
+  },
+  watch: {
+    warehouseId() {
+      this.fetchPOs();
     }
   },
   mounted() {
@@ -126,7 +145,10 @@ export default {
     async fetchPOs() {
       this.loading = true;
       try {
-        const response = await axios.get('/api-digital/inventory/po_list.php');
+        const wh = this.warehouseId || localStorage.getItem('selected_warehouse_id') || '';
+        const params = new URLSearchParams();
+        if (wh) params.append('warehouse_id', wh);
+        const response = await axios.get(`/api-digital/inventory/po_list.php?${params.toString()}`);
         if (response.data.status === 'success') {
           this.pos = response.data.data;
         } else {
@@ -164,6 +186,9 @@ export default {
         case 'CANCELLED': return 'ยกเลิก';
         default: return status;
       }
+    },
+    editPO(po) {
+      this.$router.push(`/inventory-po-form?id=${po.id}`);
     },
     viewPO(po) {
       this.$router.push(`/inventory-po-form?id=${po.id}`);

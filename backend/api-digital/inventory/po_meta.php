@@ -12,6 +12,14 @@ if (!isset($pdo2)) {
 try {
     // 1. Vendors list from inv_vendors
     $warehouse_id = isset($_GET['warehouse_id']) && $_GET['warehouse_id'] !== '' ? (int)$_GET['warehouse_id'] : 0;
+    $warehouse_name = '';
+
+    if ($warehouse_id > 0) {
+        $stWh = $pdo2->prepare("SELECT name FROM inv_warehouses WHERE id = ?");
+        $stWh->execute([$warehouse_id]);
+        $warehouse_name = $stWh->fetchColumn() ?: '';
+    }
+
     $sqlVen = "SELECT id, vendor_code, vendor_name, tax_id, address, phone FROM inv_vendors WHERE active = 1";
     $paramsVen = [];
     if ($warehouse_id > 0) {
@@ -22,23 +30,6 @@ try {
     $stmt = $pdo2->prepare($sqlVen);
     $stmt->execute($paramsVen);
     $vendors = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // If inv_vendors has fewer than 5 rows, also load/sync from INVS COMPANY
-    if (count($vendors) < 5) {
-        $sqlSrvHost = "192.168.2.19, 1433";
-        $sqlSrvDb   = "invs";
-        $sqlSrvUser = "sa";
-        $sqlSrvPass = "Cnm@10985";
-        try {
-            $connSqlSrv = new PDO("sqlsrv:server=$sqlSrvHost;Database=$sqlSrvDb", $sqlSrvUser, $sqlSrvPass);
-            $connSqlSrv->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $s = $connSqlSrv->query("SELECT RTRIM(COMPANY_CODE) as vendor_code, RTRIM(COMPANY_NAME) as vendor_name, TAX_ID as tax_id, TEL as phone FROM COMPANY WHERE HIDE='N' OR HIDE IS NULL ORDER BY COMPANY_NAME");
-            $invs_vendors = $s->fetchAll(PDO::FETCH_ASSOC);
-            if (!empty($invs_vendors)) {
-                $vendors = $invs_vendors;
-            }
-        } catch (Exception $e) {}
-    }
 
     // 2. Buy Methods (วิธีจัดซื้อ)
     $buy_methods = [];
@@ -96,6 +87,8 @@ try {
     echo json_encode([
         'status' => 'success',
         'data' => [
+            'warehouse_id' => $warehouse_id,
+            'warehouse_name' => $warehouse_name,
             'vendors' => $vendors,
             'buy_methods' => $buy_methods,
             'budget_types' => $budget_types,

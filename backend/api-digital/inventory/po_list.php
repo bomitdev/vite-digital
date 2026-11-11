@@ -11,6 +11,7 @@ if (!isset($pdo2)) {
 
 $search = trim($_GET['search'] ?? '');
 $status = trim($_GET['status'] ?? '');
+$warehouse_id = isset($_GET['warehouse_id']) ? intval($_GET['warehouse_id']) : 0;
 
 try {
     $sql = "SELECT 
@@ -25,6 +26,12 @@ try {
             WHERE 1=1";
     
     $params = [];
+    if ($warehouse_id > 0) {
+        $sql .= " AND (po.warehouse_id = ? OR pr.warehouse_id = ?)";
+        $params[] = $warehouse_id;
+        $params[] = $warehouse_id;
+    }
+
     if (!empty($search)) {
         $sql .= " AND (po.po_number LIKE ? OR po.vendor_name LIKE ? OR po.memo_no LIKE ? OR po.purchaser_name LIKE ?)";
         $params[] = "%$search%";

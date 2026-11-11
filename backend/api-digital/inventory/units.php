@@ -15,15 +15,27 @@ try {
     if ($method === 'GET') {
         $search = trim($_GET['search'] ?? '');
         $activeOnly = isset($_GET['active_only']) ? (int)$_GET['active_only'] : 0;
+        $warehouse_id = isset($_GET['warehouse_id']) && $_GET['warehouse_id'] !== '' ? (int)$_GET['warehouse_id'] : 0;
+
+        $itemCountSub = $warehouse_id > 0
+            ? "(SELECT COUNT(*) FROM inv_items WHERE warehouse_id = " . (int)$warehouse_id . " AND (unit_id = u.id OR purchase_unit_id = u.id OR issue_unit_id = u.id))"
+            : "(SELECT COUNT(*) FROM inv_items WHERE unit_id = u.id OR purchase_unit_id = u.id OR issue_unit_id = u.id)";
 
         $sql = "SELECT u.*, 
-                       (SELECT COUNT(*) FROM inv_items WHERE unit_id = u.id OR purchase_unit_id = u.id OR issue_unit_id = u.id) as item_count 
+                       w.name as warehouse_name,
+                       {$itemCountSub} as item_count 
                 FROM inv_units u 
+                LEFT JOIN inv_warehouses w ON u.warehouse_id = w.id
                 WHERE 1=1";
         $params = [];
 
         if ($activeOnly) {
             $sql .= " AND u.active = 1";
+        }
+
+        if ($warehouse_id > 0) {
+            $sql .= " AND u.warehouse_id = ?";
+            $params[] = $warehouse_id;
         }
 
         if (!empty($search)) {
@@ -48,87 +60,58 @@ try {
         $data = json_decode(file_get_contents("php://input"), true) ?: $_POST;
         $action = trim($data['action'] ?? '');
 
-        // Action 1: Import units from INVS SQL Server (SALE_UNIT)
+        // Action 1: Import units from INVS (Disabled)
         if ($action === 'import_invs') {
-            $sqlSrvHost = "192.168.2.19, 1433";
-            $sqlSrvDb   = "invs";
-            $sqlSrvUser = "sa";
-            $sqlSrvPass = "Cnm@10985";
-
-            try {
-                $connSqlSrv = new PDO("sqlsrv:server=$sqlSrvHost;Database=$sqlSrvDb", $sqlSrvUser, $sqlSrvPass);
-                $connSqlSrv->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-                $q = "SELECT SU_ID, RTRIM(SALE_UNIT) as name, HIDE FROM SALE_UNIT WHERE SALE_UNIT IS NOT NULL AND LTRIM(RTRIM(SALE_UNIT)) <> '' ORDER BY SU_ID ASC";
-                $s = $connSqlSrv->query($q);
-                $invsUnits = $s->fetchAll(PDO::FETCH_ASSOC);
-
-                // Fetch existing units from MySQL
-                $existing = $pdo2->query("SELECT name FROM inv_units")->fetchAll(PDO::FETCH_COLUMN);
-                $existingMap = array_fill_keys(array_map('trim', $existing), true);
-
-                $insStmt = $pdo2->prepare("INSERT INTO inv_units (code, name, active) VALUES (?, ?, ?)");
-                $imported = 0;
-
-                foreach ($invsUnits as $u) {
-                    $uName = trim($u['name'] ?? '');
-                    if (empty($uName) || isset($existingMap[$uName])) {
-                        continue;
-                    }
-                    $code = !empty($u['SU_ID']) ? 'U' . str_pad($u['SU_ID'], 3, '0', STR_PAD_LEFT) : null;
-                    $active = (isset($u['HIDE']) && strtoupper(trim($u['HIDE'])) === 'Y') ? 0 : 1;
-                    $insStmt->execute([$code, $uName, $active]);
-                    $existingMap[$uName] = true;
-                    $imported++;
-                }
-
-                echo json_encode([
-                    'status' => 'success',
-                    'message' => "นำเข้าหน่วยนับจาก INVS สำเร็จ {$imported} รายการ (จากทั้งหมด " . count($invsUnits) . " รายการ)",
-                    'imported' => $imported
-                ], JSON_UNESCAPED_UNICODE);
-                exit;
-            } catch (Exception $e) {
-                http_response_code(500);
-                echo json_encode(['status' => 'error', 'message' => 'ไม่สามารถเชื่อมต่อฐานข้อมูล INVS: ' . $e->getMessage()]);
-                exit;
-            }
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'การเชื่อมต่อระบบ INVS ถูกตัดการเชื่อมต่อแล้ว'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
         }
 
         // Action 2: Seed default Thai hospital/general units
         if ($action === 'seed_defaults') {
+            $seedWarehouseId = !empty($data['warehouse_id']) ? (int)$data['warehouse_id'] : null;
             $defaultUnits = [
-                ['code' => 'U001', 'name' => 'ชิ้น'],
-                ['code' => 'U002', 'name' => 'กล่อง'],
-                ['code' => 'U003', 'name' => 'แผง'],
-                ['code' => 'U004', 'name' => 'ขวด'],
-                ['code' => 'U005', 'name' => 'หลอด'],
-                ['code' => 'U006', 'name' => 'เม็ด'],
-                ['code' => 'U007', 'name' => 'ซอง'],
-                ['code' => 'U008', 'name' => 'ชุด'],
-                ['code' => 'U009', 'name' => 'ม้วน'],
-                ['code' => 'U010', 'name' => 'แพ็ค'],
-                ['code' => 'U011', 'name' => 'ถุง'],
-                ['code' => 'U012', 'name' => 'กิโลกรัม'],
-                ['code' => 'U013', 'name' => 'ลิตร'],
-                ['code' => 'U014', 'name' => 'มิลลิลิตร'],
-                ['code' => 'U015', 'name' => 'แผ่น'],
-                ['code' => 'U016', 'name' => 'เครื่อง'],
-                ['code' => 'U017', 'name' => 'เล่ม'],
-                ['code' => 'U018', 'name' => 'ใบ'],
-                ['code' => 'U019', 'name' => 'อัน'],
-                ['code' => 'U020', 'name' => 'คู่']
+                ['name' => 'ชิ้น'],
+                ['name' => 'กล่อง'],
+                ['name' => 'แผง'],
+                ['name' => 'ขวด'],
+                ['name' => 'หลอด'],
+                ['name' => 'เม็ด'],
+                ['name' => 'ซอง'],
+                ['name' => 'ชุด'],
+                ['name' => 'ม้วน'],
+                ['name' => 'แพ็ค'],
+                ['name' => 'ถุง'],
+                ['name' => 'กิโลกรัม'],
+                ['name' => 'ลิตร'],
+                ['name' => 'มิลลิลิตร'],
+                ['name' => 'แผ่น'],
+                ['name' => 'เครื่อง'],
+                ['name' => 'เล่ม'],
+                ['name' => 'ใบ'],
+                ['name' => 'อัน'],
+                ['name' => 'คู่']
             ];
 
-            $existing = $pdo2->query("SELECT name FROM inv_units")->fetchAll(PDO::FETCH_COLUMN);
+            $chkExist = $pdo2->prepare("SELECT name FROM inv_units WHERE warehouse_id <=> ?");
+            $chkExist->execute([$seedWarehouseId]);
+            $existing = $chkExist->fetchAll(PDO::FETCH_COLUMN);
             $existingMap = array_fill_keys(array_map('trim', $existing), true);
 
-            $insStmt = $pdo2->prepare("INSERT INTO inv_units (code, name, active) VALUES (?, ?, 1)");
+            $stmtMax = $pdo2->prepare("SELECT MAX(CAST(SUBSTRING(code, 2) AS UNSIGNED)) as max_num FROM inv_units WHERE warehouse_id <=> ? AND code LIKE 'U%'");
+            $stmtMax->execute([$seedWarehouseId]);
+            $currentMax = (int)$stmtMax->fetchColumn();
+
+            $insStmt = $pdo2->prepare("INSERT INTO inv_units (warehouse_id, code, name, active) VALUES (?, ?, ?, 1)");
             $added = 0;
 
             foreach ($defaultUnits as $du) {
                 if (!isset($existingMap[$du['name']])) {
-                    $insStmt->execute([$du['code'], $du['name']]);
+                    $currentMax++;
+                    $unitCode = 'U' . str_pad($currentMax, 3, '0', STR_PAD_LEFT);
+                    $insStmt->execute([$seedWarehouseId, $unitCode, $du['name']]);
                     $existingMap[$du['name']] = true;
                     $added++;
                 }
@@ -143,6 +126,7 @@ try {
         }
 
         // Standard Single Unit Create
+        $warehouse_id = !empty($data['warehouse_id']) ? (int)$data['warehouse_id'] : null;
         $code = trim($data['code'] ?? '');
         $name = trim($data['name'] ?? '');
         $active = isset($data['active']) ? (int)$data['active'] : 1;
@@ -152,15 +136,27 @@ try {
             exit;
         }
 
-        $chk = $pdo2->prepare("SELECT id FROM inv_units WHERE name = ?");
-        $chk->execute([$name]);
+        if ($warehouse_id) {
+            $chk = $pdo2->prepare("SELECT id FROM inv_units WHERE name = ? AND warehouse_id = ?");
+            $chk->execute([$name, $warehouse_id]);
+        } else {
+            $chk = $pdo2->prepare("SELECT id FROM inv_units WHERE name = ? AND warehouse_id IS NULL");
+            $chk->execute([$name]);
+        }
         if ($chk->fetch()) {
-            echo json_encode(['status' => 'error', 'message' => "ชื่อหน่วยนับนี้ ('{$name}') มีอยู่ในระบบแล้ว"]);
+            echo json_encode(['status' => 'error', 'message' => "ชื่อหน่วยนับนี้ ('{$name}') มีอยู่ในคลังนี้แล้ว"]);
             exit;
         }
 
-        $stmt = $pdo2->prepare("INSERT INTO inv_units (code, name, active) VALUES (?, ?, ?)");
-        $stmt->execute([$code ?: null, $name, $active]);
+        if (empty($code)) {
+            $stmtMax = $pdo2->prepare("SELECT MAX(CAST(SUBSTRING(code, 2) AS UNSIGNED)) as max_num FROM inv_units WHERE warehouse_id <=> ? AND code LIKE 'U%'");
+            $stmtMax->execute([$warehouse_id]);
+            $currentMax = (int)$stmtMax->fetchColumn() + 1;
+            $code = 'U' . str_pad($currentMax, 3, '0', STR_PAD_LEFT);
+        }
+
+        $stmt = $pdo2->prepare("INSERT INTO inv_units (warehouse_id, code, name, active) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$warehouse_id, $code ?: null, $name, $active]);
 
         echo json_encode([
             'status' => 'success',
@@ -171,6 +167,7 @@ try {
     } elseif ($method === 'PUT') {
         $data = json_decode(file_get_contents("php://input"), true) ?: [];
         $id = (int)($data['id'] ?? 0);
+        $warehouse_id = !empty($data['warehouse_id']) ? (int)$data['warehouse_id'] : null;
         $code = trim($data['code'] ?? '');
         $name = trim($data['name'] ?? '');
         $active = isset($data['active']) ? (int)$data['active'] : 1;
@@ -180,15 +177,20 @@ try {
             exit;
         }
 
-        $chk = $pdo2->prepare("SELECT id FROM inv_units WHERE name = ? AND id != ?");
-        $chk->execute([$name, $id]);
+        if ($warehouse_id) {
+            $chk = $pdo2->prepare("SELECT id FROM inv_units WHERE name = ? AND warehouse_id = ? AND id != ?");
+            $chk->execute([$name, $warehouse_id, $id]);
+        } else {
+            $chk = $pdo2->prepare("SELECT id FROM inv_units WHERE name = ? AND warehouse_id IS NULL AND id != ?");
+            $chk->execute([$name, $id]);
+        }
         if ($chk->fetch()) {
-            echo json_encode(['status' => 'error', 'message' => "ชื่อหน่วยนับนี้ ('{$name}') ซ้ำกับรายการอื่น"]);
+            echo json_encode(['status' => 'error', 'message' => "ชื่อหน่วยนับนี้ ('{$name}') ซ้ำกับรายการอื่นในคลังนี้"]);
             exit;
         }
 
-        $stmt = $pdo2->prepare("UPDATE inv_units SET code = ?, name = ?, active = ? WHERE id = ?");
-        $stmt->execute([$code ?: null, $name, $active, $id]);
+        $stmt = $pdo2->prepare("UPDATE inv_units SET warehouse_id = ?, code = ?, name = ?, active = ? WHERE id = ?");
+        $stmt->execute([$warehouse_id, $code ?: null, $name, $active, $id]);
 
         echo json_encode([
             'status' => 'success',

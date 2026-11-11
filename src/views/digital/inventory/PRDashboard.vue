@@ -85,6 +85,9 @@
                     </span>
                   </td>
                   <td class="text-end pe-4 text-nowrap">
+                    <button v-if="pr.status === 'DIR_APPROVED'" class="btn btn-sm btn-primary rounded-pill me-1 shadow-xs" @click.stop="$router.push(`/inventory-po-form?pr_id=${pr.id}`)" title="เปิดใบสั่งซื้อ (PO) จาก PR นี้">
+                      <i class="bi bi-cart-plus-fill me-1"></i> เปิด PO
+                    </button>
                     <button class="btn btn-sm btn-outline-success rounded-pill me-1 shadow-xs" @click.stop="printPR(pr)" title="พิมพ์ใบขอซื้อเสนอ ผอ. ลงนาม">
                       <i class="bi bi-printer-fill me-1"></i> พิมพ์
                     </button>
@@ -283,6 +286,12 @@ import Swal from 'sweetalert2';
 
 export default {
   name: 'PRDashboard',
+  props: {
+    warehouseId: {
+      type: [String, Number],
+      default: ''
+    }
+  },
   data() {
     return {
       prs: [],
@@ -294,6 +303,11 @@ export default {
       selectedPR: null
     };
   },
+  watch: {
+    warehouseId() {
+      this.fetchPRs();
+    }
+  },
   mounted() {
     this.fetchPRs();
   },
@@ -301,7 +315,10 @@ export default {
     async fetchPRs() {
       this.loading = true;
       try {
-        const response = await axios.get('/api-digital/inventory/pr_list.php');
+        const wh = this.warehouseId || localStorage.getItem('selected_warehouse_id') || '';
+        const params = new URLSearchParams();
+        if (wh) params.append('warehouse_id', wh);
+        const response = await axios.get(`/api-digital/inventory/pr_list.php?${params.toString()}`);
         if (response.data.status === 'success') {
           this.prs = response.data.data;
         } else {

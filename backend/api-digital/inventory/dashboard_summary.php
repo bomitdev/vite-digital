@@ -67,13 +67,25 @@ try {
     ";
     $txRow = $pdo2->query($sqlTx)->fetch(PDO::FETCH_ASSOC);
 
-    // Total registered items
-    $totalItems = (int)$pdo2->query("SELECT COUNT(*) FROM inv_items WHERE active = 1")->fetchColumn();
+    // Total registered items for this warehouse
+    $whItemWhere = $warehouse_id ? " AND warehouse_id = " . (int)$warehouse_id : "";
+    $totalItems = (int)$pdo2->query("SELECT COUNT(*) FROM inv_items WHERE active = 1 $whItemWhere")->fetchColumn();
+
+    // Requisitions count (PENDING)
+    $whReqWhere = $warehouse_id ? " AND warehouse_id = " . (int)$warehouse_id : "";
+    $pendingReqsCount = 0;
+    try {
+        $pendingReqsCount = (int)$pdo2->query("SELECT COUNT(*) FROM inv_requisitions WHERE status = 'PENDING' $whReqWhere")->fetchColumn();
+    } catch (Exception $e) {
+        $pendingReqsCount = 0;
+    }
 
     // 3. Low stock items (on_hand <= minimum_stock)
     $whOnHandSub = $warehouse_id 
         ? "COALESCE((SELECT SUM(b.balance_qty) FROM inv_stock_balances b WHERE b.item_id = i.id AND b.warehouse_id = $warehouse_id), 0)"
         : "COALESCE((SELECT SUM(b.balance_qty) FROM inv_stock_balances b WHERE b.item_id = i.id), 0)";
+
+    $whLowItemFilter = $warehouse_id ? " AND i.warehouse_id = " . (int)$warehouse_id : "";
 
     $sqlLow = "
         SELECT 
@@ -89,7 +101,7 @@ try {
         FROM inv_items i
         LEFT JOIN inv_categories c ON i.category_id = c.id
         LEFT JOIN inv_units u ON i.unit_id = u.id
-        WHERE i.active = 1
+        WHERE i.active = 1 $whLowItemFilter
         HAVING on_hand <= minimum_stock
         ORDER BY (on_hand - minimum_stock) ASC, on_hand ASC
         LIMIT 25
@@ -160,6 +172,8 @@ try {
     }
 
     // 5. Category Distribution
+    $whCatCond = $warehouse_id ? "WHERE (c.warehouse_id = $warehouse_id OR c.warehouse_id IS NULL)" : "";
+    $whBalJoinCond = $warehouse_id ? "AND b.warehouse_id = $warehouse_id" : "";
     $sqlCat = "
         SELECT 
             COALESCE(c.name, 'ทั่วไป') as category_name,
@@ -167,8 +181,9 @@ try {
             COALESCE(SUM(b.balance_qty), 0) as total_qty,
             COALESCE(SUM(b.balance_qty * COALESCE(NULLIF(i.standard_price, 0), NULLIF(i.last_purchase_price, 0), 0)), 0) as total_value
         FROM inv_categories c
-        LEFT JOIN inv_items i ON i.category_id = c.id AND i.active = 1
-        LEFT JOIN inv_stock_balances b ON b.item_id = i.id $whBalWhere
+        LEFT JOIN inv_items i ON i.category_id = c.id AND i.active = 1 " . ($warehouse_id ? "AND i.warehouse_id = $warehouse_id" : "") . "
+        LEFT JOIN inv_stock_balances b ON b.item_id = i.id $whBalJoinCond
+        $whCatCond
         GROUP BY c.id, c.name
         ORDER BY total_qty DESC, total_value DESC
     ";
@@ -197,7 +212,8 @@ try {
                 'total_out_qty' => (float)($txRow['total_out_qty'] ?? 0),
                 'in_tx_count' => (int)($txRow['in_tx_count'] ?? 0),
                 'out_tx_count' => (int)($txRow['out_tx_count'] ?? 0),
-                'low_stock_count' => count($lowStockItems)
+                'low_stock_count' => count($lowStockItems),
+                'pending_requisitions_count' => $pendingReqsCount
             ],
             'low_stock_items' => $lowStockItems,
             'monthly_trends' => $monthlyTrends,
