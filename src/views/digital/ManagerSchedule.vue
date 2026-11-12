@@ -127,6 +127,13 @@
         </div>
         <div class="btn-group">
           <button
+            class="btn btn-success btn-sm fw-bold border"
+            @click="openNotifyModal"
+            title="ตั้งค่าและส่งแจ้งเตือนเวรห้องบัตร & การลาเข้า LINE (MOPH Notify)"
+          >
+            <i class="bi bi-bell-fill me-1"></i> แจ้งเตือน LINE
+          </button>
+          <button
             v-if="currentTab !== 'leave'"
             class="btn btn-outline-danger btn-sm fw-bold border"
             @click="$router.push('/ot-report-summary')"
@@ -639,10 +646,304 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal for MOPH Daily LINE Notify Preview & Settings -->
+  <div
+    v-if="showNotifyModal"
+    class="modal fade show d-block"
+    tabindex="-1"
+    role="dialog"
+    style="background-color: rgba(0, 0, 0, 0.55); z-index: 1050;"
+  >
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" role="document">
+      <div class="modal-content border-0 shadow-lg rounded-4">
+        <div class="modal-header bg-success text-white border-0">
+          <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+            <i class="bi bi-bell-fill"></i>
+            <span>แจ้งเตือนเข้า LINE ผ่าน MOPH Notify (เวรห้องบัตร / ลา / ไปราชการ)</span>
+          </h5>
+          <button
+            type="button"
+            class="btn-close btn-close-white"
+            @click="closeNotifyModal"
+          ></button>
+        </div>
+
+        <div class="modal-body p-4 bg-light">
+          <div v-if="notifyLoading && !notifyPreview" class="text-center py-5">
+            <div class="spinner-border text-success mb-2" role="status"></div>
+            <div class="text-muted small">กำลังโหลดข้อมูลแจ้งเตือน...</div>
+          </div>
+
+          <div v-else class="row g-4">
+            <!-- Left: Live Preview -->
+            <div class="col-lg-7">
+              <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white border-bottom py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                  <div>
+                    <h6 class="fw-bold text-dark mb-0">
+                      <i class="bi bi-eye-fill text-primary me-1"></i> ตัวอย่างข้อความที่จะส่งเข้า LINE
+                    </h6>
+                    <small class="text-muted" v-if="notifyPreview">
+                      ข้อมูล ณ {{ notifyPreview.today_thai }}
+                    </small>
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <input
+                      type="date"
+                      class="form-control form-control-sm"
+                      v-model="notifyTargetDate"
+                      @change="fetchNotifyPreview"
+                    />
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-primary text-nowrap"
+                      @click="fetchNotifyPreview"
+                      :disabled="notifyLoading"
+                    >
+                      <i class="bi bi-arrow-clockwise"></i> รีเฟรช
+                    </button>
+                  </div>
+                </div>
+
+                <div class="card-body p-3" v-if="notifyPreview">
+                  <!-- 1. เวรห้องบัตรวันนี้ & พรุ่งนี้ -->
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                      <div class="p-3 rounded-3 bg-success-subtle border border-success-subtle h-100">
+                        <div class="fw-bold text-success-emphasis mb-2">
+                          🏥 เวรห้องบัตรวันนี้ ({{ notifyPreview.today_short }})
+                        </div>
+                        <ul v-if="notifyPreview.opd_today.length > 0" class="list-unstyled mb-0 small">
+                          <li v-for="(p, idx) in notifyPreview.opd_today" :key="idx" class="mb-1 fw-semibold text-dark">
+                            {{ idx + 1 }}. {{ p.name }}
+                            <span v-if="p.is_special > 0" class="badge bg-warning text-dark ms-1">เสริม</span>
+                            <div v-if="p.phone" class="text-muted ms-3" style="font-size: 0.78rem;">โทร: {{ p.phone }}</div>
+                          </li>
+                        </ul>
+                        <div v-else class="text-muted small">- ไม่มีผู้ขึ้นเวรห้องบัตรวันนี้</div>
+                      </div>
+                    </div>
+
+                    <div class="col-md-6">
+                      <div class="p-3 rounded-3 bg-info-subtle border border-info-subtle h-100">
+                        <div class="fw-bold text-info-emphasis mb-2">
+                          📆 เวรห้องบัตรพรุ่งนี้ ({{ notifyPreview.tomorrow_short }})
+                        </div>
+                        <ul v-if="notifyPreview.opd_tomorrow.length > 0" class="list-unstyled mb-0 small">
+                          <li v-for="(p, idx) in notifyPreview.opd_tomorrow" :key="idx" class="mb-1 fw-semibold text-dark">
+                            {{ idx + 1 }}. {{ p.name }}
+                            <span v-if="p.is_special > 0" class="badge bg-warning text-dark ms-1">เสริม</span>
+                            <div v-if="p.phone" class="text-muted ms-3" style="font-size: 0.78rem;">โทร: {{ p.phone }}</div>
+                          </li>
+                        </ul>
+                        <div v-else class="text-muted small">- ไม่มีผู้ขึ้นเวรห้องบัตรพรุ่งนี้</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 2. ลาวันนี้ -->
+                  <div class="p-3 rounded-3 bg-warning-subtle border border-warning-subtle mb-3">
+                    <div class="fw-bold text-warning-emphasis mb-2">
+                      📝 ผู้ลาวันนี้ ({{ notifyPreview.leaves_today.length }} คน)
+                    </div>
+                    <ul v-if="notifyPreview.leaves_today.length > 0" class="list-unstyled mb-0 small">
+                      <li v-for="(lv, idx) in notifyPreview.leaves_today" :key="lv.leave_id || idx" class="mb-2 text-dark">
+                        <span class="fw-bold">{{ idx + 1 }}. {{ lv.person_name }}</span>
+                        <span class="badge bg-warning text-dark ms-2">{{ lv.leave_type }}</span>
+                        <span v-if="!lv.is_approved" class="badge bg-secondary ms-1">รออนุมัติ</span>
+                        <div class="text-muted ms-3" style="font-size: 0.8rem;">
+                          ช่วง {{ lv.date_range_thai }} <span v-if="lv.dept_name">• {{ lv.dept_name }}</span>
+                        </div>
+                      </li>
+                    </ul>
+                    <div v-else class="text-muted small">- ไม่มีผู้ลาวันนี้</div>
+                  </div>
+
+                  <!-- 3. ไปราชการวันนี้ -->
+                  <div class="p-3 rounded-3 bg-primary-subtle border border-primary-subtle">
+                    <div class="fw-bold text-primary-emphasis mb-2">
+                      🚗 ไปราชการวันนี้ ({{ notifyPreview.trips_today.length }} รายการ)
+                    </div>
+                    <ul v-if="notifyPreview.trips_today.length > 0" class="list-unstyled mb-0 small">
+                      <li v-for="(tr, idx) in notifyPreview.trips_today" :key="tr.trip_id || idx" class="mb-2 text-dark">
+                        <span class="fw-bold">{{ idx + 1 }}. {{ tr.display_names }}</span>
+                        <span v-if="!tr.is_approved" class="badge bg-secondary ms-1">รออนุมัติ</span>
+                        <div class="text-muted ms-3" style="font-size: 0.8rem;">
+                          เรื่อง: {{ tr.title || '-' }}
+                          <span v-if="tr.province">({{ tr.province }})</span>
+                          • {{ tr.date_range_thai }}
+                        </div>
+                      </li>
+                    </ul>
+                    <div v-else class="text-muted small">- ไม่มีผู้ไปราชการวันนี้</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Settings -->
+            <div class="col-lg-5">
+              <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white border-bottom py-3">
+                  <h6 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-sliders text-success me-1"></i> ตั้งค่าช่องทางและขอบเขตข้อมูล
+                  </h6>
+                </div>
+                <div class="card-body p-3 d-flex flex-column gap-3">
+                  <div>
+                    <label class="form-label small fw-bold mb-1">กลุ่ม LINE ปลายทาง (MOPH Notify)</label>
+                    <select class="form-select form-select-sm" v-model="notifyForm.channel_mode">
+                      <option v-for="ch in notifyChannels" :key="ch.channel_code" :value="ch.channel_code">
+                        {{ ch.channel_name }} ({{ ch.has_keys ? (ch.key_source === 'database' ? 'ฐานข้อมูล' : '.env') : 'ยังไม่ตั้งคีย์' }})
+                      </option>
+                      <option v-if="notifyForm.channel_mode === 'custom'" value="custom">
+                        Custom Key (คีย์ที่บันทึกไว้ก่อนหน้า)
+                      </option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label class="form-label small fw-bold mb-1">ขอบเขตกลุ่มงานสำหรับ "ลา / ไปราชการ"</label>
+                    <div class="btn-group btn-group-sm w-100 mb-2">
+                      <button
+                        type="button"
+                        class="btn"
+                        :class="notifyDeptPreset === 'default' ? 'btn-primary' : 'btn-outline-primary'"
+                        @click="setNotifyDeptPreset('default')"
+                      >
+                        ดิจิทัล + ประกันฯ (14,27)
+                      </button>
+                      <button
+                        type="button"
+                        class="btn"
+                        :class="notifyDeptPreset === 'all' ? 'btn-primary' : 'btn-outline-primary'"
+                        @click="setNotifyDeptPreset('all')"
+                      >
+                        ทั้งโรงพยาบาล (ALL)
+                      </button>
+                      <button
+                        type="button"
+                        class="btn"
+                        :class="notifyDeptPreset === 'custom' ? 'btn-primary' : 'btn-outline-primary'"
+                        @click="setNotifyDeptPreset('custom')"
+                      >
+                        เลือกเอง
+                      </button>
+                    </div>
+
+                    <div
+                      v-if="notifyDeptPreset === 'custom'"
+                      class="border rounded p-2 bg-white custom-scrollbar"
+                      style="max-height: 150px; overflow-y: auto"
+                    >
+                      <div v-for="dept in notifyDepartments" :key="dept.HR_DEPARTMENT_SUB_ID" class="form-check small">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          :id="'notify-dept-' + dept.HR_DEPARTMENT_SUB_ID"
+                          :value="String(dept.HR_DEPARTMENT_SUB_ID)"
+                          v-model="notifySelectedDeptIds"
+                          @change="onCustomDeptChange"
+                        />
+                        <label class="form-check-label" :for="'notify-dept-' + dept.HR_DEPARTMENT_SUB_ID">
+                          {{ dept.HR_DEPARTMENT_SUB_ID }}: {{ dept.HR_DEPARTMENT_SUB_NAME }}
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="form-check form-switch">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="notifyIncludeUnapproved"
+                      v-model="notifyForm.include_unapproved"
+                      @change="fetchNotifyPreview"
+                    />
+                    <label class="form-check-label small" for="notifyIncludeUnapproved">
+                      รวมรายการที่ยังรออนุมัติ (แสดงป้าย [รออนุมัติ])
+                    </label>
+                  </div>
+
+                  <div class="border-top pt-2">
+                    <div class="form-check form-switch mb-2">
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        id="notifyAutoEnabled"
+                        v-model="notifyForm.is_enabled"
+                      />
+                      <label class="form-check-label small fw-bold" for="notifyAutoEnabled">
+                        เปิดใช้งานส่งอัตโนมัติรายวัน (Task Scheduler / Cron)
+                      </label>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                      <label class="small text-muted text-nowrap">เวลาตั้งส่ง:</label>
+                      <input type="time" class="form-control form-control-sm" style="max-width: 130px" v-model="notifyForm.notify_time" />
+                    </div>
+                    <div class="small mt-1" v-if="notifySchedulerStatus">
+                      <span v-if="notifySchedulerStatus.registered" class="badge bg-success-subtle text-success border border-success-subtle">
+                        <i class="bi bi-check-circle-fill me-1"></i>ตัวตั้งเวลา Windows ({{ notifySchedulerStatus.task_name }}) ทำงานทุก 1 นาที
+                      </span>
+                      <span v-else class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>ยังไม่ได้ลงทะเบียนตัวตั้งเวลา (รัน setup-daily-notify-task.ps1)
+                      </span>
+                    </div>
+                    <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
+                      เมื่อแก้ไขเวลาล่วงหน้าแล้วกด <b>บันทึกการตั้งค่า</b> ระบบเบื้องหลังจะส่งให้อัตโนมัติทันทีเมื่อถึงเวลาที่กำหนด
+                    </small>
+                  </div>
+
+                  <div v-if="notifyLastInfo.last_sent_at" class="alert alert-light border small mb-0 p-2">
+                    <div class="fw-bold">ประวัติส่งล่าสุด:</div>
+                    <div>เวลา: {{ notifyLastInfo.last_sent_at }}</div>
+                    <div>
+                      สถานะ:
+                      <span :class="notifyLastInfo.last_status === 'success' ? 'text-success fw-bold' : 'text-danger fw-bold'">
+                        {{ notifyLastInfo.last_status || '-' }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer bg-white border-top d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" @click="closeNotifyModal">
+            ปิด
+          </button>
+          <div class="d-flex gap-2">
+            <button
+              type="button"
+              class="btn btn-outline-primary rounded-pill px-4 fw-bold"
+              @click="saveNotifySettings"
+              :disabled="notifySaving || notifySending"
+            >
+              <span v-if="notifySaving" class="spinner-border spinner-border-sm me-1"></span>
+              <i v-else class="bi bi-save me-1"></i> บันทึกการตั้งค่า
+            </button>
+            <button
+              type="button"
+              class="btn btn-success rounded-pill px-4 fw-bold shadow-sm"
+              @click="sendNotifyNow"
+              :disabled="notifySending || notifySaving"
+            >
+              <span v-if="notifySending" class="spinner-border spinner-border-sm me-1"></span>
+              <i v-else class="bi bi-send-fill me-1"></i> ส่งเข้า LINE ทันที
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
 import axios from 'axios';
+import Swal from 'sweetalert2';
 import LeaveCalendar from './leave/LeaveCalendar.vue';
 
 export default {
@@ -701,7 +1002,31 @@ export default {
         month: new Date().getMonth() + 1,
         year: new Date().getFullYear()
       },
-      checkTimeSearch: ''
+      checkTimeSearch: '',
+      // Daily MOPH Notify Modal
+      showNotifyModal: false,
+      notifyLoading: false,
+      notifySaving: false,
+      notifySending: false,
+      notifyTargetDate: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0],
+      notifyPreview: null,
+      notifyDepartments: [],
+      notifyChannels: [],
+      notifySchedulerStatus: null,
+      notifyDeptPreset: 'default',
+      notifySelectedDeptIds: ['14', '27'],
+      notifyLastInfo: {
+        last_sent_date: null,
+        last_sent_at: null,
+        last_status: null
+      },
+      notifyForm: {
+        channel_mode: 'it',
+        dept_ids: '14,27',
+        include_unapproved: true,
+        notify_time: '07:30',
+        is_enabled: true
+      }
     };
   },
   computed: {
@@ -1220,6 +1545,177 @@ export default {
       } catch (e) {
         console.error(e);
         alert('Error deleting date');
+      }
+    },
+
+    // --- Daily Schedule MOPH Notify ---
+    syncNotifyDeptState(deptIdsStr) {
+      const val = String(deptIdsStr || '14,27').trim().toUpperCase();
+      if (val === 'ALL') {
+        this.notifyDeptPreset = 'all';
+        this.notifySelectedDeptIds = [];
+        this.notifyForm.dept_ids = 'ALL';
+      } else {
+        const list = val.split(',').map((s) => s.trim()).filter(Boolean);
+        this.notifySelectedDeptIds = list;
+        this.notifyForm.dept_ids = list.join(',') || '14,27';
+        this.notifyDeptPreset = (list.length === 2 && list.includes('14') && list.includes('27')) ? 'default' : 'custom';
+      }
+    },
+    setNotifyDeptPreset(preset) {
+      this.notifyDeptPreset = preset;
+      if (preset === 'default') {
+        this.notifySelectedDeptIds = ['14', '27'];
+        this.notifyForm.dept_ids = '14,27';
+        this.fetchNotifyPreview();
+      } else if (preset === 'all') {
+        this.notifySelectedDeptIds = [];
+        this.notifyForm.dept_ids = 'ALL';
+        this.fetchNotifyPreview();
+      } else {
+        if (this.notifySelectedDeptIds.length === 0) {
+          this.notifySelectedDeptIds = ['14', '27'];
+        }
+        this.notifyForm.dept_ids = this.notifySelectedDeptIds.join(',');
+      }
+    },
+    onCustomDeptChange() {
+      this.notifyForm.dept_ids = this.notifySelectedDeptIds.join(',') || '14,27';
+      this.fetchNotifyPreview();
+    },
+    async openNotifyModal() {
+      this.showNotifyModal = true;
+      this.notifyLoading = true;
+      try {
+        const token = localStorage.getItem('user_token');
+        const res = await axios.get('/api-digital/schedule/daily_notify.php', {
+          params: { date: this.notifyTargetDate },
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.data && res.data.status === 'success') {
+          const s = res.data.settings || {};
+          this.notifyChannels = res.data.channels || [];
+          this.notifyForm.channel_mode = s.channel_mode || 'it';
+          this.notifyForm.include_unapproved = Boolean(s.include_unapproved);
+          this.notifyForm.notify_time = s.notify_time || '07:30';
+          this.notifyForm.is_enabled = Boolean(s.is_enabled);
+          this.notifyLastInfo = {
+            last_sent_date: s.last_sent_date,
+            last_sent_at: s.last_sent_at,
+            last_status: s.last_status
+          };
+          this.notifySchedulerStatus = res.data.scheduler || null;
+          this.notifyDepartments = res.data.departments || [];
+          this.syncNotifyDeptState(s.dept_ids || '14,27');
+          this.notifyPreview = res.data.preview || null;
+        }
+      } catch (err) {
+        console.error('Error loading notify settings:', err);
+        Swal.fire('ผิดพลาด', err.response?.data?.message || 'ไม่สามารถโหลดข้อมูลแจ้งเตือนได้', 'error');
+      } finally {
+        this.notifyLoading = false;
+      }
+    },
+    closeNotifyModal() {
+      this.showNotifyModal = false;
+    },
+    async fetchNotifyPreview() {
+      this.notifyLoading = true;
+      try {
+        const token = localStorage.getItem('user_token');
+        const res = await axios.get('/api-digital/schedule/daily_notify.php', {
+          params: {
+            date: this.notifyTargetDate,
+            dept_ids: this.notifyForm.dept_ids,
+            include_unapproved: this.notifyForm.include_unapproved ? 1 : 0
+          },
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.data && res.data.status === 'success') {
+          this.notifyPreview = res.data.preview || null;
+        }
+      } catch (err) {
+        console.error('Error refreshing notify preview:', err);
+      } finally {
+        this.notifyLoading = false;
+      }
+    },
+    async saveNotifySettings() {
+      this.notifySaving = true;
+      try {
+        const token = localStorage.getItem('user_token');
+        const res = await axios.post(
+          '/api-digital/schedule/daily_notify.php',
+          {
+            action: 'save_settings',
+            target_date: this.notifyTargetDate,
+            ...this.notifyForm
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (res.data && res.data.status === 'success') {
+          const s = res.data.settings || {};
+          if (res.data.channels) {
+            this.notifyChannels = res.data.channels;
+          }
+          this.notifySchedulerStatus = res.data.scheduler || this.notifySchedulerStatus;
+          this.notifyLastInfo = {
+            last_sent_date: s.last_sent_date,
+            last_sent_at: s.last_sent_at,
+            last_status: s.last_status
+          };
+          this.notifyPreview = res.data.preview || this.notifyPreview;
+          Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', text: res.data.message, timer: 1600, showConfirmButton: false });
+        } else {
+          Swal.fire('ผิดพลาด', res.data?.message || 'บันทึกไม่สำเร็จ', 'error');
+        }
+      } catch (err) {
+        Swal.fire('ผิดพลาด', err.response?.data?.message || 'ไม่สามารถบันทึกการตั้งค่าได้', 'error');
+      } finally {
+        this.notifySaving = false;
+      }
+    },
+    async sendNotifyNow() {
+      const confirmResult = await Swal.fire({
+        title: 'ยืนยันส่งแจ้งเตือนเข้า LINE?',
+        text: `ส่งสรุปเวรห้องบัตร, ผู้ลา และไปราชการของวันที่ ${this.notifyTargetDate} ผ่าน MOPH Notify`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'ส่งเลย',
+        cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: '#198754'
+      });
+      if (!confirmResult.isConfirmed) return;
+
+      this.notifySending = true;
+      try {
+        const token = localStorage.getItem('user_token');
+        const res = await axios.post(
+          '/api-digital/schedule/daily_notify.php',
+          {
+            action: 'send_now',
+            save_before_send: true,
+            target_date: this.notifyTargetDate,
+            ...this.notifyForm
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (res.data && res.data.status === 'success') {
+          const s = res.data.settings || {};
+          this.notifyLastInfo = {
+            last_sent_date: s.last_sent_date,
+            last_sent_at: s.last_sent_at,
+            last_status: s.last_status
+          };
+          if (res.data.summary) this.notifyPreview = res.data.summary;
+          Swal.fire('ส่งสำเร็จ!', res.data.message, 'success');
+        } else {
+          Swal.fire('ส่งไม่สำเร็จ', res.data?.message || 'เกิดข้อผิดพลาดในการส่ง MOPH Notify', 'error');
+        }
+      } catch (err) {
+        Swal.fire('ผิดพลาด', err.response?.data?.message || 'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', 'error');
+      } finally {
+        this.notifySending = false;
       }
     }
   },

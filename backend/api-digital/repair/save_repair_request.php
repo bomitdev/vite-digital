@@ -6,6 +6,7 @@ header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers
 
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../auth_utils.php';
+require_once __DIR__ . '/../../moph_notify_helper.php';
 
 // Secure Auth
 $userData = authGuard();
@@ -136,9 +137,6 @@ try {
         ]);
 
         // --- LINE NOTIFY START ---
-        $client_key = '151518fbb68266eb98604e010d4ffdb231365f32';
-        $secret_key = 'KVQRE5QY6PEDRAQRX6UGQU7QOO5Y';
-
         $linePayload = [
             "messages" => [
                 [
@@ -221,22 +219,11 @@ try {
             ]
         ];
 
-        $url = "https://morpromt2f.moph.go.th/api/notify/send";
-        $headers = [
-            "Content-Type: application/json",
-            "client-key: {$client_key}",
-            "secret-key: {$secret_key}"
-        ];
-
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($linePayload, JSON_UNESCAPED_UNICODE));
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-
-        curl_exec($ch);
+        try {
+            sendMophNotifyToChannel($pdo2, 'it', $linePayload);
+        } catch (Exception $notifyEx) {
+            error_log("MOPH Notify Error in save_repair_request: " . $notifyEx->getMessage());
+        }
         // --- LINE NOTIFY END ---
     }
 

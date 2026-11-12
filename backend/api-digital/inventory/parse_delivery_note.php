@@ -15,9 +15,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../cors.php';
+require_once __DIR__ . '/inv_log_helper.php';
 
 // Helper to get environment variable from backend/.env
-function getEnvValue($key, $default = '') {
+function getEnvValue(string $key, string $default = ''): string {
     $envPath = __DIR__ . '/../../.env';
     if (file_exists($envPath)) {
         $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -38,7 +39,7 @@ function getEnvValue($key, $default = '') {
 }
 
 // Helper to save env value to backend/.env
-function setEnvValue($key, $value) {
+function setEnvValue(string $key, string $value): void {
     $envPath = __DIR__ . '/../../.env';
     $content = file_exists($envPath) ? file_get_contents($envPath) : '';
     if (preg_match("/^{$key}=.*/m", $content)) {
@@ -222,7 +223,7 @@ EOT;
         $result = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlErr = curl_error($ch);
-        curl_close($ch);
+        unset($ch);
 
         if ($httpCode === 200 && !empty($result)) {
             $geminiResponse = $result;
@@ -370,6 +371,17 @@ EOT;
         }
         unset($it);
     }
+
+    recordInvActivityLog($pdo2, [
+        'warehouse_id' => isset($warehouseId) && $warehouseId ? (int)$warehouseId : null,
+        'page_code' => 'receive',
+        'page_name' => 'ตรวจรับพัสดุเข้าคลัง',
+        'action' => 'AI_PARSE_DELIVERY_NOTE',
+        'target_type' => 'delivery_note',
+        'target_id' => isset($parsed['invoice_no']) ? (string)$parsed['invoice_no'] : null,
+        'details' => 'สแกนและอ่านใบส่งของด้วย AI จำนวน ' . count($parsed['items'] ?? []) . ' รายการ',
+        'meta' => ['items_count' => count($parsed['items'] ?? []), 'vendor_name' => $parsed['vendor_name'] ?? null],
+    ], $pdo3 ?? null);
 
     echo json_encode([
         'status' => 'success',

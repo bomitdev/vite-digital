@@ -1,6 +1,7 @@
 <?php
 require_once '../../config.php';
 require_once '../../cors.php';
+require_once __DIR__ . '/inv_log_helper.php';
 
 header("Content-Type: application/json; charset=utf-8");
 
@@ -20,7 +21,7 @@ if ($id <= 0) {
 
 try {
     // 1. ตรวจสอบว่ามีใบสั่งซื้อนี้อยู่หรือไม่
-    $stmt = $pdo2->prepare("SELECT id, po_number, pr_id, status, note FROM inv_purchase_orders WHERE id = ?");
+    $stmt = $pdo2->prepare("SELECT id, po_number, pr_id, warehouse_id, status, note FROM inv_purchase_orders WHERE id = ?");
     $stmt->execute([$id]);
     $po = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -71,6 +72,17 @@ try {
     $stmtUpdate->execute([$updatedNote, $id]);
 
     $pdo2->commit();
+
+    recordInvActivityLog($pdo2, [
+        'warehouse_id' => !empty($po['warehouse_id']) ? (int)$po['warehouse_id'] : null,
+        'page_code' => 'po',
+        'page_name' => 'จัดซื้อจัดจ้าง (PO)',
+        'action' => 'CANCEL_PO',
+        'target_type' => 'po',
+        'target_id' => (string)$id,
+        'details' => "ยกเลิกใบสั่งซื้อเลขที่ {$po['po_number']}" . ($reason ? " (เหตุผล: {$reason})" : ''),
+        'meta' => ['reason' => $reason],
+    ], $pdo3 ?? null);
 
     echo json_encode([
         'status' => 'success',

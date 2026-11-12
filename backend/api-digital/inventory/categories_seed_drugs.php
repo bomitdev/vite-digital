@@ -14,7 +14,7 @@ $warehouse_id = (int)($data['warehouse_id'] ?? 0);
 
 if (!$warehouse_id) {
     // default to pharmacy warehouse if not specified
-    $st = $pdo2->query("SELECT id FROM inv_warehouses WHERE code = '03' OR name LIKE '%ยา%' LIMIT 1");
+    $st = $pdo2->query("SELECT id FROM inv_warehouses WHERE name LIKE '%ยา%' OR id = 2 ORDER BY (name LIKE '%ยา%') DESC, id ASC LIMIT 1");
     $wh = $st->fetch(PDO::FETCH_ASSOC);
     $warehouse_id = $wh ? (int)$wh['id'] : 2;
 }
@@ -58,6 +58,18 @@ try {
             $inserted++;
         }
     }
+
+    require_once __DIR__ . '/inv_log_helper.php';
+    recordInvActivityLog($pdo2, [
+        'warehouse_id' => $warehouse_id,
+        'page_code' => 'settings',
+        'page_name' => 'ตั้งค่าระบบ (Master Data)',
+        'action' => 'SEED_DRUG_CATEGORIES',
+        'target_type' => 'category',
+        'target_id' => (string)$warehouse_id,
+        'details' => "นำเข้ากลุ่มยามาตรฐานเข้าคลัง #{$warehouse_id} เพิ่มใหม่ {$inserted} รายการ",
+        'meta' => ['inserted' => $inserted],
+    ], $pdo3 ?? null);
 
     echo json_encode([
         'status' => 'success',

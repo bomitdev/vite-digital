@@ -453,7 +453,7 @@
           <!-- Category Inventory System (Phase 1-3) -->
           <template
             v-if="
-              isAdmin ||
+              isInventoryAdmin ||
               hasPermission('menu_pharmacy_material_manage') ||
               hasPermission('menu_med_material_manage') ||
               hasPermission('menu_gm_material_manage') ||
@@ -996,6 +996,74 @@
                   </div>
                 </div>
               </div>
+              <!-- สถาปัตยกรรมระบบ (Archify) -->
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('administrator')">
+                <div
+                  class="nav-card h-100 text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
+                  @click="$router.push('/architecture')"
+                  style="background: linear-gradient(135deg, #0f766e 0%, #0ea5e9 100%) !important"
+                >
+                  <div
+                    class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
+                  ></div>
+                  <div class="position-relative z-1 d-flex flex-column h-100">
+                    <div
+                      class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
+                    >
+                      <i class="bi bi-diagram-3-fill fs-4"></i>
+                    </div>
+                    <h6 class="fw-bold text-white mb-1 text-truncate" title="สถาปัตยกรรมระบบ">
+                      สถาปัตยกรรมระบบ
+                    </h6>
+                    <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
+                      แผนภาพโครงสร้างทั้งระบบ (Archify)
+                    </p>
+                    <div
+                      class="d-flex align-items-center text-white fw-bold small mt-auto"
+                      style="font-size: 0.75rem"
+                    >
+                      เข้าใช้งาน
+                      <i
+                        class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
+                      ></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- ตั้งค่าคีย์ MOPH Notify (Admin Only) -->
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('administrator')">
+                <div
+                  class="nav-card h-100 text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
+                  @click="$router.push('/moph-notify-settings')"
+                  style="background: linear-gradient(135deg, #15803d 0%, #10b981 100%) !important"
+                >
+                  <div
+                    class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
+                  ></div>
+                  <div class="position-relative z-1 d-flex flex-column h-100">
+                    <div
+                      class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
+                    >
+                      <i class="bi bi-key-fill fs-4"></i>
+                    </div>
+                    <h6 class="fw-bold text-white mb-1 text-truncate" title="ตั้งค่าคีย์ MOPH Notify">
+                      ตั้งค่าคีย์ MOPH Notify
+                    </h6>
+                    <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
+                      จัดการ Key แจ้งเตือน LINE ในฐานข้อมูล
+                    </p>
+                    <div
+                      class="d-flex align-items-center text-white fw-bold small mt-auto"
+                      style="font-size: 0.75rem"
+                    >
+                      เข้าใช้งาน
+                      <i
+                        class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
+                      ></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <!-- Git Sync -->
               <div class="col-6 col-md-4 col-lg-3" v-if="userProfile?.username === 'suriya'">
                 <div
@@ -1067,7 +1135,7 @@
                 <span class="text-muted" v-if="userProfile?.department">({{ userProfile.department }})</span>
               </div>
               <div class="d-flex gap-2">
-                <span v-if="isAdmin" class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 rounded-pill">
+                <span v-if="isInventoryAdmin" class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 rounded-pill">
                   <i class="bi bi-shield-check me-1"></i> สิทธิ์ผู้ดูแลระบบ (เข้าถึงได้ทุกคลัง)
                 </span>
                 <span v-else-if="userWarehouses.some(w => w.access_level === 'MANAGER')" class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill">
@@ -1103,7 +1171,7 @@
             <div v-else class="row g-3">
               
               <!-- Option for Admin: All Warehouses -->
-              <div class="col-12" v-if="isAdmin">
+              <div class="col-12" v-if="isInventoryAdmin">
                 <div 
                   class="warehouse-card p-3 rounded-4 bg-white border border-2 border-primary-subtle shadow-sm cursor-pointer position-relative d-flex align-items-center justify-content-between transition-all"
                   @click="selectWarehouseAndEnter(null)"
@@ -1186,7 +1254,7 @@
             </small>
             <div class="d-flex gap-2">
               <button 
-                v-if="isAdmin || userWarehouses.some(w => w.access_level === 'MANAGER')"
+                v-if="isInventoryAdmin || userWarehouses.some(w => w.access_level === 'MANAGER')"
                 type="button" 
                 class="btn btn-outline-primary rounded-pill px-3 fw-bold small"
                 @click="goToSettingsDirectly"
@@ -1262,6 +1330,13 @@ export default {
         'menu_git_sync',
         'menu_ha'
       ]);
+    },
+    isInventoryAdmin() {
+      return this.hasPermission([
+        'administrator',
+        'menu_inventory_admin',
+        'menu_inventory_manage'
+      ]);
     }
   },
   methods: {
@@ -1281,7 +1356,7 @@ export default {
           this.userProfile = response.data;
           const userId = response.data.id || response.data.user_id || '';
           if (userId) {
-            axios.get(`/api-digital/inventory/warehouses.php?user_id=${userId}&is_admin=${this.isAdmin ? 1 : 0}`)
+            axios.get(`/api-digital/inventory/warehouses.php?user_id=${userId}&is_admin=${this.isInventoryAdmin ? 1 : 0}`)
               .then(wRes => {
                 if (wRes.data && wRes.data.status === 'success' && wRes.data.data?.length > 0) {
                   this.hasWarehouseAccess = true;
@@ -1414,7 +1489,7 @@ export default {
 
       try {
         const userId = this.userProfile?.id || this.userProfile?.user_id || '';
-        const isAdmin = this.isAdmin ? 1 : 0;
+        const isAdmin = this.isInventoryAdmin ? 1 : 0;
         const res = await axios.get(`/api-digital/inventory/warehouses.php?user_id=${userId}&is_admin=${isAdmin}`);
         if (res.data && res.data.status === 'success') {
           this.userWarehouses = res.data.data || [];

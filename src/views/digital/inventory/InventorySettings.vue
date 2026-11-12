@@ -122,7 +122,7 @@
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                   <h5 class="fw-bold mb-1">รายชื่อคลังวัสดุทั้งหมด</h5>
-                  <p class="text-muted small mb-0">ผู้ดูแลระบบและผู้ดูแลคลัง (Manager) สามารถสร้างและตั้งค่าคลังได้</p>
+                  <p class="text-muted small mb-0">เฉพาะผู้ดูแลระบบ (Admin) สามารถเพิ่มคลังใหม่ได้ และผู้ดูแลคลัง (Manager) สามารถตั้งค่าคลังของตนเองได้</p>
                 </div>
                 <button 
                   v-if="canCreateWarehouse" 
@@ -2679,6 +2679,7 @@ export default {
       activeTab: 'wh',
       currentUserId: '',
       isAdminUser: false,
+      isSuperAdmin: false,
       isSaving: false,
       isSavingCategory: false,
       isSavingWarehouse: false,
@@ -2854,7 +2855,7 @@ export default {
     },
     isPharmacyWarehouse() {
       if (!this.activeWarehouse) return false;
-      return String(this.activeWarehouse.code) === '03' || (this.activeWarehouse.name || '').includes('ยา');
+      return String(this.activeWarehouse.id) === '2' || (this.activeWarehouse.name || '').includes('ยา');
     },
     isMedicalWarehouse() {
       if (!this.activeWarehouse) return false;
@@ -3034,7 +3035,7 @@ export default {
       return this.isAdminUser || this.warehouses.some(w => w.access_level === 'MANAGER');
     },
     canCreateWarehouse() {
-      return this.isAdminUser || this.isManagerUser;
+      return this.isSuperAdmin;
     }
   },
   watch: {
@@ -3081,6 +3082,7 @@ export default {
         if (response.data && response.data.status === 'success') {
           this.currentUserId = response.data.id || response.data.user_id || '';
           const accessUser = response.data.access_user ? response.data.access_user.split(':') : [];
+          this.isSuperAdmin = accessUser.includes('administrator');
           this.isAdminUser =
             accessUser.includes('administrator') ||
             accessUser.includes('menu_inventory_manage') ||
@@ -3091,12 +3093,14 @@ export default {
             localStorage.getItem('is_admin') === 'true';
         } else {
           this.currentUserId = localStorage.getItem('user_id') || '';
+          this.isSuperAdmin = false;
           this.isAdminUser =
             localStorage.getItem('user_role') === 'admin' ||
             localStorage.getItem('is_admin') === 'true';
         }
       } catch (err) {
         this.currentUserId = localStorage.getItem('user_id') || '';
+        this.isSuperAdmin = false;
         this.isAdminUser =
           localStorage.getItem('user_role') === 'admin' ||
           localStorage.getItem('is_admin') === 'true';
@@ -3160,6 +3164,10 @@ export default {
         this.isEditWarehouse = true;
         this.warehouseForm = { id: wh.id, code: wh.code, name: wh.name, active: wh.active !== undefined ? Number(wh.active) : 1 };
       } else {
+        if (!this.isSuperAdmin) {
+          Swal.fire('ไม่มีสิทธิ์', 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถเพิ่มคลังใหม่ได้', 'warning');
+          return;
+        }
         this.isEditWarehouse = false;
         this.warehouseForm = { id: null, code: '', name: '', active: 1 };
       }
@@ -3167,6 +3175,10 @@ export default {
       modal.show();
     },
     async saveWarehouse() {
+      if (!this.isEditWarehouse && !this.isSuperAdmin) {
+        Swal.fire('ไม่มีสิทธิ์', 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถเพิ่มคลังใหม่ได้', 'warning');
+        return;
+      }
       this.isSavingWarehouse = true;
       try {
         const method = this.isEditWarehouse ? 'put' : 'post';
@@ -4168,11 +4180,7 @@ export default {
       }
     },
     downloadItemTemplate() {
-      const isPharmacy = this.activeWarehouse && (
-        String(this.activeWarehouse.id) === '2' || 
-        String(this.activeWarehouse.code) === '03' || 
-        (this.activeWarehouse.name && this.activeWarehouse.name.includes('ยา'))
-      );
+      const isPharmacy = this.isPharmacyWarehouse;
 
       let templateData = [];
       if (isPharmacy) {

@@ -1,6 +1,7 @@
 <?php
 require_once '../../config.php';
 require_once '../../cors.php';
+require_once __DIR__ . '/inv_log_helper.php';
 
 header("Content-Type: application/json; charset=utf-8");
 
@@ -96,6 +97,8 @@ function getNextItemCode(PDO $pdo2, ?int $warehouse_id = 0, ?int $category_id = 
 
 /**
  * แปลงค่า Flag แบบ 3 สถานะ (1 = ใช่/ส่ง, 0 = ไม่ใช่/ไม่ส่ง, null = ไม่ระบุ)
+ * @param mixed $val
+ * @return int|null
  */
 function parseTriStateFlag($val): ?int {
     if ($val === null || $val === '') return null;
@@ -114,6 +117,9 @@ function parseTriStateFlag($val): ?int {
 
 /**
  * เตรียมและผูกฟิลด์เฉพาะทางเภสัชกรรมและกระทรวงสำหรับ POST / PUT
+ * @param PDO $pdo2
+ * @param array $data
+ * @return array
  */
 function resolvePharmacyPayload(PDO $pdo2, array $data): array {
     $dosage_form_id = !empty($data['dosage_form_id']) ? (int)$data['dosage_form_id'] : null;
@@ -302,7 +308,6 @@ try {
             // Prepared statements for items
             $stmtFindByCode = $pdo2->prepare("SELECT id, item_code, item_name FROM inv_items WHERE warehouse_id = ? AND item_code = ?");
             $stmtFindByName = $pdo2->prepare("SELECT id, item_code, item_name FROM inv_items WHERE warehouse_id = ? AND item_name = ?");
-            $stmtCheckCodeGlobal = $pdo2->prepare("SELECT id FROM inv_items WHERE item_code = ?");
 
             $stmtInsert = $pdo2->prepare("
                 INSERT INTO inv_items (
@@ -568,22 +573,22 @@ try {
                             $skippedCount++;
                         }
                     } else {
-                        // Generate code if empty or duplicate
+                        // Generate code if empty or ensure uniqueness within warehouse
                         if (empty($code)) {
-                            $code = getNextItemCode($pdo2, $warehouse_id, $categoryId);
-                            // Ensure uniqueness in inv_items
-                            $stmtCheckCodeGlobal->execute([$code]);
+                            $baseCode = getNextItemCode($pdo2, $warehouse_id, $categoryId);
+                            $code = $baseCode;
+                            $stmtFindByCode->execute([$warehouse_id, $code]);
                             $counter = 1;
-                            while ($stmtCheckCodeGlobal->fetch()) {
-                                $code = getNextItemCode($pdo2, $warehouse_id, $categoryId) . '-' . $counter;
-                                $stmtCheckCodeGlobal->execute([$code]);
+                            while ($stmtFindByCode->fetch()) {
+                                $code = $baseCode . '-' . $counter;
+                                $stmtFindByCode->execute([$warehouse_id, $code]);
                                 $counter++;
                             }
                         } else {
-                            // Check global code collision
-                            $stmtCheckCodeGlobal->execute([$code]);
-                            if ($stmtCheckCodeGlobal->fetch()) {
-                                $code = $code . '-' . $warehouse_id;
+                            // Check warehouse-scoped collision
+                            $stmtFindByCode->execute([$warehouse_id, $code]);
+                            if ($stmtFindByCode->fetch()) {
+                                $code = $code . '-' . ($rowNum);
                             }
                         }
 
@@ -637,6 +642,16 @@ try {
                 }
 
                 $pdo2->commit();
+
+                recordInvActivityLog($pdo2, [
+                    'warehouse_id' => $warehouse_id,
+                    'page_code' => 'settings',
+                    'page_name' => 'ตั้งค่าระบบ (Master Data)',
+                    'action' => 'BATCH_IMPORT_ITEMS',
+                    'target_type' => 'item',
+                    'details' => "นำเข้ารายการพัสดุเข้าคลัง #{$warehouse_id} (เพิ่มใหม่ {$insertedCount}, อัปเดต {$updatedCount}, ข้าม {$skippedCount})",
+                    'meta' => ['inserted' => $insertedCount, 'updated' => $updatedCount, 'skipped' => $skippedCount],
+                ], $pdo3 ?? null);
 
                 echo json_encode([
                     'status' => 'success',
@@ -749,11 +764,22 @@ try {
             $pharma['moph_updated_text'] ?: null
         ]);
         
+        $newItemId = $pdo2->lastInsertId();
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => $warehouse_id,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'CREATE_ITEM',
+            'target_type' => 'item',
+            'target_id' => (string)$newItemId,
+            'details' => "ลงทะเบียนพัสดุใหม่ [{$item_code}] {$item_name}",
+        ], $pdo3 ?? null);
+
         echo json_encode([
             'status' => 'success', 
             'message' => 'ลงทะเบียนวัสดุใหม่เรียบร้อยแล้ว',
             'item_code' => $item_code,
-            'id' => $pdo2->lastInsertId()
+            'id' => $newItemId
         ]);
 
     } elseif ($method === 'PUT') {
@@ -838,6 +864,16 @@ try {
             $id
         ]);
         
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => $warehouse_id,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'UPDATE_ITEM',
+            'target_type' => 'item',
+            'target_id' => (string)$id,
+            'details' => "แก้ไขข้อมูลพัสดุ [{$item_code}] {$item_name}",
+        ], $pdo3 ?? null);
+
         echo json_encode(['status' => 'success', 'message' => 'แก้ไขข้อมูลวัสดุเรียบร้อยแล้ว']);
 
     } elseif ($method === 'DELETE') {
@@ -855,8 +891,21 @@ try {
             exit;
         }
 
+        $stItemInfo = $pdo2->prepare("SELECT warehouse_id, item_code, item_name FROM inv_items WHERE id = ?");
+        $stItemInfo->execute([$id]);
+        $itemRow = $stItemInfo->fetch(PDO::FETCH_ASSOC);
+
         $del = $pdo2->prepare("DELETE FROM inv_items WHERE id = ?");
         $del->execute([$id]);
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => !empty($itemRow['warehouse_id']) ? (int)$itemRow['warehouse_id'] : null,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'DELETE_ITEM',
+            'target_type' => 'item',
+            'target_id' => (string)$id,
+            'details' => "ลบรายการพัสดุ " . ($itemRow ? "[{$itemRow['item_code']}] {$itemRow['item_name']}" : "#{$id}"),
+        ], $pdo3 ?? null);
         echo json_encode(['status' => 'success', 'message' => 'ลบรายการวัสดุเรียบร้อยแล้ว']);
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Method not allowed.']);

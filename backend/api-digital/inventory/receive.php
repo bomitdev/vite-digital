@@ -1,6 +1,7 @@
 <?php
 require_once '../../config.php';
 require_once '../../cors.php';
+require_once __DIR__ . '/inv_log_helper.php';
 
 header("Content-Type: application/json");
 
@@ -79,22 +80,40 @@ try {
         $stmtUpdatePOItem = $pdo2->prepare("UPDATE inv_purchase_order_items SET qty_received = COALESCE(qty_received, 0) + ? WHERE po_id = ? AND item_id = ?");
     }
 
+    // Preload warehouse categories & item types for smart auto-registration when importing/receiving new items
+    $whCategories = [];
+    $stmtCatList = $pdo2->prepare("SELECT id, code, name FROM inv_categories WHERE warehouse_id = ?");
+    $stmtCatList->execute([$warehouse_id]);
+    foreach ($stmtCatList->fetchAll(PDO::FETCH_ASSOC) as $cRow) {
+        $whCategories[] = $cRow;
+    }
+
+    $whItemTypes = [];
+    $stmtTypeList = $pdo2->prepare("SELECT id, code, name FROM inv_item_types WHERE active = 1 AND (warehouse_id = ? OR warehouse_id IS NULL) ORDER BY warehouse_id DESC");
+    $stmtTypeList->execute([$warehouse_id]);
+    foreach ($stmtTypeList->fetchAll(PDO::FETCH_ASSOC) as $tRow) {
+        $whItemTypes[] = $tRow;
+    }
+
     // 2. Process Items
     foreach ($items as $item) {
         $po_item_id = !empty($item['po_item_id']) ? (int)$item['po_item_id'] : null;
         $item_id = (int)($item['item_id'] ?? 0);
-        $qty = (float)$item['qty'];
+        $qty = (float)($item['qty'] ?? 0);
         $unit_id = (int)($item['unit_id'] ?? 0);
         $unit_cost = (float)($item['unit_cost'] ?? 0);
         $total_price = $qty * $unit_cost;
-        $lot_number = trim($item['lot_number'] ?? '');
-        $expiry_date = !empty($item['expiry_date']) ? $item['expiry_date'] : null;
-        $item_name = trim($item['item_name'] ?? '');
-        $item_name_en = trim($item['item_name_en'] ?? '');
+        $lot_number = trim((string)($item['lot_number'] ?? ''));
+        $expiry_date = !empty($item['expiry_date']) ? trim((string)$item['expiry_date']) : null;
+        $item_code_input = trim((string)($item['item_code'] ?? ''));
+        $item_name = trim((string)($item['item_name'] ?? ''));
+        $item_name_en = trim((string)($item['item_name_en'] ?? ''));
+        $category_name_input = trim((string)($item['category_name'] ?? ''));
+        $item_type_name_input = trim((string)($item['item_type_name'] ?? ''));
 
         // Auto-resolve unit_id if missing or 0
         if ($unit_id <= 0 && !empty($item['unit_name'])) {
-            $unitName = trim($item['unit_name']);
+            $unitName = trim((string)$item['unit_name']);
             $uStmt = $pdo2->prepare("SELECT id FROM inv_units WHERE name = ? AND (warehouse_id = ? OR warehouse_id IS NULL) ORDER BY warehouse_id DESC LIMIT 1");
             $uStmt->execute([$unitName, $warehouse_id]);
             $unit_id = (int)$uStmt->fetchColumn();
@@ -111,47 +130,132 @@ try {
             }
         }
 
-        // Auto-resolve or register item_id if 0 or null (e.g. from quotation custom items)
-        if ($item_id <= 0 && $item_name !== '') {
-            $chkItem = $pdo2->prepare("SELECT id FROM inv_items WHERE warehouse_id = ? AND (item_name = ? OR item_name_en = ?) LIMIT 1");
-            $chkItem->execute([$warehouse_id, $item_name, $item_name]);
-            $existingItemId = (int)$chkItem->fetchColumn();
+        // Auto-resolve or register item_id if 0 or null (e.g. from Excel/CSV import or AI bill)
+        if ($item_id <= 0 && ($item_code_input !== '' || $item_name !== '')) {
+            $existingItemId = 0;
+
+            if ($item_code_input !== '') {
+                $chkByCode = $pdo2->prepare("SELECT id FROM inv_items WHERE warehouse_id = ? AND item_code = ? LIMIT 1");
+                $chkByCode->execute([$warehouse_id, $item_code_input]);
+                $existingItemId = (int)$chkByCode->fetchColumn();
+            }
+
+            if ($existingItemId <= 0 && $item_code_input === '' && $item_name !== '') {
+                $chkItem = $pdo2->prepare("SELECT id FROM inv_items WHERE warehouse_id = ? AND (item_name = ? OR item_name_en = ?) LIMIT 1");
+                $chkItem->execute([$warehouse_id, $item_name, $item_name]);
+                $existingItemId = (int)$chkItem->fetchColumn();
+            }
 
             if ($existingItemId > 0) {
                 $item_id = $existingItemId;
-            } else {
-                // Generate next item code
-                $category_id = !empty($item['category_id']) ? (int)$item['category_id'] : 0;
-                $catPrefix = 'C';
-                if ($category_id > 0) {
-                    $cStmt = $pdo2->prepare("SELECT code FROM inv_categories WHERE id = ?");
-                    $cStmt->execute([$category_id]);
-                    $catCode = trim($cStmt->fetchColumn() ?: '');
-                    if (preg_match('/^([A-Za-z]+)/', $catCode, $cm)) {
-                        $catPrefix = strtoupper($cm[1]);
+            } elseif ($item_name !== '') {
+                // Resolve category_id (explicit ID -> name/code match -> HK/OS prefix match)
+                $category_id = !empty($item['category_id']) ? (int)$item['category_id'] : null;
+                if (!$category_id && $category_name_input !== '') {
+                    $catNeedle = mb_strtolower($category_name_input);
+                    foreach ($whCategories as $cRow) {
+                        if (mb_strtolower(trim($cRow['name'])) === $catNeedle || mb_strtolower(trim((string)$cRow['code'])) === $catNeedle) {
+                            $category_id = (int)$cRow['id'];
+                            break;
+                        }
                     }
                 }
-                $maxCodeStmt = $pdo2->prepare("SELECT item_code FROM inv_items WHERE warehouse_id = ? AND item_code LIKE ? ORDER BY id DESC LIMIT 1");
-                $maxCodeStmt->execute([$warehouse_id, $catPrefix . '%']);
-                $lastCode = $maxCodeStmt->fetchColumn();
-                $nextNum = 1;
-                if ($lastCode && preg_match('/(\d+)$/', $lastCode, $mDigits)) {
-                    $nextNum = (int)$mDigits[1] + 1;
+                if (!$category_id && $item_code_input !== '') {
+                    $upperCode = strtoupper($item_code_input);
+                    $hint = str_starts_with($upperCode, 'HK') ? 'งานบ้าน' : (str_starts_with($upperCode, 'OS') ? 'สำนักงาน' : '');
+                    if ($hint !== '') {
+                        foreach ($whCategories as $cRow) {
+                            if (mb_strpos($cRow['name'], $hint) !== false) {
+                                $category_id = (int)$cRow['id'];
+                                break;
+                            }
+                        }
+                    }
                 }
-                $newItemCode = $catPrefix . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+
+                // Resolve item_type_id (explicit ID -> name/code match -> HK/OS prefix match)
+                $item_type_id = !empty($item['item_type_id']) ? (int)$item['item_type_id'] : null;
+                if (!$item_type_id && $item_type_name_input !== '') {
+                    $typeNeedle = mb_strtolower($item_type_name_input);
+                    foreach ($whItemTypes as $tRow) {
+                        if (mb_strtolower(trim($tRow['name'])) === $typeNeedle || mb_strtolower(trim((string)$tRow['code'])) === $typeNeedle) {
+                            $item_type_id = (int)$tRow['id'];
+                            break;
+                        }
+                    }
+                }
+                if (!$item_type_id && $item_code_input !== '') {
+                    $upperCode = strtoupper($item_code_input);
+                    $hint = str_starts_with($upperCode, 'HK') ? 'งานบ้าน' : (str_starts_with($upperCode, 'OS') ? 'สำนักงาน' : '');
+                    if ($hint !== '') {
+                        foreach ($whItemTypes as $tRow) {
+                            if (mb_strpos($tRow['name'], $hint) !== false) {
+                                $item_type_id = (int)$tRow['id'];
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Preserve caller's item_code if supplied; otherwise generate next sequential code
+                $newItemCode = $item_code_input;
+                if ($newItemCode === '') {
+                    $catPrefix = 'C';
+                    if ($category_id) {
+                        foreach ($whCategories as $cRow) {
+                            if ((int)$cRow['id'] === $category_id && preg_match('/^([A-Za-z]+)/', trim((string)$cRow['code']), $cm)) {
+                                $catPrefix = strtoupper($cm[1]);
+                                break;
+                            }
+                        }
+                    }
+                    $maxCodeStmt = $pdo2->prepare("SELECT item_code FROM inv_items WHERE warehouse_id = ? AND item_code LIKE ? ORDER BY id DESC LIMIT 1");
+                    $maxCodeStmt->execute([$warehouse_id, $catPrefix . '%']);
+                    $lastCode = $maxCodeStmt->fetchColumn();
+                    $nextNum = 1;
+                    if ($lastCode && preg_match('/(\d+)$/', $lastCode, $mDigits)) {
+                        $nextNum = (int)$mDigits[1] + 1;
+                    }
+                    $newItemCode = $catPrefix . str_pad((string)$nextNum, 3, '0', STR_PAD_LEFT);
+                }
+
+                $lotControlFlag = isset($item['lot_control']) ? (int)(bool)$item['lot_control'] : ($lot_number !== '' ? 1 : 0);
+                $expControlFlag = isset($item['expiry_control']) ? (int)(bool)$item['expiry_control'] : ($expiry_date ? 1 : 0);
 
                 $insItem = $pdo2->prepare("
-                    INSERT INTO inv_items (item_code, item_name, item_name_en, warehouse_id, unit_id, standard_price, last_purchase_price, active)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+                    INSERT INTO inv_items
+                        (item_code, item_name, item_name_en, category_id, item_type_id, warehouse_id, unit_id, purchase_unit_id, issue_unit_id, conversion_rate, standard_price, last_purchase_price, lot_control, expiry_control, active)
+                    VALUES
+                        (?, ?, ?, ?, ?, ?, ?, ?, ?, 1.0000, ?, ?, ?, ?, 1)
                 ");
-                $insItem->execute([$newItemCode, $item_name, $item_name_en ?: $item_name, $warehouse_id, $unit_id ?: 24, $unit_cost, $unit_cost]);
+                $effUnitId = $unit_id > 0 ? $unit_id : null;
+                $insItem->execute([
+                    $newItemCode,
+                    $item_name,
+                    $item_name_en ?: null,
+                    $category_id,
+                    $item_type_id,
+                    $warehouse_id,
+                    $effUnitId,
+                    $effUnitId,
+                    $effUnitId,
+                    $unit_cost,
+                    $unit_cost,
+                    $lotControlFlag,
+                    $expControlFlag,
+                ]);
                 $item_id = (int)$pdo2->lastInsertId();
             }
 
             // If linked to PO item, update po item's item_id
-            if ($po_item_id) {
+            if ($po_item_id && $item_id > 0) {
                 $pdo2->prepare("UPDATE inv_purchase_order_items SET item_id = ? WHERE id = ?")->execute([$item_id, $po_item_id]);
             }
+        }
+
+        // Rows with qty <= 0 only ensure master registration (no 0-qty receipt/stock transaction)
+        if ($qty <= 0 || $item_id <= 0) {
+            continue;
         }
 
         // Insert Receipt Item
@@ -217,6 +321,17 @@ try {
     }
 
     $pdo2->commit();
+    recordInvActivityLog($pdo2, [
+        'warehouse_id' => $warehouse_id,
+        'user_fullname' => $user_name,
+        'page_code' => 'receive',
+        'page_name' => 'ตรวจรับพัสดุเข้าคลัง',
+        'action' => 'RECEIVE_STOCK',
+        'target_type' => 'receipt',
+        'target_id' => (string)$receipt_id,
+        'details' => "ตรวจรับพัสดุเข้าคลัง เลขที่ {$receipt_no} จำนวน " . count($items) . " รายการ (มูลค่า " . number_format((float)$total_amount, 2) . " บาท)",
+        'meta' => ['receipt_no' => $receipt_no, 'po_id' => $po_id, 'invoice_no' => $invoice_no, 'items_count' => count($items), 'total_amount' => $total_amount],
+    ], $pdo3 ?? null);
     echo json_encode(['status' => 'success', 'message' => 'Stock Received successfully', 'receipt_id' => $receipt_id]);
 
 } catch (Exception $e) {

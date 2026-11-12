@@ -217,6 +217,7 @@
 import axios from 'axios';
 import moment from 'moment';
 import Swal from 'sweetalert2';
+import { logInventoryEvent } from '../../../utils/inventoryLogger';
 
 export default {
   name: 'InventoryStockCard',
@@ -410,6 +411,19 @@ export default {
         }
 
         this.hasSearched = true;
+        logInventoryEvent({
+          action: 'VIEW_STOCK_CARD',
+          page_code: 'stock_card',
+          warehouse_id: this.filters.warehouse_id ? Number(this.filters.warehouse_id) : null,
+          target_type: 'item',
+          target_id: String(this.filters.item_id),
+          details: `เปิดดู Stock Card พัสดุ [${this.selectedItem.item_code || '-'}] ${this.selectedItem.item_name || ''}`,
+          meta: {
+            current_balance: this.currentBalance,
+            transactions_count: this.transactions.length,
+          },
+          dedupeMs: 3000,
+        });
       } catch (err) {
         console.error(err);
         Swal.fire('ข้อผิดพลาด', 'ไม่สามารถดึงข้อมูลสต๊อกการ์ดได้', 'error');

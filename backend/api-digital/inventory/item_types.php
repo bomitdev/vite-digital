@@ -11,6 +11,28 @@ if (!isset($pdo2)) {
 
 $method = $_SERVER['REQUEST_METHOD'];
 
+/**
+ * ตรวจสอบรหัสประเภทซ้ำภายในคลังเดียวกัน (หรือระดับ Global ถ้า warehouse_id เป็น null)
+ * @param PDO $pdo2
+ * @param string $code
+ * @param int|null $warehouse_id
+ * @param int|null $excludeId
+ * @return bool
+ */
+function hasDuplicateItemTypeCode(PDO $pdo2, string $code, ?int $warehouse_id, ?int $excludeId = null): bool {
+    $sql = $warehouse_id
+        ? "SELECT id FROM inv_item_types WHERE code = ? AND warehouse_id = ?"
+        : "SELECT id FROM inv_item_types WHERE code = ? AND warehouse_id IS NULL";
+    $params = $warehouse_id ? [$code, $warehouse_id] : [$code];
+    if ($excludeId) {
+        $sql .= " AND id != ?";
+        $params[] = $excludeId;
+    }
+    $chk = $pdo2->prepare($sql);
+    $chk->execute($params);
+    return (bool)$chk->fetch();
+}
+
 try {
     if ($method === 'GET') {
         $warehouse_id = isset($_GET['warehouse_id']) ? (int)$_GET['warehouse_id'] : 0;
@@ -49,17 +71,26 @@ try {
             exit;
         }
 
-        $chk = $pdo2->prepare("SELECT id FROM inv_item_types WHERE code = ?");
-        $chk->execute([$code]);
-        if ($chk->fetch()) {
-            echo json_encode(['status' => 'error', 'message' => "รหัสประเภทเวชภัณฑ์นี้ ({$code}) มีอยู่ในระบบแล้ว"]);
+        if (hasDuplicateItemTypeCode($pdo2, $code, $warehouse_id)) {
+            echo json_encode(['status' => 'error', 'message' => "รหัสประเภทเวชภัณฑ์นี้ ({$code}) มีอยู่ในคลังนี้แล้ว"]);
             exit;
         }
 
         $stmt = $pdo2->prepare("INSERT INTO inv_item_types (code, name, report_group, moph_report_group, ap_account_code, debit_account_code, credit_account_code, warehouse_id, active)
                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([$code, $name, $report_group, $moph_report_group, $ap_account_code, $debit_account_code, $credit_account_code, $warehouse_id, $active]);
-        
+        $newId = $pdo2->lastInsertId();
+        require_once __DIR__ . '/inv_log_helper.php';
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => $warehouse_id,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'CREATE_ITEM_TYPE',
+            'target_type' => 'item_type',
+            'target_id' => (string)$newId,
+            'details' => "เพิ่มประเภทพัสดุ/เวชภัณฑ์ [{$code}] {$name}",
+        ], $pdo3 ?? null);
+
         echo json_encode(['status' => 'success', 'message' => 'เพิ่มประเภทเวชภัณฑ์เรียบร้อยแล้ว'], JSON_UNESCAPED_UNICODE);
 
     } elseif ($method === 'PUT') {
@@ -80,10 +111,8 @@ try {
             exit;
         }
 
-        $chk = $pdo2->prepare("SELECT id FROM inv_item_types WHERE code = ? AND id != ?");
-        $chk->execute([$code, $id]);
-        if ($chk->fetch()) {
-            echo json_encode(['status' => 'error', 'message' => "รหัสประเภทเวชภัณฑ์นี้ ({$code}) ซ้ำกับรายการอื่น"]);
+        if (hasDuplicateItemTypeCode($pdo2, $code, $warehouse_id, $id)) {
+            echo json_encode(['status' => 'error', 'message' => "รหัสประเภทเวชภัณฑ์นี้ ({$code}) ซ้ำกับรายการอื่นในคลังนี้"]);
             exit;
         }
 
@@ -99,6 +128,17 @@ try {
                                     active = ? 
                                 WHERE id = ?");
         $stmt->execute([$code, $name, $report_group, $moph_report_group, $ap_account_code, $debit_account_code, $credit_account_code, $warehouse_id, $active, $id]);
+
+        require_once __DIR__ . '/inv_log_helper.php';
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => $warehouse_id,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'UPDATE_ITEM_TYPE',
+            'target_type' => 'item_type',
+            'target_id' => (string)$id,
+            'details' => "แก้ไขประเภทพัสดุ/เวชภัณฑ์ [{$code}] {$name}",
+        ], $pdo3 ?? null);
 
         echo json_encode(['status' => 'success', 'message' => 'อัปเดตประเภทเวชภัณฑ์เรียบร้อยแล้ว'], JSON_UNESCAPED_UNICODE);
 
@@ -116,8 +156,22 @@ try {
             exit;
         }
 
+        $info = $pdo2->prepare("SELECT warehouse_id, code, name FROM inv_item_types WHERE id = ?");
+        $info->execute([$id]);
+        $typeRow = $info->fetch(PDO::FETCH_ASSOC);
+
         $stmt = $pdo2->prepare("DELETE FROM inv_item_types WHERE id = ?");
         $stmt->execute([$id]);
+        require_once __DIR__ . '/inv_log_helper.php';
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => !empty($typeRow['warehouse_id']) ? (int)$typeRow['warehouse_id'] : null,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'DELETE_ITEM_TYPE',
+            'target_type' => 'item_type',
+            'target_id' => (string)$id,
+            'details' => "ลบประเภทพัสดุ/เวชภัณฑ์ " . ($typeRow ? "[{$typeRow['code']}] {$typeRow['name']}" : "#{$id}"),
+        ], $pdo3 ?? null);
         echo json_encode(['status' => 'success', 'message' => 'ลบประเภทเวชภัณฑ์เรียบร้อยแล้ว'], JSON_UNESCAPED_UNICODE);
 
     } else {

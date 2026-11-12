@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../cors.php';
+require_once __DIR__ . '/inv_log_helper.php';
 
 header("Content-Type: application/json; charset=utf-8");
 
@@ -123,6 +124,18 @@ try {
     }
 
     $pdo2->commit();
+
+    recordInvActivityLog($pdo2, [
+        'warehouse_id' => $warehouse_id,
+        'user_fullname' => $requester_name,
+        'page_code' => 'requisition_form',
+        'page_name' => 'สร้างคำขอเบิกวัสดุ',
+        'action' => 'CREATE_REQUISITION',
+        'target_type' => 'requisition',
+        'target_id' => (string)$requisition_id,
+        'details' => "สร้างคำขอเบิกวัสดุ {$req_no} (หน่วยงาน: " . ($department_name ?: '-') . ") จำนวน " . count($items) . " รายการ",
+        'meta' => ['req_no' => $req_no, 'department_name' => $department_name, 'items_count' => count($items)],
+    ], $pdo3 ?? null);
 
     echo json_encode([
         'status' => 'success',

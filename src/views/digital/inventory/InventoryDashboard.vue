@@ -2,7 +2,7 @@
   <div class="inventory-layout min-vh-100 d-flex bg-light">
     <!-- Left Sidebar -->
     <aside
-      class="inventory-sidebar bg-white border-end shadow-sm d-flex flex-column"
+      class="inventory-sidebar border-end shadow-sm d-flex flex-column"
       :class="{ 'sidebar-collapsed': isCollapsed, 'sidebar-mobile-open': mobileOpen }"
     >
       <!-- Sidebar Header -->
@@ -12,8 +12,8 @@
             <i class="bi bi-box-seam-fill"></i>
           </div>
           <div class="sidebar-brand-text text-truncate">
-            <div class="fw-bold text-dark lh-1">คลังพัสดุและเวชภัณฑ์</div>
-            <small class="text-muted" style="font-size: 0.72rem;">Inventory Management System</small>
+            <div class="fw-bold text-white lh-1">คลังพัสดุและเวชภัณฑ์</div>
+            <small class="sidebar-brand-sub" style="font-size: 0.72rem;">Inventory Management System</small>
           </div>
         </div>
         <div v-show="isCollapsed" class="sidebar-brand-icon mx-auto" title="ระบบบริหารคลังพัสดุ">
@@ -22,7 +22,7 @@
 
         <!-- Collapse toggle button (desktop) -->
         <button
-          class="btn btn-sm btn-light text-secondary rounded-circle d-none d-lg-flex align-items-center justify-content-center toggle-btn"
+          class="btn btn-sm rounded-circle d-none d-lg-flex align-items-center justify-content-center toggle-btn"
           @click="toggleCollapse"
           :title="isCollapsed ? 'ขยายแถบเมนู' : 'ย่อแถบเมนู'"
         >
@@ -31,7 +31,7 @@
 
         <!-- Close button (mobile) -->
         <button
-          class="btn btn-sm btn-light text-secondary rounded-circle d-lg-none"
+          class="btn btn-sm rounded-circle d-lg-none toggle-btn"
           @click="mobileOpen = false"
         >
           <i class="bi bi-x-lg"></i>
@@ -74,7 +74,7 @@
           <div class="menu-text" v-show="!isCollapsed">
             <div class="d-flex align-items-center justify-content-between">
               <span class="fw-bold">1. ขอซื้อ / สั่งซื้อ</span>
-              <span class="badge bg-danger-subtle text-danger rounded-pill px-2 py-0 small">PR/PO</span>
+              <span class="badge sidebar-step-pill rounded-pill px-2 py-0 small">PR/PO</span>
             </div>
             <small class="text-muted">วางแผนและสั่งซื้อ</small>
           </div>
@@ -135,7 +135,7 @@
           <div class="menu-text" v-show="!isCollapsed">
             <div class="d-flex align-items-center justify-content-between">
               <span class="fw-bold">2. ตรวจรับเข้าคลัง</span>
-              <span class="badge bg-success-subtle text-success rounded-pill px-2 py-0 small">IN</span>
+              <span class="badge sidebar-step-pill rounded-pill px-2 py-0 small">IN</span>
             </div>
             <small class="text-muted">บันทึกรับพัสดุเข้าสต็อก</small>
           </div>
@@ -159,7 +159,7 @@
                 <span v-if="pendingRequisitionsCount > 0" class="badge bg-danger rounded-pill px-2 py-0 small animate__animated animate__pulse animate__infinite">
                   {{ pendingRequisitionsCount }}
                 </span>
-                <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-2 py-0 small">OUT</span>
+                <span class="badge sidebar-step-pill rounded-pill px-2 py-0 small">OUT</span>
               </div>
             </div>
             <small class="text-muted">ขอเบิก, อนุมัติ, ตัดจ่ายคลัง</small>
@@ -218,7 +218,7 @@
           <div class="menu-text" v-show="!isCollapsed">
             <div class="d-flex align-items-center justify-content-between">
               <span class="fw-bold">4. โอนย้ายวัสดุ</span>
-              <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-0 small">Transfer</span>
+              <span class="badge sidebar-step-pill rounded-pill px-2 py-0 small">Transfer</span>
             </div>
             <small class="text-muted">โอนระหว่างคลังหลัก/ย่อย</small>
           </div>
@@ -263,7 +263,7 @@
           <div class="menu-text" v-show="!isCollapsed">
             <div class="d-flex align-items-center justify-content-between">
               <span class="fw-bold">5. คืนวัสดุเข้าคลัง</span>
-              <span class="badge bg-indigo-subtle text-indigo rounded-pill px-2 py-0 small">Return</span>
+              <span class="badge sidebar-step-pill rounded-pill px-2 py-0 small">Return</span>
             </div>
             <small class="text-muted">รับคืนของเหลือใช้/ชำรุด</small>
           </div>
@@ -283,7 +283,7 @@
           <div class="menu-text" v-show="!isCollapsed">
             <div class="d-flex align-items-center justify-content-between">
               <span class="fw-bold">6. สต็อกการ์ด</span>
-              <span class="badge bg-info-subtle text-info rounded-pill px-2 py-0 small">Stock Card</span>
+              <span class="badge sidebar-step-pill rounded-pill px-2 py-0 small">Stock Card</span>
             </div>
             <small class="text-muted">คุมยอดสต็อก / ความเคลื่อนไหว</small>
           </div>
@@ -303,16 +303,17 @@
           <div class="menu-text" v-show="!isCollapsed">
             <div class="d-flex align-items-center justify-content-between">
               <span class="fw-bold">7. รายงาน</span>
-              <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0 small">Reports</span>
+              <span class="badge sidebar-step-pill rounded-pill px-2 py-0 small">Reports</span>
             </div>
             <small class="text-muted">สรุปยอด / รับ-จ่าย / เคลื่อนไหว</small>
           </div>
         </div>
 
-        <!-- Section: Settings (Master Data) -->
-        <template v-if="canManageSettings">
+        <!-- Section: Settings (Master Data & Audit Log) -->
+        <template v-if="canManageSettings || warehouses.length > 0">
           <div class="menu-section-label mt-3" v-show="!isCollapsed">การจัดการระบบ</div>
           <div
+            v-if="canManageSettings"
             class="menu-item"
             :class="{ active: currentTab === 'settings' }"
             @click="selectTab('settings')"
@@ -324,19 +325,37 @@
             <div class="menu-text" v-show="!isCollapsed">
               <div class="d-flex align-items-center justify-content-between">
                 <span class="fw-bold">ตั้งค่าระบบ</span>
-                <span class="badge text-white rounded-pill px-2 py-0 small" style="background: #7c3aed;">Master</span>
+                <span class="badge sidebar-step-pill rounded-pill px-2 py-0 small">Master</span>
               </div>
               <small class="text-muted">คลัง, หมวดหมู่, หน่วยนับ, วิธีจัดซื้อ, พัสดุ</small>
+            </div>
+          </div>
+
+          <div
+            class="menu-item"
+            :class="{ active: currentTab === 'logs' }"
+            @click="selectTab('logs')"
+            :title="isCollapsed ? 'ประวัติการใช้งานระบบ (Audit Log)' : ''"
+          >
+            <div class="menu-icon bg-indigo-light text-indigo">
+              <i class="bi bi-journal-check"></i>
+            </div>
+            <div class="menu-text" v-show="!isCollapsed">
+              <div class="d-flex align-items-center justify-content-between">
+                <span class="fw-bold">ประวัติการใช้งาน</span>
+                <span class="badge sidebar-step-pill rounded-pill px-2 py-0 small">Log</span>
+              </div>
+              <small class="text-muted">ติดตามการใช้งานทุกหน้าในระบบคลัง</small>
             </div>
           </div>
         </template>
       </div>
 
       <!-- Sidebar Footer -->
-      <div class="sidebar-footer p-2 border-top bg-light-subtle d-flex flex-column gap-1">
+      <div class="sidebar-footer p-2 d-flex flex-column gap-1">
         <router-link
           to="/home-backoffice"
-          class="btn btn-sm btn-outline-secondary rounded-pill d-flex align-items-center justify-content-center gap-2 py-2"
+          class="btn btn-sm sidebar-back-btn rounded-pill d-flex align-items-center justify-content-center gap-2 py-2"
           :title="isCollapsed ? 'กลับหน้าหลัก Backoffice' : ''"
         >
           <i class="bi bi-house-door-fill"></i>
@@ -356,14 +375,14 @@
     <main class="inventory-main-content flex-grow-1 overflow-x-hidden d-flex flex-column">
       <!-- Mobile Top Navbar -->
       <div class="d-lg-none bg-white p-3 border-bottom d-flex align-items-center justify-content-between shadow-sm sticky-top z-3">
-        <button class="btn btn-outline-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" @click="mobileOpen = true">
+        <button class="btn btn-theme-purple-outline rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" @click="mobileOpen = true">
           <i class="bi bi-list fs-4"></i>
         </button>
-        <div class="fw-bold text-primary d-flex align-items-center gap-2 overflow-hidden px-2">
+        <div class="fw-bold text-theme-purple d-flex align-items-center gap-2 overflow-hidden px-2">
           <i class="bi bi-box-seam-fill flex-shrink-0"></i>
           <span class="text-truncate" style="max-width: 180px;">{{ activeWarehouseDisplay }}</span>
         </div>
-        <button class="btn btn-sm btn-outline-primary rounded-pill px-2 py-1 d-flex align-items-center gap-1" @click="openWarehouseModal" title="สลับคลัง">
+        <button class="btn btn-sm btn-theme-purple-outline rounded-pill px-2 py-1 d-flex align-items-center gap-1" @click="openWarehouseModal" title="สลับคลัง">
           <i class="bi bi-arrow-left-right"></i>
           <span style="font-size: 0.75rem;">สลับ</span>
         </button>
@@ -372,17 +391,17 @@
       <!-- Desktop Sticky Warehouse Context Banner / Header -->
       <div class="bg-white border-bottom px-4 py-2 d-none d-lg-flex align-items-center justify-content-between sticky-top z-2 shadow-xs">
         <div class="d-flex align-items-center gap-3">
-          <div class="rounded-3 p-2 bg-primary text-white fw-bold d-flex align-items-center justify-content-center shadow-xs" style="width: 42px; height: 42px;">
+          <div class="rounded-3 p-2 text-white fw-bold d-flex align-items-center justify-content-center shadow-xs" style="width: 42px; height: 42px; background: linear-gradient(135deg, #6f42c1, #5b21b6);">
             <span v-if="activeWarehouseObj" class="fs-5">{{ activeWarehouseObj.code }}</span>
             <i v-else class="bi bi-grid-fill fs-5"></i>
           </div>
           <div>
             <div class="d-flex align-items-center gap-2">
               <span class="fw-bold text-dark fs-6">{{ activeWarehouseDisplay }}</span>
-              <span v-if="activeWarehouseObj" class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill small">
+              <span v-if="activeWarehouseObj" class="badge bg-theme-purple-subtle border rounded-pill small">
                 <i class="bi bi-check2-circle me-1"></i>คลังที่กำลังทำงาน
               </span>
-              <span v-else class="badge bg-primary text-white rounded-pill small">Admin View (ทุกคลัง)</span>
+              <span v-else class="badge text-white rounded-pill small" style="background: #6f42c1;">Admin View (ทุกคลัง)</span>
             </div>
             <small class="text-muted" style="font-size: 0.75rem;">
               {{ activeWarehouseObj ? 'ระบบแยกข้อมูลเฉพาะคลังที่เลือกเพื่อความถูกต้องในการทำงาน' : 'โหมดภาพรวมสต็อกและเอกสารของทุกคลังในระบบ' }}
@@ -392,7 +411,7 @@
 
         <div class="d-flex align-items-center gap-2">
           <button
-            class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold d-flex align-items-center gap-2 shadow-xs hover-scale"
+            class="btn btn-sm btn-theme-purple-outline rounded-pill px-3 fw-bold d-flex align-items-center gap-2 shadow-xs hover-scale"
             @click="openWarehouseModal"
             title="คลิกเพื่อสลับไปยังคลังอื่น"
           >
@@ -403,7 +422,7 @@
             v-if="canManageSettings"
             class="btn btn-sm text-white rounded-pill px-3 fw-bold d-flex align-items-center gap-1 shadow-xs"
             :class="{ 'opacity-75': currentTab === 'settings' }"
-            style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); border: none;"
+            style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); border: none;"
             @click="selectTab('settings')"
             title="ตั้งค่าคลัง, หมวดหมู่, พัสดุ, บริษัท"
           >
@@ -420,51 +439,20 @@
       <div class="content-wrapper flex-grow-1">
         <!-- 1. Tab: Overview (Summary Cards, Charts, Low Stock Table & Workflow Steps) -->
         <div v-if="currentTab === 'overview'" class="tab-pane-content py-4 px-3 px-md-4">
-          <!-- Page Header & Warehouse Filter -->
-          <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
-            <div>
-              <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-1">
-                  <li class="breadcrumb-item"><router-link to="/home-backoffice">หน้าหลัก</router-link></li>
-                  <li class="breadcrumb-item active" aria-current="page">ระบบบริหารคลังวัสดุ (Inventory System)</li>
-                </ol>
-              </nav>
-              <div class="d-flex align-items-center gap-3">
-                <h2 class="fw-bold text-primary mb-0">
-                  <i class="bi bi-box-seam me-2"></i>ระบบบริหารคลังพัสดุและเวชภัณฑ์รวมศูนย์
-                </h2>
-              </div>
-              <p class="text-muted small mb-0 mt-1">
-                ภาพรวมสถานะคงคลัง ยอดรับเข้า-จ่ายออก กราฟสถิติ และสินค้าถึงจุดสั่งซื้อ (Unified Inventory Dashboard)
-              </p>
-            </div>
-            
-            <div class="d-flex gap-2 align-items-center flex-wrap">
-              <!-- Warehouse Selector Button & Indicator -->
-              <div class="d-flex align-items-center gap-2 bg-white px-3 py-2 rounded-pill shadow-sm border">
-                <i class="bi bi-building text-primary"></i>
-                <span class="fw-bold text-dark">{{ activeWarehouseDisplay }}</span>
-                <button class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0 ms-1 fw-bold" @click="openWarehouseModal" style="font-size: 0.75rem;">
-                  <i class="bi bi-arrow-left-right me-1"></i>สลับคลัง
-                </button>
-              </div>
-
-              <!-- Master Data Button (Admin or Warehouse Manager) -->
-              <button
-                v-if="canManageSettings"
-                class="btn text-white rounded-pill px-3 shadow-sm fw-bold d-flex align-items-center gap-2 hover-scale"
-                style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); border: none;"
-                @click="selectTab('settings')"
-                title="ตั้งค่าคลังวัสดุ, หมวดหมู่ และรายการวัสดุ (เฉพาะผู้ดูแลระบบและผู้ดูแลคลัง)"
-              >
-                <i class="bi bi-gear-fill"></i>
-                <span>ตั้งค่าระบบ</span>
-              </button>
-
-              <router-link to="/home-backoffice" class="btn btn-outline-secondary rounded-pill px-3 shadow-sm fw-medium">
-                <i class="bi bi-house-door me-1"></i>หน้าหลัก
-              </router-link>
-            </div>
+          <!-- Page Header -->
+          <div class="mb-4">
+            <nav aria-label="breadcrumb">
+              <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><router-link to="/home-backoffice">หน้าหลัก</router-link></li>
+                <li class="breadcrumb-item active" aria-current="page">ระบบบริหารคลังวัสดุ (Inventory System)</li>
+              </ol>
+            </nav>
+            <h2 class="fw-bold text-theme-purple mb-0">
+              <i class="bi bi-box-seam me-2"></i>ระบบบริหารคลังพัสดุและเวชภัณฑ์รวมศูนย์
+            </h2>
+            <p class="text-muted small mb-0 mt-1">
+              ภาพรวมสถานะคงคลัง ยอดรับเข้า-จ่ายออก กราฟสถิติ และสินค้าถึงจุดสั่งซื้อ (Unified Inventory Dashboard)
+            </p>
           </div>
 
           <!-- Section 1: Top 4 KPI Metric Cards -->
@@ -591,9 +579,19 @@
                     <i class="bi bi-calendar3 me-1"></i> ย้อนหลัง 12 เดือน
                   </span>
                 </div>
-                <div class="card-body p-4">
-                  <div style="height: 300px; position: relative;">
+                <div class="card-body p-4 d-flex flex-column justify-content-center">
+                  <div v-if="hasMovementData" style="height: 300px; position: relative;">
                     <canvas ref="movementChartRef"></canvas>
+                  </div>
+                  <div v-else class="text-center py-5 text-muted">
+                    <div class="rounded-circle bg-theme-purple-subtle d-inline-flex align-items-center justify-content-center mb-3" style="width: 56px; height: 56px;">
+                      <i class="bi bi-bar-chart fs-3"></i>
+                    </div>
+                    <div class="fw-bold text-dark mb-1">ยังไม่มีรายการรับเข้า–จ่ายออกใน 12 เดือนล่าสุด</div>
+                    <div class="small mb-3">เมื่อมีรายการรับเข้าหรือตัดจ่ายคลัง กราฟเปรียบเทียบรายเดือนจะแสดงที่นี่</div>
+                    <button type="button" class="btn btn-sm btn-theme-purple-outline rounded-pill px-3 fw-bold" @click="selectTab('receive')">
+                      <i class="bi bi-box-arrow-in-down me-1"></i> ไปหน้า 2. ตรวจรับเข้าคลัง (IN)
+                    </button>
                   </div>
                 </div>
               </div>
@@ -611,8 +609,15 @@
                   </div>
                 </div>
                 <div class="card-body p-4 d-flex flex-column justify-content-center">
-                  <div style="height: 270px; position: relative;">
+                  <div v-if="nonZeroCategoryDistribution.length > 0" style="height: 270px; position: relative;">
                     <canvas ref="categoryChartRef"></canvas>
+                  </div>
+                  <div v-else class="text-center py-5 text-muted">
+                    <div class="rounded-circle bg-success-subtle text-success d-inline-flex align-items-center justify-content-center mb-3" style="width: 56px; height: 56px;">
+                      <i class="bi bi-pie-chart fs-3"></i>
+                    </div>
+                    <div class="fw-bold text-dark mb-1">ยังไม่มีสินค้าคงเหลือในสต็อก</div>
+                    <div class="small">กราฟสัดส่วนจะแสดงอัตโนมัติเมื่อมียอดคงเหลือในคลังนี้</div>
                   </div>
                 </div>
               </div>
@@ -778,6 +783,10 @@
 
         <div v-else-if="currentTab === 'settings'" class="tab-pane-content">
           <InventorySettings :warehouse-id="selectedWarehouse" :key="'set-' + (selectedWarehouse || 'all')" @switch-warehouse="openWarehouseModal" />
+        </div>
+
+        <div v-else-if="currentTab === 'logs'" class="tab-pane-content">
+          <InventoryLogs :warehouse-id="selectedWarehouse" :key="'logs-' + (selectedWarehouse || 'all')" />
         </div>
       </div>
     </main>
@@ -961,6 +970,7 @@
 import { defineAsyncComponent } from 'vue';
 import axios from 'axios';
 import Chart from 'chart.js/auto';
+import { logInventoryEvent, INVENTORY_PAGE_NAMES } from '../../../utils/inventoryLogger';
 
 // Asynchronous Component Loading for Fast & Smooth Tab Switching
 const PRDashboard = defineAsyncComponent(() => import('./PRDashboard.vue'));
@@ -977,6 +987,7 @@ const ReturnDashboard = defineAsyncComponent(() => import('./ReturnDashboard.vue
 const StockCard = defineAsyncComponent(() => import('./StockCard.vue'));
 const InventoryReports = defineAsyncComponent(() => import('./InventoryReports.vue'));
 const InventorySettings = defineAsyncComponent(() => import('./InventorySettings.vue'));
+const InventoryLogs = defineAsyncComponent(() => import('./InventoryLogs.vue'));
 
 export default {
   name: 'InventoryDashboard',
@@ -994,7 +1005,8 @@ export default {
     ReturnDashboard,
     StockCard,
     InventoryReports,
-    InventorySettings
+    InventorySettings,
+    InventoryLogs
   },
   data() {
     return {
@@ -1056,6 +1068,22 @@ export default {
       const savedCode = localStorage.getItem('selected_warehouse_code');
       if (savedName && savedCode) return `[${savedCode}] ${savedName}`;
       return savedName || 'คลังวัสดุ';
+    },
+    hasMovementData() {
+      return (this.monthlyTrends || []).some(m => Number(m.qty_in) > 0 || Number(m.qty_out) > 0);
+    },
+    nonZeroCategoryDistribution() {
+      const nonZero = (this.categoryDistribution || [])
+        .map(c => ({ name: c.name, total_qty: Number(c.total_qty) || 0 }))
+        .filter(c => c.total_qty > 0)
+        .sort((a, b) => b.total_qty - a.total_qty);
+
+      if (nonZero.length <= 7) {
+        return nonZero;
+      }
+      const top = nonZero.slice(0, 7);
+      const otherSum = nonZero.slice(7).reduce((sum, item) => sum + item.total_qty, 0);
+      return [...top, { name: 'หมวดอื่นๆ', total_qty: otherSum }];
     }
   },
   watch: {
@@ -1098,6 +1126,16 @@ export default {
     }
 
     await this.fetchDashboardSummary();
+    logInventoryEvent({
+      action: 'VIEW_PAGE',
+      page_code: this.currentTab || 'overview',
+      page_name: INVENTORY_PAGE_NAMES[this.currentTab || 'overview'] || this.currentTab,
+      warehouse_id: this.selectedWarehouse ? Number(this.selectedWarehouse) : null,
+      warehouse_name: this.activeWarehouseDisplay,
+      details: `เปิดหน้า ${INVENTORY_PAGE_NAMES[this.currentTab || 'overview'] || this.currentTab}`,
+      meta: { via: 'dashboard_mount' },
+      dedupeMs: 2000,
+    });
   },
   beforeUnmount() {
     if (this.movementChart) this.movementChart.destroy();
@@ -1123,19 +1161,22 @@ export default {
           this.categoryDistribution = d.category_distribution || [];
           this.warehouses = d.warehouses || [];
 
-          // Sync warehouse name to localStorage
+          // Sync warehouse name & code to localStorage
           if (this.warehouses.length > 0 && this.selectedWarehouse) {
             const currentObj = this.warehouses.find(w => w.id == this.selectedWarehouse);
             if (currentObj) {
+              localStorage.setItem('selected_warehouse_code', currentObj.code);
               localStorage.setItem('selected_warehouse_name', currentObj.name);
             } else if (!this.isAdminUser) {
               this.selectedWarehouse = this.warehouses[0].id;
               localStorage.setItem('selected_warehouse_id', this.selectedWarehouse);
+              localStorage.setItem('selected_warehouse_code', this.warehouses[0].code);
               localStorage.setItem('selected_warehouse_name', this.warehouses[0].name);
             }
           } else if (this.warehouses.length > 0 && !this.selectedWarehouse && !this.isAdminUser) {
             this.selectedWarehouse = this.warehouses[0].id;
             localStorage.setItem('selected_warehouse_id', this.selectedWarehouse);
+            localStorage.setItem('selected_warehouse_code', this.warehouses[0].code);
             localStorage.setItem('selected_warehouse_name', this.warehouses[0].name);
           }
 
@@ -1153,10 +1194,14 @@ export default {
       if (this.selectedWarehouse) {
         localStorage.setItem('selected_warehouse_id', this.selectedWarehouse);
         const whObj = this.warehouses.find(w => w.id == this.selectedWarehouse);
-        if (whObj) localStorage.setItem('selected_warehouse_name', whObj.name);
+        if (whObj) {
+          localStorage.setItem('selected_warehouse_code', whObj.code);
+          localStorage.setItem('selected_warehouse_name', whObj.name);
+        }
         this.$router.replace({ query: { ...this.$route.query, warehouse_id: this.selectedWarehouse } });
       } else {
         localStorage.removeItem('selected_warehouse_id');
+        localStorage.removeItem('selected_warehouse_code');
         localStorage.setItem('selected_warehouse_name', 'คลังทั้งหมด');
         const q = { ...this.$route.query };
         delete q.warehouse_id;
@@ -1202,6 +1247,16 @@ export default {
       }
       this.showWarehouseModal = false;
       this.fetchDashboardSummary();
+      logInventoryEvent({
+        action: 'SWITCH_WAREHOUSE',
+        page_code: this.currentTab || 'overview',
+        page_name: INVENTORY_PAGE_NAMES[this.currentTab || 'overview'] || this.currentTab,
+        warehouse_id: wh ? Number(wh.id) : null,
+        warehouse_name: wh ? wh.name : 'ภาพรวมทุกคลัง (All Warehouses)',
+        target_type: 'warehouse',
+        target_id: wh ? String(wh.id) : 'all',
+        details: wh ? `เปลี่ยนคลังใช้งานเป็น [${wh.code}] ${wh.name}` : 'เปลี่ยนเป็นดูภาพรวมทุกคลัง',
+      });
     },
     renderCharts() {
       this.renderMovementChart();
@@ -1212,6 +1267,7 @@ export default {
         this.movementChart.destroy();
         this.movementChart = null;
       }
+      if (!this.hasMovementData) return;
       const ctx = this.$refs.movementChartRef;
       if (!ctx) return;
 
@@ -1280,15 +1336,16 @@ export default {
         this.categoryChart.destroy();
         this.categoryChart = null;
       }
+      if (this.nonZeroCategoryDistribution.length === 0) return;
       const ctx = this.$refs.categoryChartRef;
       if (!ctx) return;
 
-      const labels = this.categoryDistribution.map(c => c.name);
-      const dataQty = this.categoryDistribution.map(c => c.total_qty);
+      const labels = this.nonZeroCategoryDistribution.map(c => c.name);
+      const dataQty = this.nonZeroCategoryDistribution.map(c => c.total_qty);
 
       const colors = [
-        '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-        '#06b6d4', '#ec4899', '#14b8a6', '#6366f1', '#84cc16'
+        '#6f42c1', '#10b981', '#3b82f6', '#f59e0b',
+        '#ef4444', '#06b6d4', '#ec4899', '#64748b'
       ];
 
       this.categoryChart = new Chart(ctx, {
@@ -1298,7 +1355,7 @@ export default {
           datasets: [
             {
               data: dataQty,
-              backgroundColor: colors.slice(0, labels.length),
+              backgroundColor: labels.map((_, idx) => colors[idx % colors.length]),
               borderWidth: 2,
               borderColor: '#ffffff'
             }
@@ -1330,8 +1387,23 @@ export default {
     selectTab(tab) {
       this.currentTab = tab;
       if (this.mobileOpen) this.mobileOpen = false;
+      logInventoryEvent({
+        action: 'VIEW_PAGE',
+        page_code: tab,
+        page_name: INVENTORY_PAGE_NAMES[tab] || tab,
+        warehouse_id: this.selectedWarehouse ? Number(this.selectedWarehouse) : null,
+        warehouse_name: this.activeWarehouseDisplay,
+        details: `เปิดเมนู ${INVENTORY_PAGE_NAMES[tab] || tab}`,
+        meta: { via: 'sidebar_tab' },
+        dedupeMs: 2000,
+      });
       if (tab === 'overview') {
-        this.$router.replace({ query: {} }).catch(() => {});
+        const q = { ...this.$route.query };
+        delete q.tab;
+        if (this.selectedWarehouse) {
+          q.warehouse_id = this.selectedWarehouse;
+        }
+        this.$router.replace({ query: q }).catch(() => {});
         this.$nextTick(() => {
           this.renderCharts();
         });
@@ -1410,13 +1482,16 @@ export default {
   width: 100%;
 }
 
-/* Sidebar Styling */
+/* Sidebar Styling (Purple Theme) */
 .inventory-sidebar {
   width: 270px;
   position: sticky;
   top: 0;
   height: 100vh;
   z-index: 1020;
+  background: linear-gradient(180deg, #6f42c1 0%, #553199 55%, #4a2d81 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff;
   transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s ease;
   user-select: none;
 }
@@ -1427,12 +1502,15 @@ export default {
 
 .sidebar-header {
   height: 68px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14) !important;
 }
 
 .sidebar-brand-icon {
   width: 38px;
   height: 38px;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(6px);
   color: #ffffff;
   border-radius: 10px;
   display: flex;
@@ -1440,20 +1518,31 @@ export default {
   justify-content: center;
   font-size: 1.25rem;
   flex-shrink: 0;
-  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+}
+
+.sidebar-brand-sub {
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .toggle-btn {
   width: 28px;
   height: 28px;
   padding: 0;
-  border: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
 }
 
 .menu-section-label {
   font-size: 0.72rem;
   font-weight: 700;
-  color: #9ca3af;
+  color: rgba(255, 255, 255, 0.65);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 0.4rem 0.75rem 0.2rem;
@@ -1466,23 +1555,34 @@ export default {
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.18s ease;
-  margin-bottom: 0.2rem;
-  color: #374151;
+  margin-bottom: 0.45rem;
+  background-color: #ffffff;
+  color: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   position: relative;
 }
 
 .menu-item:hover {
-  background-color: #f3f4f6;
+  background-color: #faf5ff;
   color: #111827;
+  transform: translateX(2px);
 }
 
 .menu-item.active {
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(124, 58, 237, 0.08));
-  color: #4f46e5;
+  background: #ffffff;
+  border-color: #ddd6fe;
+  box-shadow: inset 4px 0 0 #6f42c1, 0 4px 14px rgba(0, 0, 0, 0.16);
+  color: #111827;
 }
 
 .menu-item.active .menu-text .fw-bold {
-  color: #4338ca !important;
+  color: #111827 !important;
+}
+
+.inventory-sidebar .menu-text small,
+.inventory-sidebar .menu-item > i.text-muted {
+  color: #4b5563 !important;
 }
 
 .menu-icon {
@@ -1495,6 +1595,7 @@ export default {
   font-size: 1.15rem;
   flex-shrink: 0;
   margin-right: 0.75rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .inventory-sidebar.sidebar-collapsed .menu-icon {
@@ -1530,6 +1631,36 @@ export default {
 
 .menu-text .fw-bold {
   font-size: 0.88rem;
+  color: #111827;
+}
+
+.sidebar-step-pill {
+  background-color: #f3e8ff;
+  color: #5b21b6;
+  border: 1px solid #ddd6fe;
+  font-weight: 600;
+}
+
+.text-theme-purple {
+  color: #5b21b6 !important;
+}
+
+.bg-theme-purple-subtle {
+  background-color: #f3e8ff !important;
+  color: #6d28d9 !important;
+  border-color: #ddd6fe !important;
+}
+
+.btn-theme-purple-outline {
+  color: #6d28d9;
+  border: 1px solid #8b5cf6;
+  background-color: #ffffff;
+}
+
+.btn-theme-purple-outline:hover {
+  background-color: #6f42c1;
+  border-color: #6f42c1;
+  color: #ffffff;
 }
 
 /* Submenu */
@@ -1537,28 +1668,61 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  background-color: #ffffff;
+  border-radius: 10px;
+  padding: 0.35rem !important;
+  margin-top: -0.2rem;
+  margin-bottom: 0.45rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .submenu-item {
   display: flex;
   align-items: center;
-  padding: 0.45rem 0.85rem;
+  padding: 0.45rem 0.75rem;
   border-radius: 8px;
   font-size: 0.82rem;
-  color: #4b5563;
+  color: #111827;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .submenu-item:hover {
   background-color: #f3f4f6;
-  color: #111827;
+  color: #000000;
 }
 
 .submenu-item.active {
   background-color: #ede9fe;
-  color: #6d28d9;
+  color: #111827;
   font-weight: 700;
+  box-shadow: inset 3px 0 0 #6f42c1;
+}
+
+.sidebar-footer {
+  background: rgba(0, 0, 0, 0.14);
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.sidebar-back-btn {
+  color: #111827;
+  border: none;
+  background: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.sidebar-back-btn:hover {
+  background: #faf5ff;
+  color: #111827;
+}
+
+.sidebar-menu::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.24);
+  border-radius: 4px;
 }
 
 /* Metric / Stat Cards */

@@ -11,6 +11,28 @@ if (!isset($pdo2)) {
 
 $method = $_SERVER['REQUEST_METHOD'];
 
+/**
+ * ค้นหารหัสบริษัทซ้ำภายในคลังเดียวกัน (หรือระดับ Global ถ้า warehouse_id เป็น null)
+ * @param PDO $pdo2
+ * @param string $code
+ * @param int|null $warehouse_id
+ * @param int|null $excludeId
+ * @return array|false
+ */
+function findVendorByCodeInWarehouse(PDO $pdo2, string $code, ?int $warehouse_id, ?int $excludeId = null) {
+    $sql = $warehouse_id
+        ? "SELECT id, vendor_code, vendor_name FROM inv_vendors WHERE vendor_code = ? AND warehouse_id = ?"
+        : "SELECT id, vendor_code, vendor_name FROM inv_vendors WHERE vendor_code = ? AND warehouse_id IS NULL";
+    $params = $warehouse_id ? [$code, $warehouse_id] : [$code];
+    if ($excludeId) {
+        $sql .= " AND id != ?";
+        $params[] = $excludeId;
+    }
+    $stmt = $pdo2->prepare($sql);
+    $stmt->execute($params);
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
 try {
     if ($method === 'GET') {
         $search = trim($_GET['search'] ?? '');
@@ -89,7 +111,6 @@ try {
             $maxId = (int)$pdo2->query("SELECT COALESCE(MAX(id), 0) FROM inv_vendors")->fetchColumn();
 
             // Prepared statements
-            $stmtFindByCode = $pdo2->prepare("SELECT id, vendor_code, vendor_name FROM inv_vendors WHERE vendor_code = ?");
             $stmtFindByName = $pdo2->prepare("SELECT id, vendor_code, vendor_name FROM inv_vendors WHERE vendor_name = ? AND (warehouse_id = ? OR warehouse_id IS NULL)");
             $stmtFindByNameNoWh = $pdo2->prepare("SELECT id, vendor_code, vendor_name FROM inv_vendors WHERE vendor_name = ?");
 
@@ -137,10 +158,9 @@ try {
 
                     $existingId = null;
 
-                    // 1. Check if vendor_code exists
+                    // 1. Check if vendor_code exists in this warehouse
                     if (!empty($code)) {
-                        $stmtFindByCode->execute([$code]);
-                        $found = $stmtFindByCode->fetch(PDO::FETCH_ASSOC);
+                        $found = findVendorByCodeInWarehouse($pdo2, $code, $whId);
                         if ($found) {
                             $existingId = (int)$found['id'];
                         }
@@ -183,12 +203,10 @@ try {
                         if (empty($code)) {
                             $maxId++;
                             $code = 'VND-' . str_pad($maxId, 4, '0', STR_PAD_LEFT);
-                            // Safety check code uniqueness
-                            $stmtFindByCode->execute([$code]);
-                            while ($stmtFindByCode->fetch()) {
+                            // Safety check code uniqueness within warehouse
+                            while (findVendorByCodeInWarehouse($pdo2, $code, $whId)) {
                                 $maxId++;
                                 $code = 'VND-' . str_pad($maxId, 4, '0', STR_PAD_LEFT);
-                                $stmtFindByCode->execute([$code]);
                             }
                         }
 
@@ -209,6 +227,17 @@ try {
                 }
 
                 $pdo2->commit();
+
+                require_once __DIR__ . '/inv_log_helper.php';
+                recordInvActivityLog($pdo2, [
+                    'warehouse_id' => $targetWarehouseId ?? null,
+                    'page_code' => 'settings',
+                    'page_name' => 'ตั้งค่าระบบ (Master Data)',
+                    'action' => 'BATCH_IMPORT_VENDORS',
+                    'target_type' => 'vendor',
+                    'details' => "นำเข้าผู้จำหน่ายแบบกลุ่ม (เพิ่มใหม่ {$insertedCount}, อัปเดต {$updatedCount}, ข้าม {$skippedCount})",
+                    'meta' => ['inserted' => $insertedCount, 'updated' => $updatedCount, 'skipped' => $skippedCount],
+                ], $pdo3 ?? null);
 
                 echo json_encode([
                     'status' => 'success',
@@ -251,12 +280,14 @@ try {
         if (empty($code)) {
             $nextId = (int)$pdo2->query("SELECT COALESCE(MAX(id), 0) + 1 FROM inv_vendors")->fetchColumn();
             $code = 'VND-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+            while (findVendorByCodeInWarehouse($pdo2, $code, $warehouse_id)) {
+                $nextId++;
+                $code = 'VND-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+            }
         } else {
-            // Check duplicate code
-            $chk = $pdo2->prepare("SELECT id FROM inv_vendors WHERE vendor_code = ?");
-            $chk->execute([$code]);
-            if ($chk->fetch()) {
-                echo json_encode(['status' => 'error', 'message' => "รหัสบริษัท {$code} มีอยู่ในระบบแล้ว"]);
+            // Check duplicate code within warehouse
+            if (findVendorByCodeInWarehouse($pdo2, $code, $warehouse_id)) {
+                echo json_encode(['status' => 'error', 'message' => "รหัสบริษัท {$code} มีอยู่ในคลังนี้แล้ว"]);
                 exit;
             }
         }
@@ -280,6 +311,16 @@ try {
         ]);
 
         $newId = (int)$pdo2->lastInsertId();
+        require_once __DIR__ . '/inv_log_helper.php';
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => $warehouse_id,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'CREATE_VENDOR',
+            'target_type' => 'vendor',
+            'target_id' => (string)$newId,
+            'details' => "เพิ่มบริษัทผู้จำหน่าย [{$code}] {$name}",
+        ], $pdo3 ?? null);
 
         echo json_encode([
             'status' => 'success',
@@ -306,13 +347,9 @@ try {
             exit;
         }
 
-        if (!empty($code)) {
-            $chk = $pdo2->prepare("SELECT id FROM inv_vendors WHERE vendor_code = ? AND id != ?");
-            $chk->execute([$code, $id]);
-            if ($chk->fetch()) {
-                echo json_encode(['status' => 'error', 'message' => "รหัสบริษัท {$code} ซ้ำกับรายการอื่น"]);
-                exit;
-            }
+        if (!empty($code) && findVendorByCodeInWarehouse($pdo2, $code, $warehouse_id, $id)) {
+            echo json_encode(['status' => 'error', 'message' => "รหัสบริษัท {$code} ซ้ำกับรายการอื่นในคลังนี้"]);
+            exit;
         }
 
         $upd = $pdo2->prepare("
@@ -342,6 +379,16 @@ try {
             $active,
             $id
         ]);
+        require_once __DIR__ . '/inv_log_helper.php';
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => $warehouse_id,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'UPDATE_VENDOR',
+            'target_type' => 'vendor',
+            'target_id' => (string)$id,
+            'details' => "แก้ไขข้อมูลบริษัทผู้จำหน่าย [{$code}] {$name}",
+        ], $pdo3 ?? null);
 
         echo json_encode([
             'status' => 'success',
@@ -355,6 +402,10 @@ try {
             exit;
         }
 
+        $vStmt = $pdo2->prepare("SELECT warehouse_id, vendor_code, vendor_name FROM inv_vendors WHERE id = ?");
+        $vStmt->execute([$id]);
+        $vRow = $vStmt->fetch(PDO::FETCH_ASSOC);
+
         // Check if used in PO
         $poCheck = $pdo2->prepare("SELECT COUNT(*) FROM inv_purchase_orders WHERE vendor_id = ?");
         $poCheck->execute([$id]);
@@ -364,6 +415,16 @@ try {
             // Soft delete
             $stmt = $pdo2->prepare("UPDATE inv_vendors SET active = 0 WHERE id = ?");
             $stmt->execute([$id]);
+            require_once __DIR__ . '/inv_log_helper.php';
+            recordInvActivityLog($pdo2, [
+                'warehouse_id' => !empty($vRow['warehouse_id']) ? (int)$vRow['warehouse_id'] : null,
+                'page_code' => 'settings',
+                'page_name' => 'ตั้งค่าระบบ (Master Data)',
+                'action' => 'DISABLE_VENDOR',
+                'target_type' => 'vendor',
+                'target_id' => (string)$id,
+                'details' => "ปิดการใช้งานผู้จำหน่าย " . ($vRow ? "[{$vRow['vendor_code']}] {$vRow['vendor_name']}" : "#{$id}"),
+            ], $pdo3 ?? null);
             echo json_encode([
                 'status' => 'success',
                 'message' => 'ปิดการใช้งานบริษัทเรียบร้อยแล้ว (เนื่องจากมีการอ้างอิงในใบสั่งซื้อเดิม)'
@@ -372,6 +433,16 @@ try {
             // Hard delete
             $stmt = $pdo2->prepare("DELETE FROM inv_vendors WHERE id = ?");
             $stmt->execute([$id]);
+            require_once __DIR__ . '/inv_log_helper.php';
+            recordInvActivityLog($pdo2, [
+                'warehouse_id' => !empty($vRow['warehouse_id']) ? (int)$vRow['warehouse_id'] : null,
+                'page_code' => 'settings',
+                'page_name' => 'ตั้งค่าระบบ (Master Data)',
+                'action' => 'DELETE_VENDOR',
+                'target_type' => 'vendor',
+                'target_id' => (string)$id,
+                'details' => "ลบข้อมูลบริษัทผู้จำหน่าย " . ($vRow ? "[{$vRow['vendor_code']}] {$vRow['vendor_name']}" : "#{$id}"),
+            ], $pdo3 ?? null);
             echo json_encode([
                 'status' => 'success',
                 'message' => 'ลบข้อมูลบริษัทเรียบร้อยแล้ว'

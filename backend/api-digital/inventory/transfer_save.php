@@ -1,6 +1,7 @@
 <?php
 require_once '../../config.php';
 require_once '../../cors.php';
+require_once __DIR__ . '/inv_log_helper.php';
 
 header("Content-Type: application/json");
 
@@ -128,6 +129,17 @@ try {
     }
 
     $pdo2->commit();
+    recordInvActivityLog($pdo2, [
+        'warehouse_id' => $from_warehouse_id,
+        'user_fullname' => $user_name,
+        'page_code' => 'transfer_form',
+        'page_name' => 'สร้างใบโอนย้ายพัสดุ',
+        'action' => 'TRANSFER_STOCK',
+        'target_type' => 'transfer',
+        'target_id' => (string)$transfer_id,
+        'details' => "โอนย้ายพัสดุ {$transfer_no} จากคลัง #{$from_warehouse_id} ไปคลัง #{$to_warehouse_id} จำนวน " . count($items) . " รายการ",
+        'meta' => ['transfer_no' => $transfer_no, 'from_warehouse_id' => $from_warehouse_id, 'to_warehouse_id' => $to_warehouse_id, 'items_count' => count($items)],
+    ], $pdo3 ?? null);
     echo json_encode(['status' => 'success', 'message' => 'โอนย้ายวัสดุสำเร็จ']);
 
 } catch (Exception $e) {

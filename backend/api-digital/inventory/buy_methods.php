@@ -84,6 +84,16 @@ try {
                 }
             }
 
+            require_once __DIR__ . '/inv_log_helper.php';
+            recordInvActivityLog($pdo2, [
+                'page_code' => 'settings',
+                'page_name' => 'ตั้งค่าระบบ (Master Data)',
+                'action' => 'SEED_BUY_METHODS',
+                'target_type' => 'buy_method',
+                'details' => "เพิ่มวิธีจัดซื้อมาตรฐาน {$added} รายการ",
+                'meta' => ['added' => $added],
+            ], $pdo3 ?? null);
+
             echo json_encode([
                 'status' => 'success',
                 'message' => "เพิ่มวิธีจัดซื้อมาตรฐานสำเร็จ {$added} รายการ",
@@ -117,11 +127,21 @@ try {
 
         $stmt = $pdo2->prepare("INSERT INTO inv_buy_methods (code, name, is_default, deal_days, active) VALUES (?, ?, ?, ?, ?)");
         $stmt->execute([$code, $name, $isDefault, $dealDays, $active]);
+        $bmId = $pdo2->lastInsertId();
+        require_once __DIR__ . '/inv_log_helper.php';
+        recordInvActivityLog($pdo2, [
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'CREATE_BUY_METHOD',
+            'target_type' => 'buy_method',
+            'target_id' => (string)$bmId,
+            'details' => "เพิ่มวิธีจัดซื้อ [{$code}] {$name}",
+        ], $pdo3 ?? null);
 
         echo json_encode([
             'status' => 'success',
             'message' => 'เพิ่มวิธีจัดซื้อเรียบร้อยแล้ว',
-            'id' => $pdo2->lastInsertId()
+            'id' => $bmId
         ], JSON_UNESCAPED_UNICODE);
 
     } elseif ($method === 'PUT') {
@@ -151,6 +171,15 @@ try {
 
         $stmt = $pdo2->prepare("UPDATE inv_buy_methods SET code = ?, name = ?, is_default = ?, deal_days = ?, active = ? WHERE id = ?");
         $stmt->execute([$code, $name, $isDefault, $dealDays, $active, $id]);
+        require_once __DIR__ . '/inv_log_helper.php';
+        recordInvActivityLog($pdo2, [
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'UPDATE_BUY_METHOD',
+            'target_type' => 'buy_method',
+            'target_id' => (string)$id,
+            'details' => "แก้ไขวิธีจัดซื้อ [{$code}] {$name}",
+        ], $pdo3 ?? null);
 
         echo json_encode([
             'status' => 'success',
@@ -187,6 +216,15 @@ try {
 
         $stmt = $pdo2->prepare("DELETE FROM inv_buy_methods WHERE id = ?");
         $stmt->execute([$id]);
+        require_once __DIR__ . '/inv_log_helper.php';
+        recordInvActivityLog($pdo2, [
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'DELETE_BUY_METHOD',
+            'target_type' => 'buy_method',
+            'target_id' => (string)$id,
+            'details' => "ลบวิธีจัดซื้อ [{$row['code']}] {$row['name']}",
+        ], $pdo3 ?? null);
 
         echo json_encode([
             'status' => 'success',

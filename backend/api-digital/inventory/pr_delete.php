@@ -1,6 +1,7 @@
 <?php
 require_once '../../config.php';
 require_once '../../cors.php';
+require_once __DIR__ . '/inv_log_helper.php';
 
 header("Content-Type: application/json");
 
@@ -19,7 +20,7 @@ if ($id <= 0) {
 
 try {
     // 1. ตรวจสอบว่ามีใบขอซื้อนี้อยู่จริงหรือไม่
-    $stmt = $pdo2->prepare("SELECT id, pr_number FROM inv_purchase_requests WHERE id = ?");
+    $stmt = $pdo2->prepare("SELECT id, pr_number, warehouse_id FROM inv_purchase_requests WHERE id = ?");
     $stmt->execute([$id]);
     $pr = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -53,6 +54,16 @@ try {
     $stmtPR->execute([$id]);
 
     $pdo2->commit();
+
+    recordInvActivityLog($pdo2, [
+        'warehouse_id' => !empty($pr['warehouse_id']) ? (int)$pr['warehouse_id'] : null,
+        'page_code' => 'pr',
+        'page_name' => 'ขอซื้อขอจ้าง (PR)',
+        'action' => 'DELETE_PR',
+        'target_type' => 'pr',
+        'target_id' => (string)$id,
+        'details' => "ลบใบขอซื้อเลขที่ {$pr['pr_number']}",
+    ], $pdo3 ?? null);
 
     echo json_encode([
         'status' => 'success', 

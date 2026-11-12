@@ -1021,6 +1021,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Swal from 'sweetalert2';
 import krutImgUrl from '../../../assets/krut.png';
+import { logInventoryEvent } from '../../../utils/inventoryLogger';
 
 moment.locale('th');
 
@@ -1279,6 +1280,14 @@ export default {
       return moment(dateStr).format('DD/MM/YYYY');
     },
     printReport() {
+      logInventoryEvent({
+        action: 'PRINT_REPORT',
+        page_code: 'reports',
+        warehouse_id: this.filters?.warehouse_id ? Number(this.filters.warehouse_id) : null,
+        target_type: 'report',
+        target_id: this.currentReportTab,
+        details: `สั่งพิมพ์รายงาน: ${this.activeReportTitle || this.currentReportTab}`,
+      });
       window.print();
     },
     async fetchFont(url) {
@@ -1724,6 +1733,15 @@ export default {
           ? `monthly-inventory-report-${this.selectedOfficialMonth}.pdf`
           : `yearly-inventory-report-${this.officialStartDate}-to-${this.officialEndDate}.pdf`;
         doc.save(fileName);
+        logInventoryEvent({
+          action: 'EXPORT_PDF',
+          page_code: 'reports',
+          warehouse_id: this.filters?.warehouse_id ? Number(this.filters.warehouse_id) : null,
+          target_type: 'report',
+          target_id: mode,
+          details: `ส่งออก PDF รายงานราชการ (${fileName})`,
+          meta: { mode, fileName },
+        });
         Swal.close();
       } catch (err) {
         console.error(err);
@@ -1769,6 +1787,15 @@ export default {
 
       const fileName = `${this.activeReportTitle.replace(/[^a-zA-Z0-9ก-๙]/g, '_')}_${moment().format('YYYYMMDD_HHmm')}.xlsx`;
       XLSX.writeFile(workbook, fileName);
+      logInventoryEvent({
+        action: 'EXPORT_EXCEL',
+        page_code: 'reports',
+        warehouse_id: this.filters?.warehouse_id ? Number(this.filters.warehouse_id) : null,
+        target_type: 'report',
+        target_id: this.currentReportTab,
+        details: `ส่งออก Excel รายงานราชการ (${fileName}) จำนวน ${exportRows.length} รายการ`,
+        meta: { rows: exportRows.length, fileName },
+      });
     },
     exportToExcel() {
       if (!this.reportData || this.reportData.length === 0) return;
@@ -1862,6 +1889,15 @@ export default {
 
       const fileName = `${title.replace(/[^a-zA-Z0-9ก-๙]/g, '_')}_${moment().format('YYYYMMDD_HHmm')}.xlsx`;
       XLSX.writeFile(workbook, fileName);
+      logInventoryEvent({
+        action: 'EXPORT_EXCEL',
+        page_code: 'reports',
+        warehouse_id: this.filters?.warehouse_id ? Number(this.filters.warehouse_id) : null,
+        target_type: 'report',
+        target_id: this.currentReportTab,
+        details: `ส่งออก Excel รายงาน (${fileName}) จำนวน ${exportRows.length} รายการ`,
+        meta: { tab: this.currentReportTab, rows: exportRows.length, fileName },
+      });
     }
   }
 };

@@ -1,6 +1,7 @@
 <?php
 require_once '../../config.php';
 require_once '../../cors.php';
+require_once __DIR__ . '/inv_log_helper.php';
 
 header("Content-Type: application/json; charset=utf-8");
 
@@ -206,6 +207,18 @@ try {
     }
 
     $pdo2->commit();
+
+    recordInvActivityLog($pdo2, [
+        'warehouse_id' => $warehouse_id,
+        'user_fullname' => $purchaser_name,
+        'page_code' => 'po_form',
+        'page_name' => 'สร้าง/แก้ไข ใบสั่งซื้อสั่งจ้าง (PO)',
+        'action' => ($id > 0) ? 'UPDATE_PO' : 'CREATE_PO',
+        'target_type' => 'po',
+        'target_id' => (string)$po_id,
+        'details' => (($id > 0) ? 'แก้ไข' : 'สร้าง') . "ใบสั่งซื้อ {$po_number} ({$vendor_name}) มูลค่า " . number_format((float)$total_amount, 2) . " บาท",
+        'meta' => ['po_id' => $po_id, 'po_number' => $po_number, 'total_amount' => $total_amount, 'items_count' => count($items)],
+    ], $pdo3 ?? null);
 
     echo json_encode([
         'status' => 'success',

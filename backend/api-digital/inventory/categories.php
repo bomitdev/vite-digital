@@ -53,6 +53,17 @@ try {
 
         $stmt = $pdo2->prepare("INSERT INTO inv_categories (warehouse_id, code, name, gpsc_code, gpsc_name, active) VALUES (?, ?, ?, ?, ?, ?)");
         $stmt->execute([$warehouse_id, $code, $name, $gpsc_code, $gpsc_name, $active]);
+        $newId = $pdo2->lastInsertId();
+        require_once __DIR__ . '/inv_log_helper.php';
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => $warehouse_id,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'CREATE_CATEGORY',
+            'target_type' => 'category',
+            'target_id' => (string)$newId,
+            'details' => "เพิ่มหมวดหมู่พัสดุ [{$code}] {$name}",
+        ], $pdo3 ?? null);
         echo json_encode(['status' => 'success', 'message' => 'บันทึกข้อมูลหมวดหมู่เรียบร้อยแล้ว']);
     } elseif ($method === 'PUT') {
         $data = json_decode(file_get_contents("php://input"), true) ?: [];
@@ -78,6 +89,16 @@ try {
 
         $stmt = $pdo2->prepare("UPDATE inv_categories SET warehouse_id=?, code=?, name=?, gpsc_code=?, gpsc_name=?, active=? WHERE id=?");
         $stmt->execute([$warehouse_id, $code, $name, $gpsc_code, $gpsc_name, $active, $id]);
+        require_once __DIR__ . '/inv_log_helper.php';
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => $warehouse_id,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'UPDATE_CATEGORY',
+            'target_type' => 'category',
+            'target_id' => (string)$id,
+            'details' => "แก้ไขหมวดหมู่พัสดุ [{$code}] {$name}",
+        ], $pdo3 ?? null);
         echo json_encode(['status' => 'success', 'message' => 'อัปเดตข้อมูลหมวดหมู่เรียบร้อยแล้ว']);
     } elseif ($method === 'DELETE') {
         $id = (int)($_GET['id'] ?? 0);
@@ -93,8 +114,22 @@ try {
             exit;
         }
 
+        $info = $pdo2->prepare("SELECT warehouse_id, code, name FROM inv_categories WHERE id = ?");
+        $info->execute([$id]);
+        $catRow = $info->fetch(PDO::FETCH_ASSOC);
+
         $stmt = $pdo2->prepare("DELETE FROM inv_categories WHERE id = ?");
         $stmt->execute([$id]);
+        require_once __DIR__ . '/inv_log_helper.php';
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => !empty($catRow['warehouse_id']) ? (int)$catRow['warehouse_id'] : null,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'DELETE_CATEGORY',
+            'target_type' => 'category',
+            'target_id' => (string)$id,
+            'details' => "ลบหมวดหมู่พัสดุ " . ($catRow ? "[{$catRow['code']}] {$catRow['name']}" : "#{$id}"),
+        ], $pdo3 ?? null);
         echo json_encode(['status' => 'success', 'message' => 'ลบหมวดหมู่เรียบร้อยแล้ว']);
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Method not allowed.']);

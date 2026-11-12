@@ -1,6 +1,7 @@
 <?php
 require_once '../../config.php';
 require_once '../../cors.php';
+require_once __DIR__ . '/inv_log_helper.php';
 
 header("Content-Type: application/json");
 
@@ -108,6 +109,17 @@ try {
     }
 
     $pdo2->commit();
+    recordInvActivityLog($pdo2, [
+        'warehouse_id' => $warehouse_id,
+        'user_fullname' => $user_name,
+        'page_code' => 'issue',
+        'page_name' => 'จ่ายวัสดุออกคลัง',
+        'action' => 'ISSUE_STOCK',
+        'target_type' => 'issue',
+        'target_id' => (string)$issue_id,
+        'details' => "จ่ายวัสดุออกคลัง เลขที่ {$issue_no} ให้ {$department_name} จำนวน " . count($items) . " รายการ (มูลค่า " . number_format((float)$total_amount, 2) . " บาท)",
+        'meta' => ['issue_no' => $issue_no, 'department_name' => $department_name, 'requester_name' => $requester_name, 'total_amount' => $total_amount],
+    ], $pdo3 ?? null);
     echo json_encode(['status' => 'success', 'message' => 'Stock Issued successfully', 'issue_id' => $issue_id]);
 
 } catch (Exception $e) {

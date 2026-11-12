@@ -15,7 +15,11 @@
             <i class="bi bi-box-arrow-in-down me-2"></i>บันทึกรับเข้าคลังวัสดุ (Stock In)
           </h2>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
+          <button v-if="isAdmin" type="button" class="btn btn-success fw-bold rounded-pill px-3 shadow-sm d-flex align-items-center gap-2" @click="openImportModal">
+            <i class="bi bi-file-earmark-spreadsheet-fill fs-5"></i>
+            <span>นำเข้า Excel / CSV</span>
+          </button>
           <button type="button" class="btn btn-warning text-dark fw-bold rounded-pill px-3 shadow-sm d-flex align-items-center gap-2" @click="openAIDeliveryModal">
             <i class="bi bi-stars text-primary fs-5"></i>
             <span>AI สแกนอ่านใบส่งของ</span>
@@ -92,11 +96,17 @@
                 <div class="mb-4 bg-light p-3 rounded-3" :class="{'opacity-50 pointer-events-none': !form.warehouse_id}">
                   <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 border-bottom pb-2 gap-2">
                     <h5 class="fw-bold mb-0">2. ค้นหาและระบุรายการวัสดุเข้าคลัง</h5>
-                    <button type="button" class="btn btn-sm btn-warning text-dark fw-bold rounded-pill px-3 shadow-sm d-flex align-items-center gap-2" @click="openAIDeliveryModal" :disabled="!form.warehouse_id">
-                      <i class="bi bi-file-earmark-arrow-up-fill text-danger"></i>
-                      <i class="bi bi-stars text-primary"></i>
-                      <span>นำเข้าอัตโนมัติจากใบส่งของ (AI)</span>
-                    </button>
+                    <div class="d-flex flex-wrap gap-2">
+                      <button v-if="isAdmin" type="button" class="btn btn-sm btn-success fw-bold rounded-pill px-3 shadow-sm d-flex align-items-center gap-2" @click="openImportModal" :disabled="!form.warehouse_id">
+                        <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+                        <span>นำเข้า Excel / CSV ยกยอด</span>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-warning text-dark fw-bold rounded-pill px-3 shadow-sm d-flex align-items-center gap-2" @click="openAIDeliveryModal" :disabled="!form.warehouse_id">
+                        <i class="bi bi-file-earmark-arrow-up-fill text-danger"></i>
+                        <i class="bi bi-stars text-primary"></i>
+                        <span>นำเข้าอัตโนมัติจากใบส่งของ (AI)</span>
+                      </button>
+                    </div>
                   </div>
                   <div class="row g-2 align-items-end">
                     <div class="col-md-3 position-relative">
@@ -184,7 +194,10 @@
                             <span v-if="!item.lot_number && !item.expiry_date" class="text-muted">-</span>
                           </td>
                           <td class="text-end text-primary">{{ formatCurrency(item.unit_cost) }}</td>
-                          <td class="text-end fw-bold text-success">{{ item.qty }}</td>
+                          <td class="text-end fw-bold" :class="item.qty > 0 ? 'text-success' : 'text-secondary'">
+                            {{ item.qty }}
+                            <span v-if="item.qty <= 0" class="badge bg-secondary-subtle text-secondary ms-1">สร้างเฉพาะทะเบียน</span>
+                          </td>
                           <td>{{ item.unit_name }}</td>
                           <td class="text-end fw-bold">{{ formatCurrency(item.unit_cost * item.qty) }}</td>
                           <td class="text-center">
@@ -478,6 +491,208 @@
         </div>
       </div>
     </div>
+
+    <!-- ========================================== -->
+    <!-- Excel / CSV Bulk Receive & Opening Stock Modal -->
+    <!-- ========================================== -->
+    <div v-if="showImportModal && isAdmin" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.65); z-index: 1060;">
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+          <div class="modal-header bg-success text-white py-3 px-4 border-0 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+              <div class="p-2 bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                <i class="bi bi-file-earmark-spreadsheet-fill fs-4"></i>
+              </div>
+              <div>
+                <h5 class="modal-title fw-bold mb-0">นำเข้า Excel / CSV รับเข้าคลัง &amp; ยกยอดสต๊อก</h5>
+                <small class="opacity-75">รองรับทั้งไฟล์ Excel ที่มีหัวตาราง และไฟล์/ข้อความ CSV 7 คอลัมน์ (รหัส, ชื่อ, Lot, Exp/ว่าง, ราคา, จำนวน, หน่วย)</small>
+              </div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" @click="closeImportModal"></button>
+          </div>
+
+          <div class="modal-body p-4 bg-light">
+            <div v-if="!form.warehouse_id" class="alert alert-warning border-0 shadow-sm rounded-3 d-flex align-items-center gap-2 mb-3">
+              <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+              <div>กรุณาเลือกคลังวัสดุในแบบฟอร์มหลักก่อนนำเข้า</div>
+            </div>
+
+            <!-- Template Banner -->
+            <div class="card border-0 bg-white shadow-xs rounded-4 mb-3">
+              <div class="card-body p-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="small">
+                  <div class="fw-bold text-dark">
+                    <i class="bi bi-info-circle-fill text-success me-1"></i>
+                    คลังปลายทาง: <span class="text-success">{{ activeReceiveWarehouseLabel }}</span>
+                  </div>
+                  <div class="text-muted">
+                    หากรหัส/ชื่อวัสดุยังไม่มีในคลัง ระบบจะสร้างทะเบียนวัสดุ (`inv_items`) และหน่วยนับ (`inv_units`) ให้อัตโนมัติเมื่อกดบันทึกรับเข้า
+                  </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold" @click="downloadReceiveTemplate">
+                  <i class="bi bi-download me-1"></i> ดาวน์โหลดแม่แบบ Excel (.xlsx)
+                </button>
+              </div>
+            </div>
+
+            <!-- Mode Tabs: File Upload or Copy-Paste CSV -->
+            <div class="card border-0 shadow-sm rounded-4 mb-3">
+              <div class="card-header bg-white border-bottom pt-3 px-3 pb-0">
+                <ul class="nav nav-tabs border-bottom-0">
+                  <li class="nav-item">
+                    <button type="button" class="nav-link fw-bold" :class="{ active: importMode === 'file' }" @click="importMode = 'file'">
+                      <i class="bi bi-upload me-1"></i> เลือกไฟล์ Excel / CSV
+                    </button>
+                  </li>
+                  <li class="nav-item">
+                    <button type="button" class="nav-link fw-bold" :class="{ active: importMode === 'paste' }" @click="importMode = 'paste'">
+                      <i class="bi bi-clipboard-plus me-1"></i> วางข้อความ CSV โดยตรง
+                    </button>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="card-body p-3">
+                <div v-if="importMode === 'file'" class="text-center py-3 border-2 border-dashed rounded-3 bg-light-subtle">
+                  <input
+                    type="file"
+                    ref="excelFileInputRef"
+                    class="d-none"
+                    accept=".xlsx,.xls,.csv"
+                    @change="onImportFileChange"
+                  />
+                  <div v-if="!importFileName">
+                    <i class="bi bi-cloud-arrow-up text-success fs-1 d-block mb-2"></i>
+                    <div class="fw-bold text-dark mb-1">เลือกไฟล์ .xlsx, .xls หรือ .csv จากเครื่อง</div>
+                    <div class="small text-muted mb-3">รองรับทั้งแบบมีหัวตารางและแบบไม่มีหัวตาราง (รหัส, ชื่อ, Lot, วันหมดอายุ, ราคา, จำนวน, หน่วย)</div>
+                    <button type="button" class="btn btn-success rounded-pill px-4 fw-bold" @click="triggerExcelFileInput">
+                      <i class="bi bi-folder2-open me-1"></i> เลือกไฟล์จากเครื่อง
+                    </button>
+                  </div>
+                  <div v-else class="d-flex flex-wrap align-items-center justify-content-center gap-3">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6">
+                      <i class="bi bi-file-earmark-check me-1"></i> {{ importFileName }}
+                    </span>
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" @click="triggerExcelFileInput">เปลี่ยนไฟล์</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" @click="clearImportData">ล้างรายการ</button>
+                  </div>
+                </div>
+
+                <div v-else>
+                  <label class="form-label small fw-bold mb-1">วางข้อมูล CSV ที่นี่ (1 บรรทัดต่อ 1 รายการ):</label>
+                  <textarea
+                    class="form-control font-monospace small mb-2"
+                    rows="6"
+                    v-model="importCsvText"
+                    placeholder="ตัวอย่าง:&#10;HK0001,กระดาษทิชชู่ม้วน,6810,,115,98,ม้วน&#10;OS0001,กระดาษทำปกสี เอ4,6810,,100,15,รีม"
+                  ></textarea>
+                  <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" @click="clearImportData">ล้างข้อความ</button>
+                    <button type="button" class="btn btn-sm btn-success rounded-pill px-4 fw-bold" @click="parsePastedCsv" :disabled="!importCsvText.trim()">
+                      <i class="bi bi-table me-1"></i> อ่านข้อมูลและตรวจสอบ (Preview)
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Preview Table -->
+            <div v-if="importPreviewRows.length > 0" class="card border-0 shadow-sm rounded-4 overflow-hidden">
+              <div class="card-header bg-white py-3 px-4 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <h6 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-list-check text-success me-1"></i> ตรวจสอบรายการก่อนนำเข้า
+                  </h6>
+                  <span class="badge bg-primary-subtle text-primary rounded-pill">
+                    ทั้งหมด {{ importPreviewRows.length }} รายการ
+                  </span>
+                  <span class="badge bg-success-subtle text-success rounded-pill">
+                    เลือกนำเข้า {{ importSelectedCount }} รายการ (ยอดรับ > 0: {{ importPositiveSelectedCount }})
+                  </span>
+                  <span v-if="importZeroQtyCount > 0" class="badge bg-warning-subtle text-warning-emphasis rounded-pill">
+                    ยอด 0 จำนวน {{ importZeroQtyCount }} รายการ
+                  </span>
+                </div>
+                <div class="d-flex align-items-center gap-3 small">
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="markOpeningCheck" v-model="importMarkAsOpening" />
+                    <label class="form-check-label fw-semibold" for="markOpeningCheck">ตั้งหัวบิลเป็นยอดยกมา (OPEN)</label>
+                  </div>
+                  <div v-if="importZeroQtyCount > 0" class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="includeZeroQtyCheck" v-model="importIncludeZeroQty" @change="onToggleIncludeZeroQty" />
+                    <label class="form-check-label fw-semibold" for="includeZeroQtyCheck">สร้างทะเบียนให้รายการยอด 0 ด้วย</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="table-responsive" style="max-height: 360px; overflow-y: auto;">
+                <table class="table table-sm table-hover align-middle mb-0 small">
+                  <thead class="table-light sticky-top">
+                    <tr>
+                      <th class="text-center" style="width: 40px;">
+                        <input type="checkbox" class="form-check-input" :checked="isAllImportSelected" @change="toggleSelectAllImport($event.target.checked)" />
+                      </th>
+                      <th>รหัสวัสดุ</th>
+                      <th>ชื่อวัสดุ</th>
+                      <th>สถานะการจับคู่</th>
+                      <th>Lot</th>
+                      <th class="text-end">ราคา/หน่วย</th>
+                      <th class="text-end">จำนวน</th>
+                      <th>หน่วยนับ</th>
+                      <th class="text-end pe-3">รวม (บาท)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(row, idx) in importPreviewRows" :key="idx" :class="{ 'table-light text-muted': !row.selected }">
+                      <td class="text-center">
+                        <input type="checkbox" class="form-check-input" v-model="row.selected" />
+                      </td>
+                      <td class="font-monospace fw-bold">{{ row.item_code || '(สร้างอัตโนมัติ)' }}</td>
+                      <td class="fw-bold text-dark">{{ row.item_name }}</td>
+                      <td>
+                        <span v-if="row.matched_item_id > 0" class="badge bg-success-subtle text-success border border-success-subtle">
+                          ตรงกับพัสดุเดิม
+                        </span>
+                        <span v-else class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                          สร้างพัสดุใหม่ในคลัง
+                        </span>
+                        <span v-if="row.qty <= 0" class="badge bg-warning-subtle text-warning-emphasis ms-1">ยอด 0</span>
+                      </td>
+                      <td>{{ row.lot_number || '-' }}</td>
+                      <td class="text-end">{{ formatCurrency(row.unit_cost) }}</td>
+                      <td class="text-end fw-bold" :class="row.qty > 0 ? 'text-success' : 'text-secondary'">{{ row.qty }}</td>
+                      <td>{{ row.unit_name || '-' }}</td>
+                      <td class="text-end fw-bold pe-3">{{ formatCurrency(row.qty * row.unit_cost) }}</td>
+                    </tr>
+                  </tbody>
+                  <tfoot class="table-light">
+                    <tr class="fw-bold">
+                      <td colspan="6" class="text-end">รวมรายการที่เลือก:</td>
+                      <td class="text-end text-success">{{ importTotalQty }}</td>
+                      <td></td>
+                      <td class="text-end text-danger pe-3">{{ formatCurrency(importTotalAmount) }} ฿</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer bg-white px-4 py-3 border-top d-flex justify-content-between align-items-center">
+            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" @click="closeImportModal">ปิด</button>
+            <button
+              type="button"
+              class="btn btn-success rounded-pill px-4 fw-bold shadow-sm"
+              :disabled="importSelectedCount === 0 || !form.warehouse_id"
+              @click="applyImportRowsToReceiveForm"
+            >
+              <i class="bi bi-box-arrow-in-down-right me-1"></i>
+              นำเข้ารายการสู่แบบฟอร์มรับเข้า ({{ importSelectedCount }} รายการ)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -485,6 +700,7 @@
 import axios from 'axios';
 import moment from 'moment';
 import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
 
 export default {
   name: 'InventoryReceive',
@@ -537,7 +753,17 @@ export default {
       scanError: '',
       deliveryFile: null,
       previewUrl: null,
-      parsedData: null
+      parsedData: null,
+
+      // Excel / CSV Bulk Receive & Opening Stock (Admin Only)
+      isAdmin: false,
+      showImportModal: false,
+      importMode: 'file',
+      importFileName: '',
+      importCsvText: '',
+      importPreviewRows: [],
+      importMarkAsOpening: true,
+      importIncludeZeroQty: true
     };
   },
   computed: {
@@ -565,9 +791,37 @@ export default {
     isAllParsedSelected() {
       if (!this.parsedData || !this.parsedData.items || this.parsedData.items.length === 0) return false;
       return this.parsedData.items.every(it => it.selected);
+    },
+    activeReceiveWarehouseLabel() {
+      const w = this.warehouses.find(x => String(x.id) === String(this.form.warehouse_id));
+      return w ? `[${w.code}] ${w.name}` : 'ยังไม่ได้เลือกคลัง';
+    },
+    importZeroQtyCount() {
+      return this.importPreviewRows.filter(r => Number(r.qty) <= 0).length;
+    },
+    importSelectedCount() {
+      return this.importPreviewRows.filter(r => r.selected).length;
+    },
+    importPositiveSelectedCount() {
+      return this.importPreviewRows.filter(r => r.selected && Number(r.qty) > 0).length;
+    },
+    importTotalQty() {
+      return this.importPreviewRows
+        .filter(r => r.selected)
+        .reduce((sum, r) => sum + (Number(r.qty) || 0), 0);
+    },
+    importTotalAmount() {
+      return this.importPreviewRows
+        .filter(r => r.selected)
+        .reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.unit_cost) || 0)), 0);
+    },
+    isAllImportSelected() {
+      if (this.importPreviewRows.length === 0) return false;
+      return this.importPreviewRows.every(r => r.selected);
     }
   },
   mounted() {
+    this.checkAdminStatus();
     this.fetchMasters();
   },
   beforeUnmount() {
@@ -576,6 +830,22 @@ export default {
     }
   },
   methods: {
+    async checkAdminStatus() {
+      try {
+        const token = localStorage.getItem('user_token');
+        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+        const response = await axios.get('/api-hosoffice/get_user_profile.php', config);
+        if (response.data && response.data.status === 'success') {
+          const accessUser = response.data.access_user ? String(response.data.access_user).split(':') : [];
+          this.isAdmin = accessUser.includes('administrator');
+        } else {
+          this.isAdmin = false;
+        }
+      } catch (err) {
+        console.error('Error checking admin status in Receive:', err);
+        this.isAdmin = false;
+      }
+    },
     formatCurrency(val) {
       return parseFloat(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     },
@@ -761,6 +1031,7 @@ export default {
         if (res.data.status === 'success') {
           Swal.fire('บันทึกสำเร็จ!', 'รับเข้าวัสดุเรียบร้อยแล้ว ยอดคงเหลือถูกอัปเดตอัตโนมัติ', 'success').then(() => {
             this.resetAll();
+            this.fetchItems();
           });
         } else {
           Swal.fire('ข้อผิดพลาด', res.data.message, 'error');
@@ -1026,6 +1297,290 @@ export default {
         title: 'นำเข้ารายการวัสดุสำเร็จ!',
         html: `AI ได้อ่านและนำเข้ารายการวัสดุจากใบส่งของจำนวน <strong>${count}</strong> รายการ ลงในตารางรับเข้าเรียบร้อยแล้ว`,
         timer: 2500,
+        showConfirmButton: false
+      });
+    },
+
+    // ==========================================
+    // Excel / CSV Bulk Receive & Opening Stock
+    // ==========================================
+    openImportModal() {
+      if (!this.isAdmin) return;
+      if (!this.form.warehouse_id && this.warehouses.length > 0) {
+        this.form.warehouse_id = this.warehouses[0].id;
+        this.onWarehouseChange();
+      }
+      this.showImportModal = true;
+    },
+    closeImportModal() {
+      this.showImportModal = false;
+    },
+    triggerExcelFileInput() {
+      if (this.$refs.excelFileInputRef) {
+        this.$refs.excelFileInputRef.value = '';
+        this.$refs.excelFileInputRef.click();
+      }
+    },
+    clearImportData() {
+      this.importFileName = '';
+      this.importCsvText = '';
+      this.importPreviewRows = [];
+    },
+    downloadReceiveTemplate() {
+      const sampleRows = [
+        {
+          'รหัสวัสดุ': 'HK0001',
+          'ชื่อวัสดุ (จำเป็น)': 'กระดาษทิชชู่ม้วน',
+          'เลข Lot': '6810',
+          'วันหมดอายุ (YYYY-MM-DD)': '',
+          'ราคา/หน่วย': 115,
+          'จำนวนรับเข้า (จำเป็น)': 98,
+          'หน่วยนับ': 'ม้วน',
+          'หมวดหมู่': 'งานบ้านงานครัว',
+          'ประเภทวัสดุ': 'วัสดุงานบ้านงานครัว'
+        },
+        {
+          'รหัสวัสดุ': 'OS0001',
+          'ชื่อวัสดุ (จำเป็น)': 'กระดาษทำปกสี เอ4',
+          'เลข Lot': '6810',
+          'วันหมดอายุ (YYYY-MM-DD)': '',
+          'ราคา/หน่วย': 100,
+          'จำนวนรับเข้า (จำเป็น)': 15,
+          'หน่วยนับ': 'รีม',
+          'หมวดหมู่': 'สำนักงาน',
+          'ประเภทวัสดุ': 'วัสดุสำนักงาน'
+        }
+      ];
+      const ws = XLSX.utils.json_to_sheet(sampleRows);
+      ws['!cols'] = [
+        { wch: 14 }, { wch: 32 }, { wch: 12 }, { wch: 22 },
+        { wch: 14 }, { wch: 20 }, { wch: 12 }, { wch: 20 }, { wch: 22 }
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Receive_Import');
+      XLSX.writeFile(wb, 'แบบฟอร์มรับเข้าคลัง_ยกยอดสต๊อก.xlsx');
+    },
+    parseCsvText(text) {
+      const rows = [];
+      let row = [];
+      let field = '';
+      let inQuotes = false;
+      const src = String(text || '').replace(/^\uFEFF/, '');
+
+      for (let i = 0; i < src.length; i++) {
+        const ch = src[i];
+        if (inQuotes) {
+          if (ch === '"' && src[i + 1] === '"') {
+            field += '"';
+            i++;
+          } else if (ch === '"') {
+            inQuotes = false;
+          } else {
+            field += ch;
+          }
+        } else if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === ',') {
+          row.push(field.trim());
+          field = '';
+        } else if (ch === '\r' || ch === '\n') {
+          if (ch === '\r' && src[i + 1] === '\n') i++;
+          row.push(field.trim());
+          if (row.some(cell => cell !== '')) rows.push(row);
+          row = [];
+          field = '';
+        } else {
+          field += ch;
+        }
+      }
+      row.push(field.trim());
+      if (row.some(cell => cell !== '')) rows.push(row);
+      return rows;
+    },
+    onImportFileChange(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      this.importFileName = file.name;
+
+      const isCsv = file.name.toLowerCase().endsWith('.csv');
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        try {
+          let matrix = [];
+          if (isCsv) {
+            matrix = this.parseCsvText(e.target.result);
+          } else {
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, { type: 'array' });
+            const firstSheet = wb.Sheets[wb.SheetNames[0]];
+            matrix = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' })
+              .filter(r => Array.isArray(r) && r.some(c => String(c ?? '').trim() !== ''));
+          }
+          this.buildImportPreviewFromMatrix(matrix);
+        } catch (err) {
+          console.error('Import parse error:', err);
+          Swal.fire('อ่านไฟล์ไม่สำเร็จ', 'กรุณาตรวจสอบรูปแบบไฟล์ Excel / CSV อีกครั้ง', 'error');
+        }
+      };
+
+      if (isCsv) {
+        reader.readAsText(file, 'UTF-8');
+      } else {
+        reader.readAsArrayBuffer(file);
+      }
+    },
+    parsePastedCsv() {
+      const matrix = this.parseCsvText(this.importCsvText);
+      this.buildImportPreviewFromMatrix(matrix);
+    },
+    buildImportPreviewFromMatrix(matrix) {
+      if (!matrix || matrix.length === 0) {
+        Swal.fire('ไม่พบข้อมูล', 'ไม่พบรายการในไฟล์หรือข้อความที่วาง', 'warning');
+        this.importPreviewRows = [];
+        return;
+      }
+
+      const firstRowStr = matrix[0].map(c => String(c ?? '').trim().toLowerCase());
+      const headerKeywords = ['รหัส', 'ชื่อ', 'รายการ', 'จำนวน', 'ราคา', 'หน่วย', 'lot', 'code', 'name', 'qty', 'price', 'unit'];
+      const hasHeader = firstRowStr.some(cell => headerKeywords.some(kw => cell.includes(kw)));
+
+      const findColIndex = (headers, aliases) => {
+        for (let i = 0; i < headers.length; i++) {
+          const h = headers[i].replace(/\s+/g, '');
+          if (aliases.some(a => h.includes(a))) return i;
+        }
+        return -1;
+      };
+
+      let colIdx = {
+        code: 0,
+        name: 1,
+        lot: 2,
+        exp: 3,
+        cost: 4,
+        qty: 5,
+        unit: 6,
+        cat: 7,
+        type: 8
+      };
+
+      let dataRows = matrix;
+      if (hasHeader) {
+        const normHeaders = firstRowStr;
+        colIdx = {
+          code: findColIndex(normHeaders, ['รหัส', 'item_code', 'code']),
+          name: findColIndex(normHeaders, ['ชื่อวัสดุ', 'ชื่อยา', 'ชื่อสินค้า', 'รายการ', 'item_name', 'name']),
+          lot: findColIndex(normHeaders, ['lot', 'ล็อต', 'lot_number']),
+          exp: findColIndex(normHeaders, ['หมดอายุ', 'expiry', 'exp']),
+          cost: findColIndex(normHeaders, ['ราคา', 'cost', 'price']),
+          qty: findColIndex(normHeaders, ['จำนวน', 'qty', 'quantity']),
+          unit: findColIndex(normHeaders, ['หน่วย', 'unit']),
+          cat: findColIndex(normHeaders, ['หมวด', 'category']),
+          type: findColIndex(normHeaders, ['ประเภท', 'item_type', 'type'])
+        };
+        dataRows = matrix.slice(1);
+      }
+
+      const parsed = [];
+      for (const cols of dataRows) {
+        const getVal = (idx) => (idx >= 0 && idx < cols.length ? String(cols[idx] ?? '').trim() : '');
+        const itemCode = getVal(colIdx.code);
+        const itemName = getVal(colIdx.name);
+        if (!itemCode && !itemName) continue;
+
+        const lotNumber = getVal(colIdx.lot);
+        const expRaw = getVal(colIdx.exp);
+        const expiryDate = /^\d{4}-\d{2}-\d{2}$/.test(expRaw) ? expRaw : '';
+        const unitCost = parseFloat(getVal(colIdx.cost).replace(/,/g, '')) || 0;
+        const qtyVal = parseFloat(getVal(colIdx.qty).replace(/,/g, ''));
+        const qty = Number.isFinite(qtyVal) ? qtyVal : 0;
+        const unitName = getVal(colIdx.unit) || 'หน่วย';
+        const categoryName = getVal(colIdx.cat);
+        const itemTypeName = getVal(colIdx.type);
+
+        let matched = null;
+        if (itemCode) {
+          matched = this.items.find(m => String(m.item_code || '').toLowerCase() === itemCode.toLowerCase());
+        } else if (itemName) {
+          matched = this.items.find(m => String(m.item_name || '').trim().toLowerCase() === itemName.toLowerCase());
+        }
+
+        parsed.push({
+          selected: qty > 0 || this.importIncludeZeroQty,
+          item_id: matched ? matched.id : 0,
+          matched_item_id: matched ? matched.id : 0,
+          item_code: matched ? matched.item_code : itemCode,
+          item_name: matched ? matched.item_name : (itemName || itemCode),
+          item_name_en: '',
+          lot_number: lotNumber,
+          expiry_date: expiryDate,
+          unit_cost: unitCost,
+          qty,
+          unit_id: matched ? matched.unit_id : 0,
+          unit_name: matched ? (matched.unit_name || unitName) : unitName,
+          category_name: categoryName,
+          item_type_name: itemTypeName,
+          lot_control: matched ? matched.lot_control : (lotNumber ? 1 : 0),
+          expiry_control: matched ? matched.expiry_control : (expiryDate ? 1 : 0)
+        });
+      }
+
+      if (parsed.length === 0) {
+        Swal.fire('ไม่พบรายการที่ใช้งานได้', 'กรุณาตรวจสอบว่ามีชื่อวัสดุและจำนวนในคอลัมน์ที่ถูกต้อง', 'warning');
+      }
+      this.importPreviewRows = parsed;
+    },
+    onToggleIncludeZeroQty() {
+      this.importPreviewRows.forEach(r => {
+        if (Number(r.qty) <= 0) {
+          r.selected = this.importIncludeZeroQty;
+        }
+      });
+    },
+    toggleSelectAllImport(val) {
+      this.importPreviewRows.forEach(r => {
+        r.selected = val;
+      });
+    },
+    applyImportRowsToReceiveForm() {
+      const chosen = this.importPreviewRows.filter(r => r.selected);
+      if (chosen.length === 0) return;
+
+      if (this.importMarkAsOpening) {
+        if (String(this.form.receipt_no || '').startsWith('RC-')) {
+          this.form.receipt_no = `OPEN-${moment().format('YYMMDDHHmm')}`;
+        }
+        if (!this.form.remark) {
+          this.form.remark = 'ยกยอดคงเหลือเข้าคลัง (Import Excel/CSV)';
+        }
+      }
+
+      chosen.forEach(r => {
+        this.selectedItems.push({
+          item_id: r.item_id,
+          item_code: r.item_code,
+          item_name: r.item_name,
+          item_name_en: r.item_name_en,
+          lot_number: r.lot_number,
+          expiry_date: r.expiry_date,
+          qty: r.qty,
+          unit_id: r.unit_id,
+          unit_name: r.unit_name,
+          unit_cost: r.unit_cost,
+          category_name: r.category_name,
+          item_type_name: r.item_type_name,
+          lot_control: r.lot_control,
+          expiry_control: r.expiry_control
+        });
+      });
+
+      this.closeImportModal();
+      Swal.fire({
+        icon: 'success',
+        title: 'นำเข้ารายการเรียบร้อย',
+        html: `เพิ่มรายการลงตารางเตรียมรับเข้าแล้ว <strong>${chosen.length}</strong> รายการ<br/><small class="text-muted">กรุณาตรวจสอบข้อมูลและกด "ยืนยันบันทึกรับเข้าคลัง" ด้านล่าง</small>`,
+        timer: 2800,
         showConfirmButton: false
       });
     }

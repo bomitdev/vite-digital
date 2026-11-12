@@ -117,6 +117,17 @@ try {
                 }
             }
 
+            require_once __DIR__ . '/inv_log_helper.php';
+            recordInvActivityLog($pdo2, [
+                'warehouse_id' => $seedWarehouseId,
+                'page_code' => 'settings',
+                'page_name' => 'ตั้งค่าระบบ (Master Data)',
+                'action' => 'SEED_UNITS',
+                'target_type' => 'unit',
+                'details' => "เพิ่มหน่วยนับมาตรฐาน {$added} รายการ",
+                'meta' => ['added' => $added],
+            ], $pdo3 ?? null);
+
             echo json_encode([
                 'status' => 'success',
                 'message' => "เพิ่มหน่วยนับมาตรฐานสำเร็จ {$added} รายการ",
@@ -157,11 +168,22 @@ try {
 
         $stmt = $pdo2->prepare("INSERT INTO inv_units (warehouse_id, code, name, active) VALUES (?, ?, ?, ?)");
         $stmt->execute([$warehouse_id, $code ?: null, $name, $active]);
+        $unitId = $pdo2->lastInsertId();
+        require_once __DIR__ . '/inv_log_helper.php';
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => $warehouse_id,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'CREATE_UNIT',
+            'target_type' => 'unit',
+            'target_id' => (string)$unitId,
+            'details' => "เพิ่มหน่วยนับ [{$code}] {$name}",
+        ], $pdo3 ?? null);
 
         echo json_encode([
             'status' => 'success',
             'message' => 'เพิ่มหน่วยนับเรียบร้อยแล้ว',
-            'id' => $pdo2->lastInsertId()
+            'id' => $unitId
         ], JSON_UNESCAPED_UNICODE);
 
     } elseif ($method === 'PUT') {
@@ -191,6 +213,16 @@ try {
 
         $stmt = $pdo2->prepare("UPDATE inv_units SET warehouse_id = ?, code = ?, name = ?, active = ? WHERE id = ?");
         $stmt->execute([$warehouse_id, $code ?: null, $name, $active, $id]);
+        require_once __DIR__ . '/inv_log_helper.php';
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => $warehouse_id,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'UPDATE_UNIT',
+            'target_type' => 'unit',
+            'target_id' => (string)$id,
+            'details' => "แก้ไขหน่วยนับ [{$code}] {$name}",
+        ], $pdo3 ?? null);
 
         echo json_encode([
             'status' => 'success',
@@ -217,8 +249,22 @@ try {
             exit;
         }
 
+        $uInfo = $pdo2->prepare("SELECT warehouse_id, code, name FROM inv_units WHERE id = ?");
+        $uInfo->execute([$id]);
+        $uRow = $uInfo->fetch(PDO::FETCH_ASSOC);
+
         $stmt = $pdo2->prepare("DELETE FROM inv_units WHERE id = ?");
         $stmt->execute([$id]);
+        require_once __DIR__ . '/inv_log_helper.php';
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => !empty($uRow['warehouse_id']) ? (int)$uRow['warehouse_id'] : null,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'DELETE_UNIT',
+            'target_type' => 'unit',
+            'target_id' => (string)$id,
+            'details' => "ลบหน่วยนับ " . ($uRow ? "[{$uRow['code']}] {$uRow['name']}" : "#{$id}"),
+        ], $pdo3 ?? null);
 
         echo json_encode([
             'status' => 'success',

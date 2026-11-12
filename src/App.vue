@@ -488,6 +488,41 @@ const orgMenu = ref([]);
 const docCategories = ref([]);
 const activeDropdown = ref(null);
 const activeSubmenu = ref(null);
+const isAdminUser = ref(false);
+let lastCheckedToken = '';
+
+const checkAdminAccess = async () => {
+  const token = localStorage.getItem('user_token') || '';
+  if (!token) {
+    isAdminUser.value = false;
+    lastCheckedToken = '';
+    return;
+  }
+  if (token === lastCheckedToken) {
+    return;
+  }
+  lastCheckedToken = token;
+  try {
+    const res = await fetch('/api-hosoffice/get_user_profile.php', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) {
+      isAdminUser.value = false;
+      lastCheckedToken = '';
+      return;
+    }
+    const data = await res.json();
+    if (data && data.status === 'success') {
+      const perms = data.access_user ? data.access_user.split(':') : [];
+      isAdminUser.value = perms.includes('administrator');
+    } else {
+      isAdminUser.value = false;
+    }
+  } catch {
+    isAdminUser.value = false;
+    lastCheckedToken = '';
+  }
+};
 
 // =========================
 // DROPDOWN
@@ -521,6 +556,8 @@ const checkTimeout = () => {
       localStorage.removeItem('user_token');
       localStorage.removeItem('user_name');
       localStorage.removeItem('last_activity');
+      isAdminUser.value = false;
+      lastCheckedToken = '';
 
       router.push('/login');
     }
@@ -561,7 +598,11 @@ const updateActivityDebounced = () => {
 // =========================
 const syncLogout = (e) => {
   if (e.key === 'user_token' && !e.newValue) {
+    isAdminUser.value = false;
+    lastCheckedToken = '';
     router.push('/login');
+  } else if (e.key === 'user_token' && e.newValue) {
+    checkAdminAccess();
   }
 };
 
@@ -584,12 +625,14 @@ router.afterEach(() => {
   activeDropdown.value = null;
   activeSubmenu.value = null;
   closeNavbar();
+  checkAdminAccess();
 });
 
 // =========================
 // MOUNT
 // =========================
 onMounted(async () => {
+  checkAdminAccess();
   // Activity Events
   window.addEventListener('mousemove', updateActivityDebounced);
   window.addEventListener('click', updateActivityDebounced);

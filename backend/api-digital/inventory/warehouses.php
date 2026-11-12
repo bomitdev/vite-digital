@@ -16,6 +16,32 @@ try {
         $user_id = isset($_GET['user_id']) ? $_GET['user_id'] : '';
         $is_admin = isset($_GET['is_admin']) ? (int)$_GET['is_admin'] : 0;
         $include_inactive = isset($_GET['include_inactive']) ? (int)$_GET['include_inactive'] : 0;
+
+        if ($is_admin === 1) {
+            require_once __DIR__ . '/../../auth_utils.php';
+            $tokenUser = (function_exists('authOptional') && function_exists('getallheaders')) ? authOptional() : null;
+            $authUid = (int)($tokenUser['uid'] ?? 0);
+            $verifiedAdmin = false;
+            if (isset($pdo3) && $authUid > 0) {
+                $stAdm = $pdo3->prepare("SELECT access_user FROM hr_person WHERE ID = ? LIMIT 1");
+                $stAdm->execute([$authUid]);
+                $accStr = (string)$stAdm->fetchColumn();
+                $perms = array_filter(array_map('trim', explode(':', $accStr)));
+                $verifiedAdmin = !empty(array_intersect($perms, [
+                    'administrator',
+                    'menu_inventory_admin',
+                    'menu_inventory_manage',
+                    'menu_it_material_manage',
+                    'menu_gm_material_manage'
+                ]));
+            }
+            if (!$verifiedAdmin) {
+                $is_admin = 0;
+                if ($user_id === '' && $authUid > 0) {
+                    $user_id = (string)$authUid;
+                }
+            }
+        }
         
         if ($user_id !== '' && !$is_admin) {
             $activeClause = $include_inactive ? "" : "AND w.active = 1";
@@ -40,6 +66,23 @@ try {
         
         echo json_encode(['status' => 'success', 'data' => $warehouses]);
     } elseif ($method === 'POST') {
+        require_once __DIR__ . '/../../auth_utils.php';
+        $userData = authGuard();
+        $authUid = (int)($userData['uid'] ?? 0);
+        $isSuperAdmin = false;
+        if (isset($pdo3) && $authUid > 0) {
+            $stAdm = $pdo3->prepare("SELECT access_user FROM hr_person WHERE ID = ? LIMIT 1");
+            $stAdm->execute([$authUid]);
+            $accStr = (string)$stAdm->fetchColumn();
+            $perms = array_filter(array_map('trim', explode(':', $accStr)));
+            $isSuperAdmin = in_array('administrator', $perms, true);
+        }
+        if (!$isSuperAdmin) {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถเพิ่มคลังใหม่ได้'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
         $data = json_decode(file_get_contents("php://input"), true);
         $code = trim($data['code'] ?? '');
         $name = trim($data['name'] ?? '');
@@ -65,6 +108,18 @@ try {
             $stmtAccess->execute([$warehouse_id, $user_id]);
         }
 
+        require_once __DIR__ . '/inv_log_helper.php';
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => (int)$warehouse_id,
+            'warehouse_name' => $name,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'CREATE_WAREHOUSE',
+            'target_type' => 'warehouse',
+            'target_id' => (string)$warehouse_id,
+            'details' => "สร้างคลังวัสดุใหม่ [{$code}] {$name}",
+        ], $pdo3 ?? null);
+
         echo json_encode(['status' => 'success', 'message' => 'Warehouse created successfully.', 'id' => $warehouse_id]);
     } elseif ($method === 'PUT') {
         $data = json_decode(file_get_contents("php://input"), true);
@@ -80,6 +135,17 @@ try {
 
         $stmt = $pdo2->prepare("UPDATE inv_warehouses SET code=?, name=?, active=? WHERE id=?");
         $stmt->execute([$code, $name, $active, $id]);
+        require_once __DIR__ . '/inv_log_helper.php';
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => $id,
+            'warehouse_name' => $name,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'UPDATE_WAREHOUSE',
+            'target_type' => 'warehouse',
+            'target_id' => (string)$id,
+            'details' => "แก้ไขข้อมูลคลังวัสดุ [{$code}] {$name} (active={$active})",
+        ], $pdo3 ?? null);
         echo json_encode(['status' => 'success', 'message' => 'Warehouse updated successfully.']);
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Method not allowed.']);

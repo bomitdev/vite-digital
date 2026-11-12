@@ -1,6 +1,7 @@
 <?php
 require_once '../../config.php';
 require_once '../../cors.php';
+require_once __DIR__ . '/inv_log_helper.php';
 
 header("Content-Type: application/json");
 
@@ -81,6 +82,18 @@ try {
     }
 
     $pdo2->commit();
+    $isEdit = isset($data['id']) && intval($data['id']) > 0;
+    recordInvActivityLog($pdo2, [
+        'warehouse_id' => $warehouse_id,
+        'user_fullname' => $requester_name,
+        'page_code' => 'pr_form',
+        'page_name' => 'สร้าง/แก้ไข ใบขอซื้อขอจ้าง (PR)',
+        'action' => $isEdit ? 'UPDATE_PR' : 'CREATE_PR',
+        'target_type' => 'pr',
+        'target_id' => (string)$pr_id,
+        'details' => ($isEdit ? 'แก้ไขใบขอซื้อขอจ้าง #' . $pr_id : 'สร้างใบขอซื้อขอจ้าง ' . ($pr_number ?? '#' . $pr_id)) . ' จำนวน ' . count($items) . ' รายการ',
+        'meta' => ['pr_id' => $pr_id, 'pr_number' => $pr_number ?? null, 'items_count' => count($items)],
+    ], $pdo3 ?? null);
     echo json_encode(['status' => 'success', 'message' => 'บันทึกใบขอซื้อสำเร็จ!', 'pr_id' => $pr_id]);
 
 } catch (Exception $e) {

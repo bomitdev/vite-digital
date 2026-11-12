@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router';
 import HomeView from '../views/public/HomeView.vue';
+import { logInventoryRouteVisit } from '../utils/inventoryLogger';
 
 const routes = [
   { path: '/', component: HomeView },
@@ -411,6 +412,22 @@ const routes = [
   { path: '/inventory-transfer', component: () => import('../views/digital/inventory/TransferDashboard.vue'), meta: { requiresAuth: true } },
   { path: '/inventory-transfer-form', component: () => import('../views/digital/inventory/TransferForm.vue'), meta: { requiresAuth: true } },
   { path: '/inventory-return', component: () => import('../views/digital/inventory/ReturnDashboard.vue'), meta: { requiresAuth: true } },
+  { path: '/inventory-logs', component: () => import('../views/digital/inventory/InventoryLogs.vue'), meta: { requiresAuth: true } },
+
+  // สถาปัตยกรรมทั้งระบบ (Archify - เฉพาะ Admin เท่านั้น)
+  {
+    path: '/architecture',
+    name: 'SystemArchitecture',
+    component: () => import('../views/digital/architecture/SystemArchitectureView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'สถาปัตยกรรมทั้งระบบ - Vite Digital' }
+  },
+  // ตั้งค่าคีย์ MOPH Notify (เฉพาะ Admin เท่านั้น)
+  {
+    path: '/moph-notify-settings',
+    name: 'MophNotifySettings',
+    component: () => import('../views/digital/MophNotifySettingsView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'ตั้งค่าคีย์ MOPH Notify - Vite Digital' }
+  },
 
   { path: '/:pathMatch(.*)*', component: () => import('../views/errors/Page404.vue') } // แก้ไขจาก pathMathch เป็น pathMatch
 ];
@@ -467,6 +484,10 @@ router.beforeEach((to, from, next) => {
   else {
     next();
   }
+});
+
+router.afterEach((to) => {
+  logInventoryRouteVisit(to);
 });
 
 export default router;

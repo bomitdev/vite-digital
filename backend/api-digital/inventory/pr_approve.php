@@ -1,6 +1,7 @@
 <?php
 require_once '../../config.php';
 require_once '../../cors.php';
+require_once __DIR__ . '/inv_log_helper.php';
 
 header("Content-Type: application/json");
 
@@ -26,7 +27,7 @@ try {
     $pdo2->beginTransaction();
 
     // Check current status
-    $stmt = $pdo2->prepare("SELECT status FROM inv_purchase_requests WHERE id = ?");
+    $stmt = $pdo2->prepare("SELECT status, pr_number, warehouse_id FROM inv_purchase_requests WHERE id = ?");
     $stmt->execute([$pr_id]);
     $pr = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -66,6 +67,17 @@ try {
     }
 
     $pdo2->commit();
+    recordInvActivityLog($pdo2, [
+        'warehouse_id' => !empty($pr['warehouse_id']) ? (int)$pr['warehouse_id'] : null,
+        'user_fullname' => $approver_name,
+        'page_code' => 'pr',
+        'page_name' => 'ขอซื้อขอจ้าง (PR)',
+        'action' => $action === 'APPROVE' ? 'APPROVE_PR' : 'REJECT_PR',
+        'target_type' => 'pr',
+        'target_id' => (string)$pr_id,
+        'details' => ($action === 'APPROVE' ? 'อนุมัติ' : 'ปฏิเสธ') . " PR {$pr['pr_number']} ({$level} -> {$new_status})",
+        'meta' => ['level' => $level, 'new_status' => $new_status, 'reason' => $reason],
+    ], $pdo3 ?? null);
     echo json_encode(['status' => 'success', 'message' => 'ดำเนินการสำเร็จ', 'new_status' => $new_status]);
 
 } catch (Exception $e) {

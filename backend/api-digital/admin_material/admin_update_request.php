@@ -6,6 +6,7 @@ header("Content-Type: application/json; charset=UTF-8");
 
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../auth_utils.php';
+require_once __DIR__ . '/../../moph_notify_helper.php';
 
 // Secure Auth
 $userData = authGuard();
@@ -205,9 +206,6 @@ try {
 
     // --- MOPH NOTIFY START ---
     try {
-        $client_key = 'a883bc9bb2ff70b96fbd1285e581aa2edd7e81bc';
-        $secret_key = '52ZILLQKT4UZCQVZHMTCQGYQHPSA';
-
         $linePayload = [
             "messages" => [
                 [
@@ -306,23 +304,7 @@ try {
             ]
         ];
 
-        $url = "https://morpromt2f.moph.go.th/api/notify/send";
-        $headers = [
-            "Content-Type: application/json",
-            "client-key: {$client_key}",
-            "secret-key: {$secret_key}"
-        ];
-
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($linePayload, JSON_UNESCAPED_UNICODE));
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        curl_exec($ch);
-        unset($ch);
+        sendMophNotifyToChannel($pdo2, 'admin', $linePayload);
     } catch (Exception $notifyEx) {
         error_log("MOPH Notify Error in admin_update_request: " . $notifyEx->getMessage());
     }

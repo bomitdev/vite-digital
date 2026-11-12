@@ -26,6 +26,7 @@ if (
 
     require_once __DIR__ . '/../config.php';
     require_once __DIR__ . '/../auth_utils.php';
+    require_once __DIR__ . '/../moph_notify_helper.php';
 
     // Secure Auth
     $userData = authGuard();
@@ -61,16 +62,7 @@ if (
         $stmt->bindParam(":data_status_id", $data_status_id);
 
         if ($stmt->execute()) {
-
-            // bom
-            //$client_key = '3f8507778fc4d54b3735d49935ac6673c5b70ef5';
-            //$secret_key = 'AQNMNEIJGNUSWISSHGDHQH343ZHA';
-
-            // moph alert hc10985
-            $client_key = '151518fbb68266eb98604e010d4ffdb231365f32';
-            $secret_key = 'KVQRE5QY6PEDRAQRX6UGQU7QOO5Y';
-
-            // Construct Flex Message
+            // Construct Flex Message (MOPH Notify credentials loaded from digital.moph_notify_channels)
             // Fetch Sender Name
             $stmtUser = $pdo3->prepare("SELECT CONCAT(HR_FNAME, ' ', HR_LNAME) as fullname FROM hr_person WHERE id = :id");
             $stmtUser->execute([':id' => $crt_by]);
@@ -150,25 +142,10 @@ if (
                 ]
             ];
 
-            $url = "https://morpromt2f.moph.go.th/api/notify/send";
-            $headers = [
-                "Content-Type: application/json",
-                "client-key: {$client_key}",
-                "secret-key: {$secret_key}"
-            ];
-
-            $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($linePayload, JSON_UNESCAPED_UNICODE));
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-
-            $lineResponse = curl_exec($ch);
-            $curlError = curl_error($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+            $notifyRes = sendMophNotifyToChannel($pdo2, 'it', $linePayload);
+            $lineResponse = $notifyRes['raw'];
+            $curlError = $notifyRes['curl_error'];
+            $httpCode = $notifyRes['http_code'];
 
             echo json_encode([
                 "status" => "success",

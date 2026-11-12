@@ -1,6 +1,7 @@
 <?php
 require_once '../../config.php';
 require_once '../../cors.php';
+require_once __DIR__ . '/inv_log_helper.php';
 
 header("Content-Type: application/json");
 
@@ -34,6 +35,16 @@ try {
             ON DUPLICATE KEY UPDATE access_level = VALUES(access_level)
         ");
         $stmt->execute([$warehouse_id, $user_id, $access_level]);
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => $warehouse_id,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'GRANT_WAREHOUSE_USER',
+            'target_type' => 'warehouse_user',
+            'target_id' => (string)$user_id,
+            'details' => "กำหนดสิทธิ์ผู้ใช้ ID {$user_id} ในคลัง #{$warehouse_id} ระดับ {$access_level}",
+            'meta' => ['target_user_id' => $user_id, 'access_level' => $access_level],
+        ], $pdo3 ?? null);
         echo json_encode(['status' => 'success', 'message' => 'User access saved successfully.']);
         
     } elseif ($action === 'remove') {
@@ -44,8 +55,21 @@ try {
             exit;
         }
 
+        $stRow = $pdo2->prepare("SELECT warehouse_id, user_id, access_level FROM inv_user_warehouses WHERE id = ?");
+        $stRow->execute([$id]);
+        $row = $stRow->fetch(PDO::FETCH_ASSOC);
+
         $stmt = $pdo2->prepare("DELETE FROM inv_user_warehouses WHERE id = ?");
         $stmt->execute([$id]);
+        recordInvActivityLog($pdo2, [
+            'warehouse_id' => !empty($row['warehouse_id']) ? (int)$row['warehouse_id'] : null,
+            'page_code' => 'settings',
+            'page_name' => 'ตั้งค่าระบบ (Master Data)',
+            'action' => 'REVOKE_WAREHOUSE_USER',
+            'target_type' => 'warehouse_user',
+            'target_id' => (string)($row['user_id'] ?? $id),
+            'details' => "ถอดสิทธิ์ผู้ใช้ ID " . ($row['user_id'] ?? $id) . " ออกจากคลัง #" . ($row['warehouse_id'] ?? '-'),
+        ], $pdo3 ?? null);
         echo json_encode(['status' => 'success', 'message' => 'User removed successfully.']);
         
     } else {

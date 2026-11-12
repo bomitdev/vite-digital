@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../cors.php';
+require_once __DIR__ . '/inv_log_helper.php';
 
 header("Content-Type: application/json; charset=utf-8");
 
@@ -201,6 +202,18 @@ try {
     $stmtUpReq->execute([$approver_name, $admin_note, $issue_id, $requisition_id]);
 
     $pdo2->commit();
+
+    recordInvActivityLog($pdo2, [
+        'warehouse_id' => $warehouse_id,
+        'user_fullname' => $approver_name,
+        'page_code' => 'requisitions',
+        'page_name' => 'รายการเบิกวัสดุ',
+        'action' => 'APPROVE_REQUISITION',
+        'target_type' => 'requisition',
+        'target_id' => (string)$requisition_id,
+        'details' => "อนุมัติใบขอเบิก {$req['req_no']} และออกใบจ่าย {$issue_no} จำนวนรวม {$total_qty_to_issue} หน่วย",
+        'meta' => ['req_no' => $req['req_no'], 'issue_no' => $issue_no, 'issue_id' => $issue_id, 'total_qty' => $total_qty_to_issue],
+    ], $pdo3 ?? null);
 
     echo json_encode([
         'status' => 'success',
