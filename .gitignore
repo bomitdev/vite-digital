@@ -29,9 +29,33 @@ dist-ssr
 # 2. ยกเว้นโฟลเดอร์และไฟล์ที่เราต้องการจะเอาขึ้น GitHub จริงๆ
 !/backend/
 !/src/
+!/electron/
+!/public/
+!/index.html
+!/package.json
+!/package-lock.json
+!/vite.config.js
+!/cron_daily_repair_notify.php
+!/cron_daily_schedule_notify.php
+!/run-daily-notify.bat
+!/run-daily-notify.vbs
+!/setup-daily-notify-task.ps1
+!/run-tray.bat
+!/run-tray.vbs
+!/tray-runner.ps1
+!/stop-tray.bat
+!/create-shortcut.bat
+!/create-desktop-shortcut.ps1
+!/enable-autostart.bat
+!/enable-autostart.ps1
+!/disable-autostart.bat
+!/docs/
+!/README.md
 !.gitignore
 
-# 3. เผื่อกรณีในโฟลเดอร์ backend มี node_modules หรือไฟล์ขยะซ่อนอยู่ (ใส่ดักไว้ล่วงหน้า)
+# 3. ไม่เอาไฟล์รูปภาพอัปโหลดและไฟล์คอนฟิกลับขึ้น Git
+/backend/uploads/*
+!/backend/uploads/.gitkeep
 **/node_modules/
 **/.env
 **/.env.local

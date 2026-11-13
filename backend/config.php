@@ -3,6 +3,9 @@
 // โหลด autoload และ dotenv
 require_once __DIR__ . '/vendor/autoload.php';
 
+// Set default timezone for Thailand (GMT+7)
+date_default_timezone_set('Asia/Bangkok');
+
 // Load CORS settings centrally
 require_once __DIR__ . '/cors.php';
 

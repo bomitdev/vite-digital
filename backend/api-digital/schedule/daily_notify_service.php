@@ -644,11 +644,14 @@ function dispatchDailyScheduleNotify(PDO $pdo2, PDO $pdo3, array $options = []):
     }
 
     if ($isAuto && !$isForce && ($settings['last_sent_date'] ?? '') === $targetDate && ($settings['last_status'] ?? '') === 'success') {
-        return [
-            'status' => 'skipped',
-            'message' => "แจ้งเตือนของวันที่ {$targetDate} ถูกส่งไปแล้วก่อนหน้านี้",
-            'summary' => null,
-        ];
+        $lastSentTime = !empty($settings['last_sent_at']) ? substr($settings['last_sent_at'], 11, 5) : '';
+        if ($lastSentTime !== '' && $lastSentTime >= $scheduledHm) {
+            return [
+                'status' => 'skipped',
+                'message' => "แจ้งเตือนของวันที่ {$targetDate} ถูกส่งไปแล้วก่อนหน้านี้ (เมื่อ {$settings['last_sent_at']})",
+                'summary' => null,
+            ];
+        }
     }
 
     $summary = getDailyScheduleSummary($pdo2, $pdo3, $targetDate, $settings);

@@ -218,6 +218,43 @@
                 </div>
               </div>
 
+              <!-- General Maintenance Repair -->
+              <div
+                class="col-6 col-md-4 col-lg-3"
+                v-if="hasPermission(['menu_general_repair', 'backoffice_staff_all'])"
+              >
+                <div
+                  class="nav-card h-100 bg-gradient-teal text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group"
+                  @click="goToGeneralRepair"
+                >
+                  <div
+                    class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
+                  ></div>
+                  <div class="position-relative z-1 d-flex flex-column h-100">
+                    <div
+                      class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
+                    >
+                      <i class="bi bi-wrench-adjustable fs-4"></i>
+                    </div>
+                    <h6 class="fw-bold text-white mb-1 text-truncate" title="แจ้งซ่อมบำรุงทั่วไป">
+                      แจ้งซ่อมบำรุงทั่วไป
+                    </h6>
+                    <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
+                      อาคาร ครุภัณฑ์ ไฟฟ้า ประปา แอร์
+                    </p>
+                    <div
+                      class="d-flex align-items-center text-white fw-bold small mt-auto"
+                      style="font-size: 0.75rem"
+                    >
+                      เข้าใช้งาน
+                      <i
+                        class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
+                      ></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <!-- Computer Loan Form -->
               <div
                 class="col-6 col-md-4 col-lg-3"
@@ -1297,6 +1334,7 @@ export default {
       return this.hasPermission([
         'menu_time_in_out',
         'menu_computer_repair',
+        'menu_general_repair',
         'menu_it_material_req',
         'menu_gm_material_req',
         'menu_data_report',
@@ -1448,6 +1486,9 @@ export default {
     },
     goToComputerRepair() {
       this.$router.push({ path: '/computer-repair' });
+    },
+    goToGeneralRepair() {
+      this.$router.push({ path: '/general-repair' });
     },
     async goToIpAddress() {
       await this.checkITAccessAndGo('/ip-address');

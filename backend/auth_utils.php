@@ -51,7 +51,7 @@ function verifyToken(string $token)
  */
 function authGuard()
 {
-    $headers = getallheaders();
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
     $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
     
     if (empty($authHeader) && isset($_SERVER['HTTP_AUTHORIZATION'])) {
@@ -86,8 +86,14 @@ function authGuard()
  */
 function authOptional()
 {
-    $headers = getallheaders();
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
     $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+
+    if (empty($authHeader) && isset($_SERVER['HTTP_AUTHORIZATION'])) {
+        $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
+    } elseif (empty($authHeader) && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+        $authHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+    }
 
     if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
         $token = $matches[1];

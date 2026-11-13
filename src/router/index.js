@@ -112,6 +112,13 @@ const routes = [
     component: () => import('../views/backoffice/ComputerRepair.vue'),
     meta: { requiresAuth: true }
   },
+  // General Maintenance Repair
+  {
+    path: '/general-repair',
+    name: 'GeneralRepair',
+    component: () => import('../views/backoffice/GeneralRepair.vue'),
+    meta: { requiresAuth: true }
+  },
   // Asset Management
   {
     path: '/asset-management',
@@ -447,6 +454,20 @@ const router = createRouter({
 
 // --- Navigation Guard ---
 router.beforeEach((to, from, next) => {
+  // 0. รองรับ Hash URL ย้อนหลัง (เช่นลิงก์ที่มี /#/login?redirect=... หรือ /#/general-repair จาก LINE)
+  const rawHash = to.hash || (typeof window !== 'undefined' ? window.location.hash : '');
+  if (rawHash && rawHash.startsWith('#/')) {
+    const hashTarget = rawHash.slice(1);
+    if (hashTarget && hashTarget !== to.fullPath) {
+      if (typeof window !== 'undefined' && window.history?.replaceState) {
+        try {
+          window.history.replaceState(null, '', hashTarget);
+        } catch (e) {}
+      }
+      return next(hashTarget);
+    }
+  }
+
   const isAuthenticated = localStorage.getItem('user_token');
   const lastActivity = localStorage.getItem('last_activity');
   const TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes

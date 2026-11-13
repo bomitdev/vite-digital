@@ -30,15 +30,37 @@
                   </div>
                 </div>
                 
-                <p class="mb-3 text-secondary">เลือกโฟลเดอร์ที่ต้องการบันทึกการเปลี่ยนแปลงและอัพโหลด:</p>
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                  <p class="mb-0 text-secondary fw-semibold">เลือกกลุ่มไฟล์ที่ต้องการบันทึกการเปลี่ยนแปลงและอัพโหลด:</p>
+                  <button class="btn btn-sm btn-outline-primary rounded-pill px-3" @click="toggleSelectAll">
+                    <i class="bi" :class="isAllSelected ? 'bi-dash-circle' : 'bi-check-all'"></i>
+                    {{ isAllSelected ? 'ยกเลิกการเลือกทั้งหมด' : 'เลือกทั้งหมด' }}
+                  </button>
+                </div>
                 
-                <div class="border rounded p-3 mb-4 bg-light">
-                  <div class="form-check mb-2" v-for="folder in availableFolders" :key="folder.path">
-                    <input class="form-check-input" type="checkbox" :value="folder.path" :id="'folder-'+folder.path" v-model="selectedFolders">
-                    <label class="form-check-label ms-2 cursor-pointer" :for="'folder-'+folder.path">
-                      <i class="bi bi-folder-fill text-warning me-2"></i>{{ folder.name }} 
-                      <small class="text-muted ms-1">({{ folder.path }})</small>
-                    </label>
+                <div class="border rounded-4 p-3 mb-4 bg-light shadow-xs">
+                  <div class="row g-2">
+                    <div class="col-12" v-for="group in availableGroups" :key="group.id">
+                      <div class="form-check p-2 rounded-3 bg-white border d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center flex-grow-1">
+                          <input
+                            class="form-check-input ms-1 me-2"
+                            type="checkbox"
+                            :value="group.id"
+                            :id="'group-' + group.id"
+                            v-model="selectedGroupIds"
+                          />
+                          <label class="form-check-label ms-1 cursor-pointer flex-grow-1 mb-0" :for="'group-' + group.id">
+                            <i class="bi me-2 text-primary" :class="group.icon || 'bi-folder-fill'"></i>
+                            <strong>{{ group.name }}</strong>
+                            <div class="text-muted small ps-4 mt-1">{{ group.desc }}</div>
+                          </label>
+                        </div>
+                        <span class="badge bg-light text-secondary border rounded-pill px-3 py-1 me-2 d-none d-md-inline-block small">
+                          {{ group.badge }}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -47,7 +69,7 @@
                     <button 
                       class="btn btn-primary w-100 rounded-pill py-2 fw-bold shadow-sm" 
                       @click="confirmAction('push')"
-                      :disabled="loading || selectedFolders.length === 0"
+                      :disabled="loading || selectedPaths.length === 0"
                     >
                       <span v-if="loadingAction === 'push'" class="spinner-border spinner-border-sm me-2"></span>
                       <i v-else class="bi bi-upload me-2"></i> อัพโหลด (Push)
@@ -57,7 +79,7 @@
                     <button 
                       class="btn btn-danger w-100 rounded-pill py-2 fw-bold shadow-sm" 
                       @click="confirmAction('pull')"
-                      :disabled="loading || selectedFolders.length === 0"
+                      :disabled="loading || selectedPaths.length === 0"
                     >
                       <span v-if="loadingAction === 'pull'" class="spinner-border spinner-border-sm me-2"></span>
                       <i v-else class="bi bi-download me-2"></i> โหลดกลับมาทับ (Pull)
@@ -110,17 +132,94 @@ export default {
   name: 'GitSync',
   data() {
     return {
-      availableFolders: [
-        { name: 'Frontend (src)', path: 'src' },
-        { name: 'Backend API', path: 'backend' }
+      availableGroups: [
+        {
+          id: 'src',
+          name: 'Frontend Source Code',
+          badge: 'src/',
+          icon: 'bi-filetype-vue',
+          desc: 'หน้าเว็บทั้งหมด (รวมงานแจ้งซ่อมบำรุง), คอมโพเนนต์ และ Router',
+          paths: ['src']
+        },
+        {
+          id: 'backend',
+          name: 'Backend API',
+          badge: 'backend/',
+          icon: 'bi-filetype-php',
+          desc: 'API งานแจ้งซ่อมบำรุง, ตารางเวร, คลังพัสดุ (ไม่รวม .env และรูปภาพ uploads)',
+          paths: ['backend']
+        },
+        {
+          id: 'config',
+          name: 'โครงสร้างหลัก, Docs & Assets',
+          badge: 'root, docs/ & public/',
+          icon: 'bi-gear-fill',
+          desc: 'index.html, package.json, package-lock.json, vite.config.js, .gitignore, README.md, docs/ และ public/',
+          paths: ['index.html', 'package.json', 'package-lock.json', 'vite.config.js', '.gitignore', 'README.md', 'docs', 'public']
+        },
+        {
+          id: 'cron',
+          name: 'สคริปต์แจ้งเตือนอัตโนมัติ (MOPH Notify Cron)',
+          badge: 'cron scripts',
+          icon: 'bi-bell-fill',
+          desc: 'cron_daily_repair_notify.php, cron_daily_schedule_notify.php, run-daily-notify.bat/vbs, setup task',
+          paths: [
+            'cron_daily_repair_notify.php',
+            'cron_daily_schedule_notify.php',
+            'run-daily-notify.bat',
+            'run-daily-notify.vbs',
+            'setup-daily-notify-task.ps1'
+          ]
+        },
+        {
+          id: 'tray',
+          name: 'สคริปต์ System Tray & Auto-Start',
+          badge: 'system tray',
+          icon: 'bi-windows',
+          desc: 'tray-runner.ps1, run-tray.bat/vbs, stop-tray.bat, enable-autostart.bat',
+          paths: [
+            'tray-runner.ps1',
+            'run-tray.bat',
+            'run-tray.vbs',
+            'stop-tray.bat',
+            'enable-autostart.bat',
+            'enable-autostart.ps1',
+            'disable-autostart.bat',
+            'create-shortcut.bat',
+            'create-desktop-shortcut.ps1',
+            'electron'
+          ]
+        }
       ],
-      selectedFolders: ['src', 'backend'], // Default selected
+      selectedGroupIds: ['src', 'backend', 'config', 'cron', 'tray'], // Default select all
       loading: false,
       loadingAction: null,
       logs: ''
     };
   },
+  computed: {
+    selectedPaths() {
+      const paths = [];
+      this.selectedGroupIds.forEach(id => {
+        const group = this.availableGroups.find(g => g.id === id);
+        if (group && group.paths) {
+          paths.push(...group.paths);
+        }
+      });
+      return [...new Set(paths)];
+    },
+    isAllSelected() {
+      return this.selectedGroupIds.length === this.availableGroups.length;
+    }
+  },
   methods: {
+    toggleSelectAll() {
+      if (this.isAllSelected) {
+        this.selectedGroupIds = [];
+      } else {
+        this.selectedGroupIds = this.availableGroups.map(g => g.id);
+      }
+    },
     async confirmAction(action) {
       if (action !== 'push' && action !== 'pull') return;
       
@@ -128,7 +227,7 @@ export default {
 
       if (action === 'push') {
         title = 'ยืนยันการอัพโหลด?';
-        text = 'คุณกำลังจะอัพโหลดโฟลเดอร์ที่เลือกไปยัง GitHub';
+        text = `คุณกำลังจะอัพโหลดไฟล์ (${this.selectedPaths.length} รายการ/โฟลเดอร์) ไปยัง GitHub`;
         icon = 'question';
         confirmButtonText = 'อัพโหลด';
         confirmButtonColor = '#0d6efd';
@@ -161,7 +260,7 @@ export default {
       try {
         const payload = { action };
         if (action === 'push' || action === 'pull') {
-          payload.folders = this.selectedFolders;
+          payload.folders = this.selectedPaths;
         }
 
         const res = await axios.post('/backend/git_sync.php', payload);
