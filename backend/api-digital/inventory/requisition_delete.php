@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../cors.php';
+require_once __DIR__ . '/inv_auth_helper.php';
 require_once __DIR__ . '/inv_log_helper.php';
 
 header("Content-Type: application/json; charset=utf-8");
@@ -24,7 +25,7 @@ if ($requisition_id <= 0) {
 }
 
 try {
-    $stmtCheck = $pdo2->prepare("SELECT status, warehouse_id, req_no FROM inv_requisitions WHERE id = ?");
+    $stmtCheck = $pdo2->prepare("SELECT status, warehouse_id, req_no, requester_name FROM inv_requisitions WHERE id = ?");
     $stmtCheck->execute([$requisition_id]);
     $reqRow = $stmtCheck->fetch(PDO::FETCH_ASSOC);
     $st = $reqRow['status'] ?? false;
@@ -35,7 +36,17 @@ try {
     }
 
     if ($st === 'APPROVED') {
-        echo json_encode(['status' => 'error', 'message' => 'ไม่สามารถลบใบขอเบิกที่อนุมัติและตัดสต๊อกไปแล้วได้']);
+        echo json_encode(['status' => 'error', 'message' => 'ไม่สามารถยกเลิก/ลบใบขอเบิกที่อนุมัติและตัดสต๊อกไปแล้วได้']);
+        exit;
+    }
+
+    $currentUser = getInvCurrentUser($pdo3 ?? null);
+    $isManager = isInvWarehouseManager($pdo2, $pdo3 ?? null, (int)$reqRow['warehouse_id'], $currentUser);
+    $isOwner = isInvRequisitionOwner($reqRow, $currentUser);
+
+    if (!$isManager && (!$isOwner || $st !== 'PENDING')) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'คุณไม่มีสิทธิ์ยกเลิกคำขอเบิกนี้ (ยกเลิกได้เฉพาะคำขอของตนเองที่ยังไม่อนุมัติเท่านั้น)']);
         exit;
     }
 

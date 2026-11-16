@@ -43,6 +43,7 @@ try {
     }
 
     $warehouse_id = (int)$req['warehouse_id'];
+    $issue_id = (int)($req['issue_id'] ?? 0);
 
     // Fetch items
     $stmtItems = $pdo2->prepare("
@@ -52,12 +53,19 @@ try {
                 SELECT SUM(b.balance_qty) 
                 FROM inv_stock_balances b 
                 WHERE b.item_id = ri.item_id AND b.warehouse_id = ?
-            ), 0) as current_stock
+            ), 0) as current_stock,
+            (
+                SELECT t.balance_qty
+                FROM inv_stock_transactions t
+                WHERE t.document_type = 'ISSUE' AND t.document_id = ? AND t.item_id = ri.item_id
+                ORDER BY t.id DESC
+                LIMIT 1
+            ) as balance_after_issue
         FROM inv_requisition_items ri
         WHERE ri.requisition_id = ?
         ORDER BY ri.id ASC
     ");
-    $stmtItems->execute([$warehouse_id, $req['id']]);
+    $stmtItems->execute([$warehouse_id, $issue_id, $req['id']]);
     $items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
 
     // Fetch available lots for each item (FEFO)

@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once '../../config.php';
 
 // Helper to get environment variable from backend/.env
-function getEnvValue($key, $default = '') {
+function getEnvValue(string $key, string $default = ''): string {
     $envPath = __DIR__ . '/../../.env';
     if (file_exists($envPath)) {
         $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -33,11 +33,11 @@ function getEnvValue($key, $default = '') {
             }
         }
     }
-    return getenv($key) ?: $default;
+    return (string)(getenv($key) ?: $default);
 }
 
 // Helper to save env value to backend/.env
-function setEnvValue($key, $value) {
+function setEnvValue(string $key, string $value): void {
     $envPath = __DIR__ . '/../../.env';
     $content = file_exists($envPath) ? file_get_contents($envPath) : '';
     if (preg_match("/^{$key}=.*/m", $content)) {
@@ -87,6 +87,12 @@ try {
         exit;
     }
 
+    $fileBytes = '';
+    $base64Data = '';
+    $mimeType = '';
+    $origName = '';
+    $ext = '';
+
     if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
         // Check if passed as base64 in json
         $rawInput = file_get_contents('php://input');
@@ -120,6 +126,10 @@ try {
         $base64Data = base64_encode($fileBytes);
     }
 
+    if (empty($fileBytes) && !empty($base64Data)) {
+        $fileBytes = base64_decode($base64Data);
+    }
+
     // Supported mime types for Gemini Vision
     $supportedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
     if (!in_array(strtolower($mimeType), $supportedMimes)) {
@@ -130,6 +140,28 @@ try {
             throw new Exception("ประเภทไฟล์ ({$mimeType}) ไม่รองรับ กรุณาใช้ไฟล์รูปภาพ (JPG, PNG) หรือ PDF");
         }
     }
+
+    // --- บันทึกไฟล์ใบเสนอราคาลงเซิร์ฟเวอร์ backend/uploads/inventory/quotations ---
+    $backendDir = realpath(__DIR__ . '/../..');
+    $uploadDir = $backendDir . '/uploads/inventory/quotations';
+    if (!is_dir($uploadDir)) {
+        @mkdir($uploadDir, 0777, true);
+    }
+    $safeExt = !empty($ext) ? $ext : (strpos($mimeType, 'pdf') !== false ? 'pdf' : 'jpg');
+    $displayOrigName = !empty($origName) ? $origName : ('quotation_' . date('Ymd_His') . '.' . $safeExt);
+    $cleanOrigName = preg_replace('/[^a-zA-Z0-9_\-\.\p{Thai}]/u', '_', $displayOrigName);
+    $savedFileName = 'qt_' . date('Ymd_His') . '_' . substr(md5(uniqid((string)mt_rand(), true)), 0, 8) . '_' . $cleanOrigName;
+    $targetFilePath = $uploadDir . '/' . $savedFileName;
+    @file_put_contents($targetFilePath, $fileBytes);
+
+    // ทำสำเนาไปที่โฟลเดอร์ uploads ที่รูท เพื่อรองรับพาธเดิมด้วย
+    $legacyDir = realpath(__DIR__ . '/../../..') . '/uploads/inventory/quotations';
+    if (is_dir($legacyDir)) {
+        @file_put_contents($legacyDir . '/' . $savedFileName, $fileBytes);
+    }
+
+    $savedFileUrl = '/backend/uploads/inventory/quotations/' . $savedFileName;
+    $savedFilePath = 'backend/uploads/inventory/quotations/' . $savedFileName;
 
     // Prompt for Gemini AI
     $prompt = <<<EOT
@@ -219,7 +251,7 @@ EOT;
         $result = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlErr = curl_error($ch);
-        curl_close($ch);
+        unset($ch);
 
         if ($httpCode === 200 && !empty($result)) {
             $geminiResponse = $result;
@@ -275,6 +307,12 @@ EOT;
             if (empty($parsed['vendor_tax_id'])) $parsed['vendor_tax_id'] = $matchedVendor['tax_id'];
         }
     }
+
+    // Attach saved quotation file details
+    $parsed['file_url'] = $savedFileUrl;
+    $parsed['file_path'] = $savedFilePath;
+    $parsed['file_name'] = $displayOrigName;
+    $parsed['file_size'] = strlen($fileBytes ?? '');
 
     echo json_encode([
         'status' => 'success',

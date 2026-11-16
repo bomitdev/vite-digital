@@ -89,6 +89,27 @@
                       <label class="form-label">หมายเหตุ</label>
                       <input type="text" class="form-control" v-model="form.remark" placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)" />
                     </div>
+
+                    <!-- ไฟล์ใบส่งของที่แนบมา (จาก AI Scan) -->
+                    <div v-if="form.attachment_url" class="col-12 mt-2">
+                      <div class="alert alert-info border-0 rounded-4 py-2 px-3 d-flex align-items-center justify-content-between mb-0 shadow-xs">
+                        <div class="d-flex align-items-center gap-2">
+                          <i class="bi bi-file-earmark-check-fill text-primary fs-5"></i>
+                          <div>
+                            <span class="fw-bold text-dark">ไฟล์ใบส่งของแนบ (บันทึกไฟล์ไว้ในระบบเรียบร้อย):</span>
+                            <span class="ms-1 text-primary fw-medium">{{ form.attachment_name || 'ใบส่งของ' }}</span>
+                          </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                          <a :href="formatFileUrl(form.attachment_url)" target="_blank" class="btn btn-sm btn-white border rounded-pill shadow-xs">
+                            <i class="bi bi-eye me-1"></i>ดูไฟล์เอกสาร
+                          </a>
+                          <button type="button" class="btn btn-sm btn-outline-danger border-0 rounded-circle" @click="form.attachment_url = ''; form.attachment_name = ''" title="ยกเลิกไฟล์แนบ">
+                            <i class="bi bi-x-lg"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -153,7 +174,7 @@
                     <div class="col-md-2">
                       <label class="form-label mb-1">จำนวนที่รับเข้า</label>
                       <div class="input-group">
-                        <input type="number" step="0.0001" class="form-control" v-model.number="currentItem.qty" min="0.0001" :disabled="!currentItem.item_id" />
+                        <input type="number" step="1" class="form-control" v-model.number="currentItem.qty" min="1" @change="currentItem.qty = Math.max(1, Math.round(Number(currentItem.qty) || 1))" :disabled="!currentItem.item_id" />
                         <span class="input-group-text">{{ currentItem.unit_name || 'หน่วย' }}</span>
                       </div>
                     </div>
@@ -186,20 +207,54 @@
                       <tbody>
                         <tr v-for="(item, index) in selectedItems" :key="index">
                           <td>{{ index + 1 }}</td>
-                          <td>{{ item.item_code }}</td>
-                          <td class="fw-bold">{{ item.item_name }}</td>
                           <td>
-                            <span v-if="item.lot_number" class="badge bg-secondary me-1">Lot: {{ item.lot_number }}</span>
-                            <span v-if="item.expiry_date" class="badge bg-warning text-dark">Exp: {{ item.expiry_date }}</span>
-                            <span v-if="!item.lot_number && !item.expiry_date" class="text-muted">-</span>
+                            <span v-if="item.item_code" class="badge bg-light text-dark border">{{ item.item_code }}</span>
+                            <span v-else class="text-muted small">-</span>
                           </td>
-                          <td class="text-end text-primary">{{ formatCurrency(item.unit_cost) }}</td>
-                          <td class="text-end fw-bold" :class="item.qty > 0 ? 'text-success' : 'text-secondary'">
-                            {{ item.qty }}
-                            <span v-if="item.qty <= 0" class="badge bg-secondary-subtle text-secondary ms-1">สร้างเฉพาะทะเบียน</span>
+                          <td>
+                            <div class="fw-bold">{{ item.item_name }}</div>
+                            <small v-if="item.qty_remaining" class="text-info">
+                              <i class="bi bi-file-earmark-text me-1"></i>ค้างรับตาม PO: {{ item.qty_remaining }} {{ item.unit_name }}
+                            </small>
                           </td>
-                          <td>{{ item.unit_name }}</td>
-                          <td class="text-end fw-bold">{{ formatCurrency(item.unit_cost * item.qty) }}</td>
+                          <td style="min-width: 190px;">
+                            <div class="d-flex flex-column gap-1">
+                              <input
+                                type="text"
+                                class="form-control form-control-sm"
+                                v-model="item.lot_number"
+                                placeholder="เลข Lot (ถ้ามี)"
+                              />
+                              <input
+                                type="date"
+                                class="form-control form-control-sm"
+                                v-model="item.expiry_date"
+                                title="วันหมดอายุ (Expiry)"
+                              />
+                            </div>
+                          </td>
+                          <td style="width: 130px;">
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              class="form-control form-control-sm text-end text-primary fw-bold"
+                              v-model.number="item.unit_cost"
+                            />
+                          </td>
+                          <td style="width: 120px;">
+                            <input
+                              type="number"
+                              step="1"
+                              min="0"
+                              class="form-control form-control-sm text-end fw-bold text-success"
+                              v-model.number="item.qty"
+                              @change="item.qty = Math.max(0, Math.round(Number(item.qty) || 0))"
+                            />
+                            <span v-if="item.qty <= 0" class="badge bg-secondary-subtle text-secondary mt-1 d-block">สร้างเฉพาะทะเบียน</span>
+                          </td>
+                          <td>{{ item.unit_name || 'หน่วย' }}</td>
+                          <td class="text-end fw-bold">{{ formatCurrency((Number(item.unit_cost) || 0) * (Number(item.qty) || 0)) }}</td>
                           <td class="text-center">
                             <button type="button" class="btn btn-sm btn-outline-danger" @click="removeItem(index)">
                               <i class="bi bi-trash"></i>
@@ -361,8 +416,13 @@
                         <input type="date" class="form-control form-control-sm" v-model="parsedData.delivery_date" />
                       </div>
                       <div class="col-md-4">
-                        <label class="form-label small text-muted mb-1">เลขที่ PO อ้างอิง</label>
-                        <input type="text" class="form-control form-control-sm" v-model="parsedData.po_number" placeholder="ถ้ามี" />
+                        <label class="form-label small text-muted mb-1">อ้างอิงใบสั่งซื้อ (PO)</label>
+                        <select class="form-select form-select-sm fw-semibold text-primary" v-model="parsedData.selected_po_id">
+                          <option value="">-- ไม่ระบุ (รับอิสระ) --</option>
+                          <option v-for="po in activePOs" :key="po.id" :value="po.id">
+                            {{ po.po_number }} ({{ po.warehouse_name }})
+                          </option>
+                        </select>
                       </div>
                       <div class="col-md-4">
                         <label class="form-label small text-muted mb-1">ยอดรวมทั้งสิ้น (บิล)</label>
@@ -442,7 +502,7 @@
                         <input type="date" class="form-control form-control-sm" v-model="it.expiry_date" />
                       </td>
                       <td>
-                        <input type="number" step="0.0001" min="0.0001" class="form-control form-control-sm text-end fw-bold text-success" v-model.number="it.qty" />
+                        <input type="number" step="1" min="1" class="form-control form-control-sm text-end fw-bold text-success" v-model.number="it.qty" @change="it.qty = Math.max(1, Math.round(Number(it.qty) || 1))" />
                       </td>
                       <td>
                         <input type="text" class="form-control form-control-sm" v-model="it.unit_name" placeholder="หน่วย" />
@@ -729,6 +789,8 @@ export default {
         vendor_id: '',
         remark: '',
         po_id: '',
+        attachment_url: '',
+        attachment_name: '',
         user_name: localStorage.getItem('user_name') || 'Admin'
       },
       
@@ -820,6 +882,14 @@ export default {
       return this.importPreviewRows.every(r => r.selected);
     }
   },
+  watch: {
+    '$route.query.po_id'(newPoId) {
+      if (newPoId && String(newPoId) !== String(this.form.po_id)) {
+        this.form.po_id = parseInt(newPoId);
+        this.onPOSelect();
+      }
+    }
+  },
   mounted() {
     this.checkAdminStatus();
     this.fetchMasters();
@@ -830,6 +900,13 @@ export default {
     }
   },
   methods: {
+    formatFileUrl(url) {
+      if (!url) return '';
+      if (url.startsWith('/vue-app/vite-digital/uploads/')) {
+        return url.replace('/vue-app/vite-digital/uploads/', '/backend/uploads/');
+      }
+      return url;
+    },
     async checkAdminStatus() {
       try {
         const token = localStorage.getItem('user_token');
@@ -869,13 +946,18 @@ export default {
         if (poRes.data.status === 'success') {
           this.activePOs = poRes.data.data;
         }
+
+        const queryPoId = this.$route?.query?.po_id;
+        if (queryPoId) {
+          this.form.po_id = parseInt(queryPoId);
+          await this.onPOSelect();
+        }
       } catch (err) {
         console.error(err);
       }
     },
     async onPOSelect() {
       if (!this.form.po_id) {
-        // Clear if deselected (maybe keep warehouse, but clear items)
         this.selectedItems = [];
         return;
       }
@@ -883,50 +965,121 @@ export default {
         const res = await axios.get(`/api-digital/inventory/po_get.php?id=${this.form.po_id}`);
         if (res.data.status === 'success') {
           const poData = res.data.data;
-          this.form.warehouse_id = poData.warehouse_id;
-          
+          if (poData.warehouse_id) {
+            this.form.warehouse_id = parseInt(poData.warehouse_id);
+          }
+
+          await Promise.all([
+            this.fetchItems(),
+            this.fetchVendors()
+          ]);
+
+          if (poData.vendor_id && !this.form.vendor_id) {
+            this.form.vendor_id = parseInt(poData.vendor_id);
+          }
+          if (!this.form.remark && poData.po_number) {
+            this.form.remark = `รับเข้าจากใบสั่งซื้อ ${poData.po_number}`;
+          }
+
+          // If there are already items (e.g., from AI Delivery Note), ask whether to keep them or replace with PO items
+          if (this.selectedItems.length > 0) {
+            const choice = await Swal.fire({
+              title: 'มีรายการวัสดุในตารางแล้ว',
+              text: `ต้องการคงรายการจากใบส่งของเดิมไว้ (ผูกเฉพาะเลขที่ ${poData.po_number}) หรือดึงรายการจากใบ PO มาแทนที่?`,
+              icon: 'question',
+              showDenyButton: true,
+              confirmButtonText: 'คงรายการตามใบส่งของ',
+              denyButtonText: 'ดึงรายการจากใบ PO แทน',
+              confirmButtonColor: '#198754',
+              denyButtonColor: '#0d6efd'
+            });
+
+            if (choice.isConfirmed) {
+              this.linkSelectedItemsWithPOItems(poData.items || []);
+              Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: `ผูกใบสั่งซื้อ ${poData.po_number} กับรายการตามใบส่งของเรียบร้อยแล้ว`,
+                showConfirmButton: false,
+                timer: 3000
+              });
+              return;
+            } else if (!choice.isDenied) {
+              return;
+            }
+          } else if (poData.vendor_id) {
+            this.form.vendor_id = parseInt(poData.vendor_id);
+          }
+
           // Clear current selected and populate from PO
           this.selectedItems = [];
-          
-          poData.items.forEach(i => {
+
+          (poData.items || []).forEach(i => {
             const qtyOrdered = Number(i.qty_ordered);
             const qtyReceived = Number(i.qty_received || 0);
             const qtyRemaining = qtyOrdered - qtyReceived;
-            
+
             if (qtyRemaining > 0) {
               this.selectedItems.push({
                 po_item_id: i.id,
-                item_id: i.item_id,
-                item_code: i.item_code,
-                item_name: i.item_name_en && i.item_name && i.item_name !== i.item_name_en 
-                  ? `${i.item_name} (${i.item_name_en})` 
-                  : (i.item_name_en || i.item_name || 'ไม่ระบุชื่อ'),
+                item_id: Number(i.item_id || 0),
+                item_code: i.item_code || '',
+                item_name: i.item_name_en && i.item_name && i.item_name !== i.item_name_en
+                  ? `${i.item_name} (${i.item_name_en})`
+                  : (i.item_name || i.item_name_en || 'ไม่ระบุชื่อ'),
                 item_name_en: i.item_name_en || '',
-                unit_id: i.unit_id,
-                unit_name: i.unit_name,
-                qty: qtyRemaining, // Suggest remaining
-                unit_cost: Number(i.unit_price),
+                unit_id: Number(i.unit_id || i.item_unit_id || 0),
+                unit_name: i.unit_name || 'หน่วย',
+                qty: qtyRemaining,
+                qty_remaining: qtyRemaining,
+                unit_cost: Number(i.unit_price || 0),
                 lot_number: '',
                 expiry_date: '',
-                lot_control: 0, // In real scenario, we might need to fetch item control configs
+                lot_control: 0,
                 expiry_control: 0
               });
             }
           });
-          
+
           if (this.selectedItems.length === 0) {
-            Swal.fire('Info', 'PO นี้รับวัสดุครบหมดแล้ว', 'info');
+            Swal.fire('แจ้งเตือน', 'PO นี้รับวัสดุครบหมดแล้ว', 'info');
           } else {
-            Swal.fire('Success', 'ดึงข้อมูลรายการวัสดุจาก PO สำเร็จ กรุณาระบุ Lot/Expiry (ถ้ามี)', 'success');
-            // Fetch items and vendors for this warehouse
-            this.fetchItems();
-            this.fetchVendors();
+            Swal.fire({
+              toast: true,
+              position: 'top-end',
+              icon: 'success',
+              title: `ดึงรายการจาก ${poData.po_number} (${this.selectedItems.length} รายการ) สำเร็จ`,
+              showConfirmButton: false,
+              timer: 3000
+            });
           }
         }
       } catch (err) {
         console.error(err);
         Swal.fire('Error', 'ไม่สามารถดึงข้อมูล PO ได้', 'error');
       }
+    },
+    linkSelectedItemsWithPOItems(poItems) {
+      if (!Array.isArray(poItems) || poItems.length === 0) return;
+      this.selectedItems.forEach((row) => {
+        if (row.po_item_id) return;
+        const rName = (row.item_name || '').toLowerCase();
+        const rCode = (row.item_code || '').toLowerCase();
+        const match = poItems.find((pi) => {
+          if (row.item_id && Number(pi.item_id) === Number(row.item_id)) return true;
+          const pName = (pi.item_name || '').toLowerCase();
+          const pNameEn = (pi.item_name_en || '').toLowerCase();
+          const pCode = (pi.item_code || '').toLowerCase();
+          if (rCode && pCode && rCode === pCode) return true;
+          if (rName && pName && (rName.includes(pName) || pName.includes(rName))) return true;
+          if (rName && pNameEn && (rName.includes(pNameEn) || pNameEn.includes(rName))) return true;
+          return false;
+        });
+        if (match) {
+          row.po_item_id = match.id;
+        }
+      });
     },
     async onWarehouseChange() {
       await Promise.all([
@@ -1006,6 +1159,8 @@ export default {
       this.form.vendor_id = '';
       this.form.po_id = '';
       this.form.remark = '';
+      this.form.attachment_url = '';
+      this.form.attachment_name = '';
       this.selectedItems = [];
       this.resetCurrentItem();
       this.searchQuery = '';
@@ -1023,6 +1178,8 @@ export default {
           vendor_id: this.form.vendor_id,
           remark: this.form.remark,
           po_id: this.form.po_id,
+          attachment_url: this.form.attachment_url,
+          attachment_name: this.form.attachment_name,
           user_name: this.form.user_name,
           items: this.selectedItems
         };
@@ -1150,6 +1307,19 @@ export default {
           this.parsedData = res.data.data;
           this.scanError = '';
 
+          // Auto-select PO in AI modal if already picked in form or recognized by AI
+          let matchedPoId = this.form.po_id || '';
+          if (!matchedPoId && this.parsedData.po_number) {
+            const pNum = String(this.parsedData.po_number).toLowerCase().replace(/[^a-z0-9]/g, '');
+            const matchedPO = this.activePOs.find(p =>
+              p.po_number.toLowerCase().replace(/[^a-z0-9]/g, '').includes(pNum)
+            );
+            if (matchedPO) {
+              matchedPoId = matchedPO.id;
+            }
+          }
+          this.parsedData.selected_po_id = matchedPoId;
+
           // Sync matched items with current active catalog in this.items
           if (this.parsedData.items) {
             for (const it of this.parsedData.items) {
@@ -1207,7 +1377,7 @@ export default {
         });
       }
     },
-    applyAIDataToReceiveForm() {
+    async applyAIDataToReceiveForm() {
       if (!this.parsedData || !this.parsedData.items) return;
 
       // 1. Header Information
@@ -1231,8 +1401,10 @@ export default {
         }
       }
 
-      // Match PO if PO number recognized
-      if (this.parsedData.po_number && !this.form.po_id) {
+      // Use selected PO from AI modal (or match by parsed po_number), keeping Delivery Note items
+      if (this.parsedData.selected_po_id) {
+        this.form.po_id = this.parsedData.selected_po_id;
+      } else if (this.parsedData.po_number && !this.form.po_id) {
         const pNum = this.parsedData.po_number.toLowerCase().replace(/[^a-z0-9]/g, '');
         const matchedPO = this.activePOs.find(p => 
           p.po_number.toLowerCase().replace(/[^a-z0-9]/g, '').includes(pNum)
@@ -1244,6 +1416,12 @@ export default {
 
       if (this.parsedData.remark && !this.form.remark) {
         this.form.remark = `[นำเข้าจากใบส่งของ AI] ${this.parsedData.remark}`;
+      }
+
+      // Attach File
+      if (this.parsedData.file_url) {
+        this.form.attachment_url = this.parsedData.file_url;
+        this.form.attachment_name = this.parsedData.file_name || '';
       }
 
       // 2. Add Selected Items into Receive List
@@ -1288,6 +1466,22 @@ export default {
           expiry_control: expiryControl
         });
         count++;
+      }
+
+      // If PO is linked, attach po_item_id for matching items without overwriting Delivery Note items
+      if (this.form.po_id) {
+        try {
+          const poRes = await axios.get(`/api-digital/inventory/po_get.php?id=${this.form.po_id}`);
+          if (poRes.data?.status === 'success' && poRes.data.data) {
+            const poData = poRes.data.data;
+            if (!this.form.vendor_id && poData.vendor_id) {
+              this.form.vendor_id = parseInt(poData.vendor_id);
+            }
+            this.linkSelectedItemsWithPOItems(poData.items || []);
+          }
+        } catch (err) {
+          console.error('Error linking PO items:', err);
+        }
       }
 
       this.closeAIModal();

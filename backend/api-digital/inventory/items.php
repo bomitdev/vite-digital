@@ -706,7 +706,7 @@ try {
             barcode, tmt_gpu, brand, product_cat, model, dosage_form, strength,
             dosage_form_id, ed_list_id, ed_sub_list, product_cat_id,
             minimum_stock, maximum_stock, reorder_point, standard_price, last_purchase_price, 
-            active, lot_control, expiry_control, serial_control,
+            active, lot_control, expiry_control, serial_control, admin_only_issue,
             is_gpo, is_original, send_moph, send_dos, is_free_dispense, moph_status_note, moph_updated_text
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?, ?, 
@@ -714,7 +714,7 @@ try {
             ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?,
             ?, ?, ?, ?, ?, 
-            ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?
         )";
 
@@ -755,6 +755,7 @@ try {
             isset($data['lot_control']) ? (int)$data['lot_control'] : 0,
             isset($data['expiry_control']) ? (int)$data['expiry_control'] : 0,
             isset($data['serial_control']) ? (int)$data['serial_control'] : 0,
+            isset($data['admin_only_issue']) ? (int)$data['admin_only_issue'] : 0,
             $pharma['is_gpo'],
             $pharma['is_original'],
             $pharma['send_moph'],
@@ -813,7 +814,7 @@ try {
             barcode=?, tmt_gpu=?, brand=?, product_cat=?, model=?, dosage_form=?, strength=?,
             dosage_form_id=?, ed_list_id=?, ed_sub_list=?, product_cat_id=?,
             minimum_stock=?, maximum_stock=?, reorder_point=?, standard_price=?, last_purchase_price=?, 
-            active=?, lot_control=?, expiry_control=?, serial_control=?,
+            active=?, lot_control=?, expiry_control=?, serial_control=?, admin_only_issue=?,
             is_gpo=?, is_original=?, send_moph=?, send_dos=?, is_free_dispense=?, moph_status_note=?, moph_updated_text=?
             WHERE id=?";
 
@@ -854,6 +855,7 @@ try {
             isset($data['lot_control']) ? (int)$data['lot_control'] : 0,
             isset($data['expiry_control']) ? (int)$data['expiry_control'] : 0,
             isset($data['serial_control']) ? (int)$data['serial_control'] : 0,
+            isset($data['admin_only_issue']) ? (int)$data['admin_only_issue'] : 0,
             $pharma['is_gpo'],
             $pharma['is_original'],
             $pharma['send_moph'],

@@ -13,6 +13,29 @@ export default defineConfig(({ mode }) => {
       host: env.VITE_SERVER_HOST || '0.0.0.0',
       port: parseInt(env.VITE_SERVER_PORT) || 5173,
       proxy: {
+        // uploads proxy (supports /vue-app/vite-digital/uploads and /uploads)
+        '/vue-app/vite-digital/uploads': {
+          target: env.VITE_BACKEND_URL,
+          changeOrigin: true,
+          rewrite: (path) =>
+            path.replace(/^\/vue-app\/vite-digital\/uploads/, '/vue-app/vite-digital/backend/uploads'),
+          configure: (proxy) => {
+            proxy.on('error', (err) => {
+              console.log('proxy error', err);
+            });
+          }
+        },
+        '/uploads': {
+          target: env.VITE_BACKEND_URL,
+          changeOrigin: true,
+          rewrite: (path) =>
+            path.replace(/^\/uploads/, '/vue-app/vite-digital/backend/uploads'),
+          configure: (proxy) => {
+            proxy.on('error', (err) => {
+              console.log('proxy error', err);
+            });
+          }
+        },
         // backend
         '/backend': {
           target: env.VITE_BACKEND_URL,

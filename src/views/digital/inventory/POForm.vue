@@ -239,6 +239,25 @@
                       <input type="text" class="form-control" v-model="form.note" placeholder="รายละเอียดหรือเงื่อนไขเพิ่มเติม..." :disabled="!canEditPO" />
                     </div>
                   </div>
+
+                  <!-- ไฟล์แนบใบเสนอราคา (ถ้ามี) -->
+                  <div v-if="form.quotation_file_url" class="alert alert-info py-2 px-3 mt-3 mb-0 d-flex align-items-center justify-content-between rounded-3 border-0 bg-info-subtle shadow-sm">
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="bi bi-file-earmark-pdf-fill fs-4 text-primary"></i>
+                      <div>
+                        <div class="fw-bold small text-dark">ไฟล์ใบเสนอราคาต้นฉบับ: {{ form.quotation_file_name || 'เอกสารใบเสนอราคา' }}</div>
+                        <small class="text-muted">บันทึกเก็บไว้ในระบบเรียบร้อย สามารถเปิดดูเอกสารประกอบได้</small>
+                      </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                      <a :href="formatFileUrl(form.quotation_file_url)" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold bg-white">
+                        <i class="bi bi-eye me-1"></i> ดูไฟล์เอกสาร
+                      </a>
+                      <button v-if="canEditPO" type="button" class="btn btn-sm btn-outline-danger rounded-circle p-1" style="width: 26px; height: 26px; line-height: 1;" @click="form.quotation_file_url = ''; form.quotation_file_name = ''" title="ลบไฟล์แนบ">
+                        <i class="bi bi-x"></i>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -712,6 +731,15 @@
                     </td>
                     <td class="text-end pe-3">
                       <div class="btn-group btn-group-sm">
+                        <a 
+                          v-if="po.quotation_file_url"
+                          :href="formatFileUrl(po.quotation_file_url)"
+                          target="_blank"
+                          class="btn btn-outline-info"
+                          title="เปิดดูไฟล์ใบเสนอราคาที่แนบไว้"
+                        >
+                          <i class="bi bi-paperclip"></i>
+                        </a>
                         <button 
                           v-if="po.status === 'ORDERED'"
                           class="btn btn-outline-warning text-dark" 
@@ -1583,6 +1611,8 @@ export default {
         committee_name: '',
         purchaser_name: '',
         note: '',
+        quotation_file_url: '',
+        quotation_file_name: '',
         status: 'ORDERED',
         items: []
       },
@@ -1770,6 +1800,13 @@ export default {
     window.removeEventListener('paste', this.handlePaste);
   },
   methods: {
+    formatFileUrl(url) {
+      if (!url) return '';
+      if (url.startsWith('/vue-app/vite-digital/uploads/')) {
+        return url.replace('/vue-app/vite-digital/uploads/', '/backend/uploads/');
+      }
+      return url;
+    },
     async fetchMeta() {
       try {
         const whId = this.$route.query.warehouse_id || localStorage.getItem('selected_warehouse_id') || '';
@@ -1966,6 +2003,8 @@ export default {
         committee_name: '',
         purchaser_name: this.form.purchaser_name || 'เจ้าหน้าที่พัสดุ',
         note: '',
+        quotation_file_url: '',
+        quotation_file_name: '',
         status: 'ORDERED',
         items: []
       };
@@ -2966,7 +3005,11 @@ export default {
         this.printSettings.vatMode = d.vat_mode;
       }
 
-      // 3. Quotation Reference Note
+      // 3. Quotation Reference Note & File Attachment
+      if (d.file_url) {
+        this.form.quotation_file_url = d.file_url;
+        this.form.quotation_file_name = d.file_name || 'ใบเสนอราคา';
+      }
       if (d.quotation_no) {
         const quoteNote = `อ้างอิงใบเสนอราคาเลขที่: ${d.quotation_no}` + (d.quotation_date ? ` ลงวันที่ ${d.quotation_date}` : '');
         if (!this.form.note) {

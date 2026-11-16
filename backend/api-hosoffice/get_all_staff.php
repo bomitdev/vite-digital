@@ -10,10 +10,14 @@ try {
     $sql = "SELECT 
                 p.ID,
                 CONCAT(pf.HR_PREFIX_NAME, p.HR_FNAME, ' ', p.HR_LNAME) as FULLNAME,
-                hds.HR_DEPARTMENT_SUB_NAME
+                p.HR_DEPARTMENT_SUB_ID,
+                hds.HR_DEPARTMENT_SUB_NAME,
+                p.HR_PHONE,
+                pos.HR_POSITION_NAME
             FROM hr_person p
             LEFT JOIN hr_prefix pf ON p.HR_PREFIX_ID = pf.HR_PREFIX_ID
             LEFT JOIN hr_department_sub hds ON p.HR_DEPARTMENT_SUB_ID = hds.HR_DEPARTMENT_SUB_ID
+            LEFT JOIN hr_position pos ON p.HR_POSITION_ID = pos.HR_POSITION_ID
             WHERE p.HR_STATUS_ID = 1
             ORDER BY p.HR_FNAME";
 

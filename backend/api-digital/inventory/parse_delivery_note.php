@@ -89,6 +89,11 @@ try {
     }
 
     $warehouse_id = isset($_POST['warehouse_id']) ? (int)$_POST['warehouse_id'] : (int)($_GET['warehouse_id'] ?? 0);
+    $fileBytes = '';
+    $base64Data = '';
+    $mimeType = '';
+    $origName = '';
+    $ext = '';
 
     if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
         $rawInput = file_get_contents('php://input');
@@ -124,6 +129,10 @@ try {
         $base64Data = base64_encode($fileBytes);
     }
 
+    if (empty($fileBytes) && !empty($base64Data)) {
+        $fileBytes = base64_decode($base64Data);
+    }
+
     $supportedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
     if (!in_array(strtolower($mimeType), $supportedMimes)) {
         if (strpos($mimeType, 'image/') === 0) {
@@ -132,6 +141,28 @@ try {
             throw new Exception("ประเภทไฟล์ ({$mimeType}) ไม่รองรับ กรุณาใช้ไฟล์รูปภาพ (JPG, PNG) หรือ PDF");
         }
     }
+
+    // --- บันทึกไฟล์ใบส่งของลงเซิร์ฟเวอร์ backend/uploads/inventory/delivery_notes ---
+    $backendDir = realpath(__DIR__ . '/../..');
+    $uploadDir = $backendDir . '/uploads/inventory/delivery_notes';
+    if (!is_dir($uploadDir)) {
+        @mkdir($uploadDir, 0777, true);
+    }
+    $safeExt = !empty($ext) ? $ext : (strpos($mimeType, 'pdf') !== false ? 'pdf' : 'jpg');
+    $displayOrigName = !empty($origName) ? $origName : ('delivery_note_' . date('Ymd_His') . '.' . $safeExt);
+    $cleanOrigName = preg_replace('/[^a-zA-Z0-9_\-\.\p{Thai}]/u', '_', $displayOrigName);
+    $savedFileName = 'dn_' . date('Ymd_His') . '_' . substr(md5(uniqid((string)mt_rand(), true)), 0, 8) . '_' . $cleanOrigName;
+    $targetFilePath = $uploadDir . '/' . $savedFileName;
+    @file_put_contents($targetFilePath, $fileBytes);
+
+    // ทำสำเนาไปที่โฟลเดอร์ uploads ที่รูท เพื่อรองรับพาธเดิมด้วย
+    $legacyDir = realpath(__DIR__ . '/../../..') . '/uploads/inventory/delivery_notes';
+    if (is_dir($legacyDir)) {
+        @file_put_contents($legacyDir . '/' . $savedFileName, $fileBytes);
+    }
+
+    $savedFileUrl = '/backend/uploads/inventory/delivery_notes/' . $savedFileName;
+    $savedFilePath = 'backend/uploads/inventory/delivery_notes/' . $savedFileName;
 
     // Specialized Prompt for Thai Delivery Notes (ใบส่งของ / ใบกำกับภาษี / ใบเสร็จรับเงิน)
     $prompt = <<<EOT
@@ -285,7 +316,7 @@ EOT;
     // Match items with existing inv_items for the warehouse
     if (!empty($pdo2) && !empty($parsed['items']) && is_array($parsed['items'])) {
         // Fetch all active items for this warehouse to perform fuzzy / clean matching
-        $whParam = $warehouse_id > 0 ? "AND warehouse_id = " . (int)$warehouse_id : "";
+        $whParam = $warehouse_id > 0 ? "AND i.warehouse_id = " . (int)$warehouse_id : "";
         $stmtAllItems = $pdo2->query("
             SELECT i.id, i.item_code, i.item_name, i.item_name_en, i.unit_id, i.standard_price, i.lot_control, i.expiry_control,
                    u.name as unit_name
@@ -372,15 +403,27 @@ EOT;
         unset($it);
     }
 
+    // Attach saved file details
+    $parsed['file_url'] = $savedFileUrl;
+    $parsed['file_path'] = $savedFilePath;
+    $parsed['file_name'] = $displayOrigName;
+    $parsed['file_size'] = strlen($fileBytes ?? '');
+
     recordInvActivityLog($pdo2, [
-        'warehouse_id' => isset($warehouseId) && $warehouseId ? (int)$warehouseId : null,
+        'warehouse_id' => $warehouse_id > 0 ? (int)$warehouse_id : null,
         'page_code' => 'receive',
         'page_name' => 'ตรวจรับพัสดุเข้าคลัง',
         'action' => 'AI_PARSE_DELIVERY_NOTE',
         'target_type' => 'delivery_note',
         'target_id' => isset($parsed['invoice_no']) ? (string)$parsed['invoice_no'] : null,
-        'details' => 'สแกนและอ่านใบส่งของด้วย AI จำนวน ' . count($parsed['items'] ?? []) . ' รายการ',
-        'meta' => ['items_count' => count($parsed['items'] ?? []), 'vendor_name' => $parsed['vendor_name'] ?? null],
+        'details' => 'สแกนและอ่านใบส่งของด้วย AI จำนวน ' . count($parsed['items'] ?? []) . ' รายการ บันทึกไฟล์ ' . $displayOrigName,
+        'meta' => [
+            'items_count' => count($parsed['items'] ?? []),
+            'vendor_name' => $parsed['vendor_name'] ?? null,
+            'file_url' => $savedFileUrl,
+            'file_name' => $displayOrigName,
+            'file_size' => strlen($fileBytes ?? '')
+        ],
     ], $pdo3 ?? null);
 
     echo json_encode([

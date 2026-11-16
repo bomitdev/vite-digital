@@ -111,7 +111,7 @@
                     <div class="col-md-2">
                       <label class="form-label mb-1">จำนวนโอน</label>
                       <div class="input-group">
-                        <input type="number" class="form-control text-center fw-bold" v-model.number="currentItem.qty" min="0.01" step="0.01" :disabled="!currentItem.item_id || isEdit">
+                        <input type="number" class="form-control text-center fw-bold" v-model.number="currentItem.qty" min="1" step="1" @change="currentItem.qty = Math.max(1, Math.round(Number(currentItem.qty) || 1))" :disabled="!currentItem.item_id || isEdit">
                         <span class="input-group-text">{{ currentItem.unit_name || 'หน่วย' }}</span>
                       </div>
                     </div>

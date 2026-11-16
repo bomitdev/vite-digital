@@ -9,7 +9,11 @@ require_once __DIR__ . '/../config.php';
 /** @var PDO $pdo3 */
 
 try {
-    $sql = "SELECT HR_DEPARTMENT_SUB_ID, HR_DEPARTMENT_SUB_NAME 
+    $sql = "SELECT 
+                HR_DEPARTMENT_SUB_ID as id, 
+                HR_DEPARTMENT_SUB_NAME as name,
+                HR_DEPARTMENT_SUB_ID, 
+                HR_DEPARTMENT_SUB_NAME 
             FROM hr_department_sub 
             ORDER BY HR_DEPARTMENT_SUB_NAME ASC";
 

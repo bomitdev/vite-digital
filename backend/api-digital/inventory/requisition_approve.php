@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../cors.php';
+require_once __DIR__ . '/inv_auth_helper.php';
 require_once __DIR__ . '/inv_log_helper.php';
 
 header("Content-Type: application/json; charset=utf-8");
@@ -44,6 +45,14 @@ try {
     }
 
     $warehouse_id = (int)$req['warehouse_id'];
+
+    $currentUser = getInvCurrentUser($pdo3 ?? null);
+    if (!isInvWarehouseManager($pdo2, $pdo3 ?? null, $warehouse_id, $currentUser)) {
+        $pdo2->rollBack();
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'เฉพาะผู้ดูแลคลังเท่านั้นที่สามารถอนุมัติคำขอเบิกได้']);
+        exit;
+    }
 
     // 2. Validate items to approve
     $total_qty_to_issue = 0;

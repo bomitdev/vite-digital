@@ -44,14 +44,17 @@ try {
         $total_amount += ($qty * $cost);
     }
 
+    $attachment_url = trim($data['attachment_url'] ?? '');
+    $attachment_name = trim($data['attachment_name'] ?? '');
+
     // 1. Insert Receipt
     $stmt = $pdo2->prepare("
         INSERT INTO inv_receipts 
-        (receipt_no, receipt_date, warehouse_id, vendor_id, po_id, invoice_no, total_amount, receiver_name, remark, status) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'COMPLETED')
+        (receipt_no, receipt_date, warehouse_id, vendor_id, po_id, invoice_no, total_amount, receiver_name, remark, attachment_url, attachment_name, status) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'COMPLETED')
     ");
     $stmt->execute([
-        $receipt_no, $receipt_date, $warehouse_id, $vendor_id, $po_id, $invoice_no, $total_amount, $user_name, $remark
+        $receipt_no, $receipt_date, $warehouse_id, $vendor_id, $po_id, $invoice_no, $total_amount, $user_name, $remark, $attachment_url, $attachment_name
     ]);
     $receipt_id = $pdo2->lastInsertId();
 

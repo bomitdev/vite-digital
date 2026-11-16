@@ -40,6 +40,8 @@ $committee_name = trim($data['committee_name'] ?? '');
 $purchaser_name = trim($data['purchaser_name'] ?? '');
 $expected_date  = !empty($data['expected_date']) ? $data['expected_date'] : null;
 $note           = trim($data['note'] ?? '');
+$quotation_file_url = trim($data['quotation_file_url'] ?? '');
+$quotation_file_name = trim($data['quotation_file_name'] ?? '');
 $items          = $data['items'] ?? [];
 
 if (empty($purchaser_name)) {
@@ -122,6 +124,8 @@ try {
                     note = ?,
                     total_amount = ?,
                     total_items = ?,
+                    quotation_file_url = IF(? != '', ?, quotation_file_url),
+                    quotation_file_name = IF(? != '', ?, quotation_file_name),
                     updated_at = NOW()
                 WHERE id = ?";
         $stmt = $pdo2->prepare($sql);
@@ -131,6 +135,8 @@ try {
             $buy_method, $budget_type, $vat_mode, $buy_common, $price_criteria,
             $memo_no, $memo_date, $delivery_days, $contract_no, $committee_name,
             $po_date, $expected_date, $purchaser_name, $note, $total_amount, $total_items,
+            $quotation_file_url, $quotation_file_url,
+            $quotation_file_name, $quotation_file_name,
             $po_id
         ]);
 
@@ -165,19 +171,22 @@ try {
                     pr_id, warehouse_id, po_number, vendor_id, vendor_code, vendor_name, 
                     buy_method, budget_type, vat_mode, buy_common, price_criteria, 
                     memo_no, memo_date, delivery_days, contract_no, committee_name, 
-                    po_date, expected_date, purchaser_name, note, total_amount, total_items, status
+                    po_date, expected_date, purchaser_name, note, total_amount, total_items, 
+                    quotation_file_url, quotation_file_name, status
                 ) VALUES (
                     ?, ?, ?, ?, ?, ?, 
                     ?, ?, ?, ?, ?, 
                     ?, ?, ?, ?, ?, 
-                    ?, ?, ?, ?, ?, ?, 'ORDERED'
+                    ?, ?, ?, ?, ?, ?, 
+                    ?, ?, 'ORDERED'
                 )";
         $stmt = $pdo2->prepare($sql);
         $stmt->execute([
             $pr_id, $warehouse_id, $po_number, $vendor_id, $vendor_code, $vendor_name,
             $buy_method, $budget_type, $vat_mode, $buy_common, $price_criteria,
             $memo_no, $memo_date, $delivery_days, $contract_no, $committee_name,
-            $po_date, $expected_date, $purchaser_name, $note, $total_amount, $total_items
+            $po_date, $expected_date, $purchaser_name, $note, $total_amount, $total_items,
+            $quotation_file_url, $quotation_file_name
         ]);
         $po_id = $pdo2->lastInsertId();
 

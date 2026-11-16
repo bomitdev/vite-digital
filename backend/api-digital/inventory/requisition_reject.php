@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../cors.php';
+require_once __DIR__ . '/inv_auth_helper.php';
 require_once __DIR__ . '/inv_log_helper.php';
 
 header("Content-Type: application/json; charset=utf-8");
@@ -27,6 +28,20 @@ if ($requisition_id <= 0) {
 }
 
 try {
+    $stChk = $pdo2->prepare("SELECT warehouse_id, status FROM inv_requisitions WHERE id = ? LIMIT 1");
+    $stChk->execute([$requisition_id]);
+    $chkRow = $stChk->fetch(PDO::FETCH_ASSOC);
+    if (!$chkRow) {
+        echo json_encode(['status' => 'error', 'message' => 'ไม่พบข้อมูลใบขอเบิก']);
+        exit;
+    }
+    $currentUser = getInvCurrentUser($pdo3 ?? null);
+    if (!isInvWarehouseManager($pdo2, $pdo3 ?? null, (int)$chkRow['warehouse_id'], $currentUser)) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'เฉพาะผู้ดูแลคลังเท่านั้นที่สามารถปฏิเสธคำขอเบิกได้']);
+        exit;
+    }
+
     $stmt = $pdo2->prepare("
         UPDATE inv_requisitions 
         SET status = 'REJECTED', approver_name = ?, approved_date = NOW(), admin_note = ? 

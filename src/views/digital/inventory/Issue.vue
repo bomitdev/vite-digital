@@ -58,8 +58,25 @@
                       </select>
                     </div>
                     <div class="col-md-6">
-                      <label class="form-label">ชื่อผู้ขอเบิก</label>
-                      <input type="text" class="form-control" v-model="form.requester_name" placeholder="ชื่อผู้มารับของ" />
+                      <label class="form-label d-flex justify-content-between align-items-center">
+                        <span>ชื่อผู้ขอเบิก / ผู้มารับของ</span>
+                        <span v-if="staffList.length" class="badge bg-light text-primary border rounded-pill small fw-normal">
+                          <i class="bi bi-people-fill me-1"></i>{{ staffList.length }} รายชื่อ
+                        </span>
+                      </label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        v-model="form.requester_name"
+                        list="issueStaffListOptions"
+                        placeholder="พิมพ์ค้นหาหรือเลือกชื่อเจ้าหน้าที่"
+                        @change="onStaffSelected"
+                      />
+                      <datalist id="issueStaffListOptions">
+                        <option v-for="s in staffList" :key="s.ID" :value="s.FULLNAME">
+                          {{ s.HR_DEPARTMENT_SUB_NAME ? `[${s.HR_DEPARTMENT_SUB_NAME}]` : '' }} {{ s.HR_POSITION_NAME ? `(${s.HR_POSITION_NAME})` : '' }} {{ s.HR_PHONE ? `โทร: ${s.HR_PHONE}` : '' }}
+                        </option>
+                      </datalist>
                     </div>
                     <div class="col-md-6">
                       <label class="form-label">หมายเหตุ</label>
@@ -116,7 +133,7 @@
                     <div class="col-md-2">
                       <label class="form-label mb-1">จำนวนจ่าย</label>
                       <div class="input-group">
-                        <input type="number" step="0.0001" class="form-control" v-model.number="currentItem.qty" min="0.0001" :disabled="!currentItem.lot_id" />
+                        <input type="number" step="1" class="form-control" v-model.number="currentItem.qty" min="1" @change="currentItem.qty = Math.max(1, Math.round(Number(currentItem.qty) || 1))" :disabled="!currentItem.lot_id" />
                         <span class="input-group-text">{{ currentItem.unit_name || 'หน่วย' }}</span>
                       </div>
                     </div>
@@ -201,6 +218,7 @@ export default {
     return {
       warehouses: [],
       departments: [],
+      staffList: [],
       items: [],
       availableLots: [],
       selectedItems: [],
@@ -254,17 +272,29 @@ export default {
           }
         }
         
-        // Mock departments or fetch from actual API if exists
+        // Fetch departments
         const deptRes = await axios.get('/api-hosoffice/departments.php').catch(() => null);
-        if (deptRes && deptRes.data.status === 'success') {
-           this.departments = deptRes.data.data;
+        if (deptRes && deptRes.data && deptRes.data.status === 'success' && Array.isArray(deptRes.data.data)) {
+           this.departments = deptRes.data.data.map(d => ({
+             id: d.id || d.HR_DEPARTMENT_SUB_ID,
+             name: d.name || d.HR_DEPARTMENT_SUB_NAME
+           }));
         } else {
            this.departments = [
-             { id: 1, name: 'ห้องตรวจ 1' },
-             { id: 2, name: 'ห้องตรวจ 2' },
-             { id: 3, name: 'แผนกศัลยกรรม' },
-             { id: 4, name: 'ฝ่ายบริหาร' }
+             { id: 1, name: 'ห้องตรวจ 1 (OPD)' },
+             { id: 2, name: 'ห้องตรวจ 2 (OPD)' },
+             { id: 3, name: 'แผนกศัลยกรรม (OR)' },
+             { id: 4, name: 'ฝ่ายบริหารงานทั่วไป' },
+             { id: 5, name: 'กลุ่มงานประกันสุขภาพ' },
+             { id: 6, name: 'กลุ่มงานเทคโนโลยีสารสนเทศ (IT)' },
+             { id: 7, name: 'แผนกเภสัชกรรม' }
            ];
+        }
+
+        // Fetch staff list
+        const staffRes = await axios.get('/api-hosoffice/get_all_staff.php').catch(() => null);
+        if (staffRes && staffRes.data && staffRes.data.status === 'success' && Array.isArray(staffRes.data.data)) {
+           this.staffList = staffRes.data.data;
         }
       } catch (err) {
         console.error(err);
@@ -273,6 +303,22 @@ export default {
     updateDeptName() {
       const d = this.departments.find(x => x.id === this.form.department_id);
       this.form.department_name = d ? d.name : '';
+    },
+    onStaffSelected() {
+      const name = (this.form.requester_name || '').trim();
+      if (!name) return;
+      const staff = this.staffList.find(s => s.FULLNAME.trim() === name);
+      if (staff && !this.form.department_id) {
+        const dept = this.departments.find(d => {
+          if (staff.HR_DEPARTMENT_SUB_ID && Number(d.id) === Number(staff.HR_DEPARTMENT_SUB_ID)) return true;
+          if (staff.HR_DEPARTMENT_SUB_NAME && (d.name.includes(staff.HR_DEPARTMENT_SUB_NAME) || staff.HR_DEPARTMENT_SUB_NAME.includes(d.name))) return true;
+          return false;
+        });
+        if (dept) {
+          this.form.department_id = dept.id;
+          this.form.department_name = dept.name;
+        }
+      }
     },
     async fetchItems() {
       this.items = [];

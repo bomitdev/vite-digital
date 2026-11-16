@@ -1,13 +1,24 @@
 <template>
-  <div class="requisition-manage-container">
+  <div class="requisition-manage-container container-fluid py-3 px-3 px-md-4">
     <!-- Header -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
       <div>
-        <nav aria-label="breadcrumb">
-          <ol class="breadcrumb mb-1">
-            <li class="breadcrumb-item"><a href="javascript:void(0)" @click="$emit('back-to-dashboard')">Dashboard</a></li>
-            <li class="breadcrumb-item active">คำขอเบิกและอนุมัติจ่าย</li>
-          </ol>
+        <nav aria-label="breadcrumb" class="mb-2">
+          <div class="d-inline-flex flex-wrap align-items-center gap-2 bg-white px-3 py-2 rounded-pill shadow-sm border">
+            <button
+              type="button"
+              class="btn btn-sm btn-light rounded-pill px-3 py-1 fw-semibold text-secondary d-inline-flex align-items-center gap-1 border-0 nav-pill-btn"
+              @click="handleBackToDashboard"
+            >
+              <i class="bi bi-house-door-fill text-primary"></i>
+              <span>หน้าหลัก</span>
+            </button>
+            <i class="bi bi-chevron-right text-muted small"></i>
+            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-2 fw-bold">
+              <i class="bi bi-clipboard2-check-fill me-1"></i>
+              คำขอเบิกและอนุมัติจ่าย
+            </span>
+          </div>
         </nav>
         <h3 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
           <i class="bi bi-clipboard2-check-fill text-warning"></i>
@@ -20,7 +31,7 @@
         <button class="btn btn-outline-secondary rounded-pill px-3 shadow-sm" @click="fetchRequisitions">
           <i class="bi bi-arrow-clockwise me-1" :class="{ 'spin-anim': loading }"></i> รีเฟรช
         </button>
-        <button class="btn btn-warning text-dark fw-bold rounded-pill px-3 shadow-sm" @click="$emit('go-to-form')">
+        <button class="btn btn-warning text-dark fw-bold rounded-pill px-3 shadow-sm" @click="handleGoToForm">
           <i class="bi bi-plus-circle-fill me-1"></i> สร้างใบขอเบิกใหม่
         </button>
       </div>
@@ -158,7 +169,7 @@
           <h5 class="fw-bold">ไม่พบรายการคำขอเบิก</h5>
           <p class="small text-muted mb-3" v-if="currentStatus === 'PENDING'">ยังไม่มีคำขอเบิกที่รอการพิจารณาในคลังนี้</p>
           <p class="small text-muted mb-3" v-else>ไม่มีข้อมูลตรงกับเงื่อนไขการค้นหา</p>
-          <button class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3 fw-bold" @click="$emit('go-to-form')">
+          <button class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3 fw-bold" @click="handleGoToForm">
             <i class="bi bi-plus-lg me-1"></i> สร้างใบขอเบิกใหม่
           </button>
         </div>
@@ -175,7 +186,7 @@
                 <th>วัตถุประสงค์</th>
                 <th class="text-center" style="width: 110px;">จำนวนรายการ</th>
                 <th class="text-center" style="width: 130px;">สถานะ</th>
-                <th class="text-end pe-4" style="width: 190px;">การจัดการ</th>
+                <th class="text-end pe-4 text-nowrap" style="min-width: 290px;">การจัดการ</th>
               </tr>
             </thead>
             <tbody>
@@ -216,36 +227,49 @@
                     {{ req.status }}
                   </span>
                 </td>
-                <td class="text-end pe-4">
-                  <div class="d-flex justify-content-end gap-1">
-                    <!-- Pending: Approve Button -->
+                <td class="text-end pe-4 text-nowrap">
+                  <div class="d-inline-flex align-items-center justify-content-end gap-1 flex-nowrap">
+                    <!-- Pending: Approve Button (Warehouse Manager / Admin only) -->
                     <button 
-                      v-if="req.status === 'PENDING'" 
-                      class="btn btn-sm btn-primary rounded-pill px-3 fw-bold shadow-sm"
+                      v-if="req.status === 'PENDING' && canApproveRequisition(req)" 
+                      class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold shadow-sm d-inline-flex align-items-center gap-1 action-pill-btn"
                       @click="openApproveModal(req)"
                       title="ตรวจสอบและพิจารณาอนุมัติจ่าย"
                     >
-                      <i class="bi bi-check2-circle me-1"></i> พิจารณา
+                      <i class="bi bi-check2-circle"></i>
+                      <span>พิจารณา</span>
+                    </button>
+
+                    <!-- Edit Button (Own pending request or Warehouse Manager) -->
+                    <button
+                      v-if="canEditRequisition(req)"
+                      class="btn btn-sm bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 fw-semibold d-inline-flex align-items-center gap-1 action-pill-btn"
+                      @click="editRequisition(req)"
+                      title="แก้ไขรายการขอเบิก"
+                    >
+                      <i class="bi bi-pencil-square"></i>
+                      <span>แก้ไข</span>
                     </button>
 
                     <!-- PDF Preview & Download Button -->
                     <button 
-                      class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1 shadow-sm d-inline-flex align-items-center gap-1"
+                      class="btn btn-sm bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 fw-semibold d-inline-flex align-items-center gap-1 action-pill-btn"
                       @click="openPdfPreview(req)"
                       title="แสดงตัวอย่างและดาวน์โหลด PDF"
                     >
                       <i class="bi bi-file-earmark-pdf-fill"></i>
-                      <span class="small fw-semibold">ใบเบิก PDF</span>
+                      <span>PDF</span>
                     </button>
 
-                    <!-- Delete Button (Only for PENDING or REJECTED) -->
+                    <!-- Cancel / Delete Button -->
                     <button 
-                      v-if="req.status !== 'APPROVED'"
-                      class="btn btn-sm btn-outline-danger rounded-circle"
+                      v-if="canCancelRequisition(req)"
+                      class="btn btn-sm btn-light text-danger border rounded-pill px-2 fw-semibold d-inline-flex align-items-center gap-1 action-pill-btn"
                       @click="confirmDelete(req)"
-                      title="ลบใบขอเบิกนี้"
+                      :title="canApproveRequisition(req) ? 'ลบใบขอเบิกนี้' : 'ยกเลิกใบขอเบิกของตนเอง'"
                     >
-                      <i class="bi bi-trash"></i>
+                      <i :class="canApproveRequisition(req) ? 'bi bi-trash3-fill' : 'bi bi-x-circle-fill'"></i>
+                      <span v-if="!canApproveRequisition(req)">ยกเลิก</span>
                     </button>
                   </div>
                 </td>
@@ -326,11 +350,11 @@
                         class="badge rounded-pill px-3 py-1"
                         :class="item.current_stock > 0 ? 'bg-info-subtle text-info-emphasis' : 'bg-danger-subtle text-danger'"
                       >
-                        {{ item.current_stock }} {{ item.unit_name }}
+                        {{ formatNumber(item.current_stock) }} {{ item.unit_name }}
                       </span>
                     </td>
                     <td class="text-center fw-bold fs-6 text-primary">
-                      {{ item.qty_requested }}
+                      {{ formatNumber(item.qty_requested) }}
                     </td>
                     <td>
                       <!-- Lot Selection Dropdown (FEFO) -->
@@ -341,7 +365,7 @@
                       >
                         <option v-if="!item.available_lots || item.available_lots.length === 0" value="">-- สินค้าหมด (ไม่มี Lot) --</option>
                         <option v-for="lot in item.available_lots" :key="lot.lot_id" :value="lot.lot_id">
-                          Lot: {{ lot.lot_number || '-' }} | Exp: {{ lot.expiry_date || '-' }} (มี {{ lot.balance_qty }})
+                          Lot: {{ lot.lot_number || '-' }} | Exp: {{ lot.expiry_date || '-' }} (มี {{ formatNumber(lot.balance_qty) }})
                         </option>
                       </select>
                     </td>
@@ -349,12 +373,13 @@
                       <div class="input-group input-group-sm">
                         <input 
                           type="number" 
-                          step="0.01" 
+                          step="1" 
                           min="0" 
-                          :max="item.current_stock"
+                          :max="Math.floor(Number(item.current_stock) || 0)"
                           class="form-control text-center fw-bold"
                           :class="item.suggested_qty > 0 ? 'text-success border-success' : 'text-danger border-danger'"
                           v-model.number="item.suggested_qty"
+                          @change="item.suggested_qty = Math.max(0, Math.round(Number(item.suggested_qty) || 0))"
                         />
                         <span class="input-group-text small">{{ item.unit_name }}</span>
                       </div>
@@ -539,7 +564,12 @@ export default {
 
       // Cached Fonts in Base64
       cachedFontNormal: null,
-      cachedFontBold: null
+      cachedFontBold: null,
+
+      // User permissions
+      userProfile: null,
+      isInventoryAdmin: false,
+      managedWarehouseIds: []
     };
   },
   computed: {
@@ -559,6 +589,7 @@ export default {
     }
   },
   mounted() {
+    this.fetchCurrentUserPermissions();
     this.fetchRequisitions();
   },
   beforeUnmount() {
@@ -567,10 +598,89 @@ export default {
     }
   },
   methods: {
+    handleBackToDashboard() {
+      if (this.$route?.path === '/inventory-requisition') {
+        this.$router.push('/home-backoffice');
+      } else {
+        this.$emit('back-to-dashboard');
+      }
+    },
+    handleGoToForm() {
+      if (this.$route?.path === '/inventory-requisition') {
+        const wh = this.$route?.query?.warehouse_id || this.warehouseId || localStorage.getItem('selected_warehouse_id') || '';
+        this.$router.push({
+          path: '/inventory-requisition-form',
+          query: wh ? { warehouse_id: wh } : {}
+        });
+      } else {
+        this.$emit('go-to-form');
+      }
+    },
+    async fetchCurrentUserPermissions() {
+      try {
+        const res = await axios.get('/api-hosoffice/get_user_profile.php');
+        if (res.data && res.data.status === 'success') {
+          this.userProfile = res.data;
+          if (this.userProfile.fullname) {
+            this.approverName = this.userProfile.fullname;
+          }
+          const perms = this.userProfile.access_user ? String(this.userProfile.access_user).split(':') : [];
+          this.isInventoryAdmin = perms.some(p => ['administrator', 'menu_inventory_admin', 'menu_inventory_manage'].includes(p));
+
+          const uid = this.userProfile.id || this.userProfile.user_id || localStorage.getItem('user_id') || '';
+          if (uid && !this.isInventoryAdmin) {
+            const wRes = await axios.get(`/api-digital/inventory/warehouses.php?user_id=${uid}&is_admin=0`).catch(() => null);
+            if (wRes?.data?.status === 'success' && Array.isArray(wRes.data.data)) {
+              this.managedWarehouseIds = wRes.data.data.map(w => Number(w.id));
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error loading permissions:', err);
+      }
+    },
+    normalizePersonName(name) {
+      return String(name || '')
+        .replace(/^(นาย|นางสาว|นาง|น\.ส\.|ดร\.|พญ\.|นพ\.|ทพ\.|ทพญ\.|ภก\.|ภญ\.)\s*/u, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+    },
+    canApproveRequisition(req) {
+      if (this.isInventoryAdmin) return true;
+      const whId = Number(req?.warehouse_id || this.$route?.query?.warehouse_id || this.warehouseId || 0);
+      return whId > 0 && this.managedWarehouseIds.includes(whId);
+    },
+    isOwnRequisition(req) {
+      const myName = this.userProfile?.fullname || localStorage.getItem('user_name') || '';
+      if (!myName || !req?.requester_name) return false;
+      const n1 = this.normalizePersonName(myName);
+      const n2 = this.normalizePersonName(req.requester_name);
+      return n1 !== '' && n1 === n2;
+    },
+    canEditRequisition(req) {
+      if (!req || req.status !== 'PENDING') return false;
+      return this.canApproveRequisition(req) || this.isOwnRequisition(req);
+    },
+    canCancelRequisition(req) {
+      if (!req || req.status === 'APPROVED') return false;
+      if (this.canApproveRequisition(req)) return true;
+      return req.status === 'PENDING' && this.isOwnRequisition(req);
+    },
+    editRequisition(req) {
+      this.$router.push({
+        path: '/inventory-requisition-form',
+        query: {
+          edit_id: req.id,
+          warehouse_id: req.warehouse_id
+        }
+      });
+    },
     async fetchRequisitions() {
       this.loading = true;
       try {
-        const wh = this.warehouseId || localStorage.getItem('selected_warehouse_id') || '';
+        const queryWh = this.$route?.query?.warehouse_id;
+        const wh = queryWh || this.warehouseId || localStorage.getItem('selected_warehouse_id') || '';
         const params = new URLSearchParams();
         if (wh) params.append('warehouse_id', wh);
         if (this.currentStatus) params.append('status', this.currentStatus);
@@ -730,15 +840,18 @@ export default {
       }
     },
     async confirmDelete(req) {
+      const isManager = this.canApproveRequisition(req);
       const confirm = await Swal.fire({
-        title: 'ยืนยันการลบใบขอเบิก?',
-        text: `คุณแน่ใจหรือไม่ว่าต้องการลบใบขอเบิกเลขที่ ${req.req_no}`,
+        title: isManager ? 'ยืนยันการลบใบขอเบิก?' : 'ยืนยันการยกเลิกใบขอเบิก?',
+        text: isManager
+          ? `คุณแน่ใจหรือไม่ว่าต้องการลบใบขอเบิกเลขที่ ${req.req_no}`
+          : `คุณแน่ใจหรือไม่ว่าต้องการยกเลิกใบขอเบิกเลขที่ ${req.req_no}`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
         cancelButtonColor: '#6c757d',
-        confirmButtonText: 'ยืนยันลบ',
-        cancelButtonText: 'ยกเลิก'
+        confirmButtonText: isManager ? 'ยืนยันลบ' : 'ยืนยันยกเลิกคำขอ',
+        cancelButtonText: 'ปิด'
       });
 
       if (!confirm.isConfirmed) return;
@@ -867,7 +980,11 @@ export default {
         item.status === 'APPROVED'
           ? this.formatNumber(item.qty_approved || item.qty_requested)
           : (item.status === 'REJECTED' ? 'ไม่อนุมัติ' : this.formatNumber(item.qty_approved || item.qty_requested || '-')),
-        this.formatNumber(item.current_stock)
+        this.formatNumber(
+          item.balance_after_issue !== null && item.balance_after_issue !== undefined
+            ? item.balance_after_issue
+            : item.current_stock
+        )
       ]);
 
       autoTable(doc, {
@@ -1069,6 +1186,23 @@ export default {
 }
 @keyframes spin {
   100% { transform: rotate(360deg); }
+}
+.nav-pill-btn {
+  transition: all 0.2s ease;
+}
+.nav-pill-btn:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  transform: translateY(-1px);
+}
+.action-pill-btn {
+  height: 30px;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+}
+.action-pill-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08) !important;
 }
 </style>
 

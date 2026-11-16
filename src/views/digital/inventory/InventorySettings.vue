@@ -138,6 +138,7 @@
                     <tr>
                       <th>รหัสคลัง</th>
                       <th>ชื่อคลัง</th>
+                      <th>แจ้งเตือน MOPH Notify</th>
                       <th>สถานะ</th>
                       <th>ระดับสิทธิ์ของคุณ</th>
                       <th>จัดการ</th>
@@ -145,11 +146,17 @@
                   </thead>
                   <tbody>
                     <tr v-if="warehouses.length === 0">
-                      <td colspan="5" class="text-center text-muted py-4">ไม่พบคลังวัสดุที่คุณมีสิทธิ์เข้าถึง</td>
+                      <td colspan="6" class="text-center text-muted py-4">ไม่พบคลังวัสดุที่คุณมีสิทธิ์เข้าถึง</td>
                     </tr>
                     <tr v-for="wh in warehouses" :key="wh.id">
                       <td><span class="badge bg-secondary font-monospace">{{ wh.code }}</span></td>
                       <td class="fw-bold text-dark">{{ wh.name }}</td>
+                      <td>
+                        <span v-if="wh.notify_channel" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">
+                          <i class="bi bi-bell-fill me-1"></i>{{ getMophChannelLabel(wh.notify_channel) }}
+                        </span>
+                        <span v-else class="text-muted small">- ไม่แจ้งเตือน -</span>
+                      </td>
                       <td>
                         <span class="badge" :class="Number(wh.active) ? 'bg-success' : 'bg-danger'">
                           {{ Number(wh.active) ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}
@@ -821,6 +828,9 @@
                           <small v-if="i.std_code_24 || i.old_code" class="text-muted font-monospace"><i class="bi bi-hash"></i>{{ i.std_code_24 || i.old_code }}</small>
                           <small v-if="i.std_unit_th || i.std_unit_en" class="text-secondary"><i class="bi bi-hospital me-1"></i>หน่วยกระทรวง: {{ i.std_unit_th || '-' }} <span v-if="i.std_unit_en" class="font-monospace">({{ i.std_unit_en }})</span></small>
                           <small v-if="Number(i.standard_price) > 0" class="text-success fw-semibold"><i class="bi bi-tag me-1"></i>{{ Number(i.standard_price).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) }} ฿</small>
+                          <small v-if="Number(i.admin_only_issue) === 1" class="badge bg-danger-subtle text-danger border border-danger-subtle align-self-start">
+                            <i class="bi bi-shield-lock-fill me-1"></i>เฉพาะผู้ดูแลคลังเบิกได้เท่านั้น
+                          </small>
                         </div>
                       </td>
                       <td>
@@ -1205,6 +1215,16 @@
               <div class="mb-3">
                 <label class="form-label">ชื่อคลังวัสดุ <span class="text-danger">*</span></label>
                 <input type="text" class="form-control" v-model="warehouseForm.name" required placeholder="เช่น คลังยา" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">ช่องทางแจ้งเตือน MOPH Notify (เมื่อมีการขอเบิก)</label>
+                <select class="form-select" v-model="warehouseForm.notify_channel">
+                  <option value="">-- ไม่แจ้งเตือน --</option>
+                  <option v-for="ch in mophChannels" :key="ch.channel_code" :value="ch.channel_code">
+                    {{ ch.channel_name }} ({{ ch.channel_code }})
+                  </option>
+                </select>
+                <small class="text-muted">เมื่อมีเจ้าหน้าที่สร้างใบขอเบิกวัสดุจากคลังนี้ ระบบจะส่งแจ้งเตือนไปยังช่องทางที่เลือก</small>
               </div>
               <div class="mb-4">
                 <div class="form-check form-switch">
@@ -1703,6 +1723,19 @@
                   <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" id="actCtrl" v-model="itemForm.active" :true-value="1" :false-value="0">
                     <label class="form-check-label" for="actCtrl">เปิดใช้งาน (Active)</label>
+                  </div>
+                </div>
+                <div class="col-12 mt-2">
+                  <div class="p-3 rounded-3 bg-danger-subtle border border-danger-subtle">
+                    <div class="form-check form-switch mb-0">
+                      <input class="form-check-input" type="checkbox" id="adminOnlyIssueCtrl" v-model="itemForm.admin_only_issue" :true-value="1" :false-value="0">
+                      <label class="form-check-label fw-bold text-danger-emphasis" for="adminOnlyIssueCtrl">
+                        <i class="bi bi-shield-lock-fill me-1"></i>เฉพาะผู้ดูแลคลังเบิกได้เท่านั้น (จำกัดสิทธิ์เจ้าหน้าที่ทั่วไป)
+                      </label>
+                    </div>
+                    <small class="text-muted d-block mt-1 ms-4">
+                      หากเปิดใช้งาน เจ้าหน้าที่ทั่วไปจะไม่สามารถเลือกเบิกรายการนี้ในหน้าขอเบิกวัสดุได้ (เบิกได้เฉพาะผู้ดูแลคลัง/ผู้ดูแลระบบเท่านั้น)
+                    </small>
                   </div>
                 </div>
               </div>
@@ -2692,8 +2725,9 @@ export default {
       categories: [],
       items: [],
       units: [],
+      mophChannels: [],
       warehouseForm: {
-        id: null, code: '', name: '', active: 1
+        id: null, code: '', name: '', active: 1, notify_channel: ''
       },
       categoryForm: {
         id: null, warehouse_id: '', code: '', name: '', gpsc_code: '', gpsc_name: '', active: 1
@@ -2709,7 +2743,7 @@ export default {
         barcode: '', brand: '', model: '',
         minimum_stock: 0, maximum_stock: 0, reorder_point: 0,
         standard_price: 0, last_purchase_price: 0,
-        lot_control: 0, expiry_control: 0, serial_control: 0, active: 1
+        lot_control: 0, expiry_control: 0, serial_control: 0, admin_only_issue: 0, active: 1
       },
       // Items Search and Import state
       itemSearchQuery: '',
@@ -3127,10 +3161,10 @@ export default {
         const itemTypeParams = whId ? `?warehouse_id=${whId}` : '';
 
         const whUrl = this.isAdminUser
-          ? '/api-digital/inventory/warehouses.php?is_admin=1'
+          ? '/api-digital/inventory/warehouses.php?is_admin=1&include_inactive=1'
           : `/api-digital/inventory/warehouses.php?user_id=${this.currentUserId || localStorage.getItem('user_id') || ''}&include_inactive=1`;
 
-        const [whRes, catRes, itemRes, unitRes, staffRes, vendorRes, buyMethodRes, itemTypeRes, pharmaRes] = await Promise.all([
+        const [whRes, catRes, itemRes, unitRes, staffRes, vendorRes, buyMethodRes, itemTypeRes, pharmaRes, mophRes] = await Promise.all([
           axios.get(whUrl),
           axios.get(`/api-digital/inventory/categories.php${catParams}`),
           axios.get(`/api-digital/inventory/items.php${itemParams}`),
@@ -3139,7 +3173,8 @@ export default {
           axios.get(`/api-digital/inventory/vendors.php?${vendorParams.toString()}`).catch(() => null),
           axios.get('/api-digital/inventory/buy_methods.php').catch(() => null),
           axios.get(`/api-digital/inventory/item_types.php${itemTypeParams}`).catch(() => null),
-          axios.get('/api-digital/inventory/pharmacy_masters.php').catch(() => null)
+          axios.get('/api-digital/inventory/pharmacy_masters.php').catch(() => null),
+          axios.get('/api-digital/inventory/warehouses.php?action=moph_channels').catch(() => null)
         ]);
         
         if (whRes?.data?.status === 'success') this.warehouses = whRes.data.data;
@@ -3150,6 +3185,7 @@ export default {
         if (vendorRes?.data?.status === 'success') this.vendors = vendorRes.data.data;
         if (buyMethodRes?.data?.status === 'success') this.buyMethods = buyMethodRes.data.data;
         if (itemTypeRes?.data?.status === 'success') this.itemTypes = itemTypeRes.data.data;
+        if (mophRes?.data?.status === 'success') this.mophChannels = mophRes.data.data || [];
         if (pharmaRes?.data?.status === 'success') {
           this.dosageForms = pharmaRes.data.dosage_forms || [];
           this.edLists = pharmaRes.data.ed_lists || [];
@@ -3159,17 +3195,28 @@ export default {
         console.error("Error fetching master data", err);
       }
     },
+    getMophChannelLabel(code) {
+      if (!code) return '';
+      const ch = this.mophChannels.find(c => c.channel_code === code);
+      return ch ? `${ch.channel_name} (${ch.channel_code})` : code;
+    },
     openWarehouseModal(wh = null) {
       if (wh && wh.id) {
         this.isEditWarehouse = true;
-        this.warehouseForm = { id: wh.id, code: wh.code, name: wh.name, active: wh.active !== undefined ? Number(wh.active) : 1 };
+        this.warehouseForm = {
+          id: wh.id,
+          code: wh.code,
+          name: wh.name,
+          active: wh.active !== undefined ? Number(wh.active) : 1,
+          notify_channel: wh.notify_channel || ''
+        };
       } else {
         if (!this.isSuperAdmin) {
           Swal.fire('ไม่มีสิทธิ์', 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถเพิ่มคลังใหม่ได้', 'warning');
           return;
         }
         this.isEditWarehouse = false;
-        this.warehouseForm = { id: null, code: '', name: '', active: 1 };
+        this.warehouseForm = { id: null, code: '', name: '', active: 1, notify_channel: '' };
       }
       const modal = new bootstrap.Modal(document.getElementById('warehouseModal'));
       modal.show();
@@ -3538,7 +3585,7 @@ export default {
           reorder_point: item.reorder_point, standard_price: item.standard_price,
           last_purchase_price: item.last_purchase_price,
           lot_control: item.lot_control, expiry_control: item.expiry_control,
-          serial_control: item.serial_control, active: item.active
+          serial_control: item.serial_control, admin_only_issue: Number(item.admin_only_issue) || 0, active: item.active
         };
       } else {
         this.isEditItem = false;
@@ -3555,7 +3602,7 @@ export default {
           barcode: '', brand: '', model: '',
           minimum_stock: 0, maximum_stock: 0, reorder_point: 0,
           standard_price: 0, last_purchase_price: 0,
-          lot_control: isPharma ? 1 : 0, expiry_control: isPharma ? 1 : 0, serial_control: 0, active: 1
+          lot_control: isPharma ? 1 : 0, expiry_control: isPharma ? 1 : 0, serial_control: 0, admin_only_issue: 0, active: 1
         };
         // Auto-run next sequential item code continuing from previous item
         this.fetchNextItemCode();

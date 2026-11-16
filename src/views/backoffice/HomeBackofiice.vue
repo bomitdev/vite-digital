@@ -292,10 +292,10 @@
                 </div>
               </div>
 
-              <!-- Material Request Form IT -->
+              <!-- Material Request Form IT (ซ่อนชั่วคราว ยังไม่ลบ) -->
               <div
                 class="col-6 col-md-4 col-lg-3"
-                v-if="hasPermission(['menu_it_material_req', 'backoffice_staff_all'])"
+                v-if="false && hasPermission(['menu_it_material_req', 'backoffice_staff_all'])"
               >
                 <div
                   class="nav-card h-100 bg-gradient-blue text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group"
@@ -362,6 +362,63 @@
                       style="font-size: 0.75rem"
                     >
                       เข้าใช้งาน
+                      <i
+                        class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
+                      ></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Central Inventory Requisition (เบิกวัสดุแบบรวมศูนย์) -->
+              <div
+                class="col-6 col-md-4 col-lg-3"
+                v-if="
+                  hasPermission([
+                    'menu_it_material_req',
+                    'menu_gm_material_req',
+                    'menu_inventory_req',
+                    'backoffice_staff_all'
+                  ]) ||
+                  isInventoryAdmin ||
+                  hasWarehouseAccess
+                "
+              >
+                <div
+                  class="nav-card h-100 bg-gradient-teal text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group"
+                  @click="openRequisitionWarehouseModal"
+                >
+                  <div
+                    class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
+                  ></div>
+                  <div class="position-relative z-1 d-flex flex-column h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                      <div
+                        class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 d-inline-flex align-items-center justify-content-center backdrop-blur"
+                      >
+                        <i class="bi bi-boxes fs-4"></i>
+                      </div>
+                      <span
+                        class="badge bg-white bg-opacity-25 text-white rounded-pill px-2 py-1 fw-bold"
+                        style="font-size: 0.65rem"
+                      >
+                        คลังรวมศูนย์
+                      </span>
+                    </div>
+                    <h6
+                      class="fw-bold text-white mb-1 text-truncate"
+                      title="เบิกวัสดุแบบรวมศูนย์"
+                    >
+                      เบิกวัสดุแบบรวมศูนย์
+                    </h6>
+                    <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
+                      เลือกคลังที่ต้องการขอเบิกวัสดุ
+                    </p>
+                    <div
+                      class="d-flex align-items-center text-white fw-bold small mt-auto"
+                      style="font-size: 0.75rem"
+                    >
+                      เลือกคลังเบิก
                       <i
                         class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
                       ></i>
@@ -721,8 +778,8 @@
                 </div>
               </div>
 
-              <!-- Material Management IT -->
-              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_it_material_manage')">
+              <!-- Material Management IT (ซ่อนชั่วคราว ยังไม่ลบ) -->
+              <div class="col-6 col-md-4 col-lg-3" v-if="false && hasPermission('menu_it_material_manage')">
                 <div
                   class="nav-card h-100 bg-gradient-orange text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="goToMaterialV2"
@@ -1036,9 +1093,8 @@
               <!-- สถาปัตยกรรมระบบ (Archify) -->
               <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('administrator')">
                 <div
-                  class="nav-card h-100 text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
+                  class="nav-card h-100 bg-gradient-cyan text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="$router.push('/architecture')"
-                  style="background: linear-gradient(135deg, #0f766e 0%, #0ea5e9 100%) !important"
                 >
                   <div
                     class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
@@ -1070,9 +1126,8 @@
               <!-- ตั้งค่าคีย์ MOPH Notify (Admin Only) -->
               <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('administrator')">
                 <div
-                  class="nav-card h-100 text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
+                  class="nav-card h-100 bg-gradient-green text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="$router.push('/moph-notify-settings')"
-                  style="background: linear-gradient(135deg, #15803d 0%, #10b981 100%) !important"
                 >
                   <div
                     class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
@@ -1106,7 +1161,6 @@
                 <div
                   class="nav-card h-100 bg-gradient-dark text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="$router.push('/git-sync')"
-                  style="background: linear-gradient(135deg, #212529 0%, #343a40 100%) !important"
                 >
                   <div
                     class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
@@ -1148,14 +1202,29 @@
         <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden animate-fade-in-up">
           
           <!-- Modal Header -->
-          <div class="modal-header border-0 p-4 text-white position-relative" style="background: linear-gradient(135deg, #1e3a8a 0%, #0284c7 100%);">
+          <div
+            class="modal-header border-0 p-4 text-white position-relative"
+            :style="
+              warehouseModalMode === 'requisition'
+                ? 'background: linear-gradient(135deg, #0d9488 0%, #0284c7 100%);'
+                : 'background: linear-gradient(135deg, #1e3a8a 0%, #0284c7 100%);'
+            "
+          >
             <div class="d-flex align-items-center gap-3">
               <div class="rounded-3 p-3 bg-white bg-opacity-20 d-flex align-items-center justify-content-center shadow-sm backdrop-blur" style="width: 52px; height: 52px;">
-                <i class="bi bi-box-seam-fill fs-3 text-white"></i>
+                <i :class="warehouseModalMode === 'requisition' ? 'bi bi-cart-plus-fill fs-3 text-white' : 'bi bi-box-seam-fill fs-3 text-white'"></i>
               </div>
               <div>
-                <h5 class="modal-title fw-bold text-white mb-1">เลือกคลังวัสดุที่ต้องการเข้าใช้งาน</h5>
-                <p class="text-white-50 small mb-0">ระบบคลังวัสดุรวมศูนย์ • เลือกระบบคลังตามสิทธิ์ที่คุณได้รับ</p>
+                <h5 class="modal-title fw-bold text-white mb-1">
+                  {{ warehouseModalMode === 'requisition' ? 'เลือกคลังวัสดุที่ต้องการขอเบิก' : 'เลือกคลังวัสดุที่ต้องการเข้าใช้งาน' }}
+                </h5>
+                <p class="text-white-50 small mb-0">
+                  {{
+                    warehouseModalMode === 'requisition'
+                      ? 'เบิกวัสดุแบบรวมศูนย์ • เลือกคลังพัสดุที่ต้องการสร้างใบขอเบิก'
+                      : 'ระบบคลังวัสดุรวมศูนย์ • เลือกระบบคลังตามสิทธิ์ที่คุณได้รับ'
+                  }}
+                </p>
               </div>
             </div>
             <button type="button" class="btn-close btn-close-white" @click="showWarehouseModal = false"></button>
@@ -1208,7 +1277,7 @@
             <div v-else class="row g-3">
               
               <!-- Option for Admin: All Warehouses -->
-              <div class="col-12" v-if="isInventoryAdmin">
+              <div class="col-12" v-if="warehouseModalMode === 'manage' && isInventoryAdmin">
                 <div 
                   class="warehouse-card p-3 rounded-4 bg-white border border-2 border-primary-subtle shadow-sm cursor-pointer position-relative d-flex align-items-center justify-content-between transition-all"
                   @click="selectWarehouseAndEnter(null)"
@@ -1243,14 +1312,23 @@
                   @click="selectWarehouseAndEnter(wh)"
                 >
                   <div class="d-flex align-items-start gap-3 mb-3">
-                    <div class="wh-icon-box bg-gradient-blue text-white rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs">
+                    <div
+                      class="wh-icon-box text-white rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs"
+                      :class="warehouseModalMode === 'requisition' ? 'bg-gradient-teal' : 'bg-gradient-blue'"
+                    >
                       <span class="fw-bold fs-5">{{ wh.code }}</span>
                     </div>
                     <div class="flex-grow-1 overflow-hidden">
                       <div class="d-flex align-items-center justify-content-between gap-1 mb-1">
                         <span class="badge bg-light text-secondary border small">รหัส: {{ wh.code }}</span>
+                        <span
+                          v-if="warehouseModalMode === 'requisition'"
+                          class="badge bg-teal-subtle text-success border border-success-subtle rounded-pill"
+                        >
+                          <i class="bi bi-cart-plus-fill me-1"></i> เปิดให้ขอเบิก
+                        </span>
                         <span 
-                          v-if="wh.access_level === 'MANAGER'" 
+                          v-else-if="wh.access_level === 'MANAGER'" 
                           class="badge bg-success-subtle text-success border border-success-subtle rounded-pill"
                         >
                           <i class="bi bi-person-badge-fill me-1"></i> ผู้ดูแลคลัง
@@ -1269,12 +1347,17 @@
                         </span>
                       </div>
                       <h6 class="fw-bold text-dark mb-1 text-truncate" :title="wh.name">{{ wh.name }}</h6>
-                      <small class="text-muted d-block">คลิกเพื่อเข้าจัดการสต็อก รับ-จ่าย</small>
+                      <small class="text-muted d-block">
+                        {{ warehouseModalMode === 'requisition' ? 'คลิกเพื่อสร้างใบขอเบิกวัสดุจากคลังนี้' : 'คลิกเพื่อเข้าจัดการสต็อก รับ-จ่าย' }}
+                      </small>
                     </div>
                   </div>
 
-                  <div class="pt-2 border-top d-flex align-items-center justify-content-between text-primary fw-semibold small">
-                    <span>เข้าสู่คลังนี้</span>
+                  <div
+                    class="pt-2 border-top d-flex align-items-center justify-content-between fw-semibold small"
+                    :class="warehouseModalMode === 'requisition' ? 'text-success' : 'text-primary'"
+                  >
+                    <span>{{ warehouseModalMode === 'requisition' ? 'ขอเบิกวัสดุจากคลังนี้' : 'เข้าสู่คลังนี้' }}</span>
                     <i class="bi bi-arrow-right"></i>
                   </div>
                 </div>
@@ -1291,7 +1374,7 @@
             </small>
             <div class="d-flex gap-2">
               <button 
-                v-if="isInventoryAdmin || userWarehouses.some(w => w.access_level === 'MANAGER')"
+                v-if="warehouseModalMode === 'manage' && (isInventoryAdmin || userWarehouses.some(w => w.access_level === 'MANAGER'))"
                 type="button" 
                 class="btn btn-outline-primary rounded-pill px-3 fw-bold small"
                 @click="goToSettingsDirectly"
@@ -1324,6 +1407,7 @@ export default {
         image: ''
       },
       showWarehouseModal: false,
+      warehouseModalMode: 'manage',
       loadingWarehouses: false,
       userWarehouses: [],
       hasWarehouseAccess: false
@@ -1519,11 +1603,33 @@ export default {
     goToComputerLoanForm() {
       this.$router.push({ path: '/computer-loan' });
     },
+    async openRequisitionWarehouseModal() {
+      if (!this.userProfile || !this.userProfile.id) {
+        await this.fetchUserProfile();
+      }
+
+      this.warehouseModalMode = 'requisition';
+      this.showWarehouseModal = true;
+      this.loadingWarehouses = true;
+      this.userWarehouses = [];
+
+      try {
+        const res = await axios.get('/api-digital/inventory/warehouses.php');
+        if (res.data && res.data.status === 'success') {
+          this.userWarehouses = (res.data.data || []).filter((w) => Number(w.active) === 1);
+        }
+      } catch (err) {
+        console.error('Error fetching warehouses for requisition:', err);
+      } finally {
+        this.loadingWarehouses = false;
+      }
+    },
     async openWarehouseSelectModal() {
       if (!this.userProfile || !this.userProfile.id) {
         await this.fetchUserProfile();
       }
 
+      this.warehouseModalMode = 'manage';
       this.showWarehouseModal = true;
       this.loadingWarehouses = true;
       this.userWarehouses = [];
@@ -1542,6 +1648,19 @@ export default {
       }
     },
     selectWarehouseAndEnter(wh) {
+      if (this.warehouseModalMode === 'requisition') {
+        if (!wh) return;
+        localStorage.setItem('selected_warehouse_id', wh.id);
+        localStorage.setItem('selected_warehouse_code', wh.code);
+        localStorage.setItem('selected_warehouse_name', wh.name);
+        this.showWarehouseModal = false;
+        this.$router.push({
+          path: '/inventory-requisition-form',
+          query: { warehouse_id: wh.id, from: 'central_req' }
+        });
+        return;
+      }
+
       if (wh) {
         localStorage.setItem('selected_warehouse_id', wh.id);
         localStorage.setItem('selected_warehouse_code', wh.code);
@@ -1664,15 +1783,104 @@ export default {
   letter-spacing: 1px;
 }
 
-/* Nav Cards */
+/* Nav Cards - Clean White + Soft Icon Theme */
 .nav-card {
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --card-accent: #2563eb;
+  --card-accent-bg: rgba(37, 99, 235, 0.1);
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .nav-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.1) !important;
+  transform: translateY(-4px);
+  border-color: var(--card-accent) !important;
+  box-shadow: 0 12px 24px -8px rgba(15, 23, 42, 0.12) !important;
+}
+
+.nav-card .card-bg-decoration {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: var(--card-accent) !important;
+  opacity: 0.85 !important;
+}
+
+.nav-card:hover .card-bg-decoration {
+  opacity: 1 !important;
+  height: 5px;
+}
+
+.nav-card .icon-box,
+.nav-card .icon-box-small {
+  background-color: var(--card-accent-bg) !important;
+  color: var(--card-accent) !important;
+  border: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.nav-card h6,
+.nav-card .fw-bold.text-white {
+  color: #0f172a !important;
+}
+
+.nav-card p.text-white-50,
+.nav-card .text-white-50 {
+  color: #64748b !important;
+}
+
+.nav-card .mt-auto.text-white,
+.nav-card .mt-auto.fw-bold {
+  color: var(--card-accent) !important;
+}
+
+.nav-card .badge.bg-white {
+  background-color: var(--card-accent-bg) !important;
+  color: var(--card-accent) !important;
+}
+
+.nav-card.bg-gradient-purple {
+  --card-accent: #7c3aed;
+  --card-accent-bg: rgba(124, 58, 237, 0.1);
+}
+.nav-card.bg-gradient-blue {
+  --card-accent: #0284c7;
+  --card-accent-bg: rgba(2, 132, 199, 0.1);
+}
+.nav-card.bg-gradient-teal {
+  --card-accent: #0d9488;
+  --card-accent-bg: rgba(13, 148, 136, 0.1);
+}
+.nav-card.bg-gradient-orange {
+  --card-accent: #ea580c;
+  --card-accent-bg: rgba(234, 88, 12, 0.1);
+}
+.nav-card.bg-gradient-pink {
+  --card-accent: #db2777;
+  --card-accent-bg: rgba(219, 39, 119, 0.1);
+}
+.nav-card.bg-gradient-green {
+  --card-accent: #16a34a;
+  --card-accent-bg: rgba(22, 163, 74, 0.1);
+}
+.nav-card.bg-gradient-indigo {
+  --card-accent: #4f46e5;
+  --card-accent-bg: rgba(79, 70, 229, 0.1);
+}
+.nav-card.bg-gradient-cyan {
+  --card-accent: #0891b2;
+  --card-accent-bg: rgba(8, 145, 178, 0.1);
+}
+.nav-card.bg-gradient-red {
+  --card-accent: #dc2626;
+  --card-accent-bg: rgba(220, 38, 38, 0.1);
+}
+.nav-card.bg-gradient-dark {
+  --card-accent: #334155;
+  --card-accent-bg: rgba(51, 65, 85, 0.1);
 }
 
 .icon-box {

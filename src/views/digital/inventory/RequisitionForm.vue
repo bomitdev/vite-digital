@@ -1,25 +1,48 @@
 <template>
-  <div class="requisition-form-container">
+  <div class="requisition-form-container container-fluid py-3 px-3 px-md-4">
     <!-- Header -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
       <div>
-        <nav aria-label="breadcrumb">
-          <ol class="breadcrumb mb-1">
-            <li class="breadcrumb-item"><a href="javascript:void(0)" @click="$emit('back-to-dashboard')">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="javascript:void(0)" @click="$emit('go-to-manage')">คำขอเบิกและอนุมัติจ่าย</a></li>
-            <li class="breadcrumb-item active">สร้างใบขอเบิกใหม่</li>
-          </ol>
+        <nav aria-label="breadcrumb" class="mb-2">
+          <div class="d-inline-flex flex-wrap align-items-center gap-2 bg-white px-3 py-2 rounded-pill shadow-sm border">
+            <button
+              type="button"
+              class="btn btn-sm btn-light rounded-pill px-3 py-1 fw-semibold text-secondary d-inline-flex align-items-center gap-1 border-0 nav-pill-btn"
+              @click="handleBackToDashboard"
+            >
+              <i class="bi bi-house-door-fill text-primary"></i>
+              <span>หน้าหลัก</span>
+            </button>
+            <i class="bi bi-chevron-right text-muted small"></i>
+            <button
+              type="button"
+              class="btn btn-sm btn-light rounded-pill px-3 py-1 fw-semibold text-secondary d-inline-flex align-items-center gap-1 border-0 nav-pill-btn"
+              @click="handleGoToManage"
+            >
+              <i class="bi bi-clipboard2-check-fill text-warning"></i>
+              <span>คำขอเบิกและอนุมัติจ่าย</span>
+            </button>
+            <i class="bi bi-chevron-right text-muted small"></i>
+            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-2 fw-bold">
+              <i class="bi bi-pencil-square me-1" v-if="editId"></i>
+              <i class="bi bi-plus-circle-fill me-1" v-else></i>
+              {{ editId ? 'แก้ไขใบขอเบิก' : 'สร้างใบขอเบิกใหม่' }}
+            </span>
+          </div>
         </nav>
         <h3 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
           <i class="bi bi-cart-plus-fill text-warning"></i>
-          สร้างใบขอเบิกพัสดุ (Requisition Form)
+          {{ editId ? `แก้ไขใบขอเบิกพัสดุ (${editReqNo || '#' + editId})` : 'สร้างใบขอเบิกพัสดุ (Requisition Form)' }}
         </h3>
         <small class="text-muted">บันทึกส่งคำขอเบิกพัสดุจากหน่วยงาน เพื่อเสนอเจ้าหน้าที่คลังพิจารณาอนุมัติจ่าย</small>
       </div>
 
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-secondary rounded-pill px-3 shadow-sm" @click="$emit('go-to-manage')">
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-outline-secondary rounded-pill px-3 shadow-sm" @click="handleGoToManage">
           <i class="bi bi-list-ul me-1"></i> รายการคำขอเบิกทั้งหมด
+        </button>
+        <button class="btn btn-light border rounded-pill px-3 shadow-sm" @click="handleBackToDashboard">
+          <i class="bi bi-arrow-left me-1"></i> กลับหน้าหลัก
         </button>
       </div>
     </div>
@@ -63,8 +86,52 @@
 
               <!-- ชื่อผู้ขอเบิก -->
               <div class="col-md-4">
-                <label class="form-label fw-bold">ชื่อ-นามสกุล ผู้ขอเบิก <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" v-model="form.requester_name" placeholder="เช่น นายสมชาย ใจดี" required />
+                <label class="form-label fw-bold d-flex justify-content-between align-items-center mb-1">
+                  <span>ชื่อ-นามสกุล ผู้ขอเบิก <span class="text-danger">*</span></span>
+                  <span v-if="staffList.length" class="badge bg-primary-subtle text-primary border rounded-pill fw-normal small px-2">
+                    <i class="bi bi-people-fill me-1"></i>{{ staffList.length }} รายชื่อ
+                  </span>
+                </label>
+                <div class="position-relative">
+                  <input
+                    type="text"
+                    class="form-control form-control-lg"
+                    v-model="form.requester_name"
+                    list="staffListOptions"
+                    placeholder="พิมพ์ค้นหาหรือคลิกเลือกรายชื่อเจ้าหน้าที่..."
+                    @change="onStaffSelected"
+                    required
+                  />
+                  <datalist id="staffListOptions">
+                    <option
+                      v-for="s in staffListForDatalist"
+                      :key="s.ID"
+                      :value="s.FULLNAME"
+                    >
+                      {{ s.HR_DEPARTMENT_SUB_NAME ? `[${s.HR_DEPARTMENT_SUB_NAME}]` : '' }} {{ s.HR_POSITION_NAME ? `(${s.HR_POSITION_NAME})` : '' }} {{ s.HR_PHONE ? `โทร: ${s.HR_PHONE}` : '' }}
+                    </option>
+                  </datalist>
+                </div>
+
+                <!-- Quick Select Pills for department staff -->
+                <div v-if="departmentStaffList.length > 0" class="mt-2 p-2 bg-light rounded-3 border">
+                  <div class="small text-muted mb-1 d-flex align-items-center gap-1">
+                    <i class="bi bi-person-check-fill text-success"></i>
+                    <span>เจ้าหน้าที่ในแผนกนี้ (คลิกเพื่อเลือกทันที):</span>
+                  </div>
+                  <div class="d-flex flex-wrap gap-1">
+                    <button
+                      type="button"
+                      v-for="s in departmentStaffList"
+                      :key="s.ID"
+                      class="btn btn-sm rounded-pill py-1 px-2 text-start transition-all"
+                      :class="form.requester_name === s.FULLNAME ? 'btn-primary shadow-xs' : 'btn-outline-secondary bg-white'"
+                      @click="selectStaffDirectly(s)"
+                    >
+                      <i class="bi bi-person me-1"></i>{{ s.FULLNAME }}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <!-- เบอร์โทรศัพท์ -->
@@ -81,170 +148,156 @@
             </div>
           </div>
 
-          <!-- Section 2: ค้นหาและระบุรายการพัสดุ -->
-          <div class="mb-4 bg-light p-4 rounded-4 border" :class="{'opacity-50 pointer-events-none': !form.warehouse_id}">
-            <h5 class="fw-bold mb-3 border-bottom pb-2 text-dark d-flex align-items-center gap-2">
-              <span class="badge bg-secondary text-white rounded-circle px-2">2</span>
-              ค้นหาและระบุรายการพัสดุ
-            </h5>
-
-            <div class="row g-2 align-items-end">
-              <!-- ช่องค้นหาพัสดุ -->
-              <div class="col-md-5 position-relative">
-                <label class="form-label mb-1 fw-bold small">ค้นหารหัสหรือชื่อพัสดุ</label>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  v-model="searchQuery" 
-                  @focus="isDropdownOpen = true"
-                  placeholder="พิมพ์ชื่อหรือรหัสพัสดุเพื่อค้นหา..."
-                  :disabled="!form.warehouse_id"
-                />
-                
-                <!-- Autocomplete Dropdown List -->
-                <div 
-                  v-if="isDropdownOpen && form.warehouse_id" 
-                  class="position-absolute w-100 bg-white border rounded-3 shadow mt-1" 
-                  style="max-height: 260px; overflow-y: auto; z-index: 1050;"
-                >
-                  <div class="d-flex justify-content-between p-2 border-bottom bg-light">
-                    <span class="small fw-bold text-muted">พบ {{ filteredItems.length }} รายการ</span>
-                    <button type="button" class="btn btn-sm btn-link text-muted p-0 text-decoration-none" @click="isDropdownOpen = false">ปิด</button>
-                  </div>
-                  <div v-if="filteredItems.length === 0" class="p-3 text-muted text-center small">
-                    ไม่พบรายการพัสดุในคลังนี้
-                  </div>
-                  <div 
-                    v-for="m in filteredItems" 
-                    :key="m.id" 
-                    class="p-2 px-3 border-bottom item-select-row d-flex justify-content-between align-items-center"
-                    @click="selectItem(m)"
-                  >
-                    <div>
-                      <span class="fw-bold text-primary font-monospace">[{{ m.item_code }}]</span> 
-                      <span class="ms-1">{{ m.item_name }}</span>
+          <!-- Section 2 & 3: รายการวัสดุในคลัง + ตะกร้าเบิกวัสดุ (Split Pane แบบเบิกวัสดุบริหาร) -->
+          <div class="mt-4 pt-4 border-top" :class="{'opacity-50 pointer-events-none': !form.warehouse_id}">
+            <div class="row g-4">
+              <!-- Left Pane: Inventory Items List -->
+              <div class="col-lg-7">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+                  <h5 class="fw-bold text-dark m-0 d-flex align-items-center gap-2">
+                    <span class="badge bg-primary text-white rounded-circle px-2">2</span>
+                    รายการวัสดุในคลัง
+                  </h5>
+                  <div class="d-flex gap-2 flex-wrap justify-content-end">
+                    <select v-model="selectedCategory" class="form-select shadow-sm border-light-subtle" style="max-width: 170px; font-size: 0.9rem;">
+                      <option value="">ทุกหมวดหมู่/ประเภท</option>
+                      <option v-for="cat in uniqueCategories" :key="cat" :value="cat">{{ cat }}</option>
+                    </select>
+                    <div class="input-group shadow-sm" style="max-width: 260px;">
+                      <span class="input-group-text bg-white border-end-0 text-primary"><i class="bi bi-search"></i></span>
+                      <input type="text" v-model="searchQuery" class="form-control border-start-0 ps-0" placeholder="ค้นหาชื่อ หรือรหัสวัสดุ..." :disabled="!form.warehouse_id">
                     </div>
-                    <span class="badge rounded-pill" :class="m.on_hand > 0 ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-muted'">
-                      คงเหลือ: {{ m.on_hand }} {{ m.unit_name }}
-                    </span>
+                  </div>
+                </div>
+
+                <div class="table-responsive border border-light-subtle rounded-4 bg-white shadow-sm" style="max-height: 520px; overflow-y: auto;">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light sticky-top shadow-sm" style="z-index: 10;">
+                      <tr class="small text-secondary">
+                        <th width="42%" class="ps-3">รหัส / ชื่อวัสดุ</th>
+                        <th width="22%" class="text-center">หมวดหมู่/ประเภท</th>
+                        <th width="16%" class="text-center">คงเหลือ</th>
+                        <th width="20%" class="text-center pe-3">แอคชัน</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-if="!form.warehouse_id">
+                        <td colspan="4" class="text-center py-5 text-muted">
+                          <i class="bi bi-building fs-1 mb-2 d-block text-secondary"></i>
+                          กรุณาเลือกคลังวัสดุที่ต้องการเบิกด้านบนก่อน
+                        </td>
+                      </tr>
+                      <tr v-else-if="filteredItems.length === 0">
+                        <td colspan="4" class="text-center py-5 text-muted">
+                          <i class="bi bi-search fs-1 mb-2 d-block text-secondary"></i>
+                          ไม่พบรายการวัสดุที่ค้นหา
+                        </td>
+                      </tr>
+                      <tr v-for="mat in filteredItems" :key="mat.id">
+                        <td class="ps-3">
+                          <div class="fw-bold text-dark">
+                            {{ mat.item_name }}
+                            <span v-if="Number(mat.admin_only_issue) === 1" class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" style="font-size: 0.7rem;">
+                              <i class="bi bi-shield-lock-fill me-1"></i>เฉพาะผู้ดูแลคลัง
+                            </span>
+                          </div>
+                          <div class="small text-muted font-monospace">{{ mat.item_code || '-' }}</div>
+                        </td>
+                        <td class="text-center">
+                          <span class="badge bg-secondary-subtle text-secondary border rounded-pill fw-normal">
+                            {{ mat.category_name || mat.item_type_name || '-' }}
+                          </span>
+                        </td>
+                        <td class="text-center">
+                          <span class="badge border px-2 py-1" :class="Number(mat.on_hand) > 0 ? 'bg-light text-dark' : 'bg-danger-subtle text-danger border-danger-subtle'">
+                            <span class="fw-bold">{{ formatQty(mat.on_hand) }}</span>
+                            <span class="fw-normal text-muted ms-1">{{ mat.unit_name || 'หน่วย' }}</span>
+                          </span>
+                        </td>
+                        <td class="text-center pe-3">
+                          <button
+                            type="button"
+                            class="btn btn-sm rounded-pill fw-bold w-100 shadow-sm d-flex justify-content-center align-items-center gap-1"
+                            :class="isItemInCart(mat.id) ? 'btn-secondary' : 'btn-outline-primary'"
+                            :disabled="isItemInCart(mat.id)"
+                            @click="addToCart(mat)"
+                          >
+                            <i class="bi" :class="isItemInCart(mat.id) ? 'bi-check2' : 'bi-plus-lg'"></i>
+                            {{ isItemInCart(mat.id) ? 'เลือกแล้ว' : 'เบิก' }}
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Right Pane: Cart -->
+              <div class="col-lg-5 mt-4 mt-lg-0">
+                <div class="bg-light rounded-4 p-4 h-100 border border-light-subtle shadow-sm d-flex flex-column">
+                  <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 class="fw-bold text-dark m-0 d-flex align-items-center gap-2">
+                      <span class="badge bg-success text-white rounded-pill px-2 py-1 shadow-sm"><i class="bi bi-cart-check fs-6"></i></span>
+                      ตะกร้าเบิกวัสดุ
+                    </h5>
+                    <span class="badge bg-primary rounded-pill shadow-sm fs-6 px-3">{{ selectedItems.length }} รายการ</span>
+                  </div>
+
+                  <!-- Empty State -->
+                  <div v-if="selectedItems.length === 0" class="text-center py-5 my-auto">
+                    <div class="bg-white text-muted shadow-sm mx-auto mb-3 rounded-4 d-flex align-items-center justify-content-center" style="width: 76px; height: 76px;">
+                      <i class="bi bi-cart-x fs-1"></i>
+                    </div>
+                    <h6 class="fw-bold text-dark mb-1">ยังไม่ได้เลือกรายการวัสดุ</h6>
+                    <p class="text-muted small mb-0">กรุณาคลิกปุ่ม "เบิก" จากรายการด้านซ้าย</p>
+                  </div>
+
+                  <!-- Cart Items -->
+                  <div v-else class="flex-grow-1" style="max-height: 440px; overflow-y: auto; padding-right: 4px;">
+                    <div v-for="(item, index) in selectedItems" :key="item.item_id" class="card border-0 shadow-sm mb-3 rounded-4 overflow-hidden">
+                      <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                          <div class="fw-bold text-dark lh-sm pe-2">
+                            <span class="badge bg-dark rounded-circle me-1" style="font-size: 0.7rem; padding: 0.35em 0.55em;">{{ index + 1 }}</span>
+                            {{ item.item_name }}
+                            <div class="small text-muted fw-normal font-monospace mt-1">
+                              [{{ item.item_code }}] • คงเหลือในคลัง: {{ formatQty(item.on_hand) }} {{ item.unit_name }}
+                            </div>
+                          </div>
+                          <button type="button" class="btn btn-sm btn-light text-danger shadow-sm rounded-circle p-1 flex-shrink-0" @click="removeItem(index)" style="width: 32px; height: 32px;" title="นำออก">
+                            <i class="bi bi-trash-fill"></i>
+                          </button>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-2 bg-light rounded-3 p-2 border">
+                          <span class="small fw-bold text-secondary">ระบุจำนวน:</span>
+                          <div class="d-flex align-items-center gap-2">
+                            <div class="input-group input-group-sm shadow-sm rounded-pill overflow-hidden" style="width: 126px;">
+                              <button type="button" class="btn btn-primary px-2" @click="item.qty > 1 ? item.qty-- : null"><i class="bi bi-dash"></i></button>
+                              <input
+                                type="number"
+                                step="1"
+                                min="1"
+                                v-model.number="item.qty"
+                                @change="item.qty = Math.max(1, Math.round(Number(item.qty) || 1))"
+                                class="form-control text-center fw-bold border-primary text-primary px-0 hide-arrows"
+                                required
+                                style="max-width: 54px;"
+                              >
+                              <button type="button" class="btn btn-primary px-2" @click="item.qty++"><i class="bi bi-plus"></i></button>
+                            </div>
+                            <span class="small fw-bold text-dark text-nowrap">{{ item.unit_name || 'หน่วย' }}</span>
+                          </div>
+                        </div>
+
+                        <div class="mt-2">
+                          <input type="text" class="form-control form-control-sm bg-light border-0" v-model="item.item_note" placeholder="หมายเหตุรายการนี้ (ถ้ามี)..." />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-
-              <!-- จำนวนคงเหลือปัจจุบันในคลัง -->
-              <div class="col-md-2">
-                <label class="form-label mb-1 fw-bold small">คงเหลือในคลัง</label>
-                <input 
-                  type="text" 
-                  class="form-control bg-white" 
-                  :value="currentItem.item_id ? `${currentItem.on_hand} ${currentItem.unit_name}` : '-'" 
-                  readonly 
-                  disabled
-                />
-              </div>
-
-              <!-- จำนวนที่ต้องการขอเบิก -->
-              <div class="col-md-2">
-                <label class="form-label mb-1 fw-bold small">จำนวนที่ขอเบิก <span class="text-danger">*</span></label>
-                <div class="input-group">
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    min="0.01" 
-                    class="form-control fw-bold" 
-                    v-model.number="currentItem.qty" 
-                    :disabled="!currentItem.item_id"
-                  />
-                  <span class="input-group-text small">{{ currentItem.unit_name || 'หน่วย' }}</span>
-                </div>
-              </div>
-
-              <!-- หมายเหตุรายการ -->
-              <div class="col-md-2">
-                <label class="form-label mb-1 fw-bold small">หมายเหตุ</label>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  v-model="currentItem.item_note" 
-                  placeholder="ระบุเพิ่มเติม..." 
-                  :disabled="!currentItem.item_id"
-                />
-              </div>
-
-              <!-- ปุ่มเพิ่มรายการ -->
-              <div class="col-md-1 d-flex align-items-end">
-                <button 
-                  type="button" 
-                  class="btn btn-warning text-dark w-100 fw-bold" 
-                  @click="addItem" 
-                  :disabled="!currentItem.item_id || currentItem.qty <= 0"
-                >
-                  <i class="bi bi-plus-lg"></i> เพิ่ม
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Section 3: รายการพัสดุที่เลือกเตรียมส่งคำขอ -->
-          <div class="mb-4">
-            <h5 class="fw-bold mb-3 border-bottom pb-2 text-dark d-flex align-items-center justify-content-between">
-              <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-secondary text-white rounded-circle px-2">3</span>
-                รายการพัสดุในใบขอเบิก
-              </div>
-              <span class="fs-6 text-muted fw-normal">ทั้งหมด {{ selectedItems.length }} รายการ</span>
-            </h5>
-
-            <div v-if="selectedItems.length === 0" class="text-center py-5 bg-light rounded-3 text-muted">
-              <i class="bi bi-basket3 fs-1 d-block mb-2 text-secondary"></i>
-              <div class="fw-bold">ยังไม่มีรายการพัสดุ</div>
-              <small>กรุณาค้นหาและกดปุ่ม "+ เพิ่ม" รายการพัสดุด้านบน</small>
-            </div>
-
-            <div v-else class="table-responsive">
-              <table class="table table-bordered table-hover align-middle mb-0">
-                <thead class="table-light small">
-                  <tr>
-                    <th style="width: 50px;" class="text-center">ลำดับ</th>
-                    <th style="width: 140px;">รหัสพัสดุ</th>
-                    <th>ชื่อรายการพัสดุ</th>
-                    <th class="text-center" style="width: 130px;">คงเหลือในคลัง</th>
-                    <th class="text-center" style="width: 140px;">จำนวนที่ขอเบิก</th>
-                    <th style="width: 100px;">หน่วยนับ</th>
-                    <th>หมายเหตุ</th>
-                    <th class="text-center" style="width: 70px;">ลบ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(item, index) in selectedItems" :key="index">
-                    <td class="text-center">{{ index + 1 }}</td>
-                    <td class="fw-bold font-monospace text-primary">{{ item.item_code }}</td>
-                    <td class="fw-bold">{{ item.item_name }}</td>
-                    <td class="text-center">
-                      <span class="badge bg-light text-dark border">{{ item.on_hand }}</span>
-                    </td>
-                    <td class="text-center">
-                      <input 
-                        type="number" 
-                        step="0.01" 
-                        min="0.01" 
-                        class="form-control form-control-sm text-center fw-bold text-primary mx-auto" 
-                        style="max-width: 100px;" 
-                        v-model.number="item.qty" 
-                      />
-                    </td>
-                    <td>{{ item.unit_name }}</td>
-                    <td>
-                      <input type="text" class="form-control form-control-sm" v-model="item.item_note" placeholder="หมายเหตุ" />
-                    </td>
-                    <td class="text-center">
-                      <button type="button" class="btn btn-sm btn-outline-danger rounded-circle" @click="removeItem(index)">
-                        <i class="bi bi-trash"></i>
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
             </div>
           </div>
 
@@ -259,7 +312,8 @@
               :disabled="submitting || selectedItems.length === 0"
             >
               <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-              <i v-else class="bi bi-send-fill me-2"></i> ยืนยันส่งใบขอเบิกพัสดุ
+              <i v-else class="bi bi-send-fill me-2"></i>
+              {{ editId ? 'บันทึกการแก้ไขใบขอเบิก' : 'ยืนยันส่งใบขอเบิกพัสดุ' }}
             </button>
           </div>
 
@@ -286,11 +340,18 @@ export default {
     return {
       warehouses: [],
       departments: [],
+      staffList: [],
+      userProfile: null,
+      isInventoryAdmin: false,
+      managedWarehouseIds: [],
       items: [],
       selectedItems: [],
       searchQuery: '',
+      selectedCategory: '',
       isDropdownOpen: false,
       submitting: false,
+      editId: null,
+      editReqNo: '',
 
       form: {
         warehouse_id: '',
@@ -314,17 +375,80 @@ export default {
     };
   },
   computed: {
+    canRequestRestrictedItems() {
+      if (this.isInventoryAdmin) return true;
+      const whId = Number(this.form.warehouse_id);
+      return whId > 0 && this.managedWarehouseIds.includes(whId);
+    },
+    uniqueCategories() {
+      const cats = new Set();
+      this.items.forEach(m => {
+        if (Number(m.admin_only_issue) === 1 && !this.canRequestRestrictedItems) return;
+        const c = m.category_name || m.item_type_name;
+        if (c) cats.add(c);
+      });
+      return Array.from(cats).sort();
+    },
     filteredItems() {
-      if (!this.searchQuery) return this.items;
+      let available = this.items.filter(
+        m => Number(m.admin_only_issue) !== 1 || this.canRequestRestrictedItems
+      );
+      if (this.selectedCategory) {
+        available = available.filter(
+          m => (m.category_name || m.item_type_name) === this.selectedCategory
+        );
+      }
+      if (!this.searchQuery) return available;
       const q = this.searchQuery.toLowerCase();
-      return this.items.filter(m => 
+      return available.filter(m => 
         (m.item_name && m.item_name.toLowerCase().includes(q)) || 
         (m.item_code && m.item_code.toLowerCase().includes(q))
       );
+    },
+    // กรองรายชื่อเจ้าหน้าที่ที่สังกัดหน่วยงาน/แผนกที่เลือก
+    departmentStaffList() {
+      if (!this.form.department_id && !this.form.department_name) return [];
+      const deptName = (this.form.department_name || '').toLowerCase();
+      const deptId = Number(this.form.department_id);
+
+      return this.staffList.filter(s => {
+        if (s.HR_DEPARTMENT_SUB_ID && Number(s.HR_DEPARTMENT_SUB_ID) === deptId) {
+          return true;
+        }
+        if (!s.HR_DEPARTMENT_SUB_NAME || !deptName) return false;
+        const sDept = s.HR_DEPARTMENT_SUB_NAME.toLowerCase();
+        if (sDept === deptName) return true;
+
+        // คำค้นหาหลักของกลุ่มงานในโรงพยาบาล
+        const keywords = [
+          'ประกันสุขภาพ', 'สุขภาพดิจิทัล', 'สารสนเทศ', 'เภสัช', 'บริหารทั่วไป',
+          'การพยาบาล', 'ผู้ป่วยนอก', 'ผู้ป่วยใน', 'อุบัติเหตุ', 'ทันตกรรม',
+          'เทคนิคการแพทย์', 'รังสี', 'เวชกรรมฟื้นฟู', 'จิตเวช', 'โภชน'
+        ];
+        for (const kw of keywords) {
+          if (deptName.includes(kw) && sDept.includes(kw)) return true;
+        }
+        return false;
+      });
+    },
+    // เรียงรายชื่อใน datalist: เอาคนในแผนกที่เลือกขึ้นก่อน ตามด้วยทุกคน
+    staffListForDatalist() {
+      if (this.departmentStaffList.length > 0) {
+        const deptIds = new Set(this.departmentStaffList.map(s => s.ID));
+        const others = this.staffList.filter(s => !deptIds.has(s.ID));
+        return [...this.departmentStaffList, ...others];
+      }
+      return this.staffList;
     }
   },
   watch: {
     warehouseId(newVal) {
+      if (newVal) {
+        this.form.warehouse_id = parseInt(newVal);
+        this.fetchItems();
+      }
+    },
+    '$route.query.warehouse_id'(newVal) {
       if (newVal) {
         this.form.warehouse_id = parseInt(newVal);
         this.fetchItems();
@@ -335,13 +459,30 @@ export default {
     this.fetchMasters();
   },
   methods: {
+    formatQty(val) {
+      return Math.round(Number(val) || 0).toLocaleString('en-US');
+    },
+    handleBackToDashboard() {
+      if (this.$route.path === '/inventory-requisition-form') {
+        this.$router.push('/home-backoffice');
+      } else {
+        this.$emit('back-to-dashboard');
+      }
+    },
+    handleGoToManage() {
+      if (this.$route.path === '/inventory-requisition-form') {
+        this.$router.push({ path: '/inventory-requisition', query: { warehouse_id: this.form.warehouse_id || 1 } });
+      } else {
+        this.$emit('go-to-manage');
+      }
+    },
     async fetchMasters() {
       try {
-        const userId = localStorage.getItem('user_id') || '';
-        const whRes = await axios.get(`/api-digital/inventory/warehouses.php?user_id=${userId}`);
+        const whRes = await axios.get('/api-digital/inventory/warehouses.php');
         if (whRes.data.status === 'success') {
-          this.warehouses = whRes.data.data.filter(w => w.active === 1);
-          const targetWh = this.warehouseId || localStorage.getItem('selected_warehouse_id');
+          this.warehouses = (whRes.data.data || []).filter(w => Number(w.active) === 1);
+          const queryWh = this.$route?.query?.warehouse_id;
+          const targetWh = queryWh || this.warehouseId || localStorage.getItem('selected_warehouse_id');
           if (targetWh) {
             this.form.warehouse_id = parseInt(targetWh);
             this.fetchItems();
@@ -350,8 +491,11 @@ export default {
 
         // Fetch departments
         const deptRes = await axios.get('/api-hosoffice/departments.php').catch(() => null);
-        if (deptRes && deptRes.data.status === 'success') {
-          this.departments = deptRes.data.data;
+        if (deptRes && deptRes.data && deptRes.data.status === 'success' && Array.isArray(deptRes.data.data)) {
+          this.departments = deptRes.data.data.map(d => ({
+            id: d.id || d.HR_DEPARTMENT_SUB_ID,
+            name: d.name || d.HR_DEPARTMENT_SUB_NAME
+          }));
         } else {
           this.departments = [
             { id: 1, name: 'ห้องตรวจ 1 (OPD)' },
@@ -363,13 +507,129 @@ export default {
             { id: 7, name: 'แผนกเภสัชกรรม' }
           ];
         }
+
+        // Fetch Staff List
+        const staffRes = await axios.get('/api-hosoffice/get_all_staff.php').catch(() => null);
+        if (staffRes && staffRes.data && staffRes.data.status === 'success' && Array.isArray(staffRes.data.data)) {
+          this.staffList = staffRes.data.data;
+        }
+
+        // Fetch Logged-in User Profile to prefill if applicable
+        const profileRes = await axios.get('/api-hosoffice/get_user_profile.php').catch(() => null);
+        if (profileRes && profileRes.data && profileRes.data.status === 'success') {
+          this.userProfile = profileRes.data;
+          const perms = this.userProfile.access_user ? String(this.userProfile.access_user).split(':') : [];
+          this.isInventoryAdmin = perms.some(p => ['administrator', 'menu_inventory_admin', 'menu_inventory_manage'].includes(p));
+
+          const uid = this.userProfile.id || this.userProfile.user_id || localStorage.getItem('user_id') || '';
+          if (uid && !this.isInventoryAdmin) {
+            const myWhRes = await axios.get(`/api-digital/inventory/warehouses.php?user_id=${uid}&is_admin=0`).catch(() => null);
+            if (myWhRes?.data?.status === 'success' && Array.isArray(myWhRes.data.data)) {
+              this.managedWarehouseIds = myWhRes.data.data.map(w => Number(w.id));
+            }
+          }
+          if (!this.form.requester_name || this.form.requester_name === 'Admin') {
+            this.form.requester_name = this.userProfile.fullname || '';
+          }
+          if (this.userProfile.phone && !this.form.requester_phone) {
+            this.form.requester_phone = this.userProfile.phone;
+          }
+          if (!this.form.department_id && this.userProfile.department) {
+            const myDept = this.departments.find(d => 
+              (this.userProfile.department_id && d.id == this.userProfile.department_id) ||
+              d.name.includes(this.userProfile.department) ||
+              this.userProfile.department.includes(d.name)
+            );
+            if (myDept) {
+              this.form.department_id = myDept.id;
+              this.form.department_name = myDept.name;
+            } else if (this.userProfile.department_id) {
+              this.form.department_id = this.userProfile.department_id;
+              this.form.department_name = this.userProfile.department;
+            }
+          }
+        }
+
+        const editIdQuery = this.$route?.query?.edit_id;
+        if (editIdQuery) {
+          await this.loadRequisitionForEdit(parseInt(editIdQuery));
+        }
       } catch (err) {
         console.error(err);
+      }
+    },
+    async loadRequisitionForEdit(reqId) {
+      try {
+        const res = await axios.get(`/api-digital/inventory/requisition_get.php?id=${reqId}`);
+        if (res.data?.status === 'success' && res.data.data) {
+          const r = res.data.data;
+          if (r.status !== 'PENDING') {
+            Swal.fire('ไม่สามารถแก้ไขได้', 'ใบขอเบิกนี้ถูกพิจารณาไปแล้ว', 'warning').then(() => {
+              this.handleGoToManage();
+            });
+            return;
+          }
+          this.editId = r.id;
+          this.editReqNo = r.req_no || '';
+          this.form.warehouse_id = parseInt(r.warehouse_id);
+          this.form.department_id = r.department_id ? parseInt(r.department_id) : '';
+          this.form.department_name = r.department_name || '';
+          this.form.request_date = r.request_date ? moment(r.request_date).format('YYYY-MM-DDTHH:mm') : this.form.request_date;
+          this.form.requester_name = r.requester_name || '';
+          this.form.requester_phone = r.requester_phone || '';
+          this.form.purpose = r.purpose || '';
+
+          await this.fetchItems();
+          this.selectedItems = (r.items || []).map(it => ({
+            item_id: Number(it.item_id),
+            item_code: it.item_code || '',
+            item_name: it.item_name || '',
+            unit_name: it.unit_name || 'หน่วย',
+            on_hand: Number(it.current_stock || 0),
+            qty: Math.max(1, Math.round(Number(it.qty_requested) || 1)),
+            item_note: it.item_note || ''
+          }));
+        }
+      } catch (err) {
+        console.error('Load edit requisition failed:', err);
+        Swal.fire('ข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลใบขอเบิกสำหรับแก้ไขได้', 'error');
       }
     },
     updateDepartmentName() {
       const d = this.departments.find(x => x.id === this.form.department_id);
       this.form.department_name = d ? d.name : '';
+    },
+    selectStaffDirectly(staff) {
+      this.form.requester_name = staff.FULLNAME;
+      if (staff.HR_PHONE && (!this.form.requester_phone || this.form.requester_phone.trim() === '')) {
+        this.form.requester_phone = staff.HR_PHONE;
+      }
+      this.matchDepartmentFromStaff(staff);
+    },
+    onStaffSelected() {
+      const name = (this.form.requester_name || '').trim();
+      if (!name) return;
+      const staff = this.staffList.find(s => s.FULLNAME.trim() === name);
+      if (staff) {
+        if (staff.HR_PHONE && (!this.form.requester_phone || this.form.requester_phone.trim() === '')) {
+          this.form.requester_phone = staff.HR_PHONE;
+        }
+        this.matchDepartmentFromStaff(staff);
+      }
+    },
+    matchDepartmentFromStaff(staff) {
+      if (this.form.department_id) return; // ถ้าเลือกแผนกไว้แล้ว ไม่เปลี่ยนทับ
+      const dept = this.departments.find(d => {
+        if (staff.HR_DEPARTMENT_SUB_ID && Number(d.id) === Number(staff.HR_DEPARTMENT_SUB_ID)) return true;
+        if (staff.HR_DEPARTMENT_SUB_NAME && (d.name.includes(staff.HR_DEPARTMENT_SUB_NAME) || staff.HR_DEPARTMENT_SUB_NAME.includes(d.name))) return true;
+        return false;
+      });
+      if (dept) {
+        this.form.department_id = dept.id;
+        this.form.department_name = dept.name;
+      } else if (staff.HR_DEPARTMENT_SUB_NAME) {
+        this.form.department_name = staff.HR_DEPARTMENT_SUB_NAME;
+      }
     },
     onWarehouseChange() {
       this.selectedItems = [];
@@ -389,6 +649,21 @@ export default {
       } catch (err) {
         console.error(err);
       }
+    },
+    isItemInCart(itemId) {
+      return this.selectedItems.some(x => Number(x.item_id) === Number(itemId));
+    },
+    addToCart(mat) {
+      if (this.isItemInCart(mat.id)) return;
+      this.selectedItems.push({
+        item_id: mat.id,
+        item_code: mat.item_code,
+        item_name: mat.item_name,
+        unit_name: mat.unit_name || 'หน่วย',
+        on_hand: mat.on_hand || 0,
+        qty: 1,
+        item_note: ''
+      });
     },
     selectItem(m) {
       this.currentItem.item_id = m.id;
@@ -441,14 +716,55 @@ export default {
         return Swal.fire('เตือน', 'กรุณาระบุรายการพัสดุอย่างน้อย 1 รายการ', 'warning');
       }
 
+      const esc = (s) => String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+      const whObj = this.warehouses.find(w => Number(w.id) === Number(this.form.warehouse_id));
+      const whLabel = whObj ? `[${whObj.code}] ${whObj.name}` : '-';
+      const rowsHtml = this.selectedItems.map((it, idx) => `
+        <tr>
+          <td class="text-center text-muted">${idx + 1}</td>
+          <td class="text-start">
+            <div class="fw-bold text-dark">${esc(it.item_name)}</div>
+            <small class="text-muted font-monospace">${esc(it.item_code || '-')}</small>
+            ${it.item_note ? `<div class="small text-secondary fst-italic">หมายเหตุ: ${esc(it.item_note)}</div>` : ''}
+          </td>
+          <td class="text-end fw-bold text-primary text-nowrap">${this.formatQty(it.qty)} ${esc(it.unit_name || 'หน่วย')}</td>
+        </tr>
+      `).join('');
+
+      const summaryHtml = `
+        <div class="text-start small mb-3 p-3 bg-light rounded-3 border">
+          <div class="mb-1"><span class="text-muted">คลังที่เบิก:</span> <strong class="text-primary">${esc(whLabel)}</strong></div>
+          <div class="mb-1"><span class="text-muted">ผู้ขอเบิก:</span> <strong>${esc(this.form.requester_name)}</strong></div>
+          <div><span class="text-muted">หน่วยงาน:</span> <strong>${esc(this.form.department_name || '-')}</strong></div>
+        </div>
+        <div class="table-responsive border rounded-3" style="max-height: 260px; overflow-y: auto;">
+          <table class="table table-sm table-bordered align-middle mb-0 small">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th style="width: 45px;" class="text-center">#</th>
+                <th class="text-start">รายการพัสดุ</th>
+                <th style="width: 110px;" class="text-end">จำนวน</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>
+        <div class="mt-2 small text-muted">รวมทั้งหมด <strong>${this.selectedItems.length}</strong> รายการ</div>
+      `;
+
       const confirm = await Swal.fire({
-        title: 'ยืนยันการส่งใบขอเบิกพัสดุ?',
-        html: `ต้องการส่งคำขอเบิกพัสดุจำนวน <strong>${this.selectedItems.length}</strong> รายการ ไปยังคลังวัสดุใช่หรือไม่?`,
+        title: this.editId ? `ยืนยันการบันทึกแก้ไข (${esc(this.editReqNo)})?` : 'ตรวจสอบรายการก่อนส่งใบขอเบิก',
+        html: summaryHtml,
+        width: '640px',
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#ffc107',
-        confirmButtonText: '<span class="text-dark fw-bold">ยืนยันส่งคำขอ</span>',
-        cancelButtonText: 'ยกเลิก'
+        confirmButtonText: this.editId ? '<span class="text-dark fw-bold">ยืนยันบันทึกการแก้ไข</span>' : '<span class="text-dark fw-bold">ยืนยันส่งคำขอ</span>',
+        cancelButtonText: 'กลับไปแก้ไข'
       });
 
       if (!confirm.isConfirmed) return;
@@ -456,6 +772,7 @@ export default {
       this.submitting = true;
       try {
         const payload = {
+          requisition_id: this.editId || undefined,
           warehouse_id: this.form.warehouse_id,
           department_id: this.form.department_id,
           department_name: this.form.department_name,
@@ -473,23 +790,37 @@ export default {
           }))
         };
 
-        const res = await axios.post('/api-digital/inventory/requisition_create.php', payload);
+        const endpoint = this.editId
+          ? '/api-digital/inventory/requisition_update.php'
+          : '/api-digital/inventory/requisition_create.php';
+        const res = await axios.post(endpoint, payload);
         if (res.data.status === 'success') {
-          const result = await Swal.fire({
-            icon: 'success',
-            title: 'ส่งใบขอเบิกสำเร็จ!',
-            html: `ระบบได้บันทึกคำขอเลขที่ <strong class="text-primary font-monospace">${res.data.req_no}</strong> เรียบร้อยแล้ว (สถานะ: รอพิจารณาอนุมัติ)`,
-            showCancelButton: true,
-            confirmButtonColor: '#ffc107',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: '<span class="text-dark fw-bold">ดูรายการคำขอเบิก</span>',
-            cancelButtonText: 'สร้างใบขอเบิกใหม่'
-          });
-
-          if (result.isConfirmed) {
-            this.$emit('go-to-manage');
+          if (this.editId) {
+            await Swal.fire({
+              icon: 'success',
+              title: 'แก้ไขใบขอเบิกสำเร็จ!',
+              html: `บันทึกการแก้ไขคำขอเลขที่ <strong class="text-primary font-monospace">${res.data.req_no}</strong> เรียบร้อยแล้ว`,
+              confirmButtonColor: '#ffc107',
+              confirmButtonText: '<span class="text-dark fw-bold">กลับหน้ารายการคำขอเบิก</span>'
+            });
+            this.handleGoToManage();
           } else {
-            this.resetForm();
+            const result = await Swal.fire({
+              icon: 'success',
+              title: 'ส่งใบขอเบิกสำเร็จ!',
+              html: `ระบบได้บันทึกคำขอเลขที่ <strong class="text-primary font-monospace">${res.data.req_no}</strong> เรียบร้อยแล้ว (สถานะ: รอพิจารณาอนุมัติ)`,
+              showCancelButton: true,
+              confirmButtonColor: '#ffc107',
+              cancelButtonColor: '#6c757d',
+              confirmButtonText: '<span class="text-dark fw-bold">ดูรายการคำขอเบิก</span>',
+              cancelButtonText: 'สร้างใบขอเบิกใหม่'
+            });
+
+            if (result.isConfirmed) {
+              this.handleGoToManage();
+            } else {
+              this.resetForm();
+            }
           }
         } else {
           Swal.fire('ข้อผิดพลาด', res.data.message, 'error');
@@ -514,6 +845,22 @@ export default {
 }
 .pointer-events-none {
   pointer-events: none;
+}
+.hide-arrows::-webkit-outer-spin-button,
+.hide-arrows::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.hide-arrows {
+  -moz-appearance: textfield;
+}
+.nav-pill-btn {
+  transition: all 0.2s ease;
+}
+.nav-pill-btn:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  transform: translateY(-1px);
 }
 </style>
 
