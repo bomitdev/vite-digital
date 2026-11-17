@@ -575,7 +575,7 @@
                       <i class="bi bi-box-seam fs-4"></i>
                     </div>
                     <h6 class="fw-bold text-white mb-1 text-truncate" title="ระบบคลังวัสดุ">
-                      จัดการคลังวัสดุ
+                      จัดการคลังวัสดุ (สำหรับผู้ดูแลคลัง)
                     </h6>
                     <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
                       รับ-จ่าย, เช็คสต๊อก, Master Data
@@ -1698,9 +1698,7 @@ export default {
 <style scoped>
 /* Page Background */
 .page-container {
-  background-color: #f8f9fa;
-  background-image: radial-gradient(#e9ecef 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-color: #f1f3f5;
 }
 
 /* Profile Section */
@@ -1783,104 +1781,132 @@ export default {
   letter-spacing: 1px;
 }
 
-/* Nav Cards - Clean White + Soft Icon Theme */
+/* Nav Cards - Minimal Center Icon Tile Style */
 .nav-card {
-  --card-accent: #2563eb;
-  --card-accent-bg: rgba(37, 99, 235, 0.1);
+  --card-accent: #3b82f6;
+  --card-accent-bg: rgba(59, 130, 246, 0.1);
   background: #ffffff !important;
-  color: #1e293b !important;
-  border: 1px solid #e2e8f0 !important;
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04) !important;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #1f2937 !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05) !important;
+  padding: 1.75rem 1rem !important;
+  min-height: 145px;
+  text-align: center;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .nav-card:hover {
   transform: translateY(-4px);
   border-color: var(--card-accent) !important;
-  box-shadow: 0 12px 24px -8px rgba(15, 23, 42, 0.12) !important;
+  box-shadow: 0 10px 24px -6px rgba(15, 23, 42, 0.12) !important;
 }
 
 .nav-card .card-bg-decoration {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 4px;
-  background: var(--card-accent) !important;
-  opacity: 0.85 !important;
+  display: none !important;
 }
 
-.nav-card:hover .card-bg-decoration {
-  opacity: 1 !important;
-  height: 5px;
+.nav-card > .position-relative {
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.75rem;
+}
+
+.nav-card .d-flex.justify-content-between {
+  justify-content: center !important;
+  width: 100%;
+  margin-bottom: 0 !important;
 }
 
 .nav-card .icon-box,
 .nav-card .icon-box-small {
-  background-color: var(--card-accent-bg) !important;
+  background: transparent !important;
+  border: none !important;
+  backdrop-filter: none !important;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
   color: var(--card-accent) !important;
-  border: 1px solid rgba(0, 0, 0, 0.03);
+  transition: transform 0.22s ease;
+}
+
+.nav-card .icon-box i,
+.nav-card .icon-box-small i {
+  font-size: 2.75rem !important;
+  line-height: 1;
+}
+
+.nav-card:hover .icon-box,
+.nav-card:hover .icon-box-small {
+  transform: scale(1.08);
 }
 
 .nav-card h6,
 .nav-card .fw-bold.text-white {
-  color: #0f172a !important;
+  color: #1f2937 !important;
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
+  margin: 0 !important;
+  white-space: normal !important;
+  line-height: 1.35;
 }
 
 .nav-card p.text-white-50,
-.nav-card .text-white-50 {
-  color: #64748b !important;
-}
-
+.nav-card .text-white-50,
 .nav-card .mt-auto.text-white,
 .nav-card .mt-auto.fw-bold {
-  color: var(--card-accent) !important;
+  display: none !important;
 }
 
 .nav-card .badge.bg-white {
+  position: absolute;
+  top: -8px;
+  right: -2px;
   background-color: var(--card-accent-bg) !important;
   color: var(--card-accent) !important;
+  font-size: 0.65rem !important;
 }
 
 .nav-card.bg-gradient-purple {
   --card-accent: #7c3aed;
-  --card-accent-bg: rgba(124, 58, 237, 0.1);
+  --card-accent-bg: rgba(124, 58, 237, 0.12);
 }
 .nav-card.bg-gradient-blue {
-  --card-accent: #0284c7;
-  --card-accent-bg: rgba(2, 132, 199, 0.1);
+  --card-accent: #3b82f6;
+  --card-accent-bg: rgba(59, 130, 246, 0.12);
 }
 .nav-card.bg-gradient-teal {
   --card-accent: #0d9488;
-  --card-accent-bg: rgba(13, 148, 136, 0.1);
+  --card-accent-bg: rgba(13, 148, 136, 0.12);
 }
 .nav-card.bg-gradient-orange {
   --card-accent: #ea580c;
-  --card-accent-bg: rgba(234, 88, 12, 0.1);
+  --card-accent-bg: rgba(234, 88, 12, 0.12);
 }
 .nav-card.bg-gradient-pink {
   --card-accent: #db2777;
-  --card-accent-bg: rgba(219, 39, 119, 0.1);
+  --card-accent-bg: rgba(219, 39, 119, 0.12);
 }
 .nav-card.bg-gradient-green {
-  --card-accent: #16a34a;
-  --card-accent-bg: rgba(22, 163, 74, 0.1);
+  --card-accent: #65a30d;
+  --card-accent-bg: rgba(101, 163, 13, 0.12);
 }
 .nav-card.bg-gradient-indigo {
-  --card-accent: #4f46e5;
-  --card-accent-bg: rgba(79, 70, 229, 0.1);
+  --card-accent: #f59e0b;
+  --card-accent-bg: rgba(245, 158, 11, 0.12);
 }
 .nav-card.bg-gradient-cyan {
   --card-accent: #0891b2;
-  --card-accent-bg: rgba(8, 145, 178, 0.1);
+  --card-accent-bg: rgba(8, 145, 178, 0.12);
 }
 .nav-card.bg-gradient-red {
   --card-accent: #dc2626;
-  --card-accent-bg: rgba(220, 38, 38, 0.1);
+  --card-accent-bg: rgba(220, 38, 38, 0.12);
 }
 .nav-card.bg-gradient-dark {
-  --card-accent: #334155;
-  --card-accent-bg: rgba(51, 65, 85, 0.1);
+  --card-accent: #44403c;
+  --card-accent-bg: rgba(68, 64, 60, 0.12);
 }
 
 .icon-box {
