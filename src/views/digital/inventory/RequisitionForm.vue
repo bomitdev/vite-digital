@@ -115,16 +115,20 @@
 
                 <!-- Quick Select Pills for department staff -->
                 <div v-if="departmentStaffList.length > 0" class="mt-2 p-2 bg-light rounded-3 border">
-                  <div class="small text-muted mb-1 d-flex align-items-center gap-1">
-                    <i class="bi bi-person-check-fill text-success"></i>
-                    <span>เจ้าหน้าที่ในแผนกนี้ (คลิกเพื่อเลือกทันที):</span>
+                  <div class="small text-muted mb-1 d-flex align-items-center justify-content-between gap-1">
+                    <span class="d-flex align-items-center gap-1">
+                      <i class="bi bi-person-check-fill text-success"></i>
+                      <span>เจ้าหน้าที่ในแผนกนี้ (คลิกเพื่อเลือกทันที):</span>
+                    </span>
+                    <span class="badge bg-white text-secondary border rounded-pill">{{ departmentStaffList.length }} คน</span>
                   </div>
-                  <div class="d-flex flex-wrap gap-1">
+                  <div class="d-flex flex-wrap gap-1 pe-1" style="max-height: 112px; overflow-y: auto;">
                     <button
                       type="button"
                       v-for="s in departmentStaffList"
                       :key="s.ID"
-                      class="btn btn-sm rounded-pill py-1 px-2 text-start transition-all"
+                      class="btn btn-sm rounded-pill py-0 px-2 text-start transition-all"
+                      style="font-size: 0.78rem; line-height: 1.65;"
                       :class="form.requester_name === s.FULLNAME ? 'btn-primary shadow-xs' : 'btn-outline-secondary bg-white'"
                       @click="selectStaffDirectly(s)"
                     >
