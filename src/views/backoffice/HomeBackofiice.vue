@@ -333,7 +333,7 @@
               <!-- Material Request Form Admin -->
               <div
                 class="col-6 col-md-4 col-lg-3"
-                v-if="hasPermission(['menu_gm_material_req', 'backoffice_staff_all'])"
+                v-if="false && hasPermission(['menu_gm_material_req', 'backoffice_staff_all'])"
               >
                 <div
                   class="nav-card h-100 bg-gradient-purple text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group"
@@ -601,7 +601,7 @@
             </h6>
             <div class="row g-3 mb-4">
               <!-- Material Management Admin -->
-              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_gm_material_manage')">
+              <div class="col-6 col-md-4 col-lg-3" v-if="false && hasPermission('menu_gm_material_manage')">
                 <div
                   class="nav-card h-100 bg-gradient-green text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
                   @click="goToMaterialAdmin"
@@ -1430,7 +1430,7 @@ export default {
       ]);
     },
     hasGMAccess() {
-      return this.hasPermission(['menu_gm_material_manage', 'menu_procurement']);
+      return this.hasPermission(['menu_procurement']);
     },
 
     isItAdmin() {

@@ -563,6 +563,89 @@
             </button>
           </div>
 
+          <!-- Section 1.5: Warehouse Breakdown (Shown in All-Warehouses Unified Mode) -->
+          <div v-if="!selectedWarehouse && warehouseBreakdown.length > 0" class="mb-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+              <div>
+                <h5 class="fw-bold mb-0 text-dark">
+                  <i class="bi bi-buildings-fill text-theme-purple me-2"></i>สรุปภาพรวมแยกตามคลัง
+                </h5>
+                <small class="text-muted">คลิกที่คลังเพื่อสลับเข้าดูรายละเอียดเฉพาะคลังนั้น</small>
+              </div>
+              <span class="badge bg-theme-purple-subtle rounded-pill px-3 py-1 fw-semibold">
+                ทั้งหมด {{ warehouseBreakdown.length }} คลัง
+              </span>
+            </div>
+
+            <div class="row g-3">
+              <div
+                v-for="wh in warehouseBreakdown"
+                :key="wh.id"
+                class="col-12 col-md-6 col-xl-4"
+              >
+                <div
+                  class="card border-0 shadow-sm rounded-4 h-100 warehouse-breakdown-card cursor-pointer"
+                  @click="selectWarehouseAndEnter(wh)"
+                >
+                  <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                      <div class="d-flex align-items-center gap-2 min-w-0">
+                        <span class="badge bg-theme-purple text-white rounded-3 px-2 py-1 fw-bold">
+                          {{ wh.code }}
+                        </span>
+                        <h6 class="fw-bold text-dark mb-0 text-truncate" :title="wh.name">
+                          {{ wh.name }}
+                        </h6>
+                      </div>
+                      <span class="text-theme-purple small fw-semibold text-nowrap">
+                        เข้าคลัง <i class="bi bi-arrow-right-short"></i>
+                      </span>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                      <div class="col-6">
+                        <div class="p-2 rounded-3 bg-light">
+                          <div class="text-muted" style="font-size: 0.72rem;">มูลค่าคงเหลือ</div>
+                          <div class="fw-bold text-success">{{ formatCurrency(wh.total_value) }}</div>
+                        </div>
+                      </div>
+                      <div class="col-6">
+                        <div class="p-2 rounded-3 bg-light">
+                          <div class="text-muted" style="font-size: 0.72rem;">ยอดคงเหลือ</div>
+                          <div class="fw-bold text-primary">
+                            {{ formatNumber(wh.total_balance_qty) }}
+                            <small class="fw-normal text-muted">ชิ้น</small>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 small border-top pt-2">
+                      <div class="d-flex align-items-center gap-3 text-muted">
+                        <span title="รายการพร้อมเบิก / ทั้งหมด">
+                          <i class="bi bi-box-seam text-primary me-1"></i>{{ wh.active_items_count }}/{{ wh.total_items_count }} รายการ
+                        </span>
+                        <span title="รับเข้า / จ่ายออก">
+                          <span class="text-success fw-semibold">+{{ formatNumber(wh.total_in_qty) }}</span>
+                          /
+                          <span class="text-warning-emphasis fw-semibold">-{{ formatNumber(wh.total_out_qty) }}</span>
+                        </span>
+                      </div>
+                      <div class="d-flex align-items-center gap-1">
+                        <span v-if="wh.pending_requisitions_count > 0" class="badge bg-warning-subtle text-warning-emphasis rounded-pill">
+                          รออนุมัติ {{ wh.pending_requisitions_count }}
+                        </span>
+                        <span v-if="wh.low_stock_count > 0" class="badge bg-danger-subtle text-danger rounded-pill">
+                          ใกล้หมด {{ wh.low_stock_count }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Section 2: Charts Row (กราฟแสดงสินค้า) -->
           <div class="row g-4 mb-4">
             <!-- 2.1 Monthly Movement Bar Chart -->
@@ -679,7 +762,16 @@
                       <td class="fw-bold text-dark">{{ item.item_code }}</td>
                       <td>
                         <div class="fw-bold text-dark">{{ item.item_name }}</div>
-                        <small class="text-muted" v-if="item.price > 0">ราคาประมาณ: {{ formatCurrency(item.price) }} / {{ item.unit_name }}</small>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
+                          <span
+                            v-if="!selectedWarehouse && item.warehouse_name"
+                            class="badge bg-theme-purple-subtle rounded-pill px-2 py-0"
+                            style="font-size: 0.7rem;"
+                          >
+                            [{{ item.warehouse_code }}] {{ item.warehouse_name }}
+                          </span>
+                          <small class="text-muted" v-if="item.price > 0">ราคาประมาณ: {{ formatCurrency(item.price) }} / {{ item.unit_name }}</small>
+                        </div>
                       </td>
                       <td>
                         <span class="badge bg-light text-dark border rounded-pill px-2 py-1">
@@ -1040,6 +1132,7 @@ export default {
       },
       lowStockItems: [],
       monthlyTrends: [],
+      warehouseBreakdown: [],
       categoryDistribution: [],
       movementChart: null,
       categoryChart: null
@@ -1160,6 +1253,7 @@ export default {
           this.monthlyTrends = d.monthly_trends || [];
           this.categoryDistribution = d.category_distribution || [];
           this.warehouses = d.warehouses || [];
+          this.warehouseBreakdown = d.warehouse_breakdown || [];
 
           // Sync warehouse name & code to localStorage
           if (this.warehouses.length > 0 && this.selectedWarehouse) {
@@ -2013,5 +2107,14 @@ export default {
     opacity: 1;
     transform: translateY(0);
   }
+}
+.warehouse-breakdown-card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  border: 1px solid #eef2f7 !important;
+}
+.warehouse-breakdown-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -6px rgba(99, 102, 241, 0.16) !important;
+  border-color: #c7d2fe !important;
 }
 </style>

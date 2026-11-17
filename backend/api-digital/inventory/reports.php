@@ -28,16 +28,16 @@ try {
             handleBalance($pdo2, $warehouse_id, $category_id, $status, $search);
             break;
         case 'receipts':
-            handleReceipts($pdo2, $warehouse_id, $vendor_id, $start_date, $end_date, $search);
+            handleReceipts($pdo2, $warehouse_id, $category_id, $vendor_id, $start_date, $end_date, $search);
             break;
         case 'issues':
-            handleIssues($pdo2, $warehouse_id, $start_date, $end_date, $search);
+            handleIssues($pdo2, $warehouse_id, $category_id, $start_date, $end_date, $search);
             break;
         case 'movement':
             handleMovement($pdo2, $warehouse_id, $category_id, $start_date, $end_date, $search);
             break;
         case 'expiring':
-            handleExpiring($pdo2, $warehouse_id, $days, $search);
+            handleExpiring($pdo2, $warehouse_id, $category_id, $days, $search);
             break;
         default:
             echo json_encode(['status' => 'error', 'message' => 'Invalid report type']);
@@ -231,13 +231,18 @@ function handleBalance($pdo, $warehouse_id, $category_id, $status, $search) {
 /**
  * 3. Inward / Receiving Report
  */
-function handleReceipts($pdo, $warehouse_id, $vendor_id, $start_date, $end_date, $search) {
+function handleReceipts($pdo, $warehouse_id, $category_id, $vendor_id, $start_date, $end_date, $search) {
     $where = ["1=1"];
     $params = [];
 
     if ($warehouse_id) {
         $where[] = "r.warehouse_id = ?";
         $params[] = $warehouse_id;
+    }
+
+    if ($category_id) {
+        $where[] = "i.category_id = ?";
+        $params[] = $category_id;
     }
 
     if ($vendor_id) {
@@ -326,13 +331,18 @@ function handleReceipts($pdo, $warehouse_id, $vendor_id, $start_date, $end_date,
 /**
  * 4. Outward / Issue Report
  */
-function handleIssues($pdo, $warehouse_id, $start_date, $end_date, $search) {
+function handleIssues($pdo, $warehouse_id, $category_id, $start_date, $end_date, $search) {
     $where = ["1=1"];
     $params = [];
 
     if ($warehouse_id) {
         $where[] = "iss.warehouse_id = ?";
         $params[] = $warehouse_id;
+    }
+
+    if ($category_id) {
+        $where[] = "i.category_id = ?";
+        $params[] = $category_id;
     }
 
     if ($start_date) {
@@ -540,7 +550,7 @@ function handleMovement($pdo, $warehouse_id, $category_id, $start_date, $end_dat
 /**
  * 6. Expiring & Aging Report
  */
-function handleExpiring($pdo, $warehouse_id, $days, $search) {
+function handleExpiring($pdo, $warehouse_id, $category_id, $days, $search) {
     $today = date('Y-m-d');
     $targetDate = date('Y-m-d', strtotime("+$days days"));
 
@@ -550,6 +560,11 @@ function handleExpiring($pdo, $warehouse_id, $days, $search) {
     if ($warehouse_id) {
         $where[] = "l.warehouse_id = ?";
         $params[] = $warehouse_id;
+    }
+
+    if ($category_id) {
+        $where[] = "i.category_id = ?";
+        $params[] = $category_id;
     }
 
     if ($days === -1) {

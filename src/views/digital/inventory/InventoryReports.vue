@@ -286,10 +286,19 @@
                 </div>
 
                 <!-- Warehouse Selector (if all warehouses or switchable) -->
-                <div class="mb-4">
+                <div class="mb-3">
                   <label class="form-label fw-bold small text-secondary">คลังพัสดุ</label>
-                  <select class="form-select" v-model="filters.warehouse_id" @change="fetchOfficialReport">
+                  <select class="form-select" v-model="filters.warehouse_id" @change="onWarehouseFilterChange(true)">
                     <option v-for="w in warehouses" :key="w.id" :value="w.id">[{{ w.code }}] {{ w.name }}</option>
+                  </select>
+                </div>
+
+                <!-- Category Selector for Official PDF Report -->
+                <div class="mb-4">
+                  <label class="form-label fw-bold small text-secondary">หมวดหมู่พัสดุ</label>
+                  <select class="form-select" v-model="filters.category_id" @change="fetchOfficialReport">
+                    <option value="">ทั้งหมด (ทุกหมวดหมู่)</option>
+                    <option v-for="c in categories" :key="c.id" :value="c.id">[{{ c.code }}] {{ c.name }}</option>
                   </select>
                 </div>
 
@@ -668,7 +677,8 @@
               <!-- Warehouse Filter -->
               <div class="col-md-3">
                 <label class="form-label small fw-bold text-secondary">คลังพัสดุ</label>
-                <select class="form-select" v-model="filters.warehouse_id" @change="fetchReportData">
+                <select class="form-select" v-model="filters.warehouse_id" @change="onWarehouseFilterChange(false)">
+                  <option v-if="!warehouseId" value="">ทั้งหมด (ทุกคลัง)</option>
                   <option v-for="w in warehouses" :key="w.id" :value="w.id">[{{ w.code }}] {{ w.name }}</option>
                 </select>
               </div>
@@ -685,16 +695,14 @@
                 </div>
               </template>
 
-              <!-- Category Filter -->
-              <template v-if="['balance', 'movement'].includes(currentReportTab)">
-                <div class="col-md-3">
-                  <label class="form-label small fw-bold text-secondary">หมวดหมู่พัสดุ</label>
-                  <select class="form-select" v-model="filters.category_id" @change="fetchReportData">
-                    <option value="">ทั้งหมด (ทุกหมวดหมู่)</option>
-                    <option v-for="c in categories" :key="c.id" :value="c.id">[{{ c.code }}] {{ c.name }}</option>
-                  </select>
-                </div>
-              </template>
+              <!-- Category Filter (Available for all report tabs) -->
+              <div class="col-md-3">
+                <label class="form-label small fw-bold text-secondary">หมวดหมู่พัสดุ</label>
+                <select class="form-select" v-model="filters.category_id" @change="fetchReportData">
+                  <option value="">ทั้งหมด (ทุกหมวดหมู่)</option>
+                  <option v-for="c in categories" :key="c.id" :value="c.id">[{{ c.code }}] {{ c.name }}</option>
+                </select>
+              </div>
 
               <!-- Stock Balance Status Filter -->
               <template v-if="currentReportTab === 'balance'">
@@ -1139,27 +1147,62 @@ export default {
   methods: {
     async fetchInitialData() {
       try {
-        const [whRes, catRes, sumRes] = await Promise.all([
-          axios.get('/api-digital/inventory/warehouses.php'),
-          axios.get('/api-digital/inventory/categories.php'),
-          axios.get(`/api-digital/inventory/reports.php?type=summary${this.warehouseId ? '&warehouse_id=' + this.warehouseId : ''}`)
-        ]);
+        const whRes = await axios.get('/api-digital/inventory/warehouses.php');
+        let target = this.warehouseId || localStorage.getItem('selected_warehouse_id') || '';
 
         if (whRes.data?.status === 'success') {
           this.warehouses = whRes.data.data;
-          const target = this.warehouseId || localStorage.getItem('selected_warehouse_id') || (this.warehouses[0]?.id || '');
+          if (!target && this.warehouseId !== '') {
+            target = this.warehouses[0]?.id || '';
+          }
           this.filters.warehouse_id = target;
         }
 
-        if (catRes.data?.status === 'success') {
-          this.categories = catRes.data.data;
-        }
+        const [_, sumRes] = await Promise.all([
+          this.fetchCategoriesByWarehouse(this.filters.warehouse_id),
+          axios.get(`/api-digital/inventory/reports.php?type=summary${this.filters.warehouse_id ? '&warehouse_id=' + this.filters.warehouse_id : ''}`)
+        ]);
 
         if (sumRes.data?.status === 'success') {
           this.summaryKpi = sumRes.data.summary;
         }
       } catch (err) {
         console.error('Failed to load initial report masters:', err);
+      }
+    },
+    async fetchCategoriesByWarehouse(warehouseId) {
+      try {
+        const url = warehouseId
+          ? `/api-digital/inventory/categories.php?warehouse_id=${warehouseId}`
+          : '/api-digital/inventory/categories.php';
+        const catRes = await axios.get(url);
+        if (catRes.data?.status === 'success') {
+          this.categories = catRes.data.data || [];
+          const exists = this.categories.some(c => String(c.id) === String(this.filters.category_id));
+          if (!exists) {
+            this.filters.category_id = '';
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load categories by warehouse:', err);
+      }
+    },
+    async onWarehouseFilterChange(isOfficial = false) {
+      await this.fetchCategoriesByWarehouse(this.filters.warehouse_id);
+      try {
+        const sumRes = await axios.get(
+          `/api-digital/inventory/reports.php?type=summary${this.filters.warehouse_id ? '&warehouse_id=' + this.filters.warehouse_id : ''}`
+        );
+        if (sumRes.data?.status === 'success') {
+          this.summaryKpi = sumRes.data.summary;
+        }
+      } catch (err) {
+        console.error('Failed to refresh summary KPI:', err);
+      }
+      if (isOfficial) {
+        await this.fetchOfficialReport();
+      } else {
+        await this.fetchReportData();
       }
     },
     async fetchReportData() {
@@ -1201,6 +1244,7 @@ export default {
       try {
         const params = new URLSearchParams();
         params.append('warehouse_id', this.filters.warehouse_id || 1);
+        if (this.filters.category_id) params.append('category_id', this.filters.category_id);
         params.append('report_mode', this.currentReportTab === 'yearly_official' ? 'yearly' : 'monthly');
 
         if (this.currentReportTab === 'monthly_official') {

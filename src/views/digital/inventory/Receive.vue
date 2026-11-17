@@ -1639,10 +1639,21 @@ export default {
       const headerKeywords = ['รหัส', 'ชื่อ', 'รายการ', 'จำนวน', 'ราคา', 'หน่วย', 'lot', 'code', 'name', 'qty', 'price', 'unit'];
       const hasHeader = firstRowStr.some(cell => headerKeywords.some(kw => cell.includes(kw)));
 
-      const findColIndex = (headers, aliases) => {
-        for (let i = 0; i < headers.length; i++) {
-          const h = headers[i].replace(/\s+/g, '');
-          if (aliases.some(a => h.includes(a))) return i;
+      const findColIndex = (headers, aliases, excludeKeywords = []) => {
+        // Check each alias in priority order (exact match first, then substring match)
+        for (const alias of aliases) {
+          for (let i = 0; i < headers.length; i++) {
+            const h = headers[i].replace(/\s+/g, '');
+            if (excludeKeywords.some(ex => h.includes(ex))) continue;
+            if (h === alias) return i;
+          }
+        }
+        for (const alias of aliases) {
+          for (let i = 0; i < headers.length; i++) {
+            const h = headers[i].replace(/\s+/g, '');
+            if (excludeKeywords.some(ex => h.includes(ex))) continue;
+            if (h.includes(alias)) return i;
+          }
         }
         return -1;
       };
@@ -1663,15 +1674,15 @@ export default {
       if (hasHeader) {
         const normHeaders = firstRowStr;
         colIdx = {
-          code: findColIndex(normHeaders, ['รหัส', 'item_code', 'code']),
-          name: findColIndex(normHeaders, ['ชื่อวัสดุ', 'ชื่อยา', 'ชื่อสินค้า', 'รายการ', 'item_name', 'name']),
-          lot: findColIndex(normHeaders, ['lot', 'ล็อต', 'lot_number']),
-          exp: findColIndex(normHeaders, ['หมดอายุ', 'expiry', 'exp']),
-          cost: findColIndex(normHeaders, ['ราคา', 'cost', 'price']),
-          qty: findColIndex(normHeaders, ['จำนวน', 'qty', 'quantity']),
-          unit: findColIndex(normHeaders, ['หน่วย', 'unit']),
-          cat: findColIndex(normHeaders, ['หมวด', 'category']),
-          type: findColIndex(normHeaders, ['ประเภท', 'item_type', 'type'])
+          code: findColIndex(normHeaders, ['รหัสวัสดุ', 'รหัสยา', 'รหัสสินค้า', 'item_code', 'รหัส', 'code']),
+          name: findColIndex(normHeaders, ['ชื่อวัสดุ', 'ชื่อยา', 'ชื่อสินค้า', 'item_name', 'รายการ', 'name']),
+          lot: findColIndex(normHeaders, ['เลขlot', 'lot_number', 'lot', 'ล็อต']),
+          exp: findColIndex(normHeaders, ['วันหมดอายุ', 'expiry', 'exp', 'หมดอายุ']),
+          cost: findColIndex(normHeaders, ['ราคา/หน่วย', 'ราคาต่อหน่วย', 'ราคา', 'unit_cost', 'cost', 'price']),
+          qty: findColIndex(normHeaders, ['จำนวนรับเข้า', 'จำนวน', 'qty', 'quantity']),
+          unit: findColIndex(normHeaders, ['หน่วยนับ', 'unit_name', 'uom', 'หน่วย', 'unit'], ['ราคา', 'price', 'cost']),
+          cat: findColIndex(normHeaders, ['หมวดหมู่', 'category', 'หมวด']),
+          type: findColIndex(normHeaders, ['ประเภทวัสดุ', 'ประเภทพัสดุ', 'item_type', 'ประเภท', 'type'])
         };
         dataRows = matrix.slice(1);
       }

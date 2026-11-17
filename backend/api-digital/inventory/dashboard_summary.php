@@ -92,6 +92,9 @@ try {
             i.id,
             i.item_code,
             i.item_name,
+            i.warehouse_id,
+            w.code as warehouse_code,
+            w.name as warehouse_name,
             COALESCE(c.name, 'ทั่วไป') as category_name,
             COALESCE(u.name, 'ชิ้น') as unit_name,
             COALESCE(i.minimum_stock, 5) as minimum_stock,
@@ -99,6 +102,7 @@ try {
             COALESCE(NULLIF(i.standard_price, 0), NULLIF(i.last_purchase_price, 0), 0) as price,
             $whOnHandSub as on_hand
         FROM inv_items i
+        LEFT JOIN inv_warehouses w ON i.warehouse_id = w.id
         LEFT JOIN inv_categories c ON i.category_id = c.id
         LEFT JOIN inv_units u ON i.unit_id = u.id
         WHERE i.active = 1 $whLowItemFilter
@@ -123,6 +127,9 @@ try {
             'id' => (int)$r['id'],
             'item_code' => $r['item_code'],
             'item_name' => $r['item_name'],
+            'warehouse_id' => $r['warehouse_id'] ? (int)$r['warehouse_id'] : null,
+            'warehouse_code' => $r['warehouse_code'] ?? '',
+            'warehouse_name' => $r['warehouse_name'] ?? '',
             'category_name' => $r['category_name'],
             'unit_name' => $r['unit_name'],
             'minimum_stock' => (float)$r['minimum_stock'],
@@ -200,6 +207,108 @@ try {
         }
     }
 
+    // 6. Per-warehouse breakdown when viewing All Warehouses
+    $warehouseBreakdown = [];
+    if ($warehouse_id === null && !empty($warehouses)) {
+        $balByWh = [];
+        $stmtBalWh = $pdo2->query("
+            SELECT 
+                b.warehouse_id,
+                COALESCE(SUM(b.balance_qty), 0) as total_balance_qty,
+                COALESCE(SUM(b.balance_qty * COALESCE(NULLIF(i.standard_price, 0), NULLIF(i.last_purchase_price, 0), 0)), 0) as total_value,
+                COUNT(DISTINCT CASE WHEN b.balance_qty > 0 THEN b.item_id END) as active_items_count
+            FROM inv_stock_balances b
+            JOIN inv_items i ON b.item_id = i.id
+            GROUP BY b.warehouse_id
+        ");
+        while ($row = $stmtBalWh->fetch(PDO::FETCH_ASSOC)) {
+            $balByWh[(int)$row['warehouse_id']] = $row;
+        }
+
+        $txByWh = [];
+        $stmtTxWh = $pdo2->query("
+            SELECT 
+                t.warehouse_id,
+                COALESCE(SUM(CASE WHEN t.transaction_type = 'IN' THEN t.qty_in ELSE 0 END), 0) as total_in_qty,
+                COALESCE(SUM(CASE WHEN t.transaction_type = 'OUT' THEN t.qty_out ELSE 0 END), 0) as total_out_qty,
+                COUNT(CASE WHEN t.transaction_type = 'IN' THEN 1 END) as in_tx_count,
+                COUNT(CASE WHEN t.transaction_type = 'OUT' THEN 1 END) as out_tx_count
+            FROM inv_stock_transactions t
+            GROUP BY t.warehouse_id
+        ");
+        while ($row = $stmtTxWh->fetch(PDO::FETCH_ASSOC)) {
+            $txByWh[(int)$row['warehouse_id']] = $row;
+        }
+
+        $itemsByWh = [];
+        $stmtItemsWh = $pdo2->query("
+            SELECT warehouse_id, COUNT(*) as total_items_count
+            FROM inv_items
+            WHERE active = 1
+            GROUP BY warehouse_id
+        ");
+        while ($row = $stmtItemsWh->fetch(PDO::FETCH_ASSOC)) {
+            $itemsByWh[(int)$row['warehouse_id']] = (int)$row['total_items_count'];
+        }
+
+        $reqByWh = [];
+        try {
+            $stmtReqWh = $pdo2->query("
+                SELECT warehouse_id, COUNT(*) as pending_count
+                FROM inv_requisitions
+                WHERE status = 'PENDING'
+                GROUP BY warehouse_id
+            ");
+            while ($row = $stmtReqWh->fetch(PDO::FETCH_ASSOC)) {
+                $reqByWh[(int)$row['warehouse_id']] = (int)$row['pending_count'];
+            }
+        } catch (Exception $e) {
+            $reqByWh = [];
+        }
+
+        $lowByWh = [];
+        $stmtLowWh = $pdo2->query("
+            SELECT warehouse_id, COUNT(*) as low_count FROM (
+                SELECT 
+                    i.id,
+                    i.warehouse_id,
+                    COALESCE(i.minimum_stock, 5) as minimum_stock,
+                    COALESCE(SUM(b.balance_qty), 0) as on_hand
+                FROM inv_items i
+                LEFT JOIN inv_stock_balances b ON b.item_id = i.id AND b.warehouse_id = i.warehouse_id
+                WHERE i.active = 1
+                GROUP BY i.id, i.warehouse_id, i.minimum_stock
+                HAVING on_hand <= minimum_stock
+            ) sub
+            GROUP BY warehouse_id
+        ");
+        while ($row = $stmtLowWh->fetch(PDO::FETCH_ASSOC)) {
+            $lowByWh[(int)$row['warehouse_id']] = (int)$row['low_count'];
+        }
+
+        foreach ($warehouses as $wh) {
+            $wid = (int)$wh['id'];
+            $b = $balByWh[$wid] ?? [];
+            $t = $txByWh[$wid] ?? [];
+            $warehouseBreakdown[] = [
+                'id' => $wid,
+                'code' => $wh['code'],
+                'name' => $wh['name'],
+                'access_level' => $wh['access_level'] ?? 'ADMIN',
+                'total_value' => (float)($b['total_value'] ?? 0),
+                'total_balance_qty' => (float)($b['total_balance_qty'] ?? 0),
+                'active_items_count' => (int)($b['active_items_count'] ?? 0),
+                'total_items_count' => (int)($itemsByWh[$wid] ?? 0),
+                'total_in_qty' => (float)($t['total_in_qty'] ?? 0),
+                'total_out_qty' => (float)($t['total_out_qty'] ?? 0),
+                'in_tx_count' => (int)($t['in_tx_count'] ?? 0),
+                'out_tx_count' => (int)($t['out_tx_count'] ?? 0),
+                'pending_requisitions_count' => (int)($reqByWh[$wid] ?? 0),
+                'low_stock_count' => (int)($lowByWh[$wid] ?? 0)
+            ];
+        }
+    }
+
     echo json_encode([
         'status' => 'success',
         'data' => [
@@ -218,7 +327,8 @@ try {
             'low_stock_items' => $lowStockItems,
             'monthly_trends' => $monthlyTrends,
             'category_distribution' => $categoryDistribution,
-            'warehouses' => $warehouses
+            'warehouses' => $warehouses,
+            'warehouse_breakdown' => $warehouseBreakdown
         ]
     ], JSON_UNESCAPED_UNICODE);
 

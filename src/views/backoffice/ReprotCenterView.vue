@@ -1,27 +1,43 @@
 <template>
   <div class="container-fluid py-4">
-    <div class="card shadow-sm border-0 rounded-3">
-      <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-        <h3 class="mb-4 text-primary fw-bold">
-          <i class="bi bi-database-fill-gear me-2"></i>ระบบรายงานข้อมูล (Data Report)
-        </h3>
+    <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+      <!-- Header -->
+      <div class="card-header bg-white border-bottom px-4 py-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <div class="header-icon-box">
+            <i class="bi bi-database-fill-gear"></i>
+          </div>
+          <div>
+            <h4 class="mb-0 text-dark fw-bold">ระบบรายงานข้อมูล (Data Report)</h4>
+            <small class="text-muted">ติดตามคำขอและจัดการสถานะการจัดทำรายงานข้อมูล</small>
+          </div>
+        </div>
 
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap align-items-center gap-2">
           <button
             @click="fetchData"
-            class="btn btn-outline-primary btn-sm rounded-pill"
+            class="btn btn-light border btn-sm rounded-pill px-3 text-secondary fw-medium"
             :disabled="loading"
           >
             <i class="bi bi-arrow-clockwise me-1" :class="{ spin: loading }"></i>
             รีเฟรช
           </button>
-          <button @click="openAddModal" class="btn btn-success btn-sm rounded-pill shadow-sm">
+          <button
+            @click="$router.push('/report-center')"
+            class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-medium"
+          >
+            <i class="bi bi-file-earmark-bar-graph-fill me-1"></i> Report Center
+          </button>
+          <button
+            @click="openAddModal"
+            class="btn btn-success btn-sm rounded-pill px-3 fw-semibold shadow-sm"
+          >
             <i class="bi bi-plus-circle me-1"></i> เพิ่มข้อมูลรายงาน
           </button>
-          <button @click="$router.push('/report-center')" class="btn btn-info text-white btn-sm rounded-pill shadow-sm">
-            <i class="bi bi-file-earmark-bar-graph-fill me-1"></i> ไปหน้า Report Center
-          </button>
-          <button @click="goHomeBackoffice" class="btn btn-outline-primary btn-sm rounded-pill">
+          <button
+            @click="goHomeBackoffice"
+            class="btn btn-light border btn-sm rounded-pill px-3 text-secondary fw-medium"
+          >
             <i class="bi bi-house-fill me-1"></i> กลับหน้าเมนู
           </button>
         </div>
@@ -31,128 +47,158 @@
         <div v-if="error" class="alert alert-danger d-flex align-items-center m-3" role="alert">
           <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ error }}
         </div>
-        <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
-          <div class="input-group" style="max-width: 300px">
-            <span class="input-group-text bg-white border-end-0"
-              ><i class="bi bi-search text-muted"></i
-            ></span>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="px-4 py-3 border-bottom bg-light-subtle d-flex flex-wrap justify-content-between align-items-center gap-3">
+          <!-- Status Filter Pills -->
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <button
+              type="button"
+              class="status-filter-pill"
+              :class="{ active: statusFilter === 'all' }"
+              @click="statusFilter = 'all'"
+            >
+              ทั้งหมด
+              <span class="filter-count">{{ dataList.length }}</span>
+            </button>
+            <button
+              type="button"
+              class="status-filter-pill status-pending"
+              :class="{ active: statusFilter === 1 }"
+              @click="statusFilter = 1"
+            >
+              รอดำเนินการ
+              <span class="filter-count">{{ statusCounts[1] }}</span>
+            </button>
+            <button
+              type="button"
+              class="status-filter-pill status-progress"
+              :class="{ active: statusFilter === 2 }"
+              @click="statusFilter = 2"
+            >
+              กำลังดำเนินการ
+              <span class="filter-count">{{ statusCounts[2] }}</span>
+            </button>
+            <button
+              type="button"
+              class="status-filter-pill status-done"
+              :class="{ active: statusFilter === 3 }"
+              @click="statusFilter = 3"
+            >
+              ดำเนินการเรียบร้อย
+              <span class="filter-count">{{ statusCounts[3] }}</span>
+            </button>
+          </div>
+
+          <!-- Search Box -->
+          <div class="input-group input-group-sm search-box" style="max-width: 320px">
+            <span class="input-group-text bg-white border-end-0 text-muted ps-3">
+              <i class="bi bi-search"></i>
+            </span>
             <input
               type="text"
-              class="form-control border-start-0 ps-0"
-              placeholder="ค้นหาชื่อรายงาน, ผู้ขอ..."
+              class="form-control border-start-0 ps-1"
+              :class="{ 'border-end-0': searchQuery }"
+              placeholder="ค้นหาชื่อรายงาน, ผู้ขอ, เหตุผล..."
               v-model="searchQuery"
             />
-          </div>
-          <div>
-            <span class="badge bg-primary rounded-pill">{{ filteredList.length }} รายการ</span>
+            <button
+              v-if="searchQuery"
+              type="button"
+              class="btn bg-white border border-start-0 text-muted pe-3"
+              @click="searchQuery = ''"
+              title="ล้างคำค้นหา"
+            >
+              <i class="bi bi-x-lg"></i>
+            </button>
           </div>
         </div>
 
+        <!-- Table -->
         <div class="table-responsive">
-          <table class="table table-hover table-bordered align-middle border-0">
-            <thead class="table-light">
+          <table class="table table-hover align-middle mb-0 modern-table">
+            <thead>
               <tr>
-                <th
-                  width="50"
-                  class="text-center text-uppercase text-secondary small fw-bold opacity-75"
-                >
-                  ลำดับ
-                </th>
-                <th
-                  width="160"
-                  class="text-center text-uppercase text-secondary small fw-bold opacity-75"
-                >
-                  Action
-                </th>
-                <th class="text-uppercase text-secondary small fw-bold opacity-75">เหตุผล</th>
-                <th class="text-uppercase text-secondary small fw-bold opacity-75">ชื่อรายงาน</th>
-                <th class="text-uppercase text-secondary small fw-bold opacity-75">ผู้ขอข้อมูล</th>
-                <th class="text-uppercase text-secondary small fw-bold opacity-75">
-                  วันที่ขอข้อมูล
-                </th>
-                <th class="text-uppercase text-secondary small fw-bold opacity-75">
-                  วันที่ต้องการ
-                </th>
-                <th
-                  width="140"
-                  class="text-center text-uppercase text-secondary small fw-bold opacity-75"
-                >
-                  สถานะ
-                </th>
-                <th
-                  width="100"
-                  class="text-center text-uppercase text-secondary small fw-bold opacity-75"
-                  v-if="isSuper"
-                >
-                  Admin
-                </th>
+                <th width="60" class="text-center">ลำดับ</th>
+                <th>ชื่อรายงาน</th>
+                <th>เหตุผล</th>
+                <th class="text-nowrap">ผู้ขอข้อมูล</th>
+                <th class="text-nowrap">วันที่ขอข้อมูล</th>
+                <th class="text-nowrap">วันที่ต้องการ</th>
+                <th width="150" class="text-center">สถานะ</th>
+                <th class="text-end pe-4 text-nowrap">จัดการ</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(item, index) in paginatedList" :key="item.data_id">
-                <td class="text-center">{{ (currentPage - 1) * itemsPerPage + index + 1 }}</td>
-                <td class="text-center">
-                  <div class="d-flex gap-2 justify-content-center">
-                    <button
-                      class="btn btn-warning btn-sm shadow-sm px-3 rounded-pill fw-bold text-white"
-                      @click="openEditModal(item)"
-                      title="แก้ไข"
-                    >
-                      <i class="bi bi-pencil-square me-1"></i>แก้ไข
-                    </button>
-                    <button
-                      class="btn btn-primary btn-sm shadow-sm px-3 rounded-pill fw-bold"
-                      @click="openViewModal(item)"
-                      title="ดูรายละเอียด"
-                    >
-                      <i class="bi bi-eye me-1"></i>รายละเอียด
-                    </button>
-                    <button
-                      v-if="item.data_status_id == 3 && item.linked_report_id"
-                      class="btn btn-success btn-sm shadow-sm px-3 rounded-pill fw-bold text-white"
-                      @click="$router.push({ path: '/report-center', query: { report_id: item.linked_report_id } })"
-                      title="ดูรายงาน"
-                    >
-                      <i class="bi bi-file-earmark-bar-graph me-1"></i>ดูรายงาน
-                    </button>
-                  </div>
+                <td class="text-center text-muted fw-medium">
+                  {{ (currentPage - 1) * itemsPerPage + index + 1 }}
                 </td>
                 <td>
-                  {{ item.reason_name || '-' }}
-                  <span v-if="item.reason_other" class="text-muted small"
-                    >({{ item.reason_other }})</span
-                  >
-                </td>
-                <td>
-                  <div class="fw-bold">{{ item.data_name }}</div>
+                  <div class="fw-semibold text-dark">{{ item.data_name }}</div>
                   <small
                     v-if="item.data_column"
                     class="text-muted text-truncate d-inline-block"
-                    style="max-width: 200px"
+                    style="max-width: 320px"
+                    :title="item.data_column"
                   >
                     {{ item.data_column }}
                   </small>
                 </td>
-                <td>{{ item.p_name || 'ไม่ทราบชื่อ' }}</td>
-                <td>{{ formatDate(item.crt_date) }}</td>
-                <td>{{ formatDate(item.want_date) || '-' }}</td>
-                <td>
-                  <span :class="getStatusBadge(item.data_status_id)">
+                <td style="max-width: 240px">
+                  <div class="text-dark">{{ item.reason_name || '-' }}</div>
+                  <small v-if="item.reason_other" class="text-muted d-block text-truncate" :title="item.reason_other">
+                    ({{ item.reason_other }})
+                  </small>
+                </td>
+                <td class="text-nowrap">{{ item.p_name || 'ไม่ทราบชื่อ' }}</td>
+                <td class="text-nowrap text-muted">{{ formatDate(item.crt_date) }}</td>
+                <td class="text-nowrap text-muted">{{ formatDate(item.want_date) || '-' }}</td>
+                <td class="text-center">
+                  <span :class="getStatusBadge(item.data_status_id)" class="px-2 py-1 rounded-pill">
                     {{ getStatusName(item.data_status_id) }}
                   </span>
                 </td>
-                <td class="text-center" v-if="isSuper">
-                  <button
-                    class="btn btn-info btn-sm shadow-sm px-3 rounded-pill fw-bold text-white"
-                    @click="openStatusModal(item)"
-                    title="อัปเดตสถานะ"
-                  >
-                    <i class="bi bi-gear-fill me-1"></i>Update
-                  </button>
+                <td class="text-end pe-4 text-nowrap">
+                  <div class="d-inline-flex align-items-center gap-1 flex-nowrap">
+                    <button
+                      v-if="item.data_status_id == 3 && item.linked_report_id"
+                      class="btn btn-soft-success btn-sm rounded-pill px-2 fw-semibold text-nowrap"
+                      @click="$router.push({ path: '/report-center', query: { report_id: item.linked_report_id } })"
+                      title="เปิดดูรายงาน"
+                    >
+                      <i class="bi bi-file-earmark-bar-graph me-1"></i>ดูรายงาน
+                    </button>
+                    <button
+                      class="btn btn-soft-primary btn-action-icon"
+                      @click="openViewModal(item)"
+                      title="ดูรายละเอียด"
+                    >
+                      <i class="bi bi-eye"></i>
+                    </button>
+                    <button
+                      class="btn btn-soft-warning btn-action-icon"
+                      @click="openEditModal(item)"
+                      title="แก้ไข"
+                    >
+                      <i class="bi bi-pencil-square"></i>
+                    </button>
+                    <button
+                      v-if="isSuper"
+                      class="btn btn-soft-info btn-action-icon"
+                      @click="openStatusModal(item)"
+                      title="อัปเดตสถานะ (Admin)"
+                    >
+                      <i class="bi bi-gear-fill"></i>
+                    </button>
+                  </div>
                 </td>
               </tr>
-              <tr v-if="dataList.length === 0 && !loading">
-                <td colspan="9" class="text-center py-4 text-muted">ไม่พบข้อมูลรายงาน</td>
+              <tr v-if="paginatedList.length === 0 && !loading">
+                <td colspan="8" class="text-center py-5 text-muted">
+                  <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
+                  ไม่พบข้อมูลรายงานที่ตรงกับเงื่อนไข
+                </td>
               </tr>
             </tbody>
           </table>
@@ -503,6 +549,7 @@ const dataList = ref([]);
 const loading = ref(false);
 const error = ref(null);
 const searchQuery = ref('');
+const statusFilter = ref('all');
 const showModal = ref(false);
 const showViewModal = ref(false);
 const showStatusModal = ref(false);
@@ -528,15 +575,33 @@ const currentPage = ref(1);
 const itemsPerPage = ref(20);
 
 // Computed Properties
+const statusCounts = computed(() => {
+  const counts = { 1: 0, 2: 0, 3: 0 };
+  for (const item of dataList.value) {
+    const id = Number(item.data_status_id);
+    if (counts[id] !== undefined) counts[id]++;
+  }
+  return counts;
+});
+
 const filteredList = computed(() => {
-  if (!searchQuery.value) return dataList.value;
+  let list = dataList.value;
+  if (statusFilter.value !== 'all') {
+    list = list.filter((item) => Number(item.data_status_id) === Number(statusFilter.value));
+  }
+  if (!searchQuery.value) return list;
   const query = searchQuery.value.toLowerCase();
-  return dataList.value.filter(
+  return list.filter(
     (item) =>
       (item.data_name && item.data_name.toLowerCase().includes(query)) ||
       (item.p_name && item.p_name.toLowerCase().includes(query)) ||
-      (item.reason_name && item.reason_name.toLowerCase().includes(query))
+      (item.reason_name && item.reason_name.toLowerCase().includes(query)) ||
+      (item.reason_other && item.reason_other.toLowerCase().includes(query))
   );
+});
+
+watch([searchQuery, statusFilter], () => {
+  currentPage.value = 1;
 });
 
 const totalPages = computed(() => {
@@ -841,6 +906,153 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.header-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  color: #2563eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.status-filter-pill {
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.status-filter-pill:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.status-filter-pill .filter-count {
+  background-color: #f1f5f9;
+  color: #475569;
+  font-size: 0.74rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+}
+
+.status-filter-pill.active {
+  background-color: #1e293b;
+  border-color: #1e293b;
+  color: #ffffff;
+}
+
+.status-filter-pill.active .filter-count {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.status-filter-pill.status-pending.active {
+  background-color: #dc2626;
+  border-color: #dc2626;
+}
+
+.status-filter-pill.status-progress.active {
+  background-color: #d97706;
+  border-color: #d97706;
+}
+
+.status-filter-pill.status-done.active {
+  background-color: #16a34a;
+  border-color: #16a34a;
+}
+
+.search-box .input-group-text,
+.search-box .form-control,
+.search-box .btn {
+  border-color: #e2e8f0;
+  padding-top: 0.42rem;
+  padding-bottom: 0.42rem;
+}
+
+.modern-table thead th {
+  background-color: #f8fafc;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.8rem 0.75rem;
+}
+
+.modern-table tbody td {
+  border-bottom: 1px solid #f1f5f9;
+  padding: 0.78rem 0.75rem;
+  font-size: 0.88rem;
+}
+
+.modern-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.btn-action-icon {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.btn-soft-primary {
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+.btn-soft-primary:hover {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+.btn-soft-warning {
+  background-color: #fefce8;
+  color: #ca8a04;
+}
+.btn-soft-warning:hover {
+  background-color: #eab308;
+  color: #ffffff;
+}
+
+.btn-soft-info {
+  background-color: #ecfeff;
+  color: #0891b2;
+}
+.btn-soft-info:hover {
+  background-color: #0891b2;
+  color: #ffffff;
+}
+
+.btn-soft-success {
+  background-color: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+  font-size: 0.78rem;
+}
+.btn-soft-success:hover {
+  background-color: #16a34a;
+  color: #ffffff;
+}
+
 .modal-backdrop {
   background-color: rgba(0, 0, 0, 0.4);
 }
