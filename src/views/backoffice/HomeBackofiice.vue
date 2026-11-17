@@ -429,6 +429,40 @@
                 </div>
               </div>
 
+              <!-- Department Shift Schedule (จัดการตารางเวรกลุ่มงาน) -->
+              <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['administrator', 'backoffice_staff_all']) || hasDeptScheduleAccess">
+                <div
+                  class="nav-card h-100 bg-gradient-purple text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group"
+                  @click="openDeptScheduleModal"
+                >
+                  <div
+                    class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
+                  ></div>
+                  <div class="position-relative z-1 d-flex flex-column h-100">
+                    <div
+                      class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
+                    >
+                      <i class="bi bi-calendar2-week-fill fs-4"></i>
+                    </div>
+                    <h6 class="fw-bold text-white mb-1 text-truncate" title="จัดการตารางเวรกลุ่มงาน">
+                      จัดการตารางเวรกลุ่มงาน
+                    </h6>
+                    <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
+                      จัดตารางเวรแยกตามกลุ่มงาน
+                    </p>
+                    <div
+                      class="d-flex align-items-center text-white fw-bold small mt-auto"
+                      style="font-size: 0.75rem"
+                    >
+                      เข้าใช้งาน
+                      <i
+                        class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
+                      ></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <!-- เบิกวัสดุการแพทย์ -->
               <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission(['backoffice_staff_all'])">
                 <a
@@ -1392,6 +1426,103 @@
         </div>
       </div>
     </div>
+
+    <!-- Department Schedule Selection Modal -->
+    <div v-if="showDeptScheduleModal" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
+      <div class="modal-dialog modal-dialog-centered modal-lg animate-fade-in-up">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+          <div class="modal-header border-0 text-white p-4 bg-gradient-purple">
+            <div class="d-flex align-items-center gap-3">
+              <div class="bg-white bg-opacity-25 rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                <i class="bi bi-calendar2-week-fill fs-4"></i>
+              </div>
+              <div>
+                <h5 class="modal-title fw-bold mb-0">เลือกกลุ่มงานที่ต้องการดู / จัดการตารางเวร</h5>
+                <small class="text-white-50">เลือกกลุ่มงานของคุณ หรือกลุ่มงานที่ได้รับสิทธิ์เข้าถึง</small>
+              </div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" @click="showDeptScheduleModal = false"></button>
+          </div>
+
+          <div class="modal-body p-4 bg-light">
+            <div v-if="loadingDeptGroups" class="text-center py-5">
+              <div class="spinner-border text-primary mb-2" role="status"></div>
+              <p class="text-muted small mb-0">กำลังตรวจสอบตารางเวรกลุ่มงาน...</p>
+            </div>
+
+            <div v-else-if="deptScheduleGroups.length === 0" class="text-center py-5">
+              <i class="bi bi-calendar-x fs-1 text-muted d-block mb-2"></i>
+              <h6 class="fw-bold text-dark">ยังไม่มีตารางเวรกลุ่มงานที่คุณเข้าถึงได้</h6>
+              <p class="text-muted small mb-0">
+                {{ hasPermission(['administrator']) ? 'กดปุ่ม "สร้างตารางเวรกลุ่มงานใหม่" ด้านล่างเพื่อเริ่มต้น' : 'ยังไม่มีการสร้างตารางเวรสำหรับกลุ่มงานของคุณ' }}
+              </p>
+            </div>
+
+            <div v-else>
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <small class="text-muted fw-semibold">
+                  <i class="bi bi-check-circle-fill text-success me-1"></i>
+                  กลุ่มงานที่สร้างตารางเวรแล้ว: <strong class="text-dark">{{ deptScheduleGroups.length }}</strong> กลุ่มงาน
+                </small>
+              </div>
+              <div class="row g-3">
+              <div v-for="g in deptScheduleGroups" :key="g.id" class="col-12 col-md-6">
+                <div
+                  class="warehouse-card p-3 rounded-4 bg-white border shadow-sm cursor-pointer position-relative h-100 d-flex flex-column justify-content-between transition-all"
+                  @click="selectDeptScheduleAndEnter(g)"
+                >
+                  <div class="d-flex align-items-start gap-3 mb-3">
+                    <div class="wh-icon-box bg-gradient-purple text-white rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs">
+                      <i class="bi bi-calendar2-week-fill fs-5"></i>
+                    </div>
+                    <div class="flex-grow-1 overflow-hidden">
+                      <div class="d-flex align-items-center justify-content-between gap-1 mb-1">
+                        <span class="badge bg-light text-secondary border small">{{ g.member_count || 0 }} คน</span>
+                        <span v-if="g.access_level === 'ADMIN'" class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill">
+                          <i class="bi bi-shield-check me-1"></i> ผู้ดูแลกลุ่มงาน
+                        </span>
+                        <span v-else-if="g.access_level === 'STAFF'" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">
+                          <i class="bi bi-pencil-square me-1"></i> ผู้จัดเวร
+                        </span>
+                        <span v-else class="badge bg-light text-secondary border rounded-pill">
+                          <i class="bi bi-eye me-1"></i> ดูอย่างเดียว
+                        </span>
+                      </div>
+                      <h6 class="fw-bold text-dark mb-1 text-truncate" :title="g.title">{{ g.title }}</h6>
+                      <small class="text-muted d-block text-truncate">{{ g.department_name }}</small>
+                    </div>
+                  </div>
+                  <div class="pt-2 border-top d-flex align-items-center justify-content-between fw-semibold small text-primary">
+                    <span>{{ g.access_level === 'VIEWER' ? 'เปิดดูตารางเวร' : 'เข้าจัดการตารางเวร' }}</span>
+                    <i class="bi bi-arrow-right"></i>
+                  </div>
+                </div>
+              </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer border-0 bg-white px-4 py-3 d-flex justify-content-between flex-wrap gap-2">
+            <small class="text-muted">
+              <i class="bi bi-info-circle me-1"></i> ผู้จัดเวรต้องได้รับสิทธิ์จากผู้ดูแลระบบก่อนจึงจะแก้ไขได้
+            </small>
+            <div class="d-flex gap-2">
+              <button
+                v-if="hasPermission(['administrator'])"
+                type="button"
+                class="btn btn-outline-primary rounded-pill px-3 fw-bold small"
+                @click="goToCreateDeptSchedule"
+              >
+                <i class="bi bi-plus-circle me-1"></i> สร้างตารางเวรกลุ่มงานใหม่
+              </button>
+              <button type="button" class="btn btn-secondary rounded-pill px-4" @click="showDeptScheduleModal = false">
+                ยกเลิก
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1412,7 +1543,11 @@ export default {
       warehouseModalMode: 'manage',
       loadingWarehouses: false,
       userWarehouses: [],
-      hasWarehouseAccess: false
+      hasWarehouseAccess: false,
+      hasDeptScheduleAccess: false,
+      showDeptScheduleModal: false,
+      loadingDeptGroups: false,
+      deptScheduleGroups: []
     };
   },
   computed: {
@@ -1486,6 +1621,12 @@ export default {
                   this.hasWarehouseAccess = true;
                 }
               }).catch(() => {});
+            axios.get(`/api-digital/dept_schedule/api.php?action=groups&user_id=${userId}&is_admin=${this.hasPermission(['administrator']) ? 1 : 0}`)
+              .then(dRes => {
+                if (dRes.data && dRes.data.status === 'success' && dRes.data.data?.length > 0) {
+                  this.hasDeptScheduleAccess = true;
+                }
+              }).catch(() => {});
           }
         }
       } catch (error) {
@@ -1535,6 +1676,40 @@ export default {
     },
     async goToManagerSchedule() {
       await this.checkAdminAccessAndGo('/manager-schedule');
+    },
+    async openDeptScheduleModal() {
+      this.showDeptScheduleModal = true;
+      this.loadingDeptGroups = true;
+      this.deptScheduleGroups = [];
+      try {
+        const userId = this.userProfile?.id || this.userProfile?.user_id || localStorage.getItem('user_id') || '';
+        const isAdmin = this.hasPermission(['administrator']) ? 1 : 0;
+        let deptId = this.userProfile?.department_sub_id || this.userProfile?.HR_DEPARTMENT_SUB_ID || '';
+        if (!isAdmin && !deptId && userId) {
+          const sRes = await axios.get('/api-hosoffice/get_all_staff.php').catch(() => null);
+          const staffList = sRes?.data?.data || (Array.isArray(sRes?.data) ? sRes.data : []);
+          const me = staffList.find(s => String(s.ID) === String(userId));
+          if (me?.HR_DEPARTMENT_SUB_ID) deptId = me.HR_DEPARTMENT_SUB_ID;
+        }
+        const res = await axios.get('/api-digital/dept_schedule/api.php', {
+          params: { action: 'groups', user_id: userId, user_department_id: deptId, is_admin: isAdmin }
+        });
+        if (res.data?.status === 'success') {
+          this.deptScheduleGroups = res.data.data || [];
+        }
+      } catch (err) {
+        console.error('Failed to load department schedules:', err);
+      } finally {
+        this.loadingDeptGroups = false;
+      }
+    },
+    selectDeptScheduleAndEnter(group) {
+      this.showDeptScheduleModal = false;
+      this.$router.push({ path: '/department-schedule', query: { group_id: group.id } });
+    },
+    goToCreateDeptSchedule() {
+      this.showDeptScheduleModal = false;
+      this.$router.push({ path: '/department-schedule', query: { create: '1' } });
     },
     async goToServerList() {
       await this.checkITAccessAndGo('/server-list');

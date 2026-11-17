@@ -90,6 +90,11 @@ const routes = [
     meta: { requiresAuth: true } // ต้องล็อกอิน
   },
   {
+    path: '/department-schedule',
+    component: () => import('../views/backoffice/DepartmentSchedule.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/user-manager',
     component: () => import('../views/backoffice/UserManagerView.vue'),
     meta: { requiresAuth: true } // ต้องล็อกอิน

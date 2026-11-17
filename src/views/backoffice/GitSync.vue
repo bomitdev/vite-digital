@@ -162,13 +162,12 @@ export default {
           name: 'สคริปต์แจ้งเตือนอัตโนมัติ (MOPH Notify Cron)',
           badge: 'cron scripts',
           icon: 'bi-bell-fill',
-          desc: 'cron_daily_repair_notify.php, cron_daily_schedule_notify.php, run-daily-notify.bat/vbs, setup task',
+          desc: 'cron_daily_repair_notify.php, cron_daily_schedule_notify.php, run-daily-notify.bat/vbs',
           paths: [
             'cron_daily_repair_notify.php',
             'cron_daily_schedule_notify.php',
             'run-daily-notify.bat',
-            'run-daily-notify.vbs',
-            'setup-daily-notify-task.ps1'
+            'run-daily-notify.vbs'
           ]
         },
         {
@@ -176,17 +175,13 @@ export default {
           name: 'สคริปต์ System Tray & Auto-Start',
           badge: 'system tray',
           icon: 'bi-windows',
-          desc: 'tray-runner.ps1, run-tray.bat/vbs, stop-tray.bat, enable-autostart.bat',
+          desc: 'start-all.bat, tray-runner.ps1, run-tray.vbs, stop-tray.bat, disable-autostart.bat',
           paths: [
+            'start-all.bat',
             'tray-runner.ps1',
-            'run-tray.bat',
             'run-tray.vbs',
             'stop-tray.bat',
-            'enable-autostart.bat',
-            'enable-autostart.ps1',
             'disable-autostart.bat',
-            'create-shortcut.bat',
-            'create-desktop-shortcut.ps1',
             'electron'
           ]
         }
