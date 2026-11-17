@@ -1,25 +1,46 @@
 <template>
   <div class="dashboard-container">
-    <div class="container mt-4">
-      <!-- Date Range Selector -->
-      <div class="date-range-card card shadow-sm mb-4">
-        <!-- Header Section -->
-        <div class="dashboard-header mt-4">
-          <h1 class="dashboard-title">Dashboard ข้อมูลผู้มารับบริการ</h1>
-        </div>
-        <div class="card-body">
-          <h5 class="card-title">เลือกช่วงวันที่ ที่ต้องการดูข้อมูล</h5>
-          <div class="row g-3">
-            <div class="col-md-5">
-              <label class="form-label">วันที่เริ่มต้น:</label>
-              <input type="date" v-model="startDate" class="form-control" />
+    <div class="container py-4">
+      <!-- Header & Date Range Selector -->
+      <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+        <div class="card-body p-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3 pb-3 border-bottom">
+            <div class="d-flex align-items-center gap-3">
+              <div class="header-icon-box">
+                <i class="bi bi-bar-chart-line-fill"></i>
+              </div>
+              <div>
+                <h3 class="fw-bold text-dark mb-0">Dashboard ข้อมูลผู้มารับบริการ</h3>
+                <small class="text-muted">สรุปภาพรวมสถิติผู้ป่วยนอก ผู้ป่วยใน ค่าใช้จ่าย แยกตามแผนกและคลินิกพิเศษ</small>
+              </div>
             </div>
-            <div class="col-md-5">
-              <label class="form-label">วันที่สิ้นสุด:</label>
-              <input type="date" v-model="endDate" class="form-control" />
+
+            <!-- Quick Date Presets -->
+            <div class="d-flex flex-wrap gap-1">
+              <button
+                v-for="preset in datePresets"
+                :key="preset.key"
+                type="button"
+                class="btn btn-sm rounded-pill px-3 fw-semibold"
+                :class="activePreset === preset.key ? 'btn-primary' : 'btn-light border text-secondary'"
+                @click="applyPreset(preset.key)"
+              >
+                {{ preset.label }}
+              </button>
             </div>
-            <div class="col-md-2 d-flex align-items-end">
-              <button @click="fetchData" class="btn btn-primary w-100 py-2">
+          </div>
+
+          <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-5">
+              <label class="form-label small fw-bold text-secondary mb-1">วันที่เริ่มต้น</label>
+              <input type="date" v-model="startDate" @change="activePreset = ''" class="form-control" />
+            </div>
+            <div class="col-12 col-md-5">
+              <label class="form-label small fw-bold text-secondary mb-1">วันที่สิ้นสุด</label>
+              <input type="date" v-model="endDate" @change="activePreset = ''" class="form-control" />
+            </div>
+            <div class="col-12 col-md-2">
+              <button @click="fetchData" class="btn btn-primary w-100 py-2 rounded-3 fw-semibold" :disabled="loading">
                 <i class="bi bi-search me-2"></i>ดูข้อมูล
               </button>
             </div>
@@ -35,402 +56,267 @@
         <p class="mt-3 text-muted">กำลังโหลดข้อมูล...</p>
       </div>
 
-      <!-- Data Cards -->
-      <div class="row g-4" v-if="!loading">
-        <!-- OPD Card -->
-        <div class="col-md-4">
-          <div
-            class="card text-white bg-primary mb-3 h-100 hover-effect"
-            @click="goToOPDReport"
-            style="cursor: pointer"
-          >
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">ผู้รับบริการผู้ป่วยนอก (OPD)</h5>
-                <i class="bi bi-people-fill fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.opd_all) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">คลิกเพื่อดูรายงาน</small>
+      <template v-else>
+        <!-- Top 3 KPI Cards -->
+        <div class="row g-3 mb-4">
+          <!-- OPD -->
+          <div class="col-12 col-md-4">
+            <div class="card kpi-card kpi-blue border-0 shadow-sm rounded-4 h-100 cursor-pointer" @click="goToOPDReport">
+              <div class="card-body p-4 d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <span class="kpi-pill bg-primary-subtle text-primary">ผู้ป่วยนอก (OPD)</span>
+                  <div class="kpi-icon bg-primary text-white">
+                    <i class="bi bi-people-fill"></i>
+                  </div>
+                </div>
+                <div class="d-flex align-items-baseline gap-2 mb-1">
+                  <h2 class="fw-bold text-dark mb-0">{{ formatNumber(data.opd_all) }}</h2>
+                  <span class="text-muted small">ครั้ง</span>
+                </div>
+                <div class="mt-auto pt-2 d-flex justify-content-between align-items-center small text-primary fw-semibold">
+                  <span>คลิกเพื่อดูรายงาน</span>
+                  <i class="bi bi-arrow-right"></i>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- IPD Card -->
-        <div class="col-12 col-sm-6 col-md-4">
-          <div
-            class="card text-white bg-red-300 mb-3 h-100 hover-effect"
-            @click="goToIPDReport()"
-            style="cursor: pointer"
-          >
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">ผู้รับบริการผู้ป่วยใน (IPD)</h5>
-                <i class="bi bi-people-fill fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.ipd_all) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">คลิกเพื่อดูรายงาน</small>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- income Card -->
-        <div class="col-12 col-sm-6 col-md-4">
-          <div class="card text-white bg-red-300 mb-3 h-100 hover-effect">
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">ค่าใช้จ่ายทั้งหมด (OPD)</h5>
-                <i class="bi bi-people-fill fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.sum_income) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">ผู้ป่วยนอก</small>
+          <!-- IPD -->
+          <div class="col-12 col-md-4">
+            <div class="card kpi-card kpi-purple border-0 shadow-sm rounded-4 h-100 cursor-pointer" @click="goToIPDReport">
+              <div class="card-body p-4 d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <span class="kpi-pill bg-purple-subtle text-purple">ผู้ป่วยใน (IPD)</span>
+                  <div class="kpi-icon bg-purple text-white">
+                    <i class="bi bi-hospital-fill"></i>
+                  </div>
+                </div>
+                <div class="d-flex align-items-baseline gap-2 mb-1">
+                  <h2 class="fw-bold text-dark mb-0">{{ formatNumber(data.ipd_all) }}</h2>
+                  <span class="text-muted small">ราย</span>
+                </div>
+                <div class="mt-auto pt-2 d-flex justify-content-between align-items-center small text-purple fw-semibold">
+                  <span>คลิกเพื่อดูรายงาน</span>
+                  <i class="bi bi-arrow-right"></i>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <hr />
 
-        <!-- Department Comparison Chart -->
-        <h2 class="dashboard-title mb-3">
-          <i class="bi bi-graph-up me-2"></i>กราฟเปรียบเทียบผู้มารับบริการแต่ละแผนก
-        </h2>
-        <div class="col-12 mb-4">
-          <div class="card shadow border-0" style="border-radius: 15px">
-            <div class="card-body p-4" style="height: 400px; position: relative">
-              <LineChart v-if="data" :data="chartData" :options="chartOptions" />
-            </div>
-          </div>
-        </div>
-
-        <hr />
-
-        <!-- ER Card -->
-        <h2 class="dashboard-title">ข้อมูลผู้มารับบริการแยกตามแผนก</h2>
-        <div class="col-12 col-sm-6 col-md-4">
-          <div
-            class="card text-white bg-danger mb-3 h-100 hover-effect"
-            @click="goToERReport"
-            style="cursor: pointer"
-          >
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">ER (อุบัติเหตุฉุกเฉิน)</h5>
-                <i class="bi bi-ambulance fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.er) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">คลิกเพื่อดูรายงาน</small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Dent Card -->
-        <div class="col-12 col-sm-6 col-md-4">
-          <div
-            class="card text-white bg-pink mb-3 h-100 hover-effect"
-            @click="goToDentalReport()"
-            style="cursor: pointer"
-          >
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">ทันตกรรม</h5>
-                <i class="bi bi-tooth fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.dent) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">คลิกเพื่อดูรายงาน</small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- PCU Card -->
-        <div class="col-12 col-sm-6 col-md-4">
-          <div class="card text-white bg-purple mb-3 h-100 hover-effect">
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">ปฐมภูมิและองค์รวม</h5>
-                <i class="bi bi-heart fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.pcu) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">บริการปฐมภูมิ</small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- TTM Card -->
-        <div class="col-12 col-sm-6 col-md-4">
-          <div
-            class="card text-white bg-green mb-3 h-100 hover-effect"
-            @click="goToTTMReport()"
-            style="cursor: pointer"
-          >
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">แพทย์แผนไทยฯ</h5>
-                <i class="bi bi-heart fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.health_med) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">คลิกเพื่อดูรายงาน</small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- กายภาพ Card -->
-        <div class="col-12 col-sm-6 col-md-4">
-          <div
-            class="card text-white bg-queen mb-3 h-100 hover-effect"
-            @click="goToPhysicReport()"
-            style="cursor: pointer"
-          >
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">กายภาพ</h5>
-                <i class="bi bi-heart fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.physic) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">คลิกเพื่อดูรายงาน</small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- จิตเวช Card -->
-        <div class="col-12 col-sm-6 col-md-4">
-          <div class="card text-white bg-grayscale mb-3 h-100 hover-effect">
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">จิตเวชและยาเสพติด</h5>
-                <i class="bi bi-heart fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.pd) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">จิตเวชและยาเสพติด</small>
-              </div>
-            </div>
-          </div>
-        </div>
-        <hr />
-
-        <!-- DM Card -->
-        <h2 class="dashboard-title">คลินิกพิเศษ</h2>
-        <div class="col-12 col-sm-6 col-md-4">
-          <div class="card text-white bg-success mb-3 h-100 hover-effect">
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">DM (โรคเบาหวาน)</h5>
-                <i class="bi bi-droplet-half fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.dm) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">ผู้ป่วยโรคเบาหวาน</small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- HT Card -->
-        <div class="col-12 col-sm-6 col-md-4">
-          <div class="card text-white bg-warning mb-3 h-100 hover-effect">
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">HT (โรคความดันโลหิตสูง)</h5>
-                <i class="bi bi-heart-pulse fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.ht) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">ผู้ป่วยโรคความดัน</small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- CKD Card -->
-        <div class="col-12 col-sm-6 col-md-4">
-          <div class="card text-white bg-teal mb-3 h-100 hover-effect">
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">CKD (โรคไต)</h5>
-                <i class="bi bi-heart-pulse fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.ckd) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">ผู้ป่วยโรคไต</small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- TB Card -->
-        <div class="col-12 col-sm-6 col-md-4">
-          <div class="card text-white bg-burlywood mb-3 h-100 hover-effect">
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">TB (โรควัณโรค)</h5>
-                <i class="bi bi-heart-pulse fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.tb) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">ผู้ป่วยโรคไต</small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- COPD Card -->
-        <div class="col-12 col-sm-6 col-md-4">
-          <div class="card text-white bg-dark-orchid mb-3 h-100 hover-effect">
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">COPD (โรคปอดอุดกั้นเรื้อรัง)</h5>
-                <i class="bi bi-heart-pulse fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.copd) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">ผู้ป่วยโรคปอดอุดกั้นเรื้อรัง</small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Thyroid Card -->
-        <div class="col-12 col-sm-6 col-md-4">
-          <div class="card text-white bg-dark-orange mb-3 h-100 hover-effect">
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">Thyroid (โรคไทรอยด์)</h5>
-                <i class="bi bi-heart-pulse fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.thyroid) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">ผู้ป่วยโรคไทรอยด์</small>
-              </div>
-            </div>
-          </div>
-        </div>
-        <hr />
-
-        <!-- Refer Out Card -->
-        <h2 class="dashboard-title">Refer</h2>
-        <div class="col-12 col-sm-6 col-md-4">
-          <div class="card text-white bg-teal mb-3 h-100 hover-effect">
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">Refer Out</h5>
-                <i class="bi bi-heart-pulse fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.refer_out) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">Refer Out</small>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Refer In Card -->
-        <div class="col-12 col-sm-6 col-md-4">
-          <div class="card text-white bg-cyan mb-3 h-100 hover-effect">
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">Refer In</h5>
-                <i class="bi bi-heart-pulse fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.refer_in) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">Refer In</small>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <hr />
-
-        <!-- survail Card -->
-        <h2 class="dashboard-title">โรคระบาดวิทยา</h2>
-        <div class="col-12 col-sm-6 col-md-4">
-          <div class="card text-white bg-max-red mb-3 h-100 hover-effect">
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">โรคระบาดวิทยา</h5>
-                <i class="bi bi-virus2 fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.surveil) }}</h2>
-              <div class="mt-auto pt-2">
-                <small class="text-white-50">ระบาดวิทยา</small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <hr />
-        <!-- Telemedicine Card -->
-         <h2 class="dashboard-title">บริการทางไกล (Telemedicine)</h2>
-        <div class="col-12 col-sm-6 col-md-4">
-          <div
-            class="card text-white bg-primary mb-3 h-100 hover-effect"
-            @click="goToTelemedicineReport"
-            style="cursor: pointer"
-          >
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">บริการทางไกล (Telemedicine)</h5>
-                <i class="bi bi-telephone fs-4"></i>
-              </div>
-              <h2 class="card-value">{{ formatNumber(data.telemedicine) }}</h2>
-              
-              <!-- Today/Yesterday Trend Badge -->
-              <div class="mt-auto pt-2 d-flex flex-column gap-1">
-                <small class="text-white-50">Telemedicine</small>
-                <div class="d-inline-flex align-items-center bg-white bg-opacity-25 rounded-pill px-2 py-1 align-self-start" style="font-size: 0.8rem;">
-                  <span class="me-1">วันนี้: {{ formatNumber(data.telemedicine_today) }}</span>
-                  <span v-if="data.telemedicine_today >= data.telemedicine_yesterday" class="badge bg-success rounded-pill p-1 ms-1" style="font-size: 0.7rem;">
-                    +{{ formatNumber(data.telemedicine_today - data.telemedicine_yesterday) }} (จาก {{ formatNumber(data.telemedicine_yesterday) }})
-                  </span>
-                  <span v-else class="badge bg-danger rounded-pill p-1 ms-1" style="font-size: 0.7rem;">
-                    -{{ formatNumber(data.telemedicine_yesterday - data.telemedicine_today) }} (จาก {{ formatNumber(data.telemedicine_yesterday) }})
-                  </span>
+          <!-- Total OPD Expense -->
+          <div class="col-12 col-md-4">
+            <div class="card kpi-card kpi-green border-0 shadow-sm rounded-4 h-100">
+              <div class="card-body p-4 d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <span class="kpi-pill bg-success-subtle text-success">ค่าใช้จ่ายทั้งหมด (OPD)</span>
+                  <div class="kpi-icon bg-success text-white">
+                    <i class="bi bi-cash-stack"></i>
+                  </div>
+                </div>
+                <div class="d-flex align-items-baseline gap-2 mb-1">
+                  <h2 class="fw-bold text-dark mb-0">{{ formatNumber(data.sum_income) }}</h2>
+                  <span class="text-muted small">บาท</span>
+                </div>
+                <div class="mt-auto pt-2 small text-muted">
+                  เฉลี่ยประมาณ <strong class="text-success">{{ avgCostPerVisit }}</strong> บาท / ครั้ง
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+
+        <!-- Department Comparison Chart -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+          <div class="card-header bg-white border-0 pt-4 px-4 pb-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+              <h5 class="fw-bold text-dark mb-0">
+                <i class="bi bi-bar-chart-fill text-primary me-2"></i>กราฟเปรียบเทียบผู้มารับบริการแต่ละแผนก
+              </h5>
+              <small class="text-muted">เปรียบเทียบจำนวนผู้รับบริการแยกตามแผนกและคลินิกพิเศษ</small>
+            </div>
+            <div class="btn-group btn-group-sm">
+              <button
+                type="button"
+                class="btn"
+                :class="chartType === 'bar' ? 'btn-primary' : 'btn-outline-secondary'"
+                @click="chartType = 'bar'"
+              >
+                <i class="bi bi-bar-chart me-1"></i>กราฟแท่ง
+              </button>
+              <button
+                type="button"
+                class="btn"
+                :class="chartType === 'line' ? 'btn-primary' : 'btn-outline-secondary'"
+                @click="chartType = 'line'"
+              >
+                <i class="bi bi-graph-up me-1"></i>กราฟเส้น
+              </button>
+            </div>
+          </div>
+          <div class="card-body p-4" style="height: 360px; position: relative">
+            <BarChart v-if="chartType === 'bar'" :data="barChartData" :options="chartOptions" />
+            <LineChart v-else :data="lineChartData" :options="chartOptions" />
+          </div>
+        </div>
+
+        <!-- Section: Departments -->
+        <div class="mb-4">
+          <h5 class="section-heading mb-3">
+            <i class="bi bi-building text-primary me-2"></i>ข้อมูลผู้มารับบริการแยกตามแผนก
+          </h5>
+          <div class="row g-3">
+            <div v-for="card in departmentCards" :key="card.key" class="col-12 col-sm-6 col-lg-4">
+              <div
+                class="card stat-mini-card border-0 shadow-sm rounded-4 h-100"
+                :class="{ 'cursor-pointer': Boolean(card.action) }"
+                :style="{ borderLeft: `4px solid ${card.color}` }"
+                @click="card.action && card.action()"
+              >
+                <div class="card-body p-3 d-flex flex-column">
+                  <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                    <span class="fw-semibold text-dark">{{ card.title }}</span>
+                    <span class="mini-icon" :style="{ backgroundColor: card.bg, color: card.color }">
+                      <i class="bi" :class="card.icon"></i>
+                    </span>
+                  </div>
+                  <div class="d-flex align-items-baseline justify-content-between mt-auto">
+                    <h3 class="fw-bold mb-0 text-dark">{{ formatNumber(data[card.key] || 0) }}</h3>
+                    <span v-if="data.opd_all > 0" class="badge bg-light text-secondary border rounded-pill">
+                      {{ (((data[card.key] || 0) / data.opd_all) * 100).toFixed(1) }}% ของ OPD
+                    </span>
+                  </div>
+                  <small class="mt-2" :class="card.action ? 'text-primary fw-semibold' : 'text-muted'">
+                    {{ card.action ? 'คลิกเพื่อดูรายงาน →' : card.subtitle }}
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Special Clinics -->
+        <div class="mb-4">
+          <h5 class="section-heading mb-3">
+            <i class="bi bi-heart-pulse-fill text-danger me-2"></i>คลินิกพิเศษ
+          </h5>
+          <div class="row g-3">
+            <div v-for="card in clinicCards" :key="card.key" class="col-12 col-sm-6 col-lg-4">
+              <div
+                class="card stat-mini-card border-0 shadow-sm rounded-4 h-100"
+                :style="{ borderLeft: `4px solid ${card.color}` }"
+              >
+                <div class="card-body p-3 d-flex flex-column">
+                  <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                    <span class="fw-semibold text-dark">{{ card.title }}</span>
+                    <span class="mini-icon" :style="{ backgroundColor: card.bg, color: card.color }">
+                      <i class="bi" :class="card.icon"></i>
+                    </span>
+                  </div>
+                  <h3 class="fw-bold mb-1 text-dark">{{ formatNumber(data[card.key] || 0) }}</h3>
+                  <small class="text-muted mt-auto">{{ card.subtitle }}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Refer, Surveillance & Telemedicine -->
+        <div class="mb-4">
+          <h5 class="section-heading mb-3">
+            <i class="bi bi-activity text-success me-2"></i>Refer, ระบาดวิทยา และบริการทางไกล
+          </h5>
+          <div class="row g-3">
+            <div v-for="card in otherCards" :key="card.key" class="col-12 col-sm-6 col-lg-3">
+              <div
+                class="card stat-mini-card border-0 shadow-sm rounded-4 h-100"
+                :style="{ borderLeft: `4px solid ${card.color}` }"
+              >
+                <div class="card-body p-3 d-flex flex-column">
+                  <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                    <span class="fw-semibold text-dark">{{ card.title }}</span>
+                    <span class="mini-icon" :style="{ backgroundColor: card.bg, color: card.color }">
+                      <i class="bi" :class="card.icon"></i>
+                    </span>
+                  </div>
+                  <h3 class="fw-bold mb-1 text-dark">{{ formatNumber(data[card.key] || 0) }}</h3>
+                  <small class="text-muted mt-auto">{{ card.subtitle }}</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Telemedicine -->
+            <div class="col-12 col-sm-6 col-lg-3">
+              <div
+                class="card stat-mini-card border-0 shadow-sm rounded-4 h-100 cursor-pointer"
+                style="border-left: 4px solid #2563eb"
+                @click="goToTelemedicineReport"
+              >
+                <div class="card-body p-3 d-flex flex-column">
+                  <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                    <span class="fw-semibold text-dark">บริการทางไกล (Telemedicine)</span>
+                    <span class="mini-icon" style="background-color: #eff6ff; color: #2563eb">
+                      <i class="bi bi-telephone-fill"></i>
+                    </span>
+                  </div>
+                  <h3 class="fw-bold mb-2 text-dark">{{ formatNumber(data.telemedicine || 0) }}</h3>
+                  <div class="mt-auto d-flex flex-wrap align-items-center gap-1 small">
+                    <span class="badge bg-light text-dark border rounded-pill">
+                      วันนี้: {{ formatNumber(data.telemedicine_today || 0) }}
+                    </span>
+                    <span
+                      v-if="(data.telemedicine_today || 0) >= (data.telemedicine_yesterday || 0)"
+                      class="badge bg-success-subtle text-success rounded-pill"
+                    >
+                      +{{ formatNumber((data.telemedicine_today || 0) - (data.telemedicine_yesterday || 0)) }}
+                    </span>
+                    <span v-else class="badge bg-danger-subtle text-danger rounded-pill">
+                      -{{ formatNumber((data.telemedicine_yesterday || 0) - (data.telemedicine_today || 0)) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
     </div>
   </div>
 </template>
 
 <script>
 import axios from 'axios';
-import { Line } from 'vue-chartjs';
+import { Line, Bar } from 'vue-chartjs';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend
 } from 'chart.js';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend);
 
 export default {
   components: {
-    LineChart: Line
+    LineChart: Line,
+    BarChart: Bar
   },
   data() {
     return {
       startDate: '',
       endDate: '',
+      activePreset: 'fiscal_current',
+      chartType: 'bar',
+      datePresets: [
+        { key: 'today', label: 'วันนี้' },
+        { key: 'month', label: 'เดือนนี้' },
+        { key: 'fiscal_current', label: 'ปีงบปัจจุบัน' },
+        { key: 'fiscal_prev', label: 'ปีงบก่อน' }
+      ],
       data: {
         opd_all: 0,
         ipd_all: 0,
@@ -467,48 +353,85 @@ export default {
       }
       return fiscalYear + 1;
     },
-    chartData() {
+    avgCostPerVisit() {
+      const visits = Number(this.data.opd_all) || 0;
+      const income = Number(this.data.sum_income) || 0;
+      if (visits <= 0) return '0.00';
+      return (income / visits).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    },
+    departmentCards() {
+      return [
+        { key: 'er', title: 'ER (อุบัติเหตุฉุกเฉิน)', icon: 'bi-ambulance', color: '#dc2626', bg: '#fef2f2', action: this.goToERReport },
+        { key: 'dent', title: 'ทันตกรรม', icon: 'bi-tooth', color: '#db2777', bg: '#fdf2f8', action: this.goToDentalReport },
+        { key: 'pcu', title: 'ปฐมภูมิและองค์รวม', icon: 'bi-heart-fill', color: '#7c3aed', bg: '#f5f3ff', subtitle: 'บริการปฐมภูมิ' },
+        { key: 'health_med', title: 'แพทย์แผนไทยฯ', icon: 'bi-flower1', color: '#16a34a', bg: '#f0fdf4', action: this.goToTTMReport },
+        { key: 'physic', title: 'กายภาพบำบัด', icon: 'bi-person-walking', color: '#0284c7', bg: '#f0f9ff', action: this.goToPhysicReport },
+        { key: 'pd', title: 'จิตเวชและยาเสพติด', icon: 'bi-chat-heart-fill', color: '#475569', bg: '#f8fafc', subtitle: 'จิตเวชและยาเสพติด' }
+      ];
+    },
+    clinicCards() {
+      return [
+        { key: 'dm', title: 'DM (โรคเบาหวาน)', icon: 'bi-droplet-half', color: '#16a34a', bg: '#f0fdf4', subtitle: 'ผู้ป่วยโรคเบาหวาน' },
+        { key: 'ht', title: 'HT (โรคความดันโลหิตสูง)', icon: 'bi-heart-pulse', color: '#d97706', bg: '#fffbeb', subtitle: 'ผู้ป่วยโรคความดัน' },
+        { key: 'ckd', title: 'CKD (โรคไต)', icon: 'bi-activity', color: '#0d9488', bg: '#f0fdfa', subtitle: 'ผู้ป่วยโรคไต' },
+        { key: 'tb', title: 'TB (โรควัณโรค)', icon: 'bi-lungs-fill', color: '#b45309', bg: '#fef3c7', subtitle: 'ผู้ป่วยโรควัณโรค' },
+        { key: 'copd', title: 'COPD (โรคปอดอุดกั้นเรื้อรัง)', icon: 'bi-wind', color: '#9333ea', bg: '#faf5ff', subtitle: 'ผู้ป่วยโรคปอดอุดกั้นเรื้อรัง' },
+        { key: 'thyroid', title: 'Thyroid (โรคไทรอยด์)', icon: 'bi-capsule', color: '#ea580c', bg: '#fff7ed', subtitle: 'ผู้ป่วยโรคไทรอยด์' }
+      ];
+    },
+    otherCards() {
+      return [
+        { key: 'refer_out', title: 'Refer Out', icon: 'bi-box-arrow-up-right', color: '#0d9488', bg: '#f0fdfa', subtitle: 'ส่งต่อผู้ป่วยออก' },
+        { key: 'refer_in', title: 'Refer In', icon: 'bi-box-arrow-in-down-left', color: '#0891b2', bg: '#ecfeff', subtitle: 'รับส่งต่อผู้ป่วยเข้า' },
+        { key: 'surveil', title: 'โรคระบาดวิทยา', icon: 'bi-virus2', color: '#dc2626', bg: '#fef2f2', subtitle: 'เฝ้าระวังระบาดวิทยา' }
+      ];
+    },
+    chartItems() {
+      const items = [
+        { label: 'ER', value: Number(this.data.er) || 0, color: '#dc2626' },
+        { label: 'ทันตกรรม', value: Number(this.data.dent) || 0, color: '#db2777' },
+        { label: 'ปฐมภูมิฯ', value: Number(this.data.pcu) || 0, color: '#7c3aed' },
+        { label: 'แพทย์แผนไทยฯ', value: Number(this.data.health_med) || 0, color: '#16a34a' },
+        { label: 'กายภาพ', value: Number(this.data.physic) || 0, color: '#0284c7' },
+        { label: 'จิตเวชฯ', value: Number(this.data.pd) || 0, color: '#64748b' },
+        { label: 'DM', value: Number(this.data.dm) || 0, color: '#22c55e' },
+        { label: 'HT', value: Number(this.data.ht) || 0, color: '#f59e0b' },
+        { label: 'CKD', value: Number(this.data.ckd) || 0, color: '#14b8a6' },
+        { label: 'TB', value: Number(this.data.tb) || 0, color: '#d97706' },
+        { label: 'COPD', value: Number(this.data.copd) || 0, color: '#a855f7' },
+        { label: 'Thyroid', value: Number(this.data.thyroid) || 0, color: '#f97316' }
+      ];
+      return this.chartType === 'bar' ? [...items].sort((a, b) => b.value - a.value) : items;
+    },
+    barChartData() {
       return {
-        labels: [
-          'ER',
-          'ทันตกรรม',
-          'ปฐมภูมิฯ',
-          'แพทย์แผนไทยฯ',
-          'กายภาพ',
-          'จิตเวชฯ',
-          'DM',
-          'HT',
-          'CKD',
-          'TB',
-          'COPD',
-          'Thyroid'
-        ],
+        labels: this.chartItems.map(i => i.label),
         datasets: [
           {
             label: 'ผู้มารับบริการ',
-            backgroundColor: '#8e44ad',
-            borderColor: '#8e44ad',
+            backgroundColor: this.chartItems.map(i => i.color),
+            borderRadius: 8,
+            data: this.chartItems.map(i => i.value)
+          }
+        ]
+      };
+    },
+    lineChartData() {
+      return {
+        labels: this.chartItems.map(i => i.label),
+        datasets: [
+          {
+            label: 'ผู้มารับบริการ',
+            backgroundColor: '#7c3aed',
+            borderColor: '#7c3aed',
             borderWidth: 3,
             pointBackgroundColor: '#fff',
-            pointBorderColor: '#8e44ad',
+            pointBorderColor: '#7c3aed',
             pointRadius: 5,
             pointHoverRadius: 7,
             fill: false,
             tension: 0.3,
-            data: [
-              this.data.er || 0,
-              this.data.dent || 0,
-              this.data.pcu || 0,
-              this.data.health_med || 0,
-              this.data.physic || 0,
-              this.data.pd || 0,
-              this.data.dm || 0,
-              this.data.ht || 0,
-              this.data.ckd || 0,
-              this.data.tb || 0,
-              this.data.copd || 0,
-              this.data.thyroid || 0
-            ]
+            data: this.chartItems.map(i => i.value)
           }
         ]
       };
@@ -518,22 +441,20 @@ export default {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: {
-            display: false
-          },
+          legend: { display: false },
           tooltip: {
-            backgroundColor: 'rgba(0,0,0,0.8)',
-            bodyFont: { size: 14 },
-            titleFont: { size: 14, weight: 'bold' }
+            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            padding: 10,
+            callbacks: {
+              label: (ctx) => ` ${Number(ctx.raw || 0).toLocaleString()} ครั้ง`
+            }
           }
         },
         scales: {
           y: {
             beginAtZero: true,
             ticks: {
-              callback: function (value) {
-                return value.toLocaleString();
-              }
+              callback: (value) => value.toLocaleString()
             }
           }
         }
@@ -541,6 +462,35 @@ export default {
     }
   },
   methods: {
+    formatIsoDate(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    },
+    applyPreset(key) {
+      this.activePreset = key;
+      const now = new Date();
+      if (key === 'today') {
+        const s = this.formatIsoDate(now);
+        this.startDate = s;
+        this.endDate = s;
+      } else if (key === 'month') {
+        const first = new Date(now.getFullYear(), now.getMonth(), 1);
+        const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        this.startDate = this.formatIsoDate(first);
+        this.endDate = this.formatIsoDate(last);
+      } else if (key === 'fiscal_current') {
+        const fy = this.computedFiscalYear;
+        this.startDate = `${fy - 1}-10-01`;
+        this.endDate = `${fy}-09-30`;
+      } else if (key === 'fiscal_prev') {
+        const fy = this.computedFiscalYear - 1;
+        this.startDate = `${fy - 1}-10-01`;
+        this.endDate = `${fy}-09-30`;
+      }
+      this.fetchData();
+    },
     async fetchData() {
       this.loading = true;
       try {
@@ -550,170 +500,121 @@ export default {
         this.data = response.data;
       } catch (error) {
         console.error('Error fetching data:', error);
-        // You might want to add user notification here
       } finally {
         this.loading = false;
       }
     },
     goToOPDReport() {
-      this.$router.push({
-        path: '/opddashboardchart'
-      });
+      this.$router.push({ path: '/opddashboardchart' });
     },
     goToIPDReport() {
-      this.$router.push({
-        path: '/ipd-report'
-      });
+      this.$router.push({ path: '/ipd-report' });
     },
     goToERReport() {
-      this.$router.push({
-        path: '/er-report'
-      });
+      this.$router.push({ path: '/er-report' });
     },
     goToDentalReport() {
-      this.$router.push({
-        path: '/dental-report'
-      });
+      this.$router.push({ path: '/dental-report' });
     },
     goToTTMReport() {
-      this.$router.push({
-        path: '/ttm-report'
-      });
+      this.$router.push({ path: '/ttm-report' });
     },
     goToPhysicReport() {
-      this.$router.push({
-        path: '/physic-report'
-      });
+      this.$router.push({ path: '/physic-report' });
     },
     goToTelemedicineReport() {
-      this.$router.push({
-        path: '/telemedicine-report'
-      });
+      this.$router.push({ path: '/telemedicine-report' });
     },
     formatNumber(num) {
-      return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      return (num ?? 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     }
   },
   mounted() {
-    const fiscalYear = this.computedFiscalYear;
-    this.startDate = `${fiscalYear - 1}-10-01`;
-    this.endDate = `${fiscalYear}-09-30`;
-    this.fetchData();
+    this.applyPreset('fiscal_current');
   }
 };
 </script>
 
 <style scoped>
 .dashboard-container {
-  background-color: #f8f9fa;
+  background-color: #f8fafc;
   min-height: 100vh;
-  padding: 2rem 0;
 }
 
-.dashboard-header {
-  text-align: center;
-  padding: 1rem 0;
+.header-icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+  color: #6d28d9;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
 }
 
-.dashboard-title {
-  color: purple;
+.kpi-card,
+.stat-mini-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kpi-card:hover,
+.stat-mini-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px -8px rgba(15, 23, 42, 0.12) !important;
+}
+
+.kpi-blue {
+  border-top: 4px solid #2563eb !important;
+}
+.kpi-purple {
+  border-top: 4px solid #7c3aed !important;
+}
+.kpi-green {
+  border-top: 4px solid #16a34a !important;
+}
+
+.kpi-pill {
+  font-size: 0.78rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
 }
 
-.dashboard-subtitle {
-  color: #7f8c8d;
-  font-size: 1.1rem;
+.kpi-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
 }
 
-.date-range-card {
-  background-color: #fff;
-  border-radius: 10px;
-}
-
-.card {
-  border: none;
-  border-radius: 10px;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.card-title {
-  font-weight: 600;
-  font-size: 1rem;
-}
-
-.card-value {
-  font-weight: 700;
-  font-size: 2.2rem;
-  margin: 0.5rem 0;
-}
-
-.hover-effect:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
-}
-
-.bg-pink {
-  background-color: #d63384 !important;
-}
 .bg-purple {
-  background-color: #6f42c1 !important;
+  background-color: #7c3aed !important;
 }
-.bg-green {
-  background-color: #198754 !important;
+.bg-purple-subtle {
+  background-color: #ede9fe !important;
 }
-.bg-queen {
-  background-color: #436b95 !important;
-}
-.bg-max-red {
-  background-color: #d92121 !important;
-}
-.bg-grayscale {
-  background-color: #7a7a7a !important;
-}
-.bg-teal {
-  background-color: #20c997 !important;
-}
-.bg-cyan {
-  background-color: #0dcaf0 !important;
-}
-.bg-red-100 {
-  background-color: #f8bbd0 !important;
-}
-.bg-red-300 {
-  background-color: #f36c60 !important;
-}
-.bg-burlywood {
-  background-color: #deb887 !important;
-}
-.bg-dark-cyan {
-  background-color: #008b8b !important;
-}
-.bg-dark-magenta {
-  background-color: #8b008b !important;
-}
-.bg-dark-orchid {
-  background-color: #9932cc !important;
-}
-.bg-dark-orange {
-  background-color: #ff8c00 !important;
+.text-purple {
+  color: #7c3aed !important;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .dashboard-title {
-    font-size: 1.5rem;
-  }
+.section-heading {
+  font-weight: 700;
+  color: #1e293b;
+}
 
-  .card-value {
-    font-size: 1.8rem;
-  }
-
-  .date-range-card .col-md-5,
-  .date-range-card .col-md-2 {
-    width: 100%;
-    margin-bottom: 1rem;
-  }
+.mini-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 </style>
