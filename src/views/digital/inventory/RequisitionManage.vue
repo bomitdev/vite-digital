@@ -652,6 +652,11 @@ export default {
       return whId > 0 && this.managedWarehouseIds.includes(whId);
     },
     isOwnRequisition(req) {
+      const myUid = Number(this.userProfile?.id || this.userProfile?.user_id || localStorage.getItem('user_id') || 0);
+      const ownerUid = Number(req?.created_by_user_id || 0);
+      if (myUid > 0 && ownerUid > 0) {
+        return myUid === ownerUid;
+      }
       const myName = this.userProfile?.fullname || localStorage.getItem('user_name') || '';
       if (!myName || !req?.requester_name) return false;
       const n1 = this.normalizePersonName(myName);

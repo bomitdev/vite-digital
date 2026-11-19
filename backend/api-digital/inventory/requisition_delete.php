@@ -25,7 +25,9 @@ if ($requisition_id <= 0) {
 }
 
 try {
-    $stmtCheck = $pdo2->prepare("SELECT status, warehouse_id, req_no, requester_name FROM inv_requisitions WHERE id = ?");
+    ensureInvRequisitionUserColumn($pdo2);
+
+    $stmtCheck = $pdo2->prepare("SELECT status, warehouse_id, req_no, requester_name, created_by_user_id FROM inv_requisitions WHERE id = ?");
     $stmtCheck->execute([$requisition_id]);
     $reqRow = $stmtCheck->fetch(PDO::FETCH_ASSOC);
     $st = $reqRow['status'] ?? false;

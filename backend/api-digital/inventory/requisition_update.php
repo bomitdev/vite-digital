@@ -39,6 +39,8 @@ if ($warehouse_id <= 0 || empty($requester_name) || empty($items) || !is_array($
 }
 
 try {
+    ensureInvRequisitionUserColumn($pdo2);
+
     $stExisting = $pdo2->prepare("SELECT * FROM inv_requisitions WHERE id = ? LIMIT 1");
     $stExisting->execute([$requisition_id]);
     $existing = $stExisting->fetch(PDO::FETCH_ASSOC);

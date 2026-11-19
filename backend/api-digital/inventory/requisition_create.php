@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../cors.php';
-require_once __DIR__ . '/../../auth_utils.php';
+require_once __DIR__ . '/inv_auth_helper.php';
 require_once __DIR__ . '/../../moph_notify_helper.php';
 require_once __DIR__ . '/inv_log_helper.php';
 
@@ -44,28 +44,12 @@ if (empty($items) || !is_array($items)) {
 }
 
 try {
+    ensureInvRequisitionUserColumn($pdo2);
+
     // Check if current user has warehouse manager/admin access for this warehouse
-    $isWarehouseManager = false;
-    $tokenUser = (function_exists('authOptional') && function_exists('getallheaders')) ? authOptional() : null;
-    $authUid = (int)($tokenUser['uid'] ?? 0);
-    if ($authUid > 0) {
-        if (isset($pdo3)) {
-            $stAdm = $pdo3->prepare("SELECT access_user FROM hr_person WHERE ID = ? LIMIT 1");
-            $stAdm->execute([$authUid]);
-            $accStr = (string)$stAdm->fetchColumn();
-            $perms = array_filter(array_map('trim', explode(':', $accStr)));
-            if (!empty(array_intersect($perms, ['administrator', 'menu_inventory_admin', 'menu_inventory_manage']))) {
-                $isWarehouseManager = true;
-            }
-        }
-        if (!$isWarehouseManager) {
-            $stWhUser = $pdo2->prepare("SELECT access_level FROM inv_user_warehouses WHERE warehouse_id = ? AND user_id = ? LIMIT 1");
-            $stWhUser->execute([$warehouse_id, $authUid]);
-            if ($stWhUser->fetchColumn()) {
-                $isWarehouseManager = true;
-            }
-        }
-    }
+    $currentUser = getInvCurrentUser($pdo3 ?? null);
+    $authUid = (int)($currentUser['uid'] ?? 0);
+    $isWarehouseManager = isInvWarehouseManager($pdo2, $pdo3 ?? null, $warehouse_id, $currentUser);
 
     // Validate restricted items before creating requisition
     $itemIdsToCheck = array_values(array_unique(array_filter(array_map(function($it) {
@@ -105,8 +89,8 @@ try {
     // Insert header
     $stmt = $pdo2->prepare("
         INSERT INTO inv_requisitions 
-        (req_no, warehouse_id, request_date, department_id, department_name, requester_name, requester_phone, purpose, status) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
+        (req_no, warehouse_id, request_date, department_id, department_name, requester_name, created_by_user_id, requester_phone, purpose, status) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
     ");
     $stmt->execute([
         $req_no,
@@ -115,6 +99,7 @@ try {
         $department_id,
         $department_name,
         $requester_name,
+        $authUid > 0 ? $authUid : null,
         $requester_phone,
         $purpose
     ]);

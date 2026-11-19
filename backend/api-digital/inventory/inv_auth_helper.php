@@ -63,7 +63,27 @@ function normalizeInvPersonName(string $name): string {
     return mb_strtolower(trim($clean), 'UTF-8');
 }
 
+function ensureInvRequisitionUserColumn(PDO $pdo2): void {
+    static $checked = false;
+    if ($checked) return;
+    $checked = true;
+    try {
+        $st = $pdo2->query("SHOW COLUMNS FROM inv_requisitions LIKE 'created_by_user_id'");
+        if (!$st || !$st->fetch(PDO::FETCH_ASSOC)) {
+            $pdo2->exec("ALTER TABLE inv_requisitions ADD COLUMN created_by_user_id INT NULL DEFAULT NULL AFTER requester_name");
+        }
+    } catch (Exception $e) {
+        // ignore if table missing or insufficient privilege
+    }
+}
+
 function isInvRequisitionOwner(array $reqRow, array $currentUser): bool {
+    $uid = (int)($currentUser['uid'] ?? 0);
+    $ownerUid = (int)($reqRow['created_by_user_id'] ?? 0);
+    if ($uid > 0 && $ownerUid > 0) {
+        return $uid === $ownerUid;
+    }
+
     $userFullname = trim((string)($currentUser['fullname'] ?? ''));
     $reqName = trim((string)($reqRow['requester_name'] ?? ''));
     if ($userFullname === '' || $reqName === '') return false;
