@@ -37,8 +37,11 @@ dist-ssr
 !/vite.config.js
 !/cron_daily_repair_notify.php
 !/cron_daily_schedule_notify.php
+!/cron_daily_dept_schedule_notify.php
+!/cron_audit_log_retention.php
 !/run-daily-notify.bat
 !/run-daily-notify.vbs
+!/start-all.bat
 !/setup-daily-notify-task.ps1
 !/run-tray.bat
 !/run-tray.vbs
@@ -53,9 +56,10 @@ dist-ssr
 !/README.md
 !.gitignore
 
-# 3. ไม่เอาไฟล์รูปภาพอัปโหลดและไฟล์คอนฟิกลับขึ้น Git
+# 3. ไม่เอาไฟล์รูปภาพอัปโหลด ไฟล์ archive log และไฟล์คอนฟิกลับขึ้น Git
 /backend/uploads/*
 !/backend/uploads/.gitkeep
+/backend/logs/*
 /uploads/*
 !/uploads/**/.gitkeep
 **/node_modules/
