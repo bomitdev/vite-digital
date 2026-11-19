@@ -5,8 +5,14 @@
 require_once __DIR__ . '/../../auth_utils.php';
 
 function getInvCurrentUser(?PDO $pdo3 = null): array {
-    $tokenUser = (function_exists('authOptional') && function_exists('getallheaders')) ? authOptional() : null;
+    $tokenUser = function_exists('authOptional') ? authOptional() : null;
     $uid = (int)($tokenUser['uid'] ?? 0);
+    if ($uid <= 0) {
+        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+            @session_start();
+        }
+        $uid = (int)($_SESSION['user_id'] ?? $_SESSION['uid'] ?? 0);
+    }
     $fullname = '';
     $perms = [];
 
@@ -53,7 +59,7 @@ function isInvWarehouseManager(PDO $pdo2, ?PDO $pdo3, int $warehouseId, array $c
 
 function normalizeInvPersonName(string $name): string {
     $clean = trim(preg_replace('/\s+/u', ' ', $name));
-    $clean = preg_replace('/^(ว่าที่ร้อยตรี|ว่าที่ร้อยโท|ว่าที่ร้อยเอก|ว่าที่ร\.ต\.|นาย|นางสาว|นาง|น\.ส\.|ดร\.|พญ\.|นพ\.|ทพ\.|ทพญ\.|ภก\.|ภญ\.)\s*/u', '', $clean);
+    $clean = preg_replace('/^(ว่าที่\s*(?:ร้อยตรี|ร้อยโท|ร้อยเอก|ร\.ต\.|ร\.ท\.|ร\.อ\.)|นาย|นางสาว|นาง|น\.ส\.|ดร\.|พญ\.|นพ\.|ทพ\.|ทพญ\.|ภก\.|ภญ\.)\s*/u', '', $clean);
     return mb_strtolower(trim($clean), 'UTF-8');
 }
 

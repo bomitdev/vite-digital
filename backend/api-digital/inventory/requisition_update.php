@@ -54,6 +54,12 @@ try {
     }
 
     $currentUser = getInvCurrentUser($pdo3 ?? null);
+    if ((int)($currentUser['uid'] ?? 0) <= 0) {
+        http_response_code(401);
+        echo json_encode(['status' => 'error', 'message' => 'กรุณาเข้าสู่ระบบใหม่อีกครั้ง (ไม่พบข้อมูลผู้ใช้งาน)']);
+        exit;
+    }
+
     $isManager = isInvWarehouseManager($pdo2, $pdo3 ?? null, (int)$existing['warehouse_id'], $currentUser);
     $isOwner = isInvRequisitionOwner($existing, $currentUser);
 
