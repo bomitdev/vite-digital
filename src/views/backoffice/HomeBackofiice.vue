@@ -1223,6 +1223,32 @@
                   </div>
                 </div>
               </div>
+              <!-- Central Audit Logs (Admin Only) -->
+              <div class="col-6 col-md-4 col-lg-3" v-if="isAdmin">
+                <div
+                  class="nav-card h-100 bg-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group border border-primary-subtle"
+                  @click="$router.push('/audit-logs')"
+                >
+                  <div class="position-relative z-1 d-flex flex-column h-100">
+                    <div
+                      class="icon-box-small bg-primary-subtle text-primary rounded-3 mb-2 d-inline-flex align-items-center justify-content-center"
+                    >
+                      <i class="bi bi-shield-lock-fill fs-4"></i>
+                    </div>
+                    <h6 class="fw-bold text-dark mb-1 text-truncate" title="Audit Logs (90 วัน)">Audit Logs (90 วัน)</h6>
+                    <p class="text-muted small mb-2 flex-grow-1" style="font-size: 0.75rem">
+                      ตรวจสอบประวัติการใช้งานระบบ
+                    </p>
+                    <div
+                      class="d-flex align-items-center text-primary fw-bold small mt-auto"
+                      style="font-size: 0.75rem"
+                    >
+                      เข้าใช้งาน
+                      <i class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </template>
         </div>

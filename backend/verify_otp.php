@@ -3,6 +3,7 @@
 
 require_once "./config.php";
 require_once "./auth_utils.php";
+require_once "./audit_log_helper.php";
 
 $data = json_decode(file_get_contents("php://input"), true);
 $tempToken = $data['temp_token'] ?? '';
@@ -38,12 +39,34 @@ if (isset($tempPayload['is_totp']) && $tempPayload['is_totp'] === true) {
     $masterSecret = $_ENV['MASTER_ADMIN_TOTP_SECRET'] ?? 'JBSWY3DPEHPK3PXP';
     // Allow 2 intervals discrepancy (approx 1 minute window)
     if (!$g->verifyCode($masterSecret, $otp, 2)) {
+        if (isset($pdo2)) {
+            recordAuditLog($pdo2, [
+                'user_id' => $tempPayload['uid'] ?? null,
+                'username' => $tempPayload['user'] ?? null,
+                'fullname' => $tempPayload['name'] ?? null,
+                'module' => 'auth',
+                'action' => 'LOGIN_OTP_FAIL',
+                'status_code' => 401,
+                'details' => 'ยืนยันรหัส Google Authenticator ไม่ถูกต้อง',
+            ]);
+        }
         http_response_code(401);
         echo json_encode(["success" => false, "message" => "รหัสจาก Google Authenticator ไม่ถูกต้อง"], JSON_UNESCAPED_UNICODE);
         exit;
     }
 } else {
     if (!password_verify($otp, $otpHash)) {
+        if (isset($pdo2)) {
+            recordAuditLog($pdo2, [
+                'user_id' => $tempPayload['uid'] ?? null,
+                'username' => $tempPayload['user'] ?? null,
+                'fullname' => $tempPayload['name'] ?? null,
+                'module' => 'auth',
+                'action' => 'LOGIN_OTP_FAIL',
+                'status_code' => 401,
+                'details' => 'ยืนยันรหัส OTP ไม่ถูกต้อง',
+            ]);
+        }
         http_response_code(401);
         echo json_encode(["success" => false, "message" => "รหัส OTP ไม่ถูกต้อง"], JSON_UNESCAPED_UNICODE);
         exit;
@@ -65,6 +88,18 @@ $finalPayload = [
 ];
 
 $generatedToken = generateToken($finalPayload);
+
+if (isset($pdo2)) {
+    recordAuditLog($pdo2, [
+        'user_id' => $tempPayload['uid'] ?? null,
+        'username' => $tempPayload['user'] ?? null,
+        'fullname' => $tempPayload['name'] ?? null,
+        'module' => 'auth',
+        'action' => 'LOGIN_SUCCESS',
+        'status_code' => 200,
+        'details' => 'เข้าสู่ระบบสำเร็จ (ผ่านการยืนยัน OTP)',
+    ], $pdo3 ?? null);
+}
 
 echo json_encode([
     "success" => true,

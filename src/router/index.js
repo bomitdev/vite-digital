@@ -100,6 +100,11 @@ const routes = [
     meta: { requiresAuth: true } // ต้องล็อกอิน
   },
   {
+    path: '/audit-logs',
+    component: () => import('../views/backoffice/AuditLogsView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/admin-docs',
     component: () => import('../views/backoffice/AdminDocumentCenter.vue'),
     meta: { requiresAuth: true } // ต้องล็อกอิน

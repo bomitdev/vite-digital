@@ -185,6 +185,7 @@
                 <th>ผู้ขอเบิก</th>
                 <th>วัตถุประสงค์</th>
                 <th class="text-center" style="width: 110px;">จำนวนรายการ</th>
+                <th class="text-end" style="width: 130px;">ยอดเงิน</th>
                 <th class="text-center" style="width: 130px;">สถานะ</th>
                 <th class="text-end pe-4 text-nowrap" style="min-width: 290px;">การจัดการ</th>
               </tr>
@@ -212,6 +213,10 @@
                   <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1">
                     {{ req.item_count || 0 }} รายการ
                   </span>
+                </td>
+                <td class="text-end text-nowrap">
+                  <span class="fw-bold text-dark">{{ formatCurrency(req.total_amount) }}</span>
+                  <small class="text-muted ms-1">บาท</small>
                 </td>
                 <td class="text-center">
                   <span v-if="req.status === 'PENDING'" class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-3 py-1">
@@ -736,6 +741,11 @@ export default {
       const num = Number(val);
       if (isNaN(num)) return val;
       return Number.isInteger(num) ? num.toString() : num.toFixed(2);
+    },
+    formatCurrency(val) {
+      const num = Number(val || 0);
+      if (isNaN(num)) return '0.00';
+      return num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     },
     async openApproveModal(req) {
       this.activeReq = req;

@@ -4,6 +4,7 @@ session_start();
 // Config now handles CORS and Autoload
 require_once "./config.php";
 require_once "./auth_utils.php";
+require_once "./audit_log_helper.php";
 
 $data = json_decode(file_get_contents("php://input"), true);
 $username = $data['username'] ?? '';
@@ -39,6 +40,15 @@ try {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user) {
+        if (isset($pdo2)) {
+            recordAuditLog($pdo2, [
+                'username' => $username,
+                'module' => 'auth',
+                'action' => 'LOGIN_FAIL',
+                'status_code' => 401,
+                'details' => "เข้าสู่ระบบไม่สำเร็จ: ไม่พบผู้ใช้งานหรือบัญชีถูกระงับ ({$username})",
+            ]);
+        }
         http_response_code(401);
         echo json_encode(["success" => false, "message" => "ไม่พบผู้ใช้งาน หรือบัญชีถูกระงับ"], JSON_UNESCAPED_UNICODE);
         exit;
@@ -58,6 +68,17 @@ try {
     }
 
     if (!$isValid) {
+        if (isset($pdo2)) {
+            recordAuditLog($pdo2, [
+                'user_id' => $user['officer_id'],
+                'username' => $user['officer_login_name'],
+                'fullname' => $user['officer_name'],
+                'module' => 'auth',
+                'action' => 'LOGIN_FAIL',
+                'status_code' => 401,
+                'details' => "เข้าสู่ระบบไม่สำเร็จ: รหัสผ่านไม่ถูกต้อง ({$username})",
+            ]);
+        }
         http_response_code(401);
         echo json_encode(["success" => false, "message" => "รหัสผ่านไม่ถูกต้อง"], JSON_UNESCAPED_UNICODE);
         exit;
@@ -95,6 +116,18 @@ try {
         $_SESSION['username'] = $user['officer_login_name'];
         $_SESSION['officer_name'] = $user['officer_name'];
         session_regenerate_id(true);
+
+        if (isset($pdo2)) {
+            recordAuditLog($pdo2, [
+                'user_id' => $user['officer_id'],
+                'username' => $user['officer_login_name'],
+                'fullname' => $user['officer_name'],
+                'module' => 'auth',
+                'action' => 'LOGIN_SUCCESS',
+                'status_code' => 200,
+                'details' => "เข้าสู่ระบบสำเร็จ ({$user['officer_login_name']})",
+            ], $pdo3 ?? null);
+        }
 
         echo json_encode([
             "success" => true,

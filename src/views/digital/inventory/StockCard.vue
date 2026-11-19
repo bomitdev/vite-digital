@@ -138,6 +138,10 @@
                     <span class="d-block text-muted small fw-bold">ยอดคงเหลือปัจจุบัน</span>
                     <span class="fs-2 fw-bold text-success">{{ formatQty(currentBalance) }}</span>
                     <span class="ms-2 text-muted">{{ selectedItem.unit_name }}</span>
+                    <div class="border-top mt-2 pt-2 d-flex justify-content-between small">
+                      <span class="text-muted">ราคา/หน่วย: <strong class="text-dark">{{ formatCurrency(currentUnitCost) }} บ.</strong></span>
+                      <span class="text-muted">ยอดรวม: <strong class="text-primary">{{ formatCurrency(currentTotalValue) }} บ.</strong></span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -146,9 +150,12 @@
               <div class="mb-4" v-if="lots.length > 0">
                 <h6 class="fw-bold text-secondary mb-2"><i class="bi bi-boxes me-1"></i> ยอดคงเหลือแยกล็อต (FEFO)</h6>
                 <div class="d-flex flex-wrap gap-2">
-                  <div class="badge bg-white text-dark border p-2 px-3 shadow-sm" v-for="l in lots" :key="l.lot_id">
+                  <div class="badge bg-white text-dark border p-2 px-3 shadow-sm text-start" v-for="l in lots" :key="l.lot_id">
                     <div class="text-muted small">Lot: {{ l.lot_number || '-' }} | Exp: <span :class="{'text-danger': isExpired(l.expiry_date)}">{{ l.expiry_date || '-' }}</span></div>
                     <div class="fw-bold text-primary mt-1 fs-6">{{ formatQty(l.balance_qty) }} {{ selectedItem.unit_name }}</div>
+                    <div class="text-muted small mt-1">
+                      {{ formatCurrency(l.unit_cost) }} บ./หน่วย • รวม <strong class="text-dark">{{ formatCurrency(Number(l.balance_qty || 0) * Number(l.unit_cost || 0)) }} บ.</strong>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -163,6 +170,7 @@
                       <th rowspan="2" class="align-middle">เอกสาร</th>
                       <th rowspan="2" class="align-middle">Lot (Exp)</th>
                       <th colspan="3">รายการเคลื่อนไหว ({{ selectedItem.unit_name }})</th>
+                      <th colspan="2">มูลค่า (บาท)</th>
                       <th rowspan="2" class="align-middle">ผู้ทำรายการ</th>
                       <th rowspan="2" class="align-middle">หมายเหตุ</th>
                     </tr>
@@ -170,11 +178,13 @@
                       <th class="text-success">รับเข้า (IN)</th>
                       <th class="text-danger">เบิกออก (OUT)</th>
                       <th class="text-primary">คงเหลือ (BAL)</th>
+                      <th class="text-secondary">ราคา/หน่วย</th>
+                      <th class="text-dark">ยอดรวม</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-if="transactions.length === 0">
-                      <td colspan="8" class="text-center text-muted py-4">ไม่พบประวัติการเคลื่อนไหว</td>
+                      <td colspan="10" class="text-center text-muted py-4">ไม่พบประวัติการเคลื่อนไหว</td>
                     </tr>
                     <tr v-for="t in transactions" :key="t.id">
                       <td class="text-center">{{ formatDateTime(t.transaction_date) }}</td>
@@ -190,6 +200,8 @@
                       <td class="text-center text-success fw-bold">{{ t.qty_in > 0 ? formatQty(t.qty_in) : '-' }}</td>
                       <td class="text-center text-danger fw-bold">{{ t.qty_out > 0 ? formatQty(t.qty_out) : '-' }}</td>
                       <td class="text-center text-primary fw-bold bg-light">{{ formatQty(t.balance_qty) }}</td>
+                      <td class="text-end text-nowrap">{{ formatCurrency(t.effective_unit_cost ?? t.unit_cost) }}</td>
+                      <td class="text-end fw-bold text-nowrap">{{ formatCurrency(t.total_value) }}</td>
                       <td class="text-center">{{ t.user_name }}</td>
                       <td class="small">{{ t.remark }}</td>
                     </tr>
@@ -245,6 +257,8 @@ export default {
       selectedItem: {},
       warehouseName: '',
       currentBalance: 0,
+      currentUnitCost: 0,
+      currentTotalValue: 0,
       lots: [],
       transactions: []
     };
@@ -283,6 +297,9 @@ export default {
   methods: {
     formatQty(val) {
       return parseFloat(val || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+    },
+    formatCurrency(val) {
+      return parseFloat(val || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     },
     formatDateTime(val) {
       if (!val) return '-';
@@ -401,6 +418,8 @@ export default {
         const res = await axios.get(`/api-digital/inventory/stock_card.php?item_id=${this.filters.item_id}&warehouse_id=${this.filters.warehouse_id}`);
         if (res.data.status === 'success') {
           this.currentBalance = res.data.current_balance;
+          this.currentUnitCost = res.data.current_unit_cost || 0;
+          this.currentTotalValue = res.data.current_total_value || 0;
           this.transactions = res.data.data || [];
         }
 

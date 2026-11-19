@@ -294,12 +294,35 @@
                 </div>
 
                 <!-- Category Selector for Official PDF Report -->
-                <div class="mb-4">
+                <div class="mb-3">
                   <label class="form-label fw-bold small text-secondary">หมวดหมู่พัสดุ</label>
                   <select class="form-select" v-model="filters.category_id" @change="fetchOfficialReport">
                     <option value="">ทั้งหมด (ทุกหมวดหมู่)</option>
                     <option v-for="c in categories" :key="c.id" :value="c.id">[{{ c.code }}] {{ c.name }}</option>
                   </select>
+                </div>
+
+                <!-- Document Number Prefix Setting -->
+                <div class="mb-4">
+                  <label class="form-label fw-bold small text-secondary">เลขที่หนังสือ (ที่ ...)</label>
+                  <div class="input-group input-group-sm">
+                    <input
+                      type="text"
+                      class="form-control"
+                      v-model="officialReport.signers.doc_no_prefix"
+                      placeholder="เช่น อจ.0033.201/"
+                    />
+                    <button
+                      type="button"
+                      class="btn btn-outline-primary fw-semibold"
+                      @click="saveOfficialReportSettings(false)"
+                      :disabled="isSavingDocSettings"
+                      title="บันทึกเลขที่หนังสือของคลังนี้"
+                    >
+                      <span v-if="isSavingDocSettings" class="spinner-border spinner-border-sm"></span>
+                      <span v-else><i class="bi bi-save me-1"></i>บันทึก</span>
+                    </button>
+                  </div>
                 </div>
 
                 <hr class="my-3 text-secondary" />
@@ -336,7 +359,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-3">
                   <span class="small text-muted fw-bold">ผู้ลงนามเอกสาร (3 ตำแหน่ง)</span>
                   <button class="btn btn-sm btn-link text-decoration-none p-0" @click="showSignerModal = true">
-                    <i class="bi bi-pencil-square me-1"></i>แก้ไขรายชื่อ
+                    <i class="bi bi-pencil-square me-1"></i>แก้ไขเลขที่ / รายชื่อ
                   </button>
                 </div>
 
@@ -970,7 +993,7 @@
       </div>
 
       <!-- Signer Modal (For Official Reports) -->
-      <div class="modal fade" id="signerModal" tabindex="-1" v-if="showSignerModal" style="display: block; background: rgba(0,0,0,0.5);">
+      <div class="modal fade show d-block" id="signerModal" tabindex="-1" role="dialog" aria-modal="true" v-if="showSignerModal" style="background: rgba(0,0,0,0.5);" @click.self="showSignerModal = false">
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content rounded-4 border-0 shadow">
             <div class="modal-header border-bottom">
@@ -1010,7 +1033,9 @@
               </div>
             </div>
             <div class="modal-footer border-top">
-              <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold" @click="showSignerModal = false">
+              <button type="button" class="btn btn-light rounded-pill px-3" @click="showSignerModal = false">ปิด</button>
+              <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold" @click="saveOfficialReportSettings(true)" :disabled="isSavingDocSettings">
+                <span v-if="isSavingDocSettings" class="spinner-border spinner-border-sm me-1"></span>
                 บันทึกการตั้งค่า
               </button>
             </div>
@@ -1049,6 +1074,7 @@ export default {
       isLoadingOfficial: false,
       isGeneratingPDF: false,
       showSignerModal: false,
+      isSavingDocSettings: false,
       officialPreviewTab: 'memo', // 'memo', 'landscape', 'status'
       
       warehouses: [],
@@ -1272,6 +1298,34 @@ export default {
         Swal.fire('ข้อผิดพลาด', 'ไม่สามารถคำนวณยอดรายงานทางการเงินได้', 'error');
       } finally {
         this.isLoadingOfficial = false;
+      }
+    },
+    async saveOfficialReportSettings(closeModal = false) {
+      const whId = Number(this.filters.warehouse_id || 1);
+      this.isSavingDocSettings = true;
+      try {
+        const res = await axios.post('/api-digital/inventory/official_report.php', {
+          warehouse_id: whId,
+          doc_no_prefix: this.officialReport.signers.doc_no_prefix || '',
+          signers: this.officialReport.signers
+        });
+        if (res.data?.status === 'success') {
+          if (closeModal) this.showSignerModal = false;
+          Swal.fire({
+            icon: 'success',
+            title: 'บันทึกสำเร็จ',
+            text: res.data.message || 'บันทึกการตั้งค่าเอกสารเรียบร้อยแล้ว',
+            timer: 1500,
+            showConfirmButton: false
+          });
+        } else {
+          Swal.fire('ข้อผิดพลาด', res.data?.message || 'ไม่สามารถบันทึกการตั้งค่าได้', 'error');
+        }
+      } catch (err) {
+        console.error('Failed to save official report settings:', err);
+        Swal.fire('ข้อผิดพลาด', err?.response?.data?.message || 'ไม่สามารถบันทึกการตั้งค่าได้', 'error');
+      } finally {
+        this.isSavingDocSettings = false;
       }
     },
     switchReportTab(tab) {

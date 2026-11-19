@@ -1106,8 +1106,8 @@ export default {
       isCollapsed: false,
       mobileOpen: false,
       openGroups: {
-        pr_po: true,
-        issue_group: true,
+        pr_po: false,
+        issue_group: false,
         transfer: false
       },
       pendingRequisitionsCount: 0,

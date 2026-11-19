@@ -114,10 +114,18 @@
             <button
               v-if="selectedGroup && members.length > 0"
               type="button"
+              class="btn btn-outline-primary btn-sm rounded-pill px-3"
+              @click="openDutyMemoModal"
+            >
+              <i class="bi bi-file-earmark-text me-1"></i> บันทึกข้อความขอขึ้นเวร
+            </button>
+            <button
+              v-if="selectedGroup && members.length > 0"
+              type="button"
               class="btn btn-dark btn-sm rounded-pill px-3"
               @click="printPage"
             >
-              <i class="bi bi-printer me-1"></i> พิมพ์
+              <i class="bi bi-printer me-1"></i> พิมพ์ตารางเวร
             </button>
           </div>
         </div>
@@ -435,15 +443,34 @@
                           <i class="bi bi-telephone me-1"></i>{{ m.phone }}
                         </small>
                       </div>
-                      <button
-                        v-if="canEditSchedule"
-                        type="button"
-                        class="btn btn-link text-danger p-0 opacity-50 hover-opacity-100 print-hide"
-                        @click="removeMember(m)"
-                        title="นำออกจากตารางเวร"
-                      >
-                        <i class="bi bi-x-circle"></i>
-                      </button>
+                      <div v-if="canEditSchedule" class="d-inline-flex align-items-center gap-1 print-hide">
+                        <button
+                          type="button"
+                          class="btn btn-link text-secondary p-0 opacity-50 hover-opacity-100"
+                          :disabled="idx === 0"
+                          @click="moveMember(idx, -1)"
+                          title="เลื่อนขึ้น"
+                        >
+                          <i class="bi bi-arrow-up-short fs-5"></i>
+                        </button>
+                        <button
+                          type="button"
+                          class="btn btn-link text-secondary p-0 opacity-50 hover-opacity-100"
+                          :disabled="idx === members.length - 1"
+                          @click="moveMember(idx, 1)"
+                          title="เลื่อนลง"
+                        >
+                          <i class="bi bi-arrow-down-short fs-5"></i>
+                        </button>
+                        <button
+                          type="button"
+                          class="btn btn-link text-danger p-0 opacity-50 hover-opacity-100"
+                          @click="removeMember(m)"
+                          title="นำออกจากตารางเวร"
+                        >
+                          <i class="bi bi-x-circle"></i>
+                        </button>
+                      </div>
                     </div>
                   </td>
 
@@ -485,14 +512,30 @@
             </div>
             <div class="row mt-4 text-center" style="font-size: 11pt;">
               <div class="col-6">
-                <div class="mb-1">(ลงชื่อ)........................................................................ ผู้จัดตารางเวร / หัวหน้ากลุ่มงาน</div>
-                <div>(........................................................................)</div>
-                <div>{{ selectedGroup.department_name }}</div>
+                <div class="text-center" style="display: inline-grid; grid-template-columns: auto auto auto; column-gap: 4px; row-gap: 2px; align-items: baseline;">
+                  <span>(ลงชื่อ)</span>
+                  <span>..................................................................</span>
+                  <span>ผู้จัดตารางเวร / หัวหน้ากลุ่มงาน</span>
+                  <span></span>
+                  <span class="text-nowrap">({{ selectedGroup.leader_name || '..................................................................' }})</span>
+                  <span></span>
+                  <span></span>
+                  <span class="text-nowrap">{{ selectedGroup.department_name }}</span>
+                  <span></span>
+                </div>
               </div>
               <div class="col-6">
-                <div class="mb-1">(ลงชื่อ)........................................................................ ผู้อนุมัติ</div>
-                <div>(นายธนากร คนเพียร)</div>
-                <div>ผู้อำนวยการโรงพยาบาลชานุมาน</div>
+                <div class="text-center" style="display: inline-grid; grid-template-columns: auto auto auto; column-gap: 4px; row-gap: 2px; align-items: baseline;">
+                  <span>(ลงชื่อ)</span>
+                  <span>..................................................................</span>
+                  <span>ผู้อนุมัติ</span>
+                  <span></span>
+                  <span class="text-nowrap">(นายธนากร คนเพียร)</span>
+                  <span></span>
+                  <span></span>
+                  <span class="text-nowrap">ผู้อำนวยการโรงพยาบาลชานุมาน</span>
+                  <span></span>
+                </div>
               </div>
             </div>
           </div>
@@ -877,6 +920,158 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal: Duty Request Memo (บันทึกข้อความขอขึ้นเวร) -->
+    <div v-if="showDutyMemoModal" class="modal-backdrop fade show"></div>
+    <div v-if="showDutyMemoModal" class="modal fade show d-block duty-memo-modal-root" tabindex="-1" @click.self="showDutyMemoModal = false">
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+          <div class="modal-header border-bottom px-4 py-3">
+            <h5 class="modal-title fw-bold">
+              <i class="bi bi-file-earmark-text text-primary me-2"></i>บันทึกข้อความขอขึ้นเวร
+            </h5>
+            <button type="button" class="btn-close" @click="showDutyMemoModal = false"></button>
+          </div>
+          <div class="modal-body p-4 bg-light">
+            <div class="row g-3">
+              <!-- Left: Editable Memo Settings -->
+              <div class="col-lg-4 duty-memo-sidebar">
+                <div class="card border-0 shadow-sm rounded-4">
+                  <div class="card-body p-3">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-sliders me-1"></i>ตั้งค่าข้อความ</h6>
+                    <div class="mb-2">
+                      <label class="form-label small fw-bold mb-1">ส่วนราชการ</label>
+                      <input type="text" class="form-control form-control-sm" v-model="dutyMemoForm.agency" />
+                    </div>
+                    <div class="row g-2 mb-2">
+                      <div class="col-6">
+                        <label class="form-label small fw-bold mb-1">ที่</label>
+                        <input type="text" class="form-control form-control-sm" v-model="dutyMemoForm.docNo" />
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label small fw-bold mb-1">วันที่</label>
+                        <input type="date" class="form-control form-control-sm" v-model="dutyMemoForm.docDate" />
+                      </div>
+                    </div>
+                    <div class="mb-2">
+                      <label class="form-label small fw-bold mb-1">เรื่อง</label>
+                      <input type="text" class="form-control form-control-sm" v-model="dutyMemoForm.subject" />
+                    </div>
+                    <div class="mb-2">
+                      <label class="form-label small fw-bold mb-1">เหตุผลความจำเป็น (ย่อหน้า 1)</label>
+                      <textarea class="form-control form-control-sm" rows="4" v-model="dutyMemoForm.reason"></textarea>
+                    </div>
+                    <div class="row g-2 mb-2">
+                      <div class="col-6">
+                        <label class="form-label small fw-bold mb-1">ผู้เสนอ (หัวหน้ากลุ่มงาน)</label>
+                        <input type="text" class="form-control form-control-sm" v-model="dutyMemoForm.leaderName" />
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label small fw-bold mb-1">ตำแหน่ง</label>
+                        <input type="text" class="form-control form-control-sm" v-model="dutyMemoForm.leaderPos" />
+                      </div>
+                    </div>
+                    <div class="form-check form-switch mt-2">
+                      <input class="form-check-input" type="checkbox" id="onlyScheduledChk" v-model="dutyMemoForm.onlyScheduled" />
+                      <label class="form-check-label small" for="onlyScheduledChk">แสดงเฉพาะผู้ที่มีเวรในเดือนนี้</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right: A4 Portrait Memo Preview -->
+              <div class="col-lg-8 duty-memo-col">
+                <div ref="dutyMemoPreview" class="bg-white shadow-sm rounded-3 mx-auto p-4 p-md-5 duty-memo-paper" style="font-family: 'TH Sarabun New', 'Sarabun', sans-serif; font-size: 16pt; color: #000; line-height: 1.15;">
+                  <div class="d-flex align-items-center mb-2">
+                    <img :src="krutImg" alt="Garuda" style="height: 2cm; width: auto;" class="me-3" />
+                    <div class="flex-grow-1 text-center" style="margin-right: 1.5cm;">
+                      <h1 class="fw-bold mb-0" style="font-size: 29pt; font-family: 'TH Sarabun New', 'Sarabun', sans-serif;">บันทึกข้อความ</h1>
+                    </div>
+                  </div>
+
+                  <div class="d-flex align-items-baseline mb-0">
+                    <span class="fw-bold text-nowrap" style="font-size: 20pt; width: 25mm; flex-shrink: 0;">ส่วนราชการ</span>
+                    <span style="font-size: 16pt;">{{ dutyMemoForm.agency }}</span>
+                  </div>
+                  <div class="row g-0 align-items-baseline">
+                    <div class="col-6 d-flex align-items-baseline">
+                      <span class="fw-bold text-nowrap" style="font-size: 18pt; width: 10mm; flex-shrink: 0;">ที่</span>
+                      <span style="font-size: 16pt;">{{ dutyMemoForm.docNo }}</span>
+                    </div>
+                    <div class="col-6 d-flex align-items-baseline">
+                      <span class="fw-bold text-nowrap" style="font-size: 20pt; width: 15mm; flex-shrink: 0;">วันที่</span>
+                      <span style="font-size: 16pt;">{{ formatThaiMemoDate(dutyMemoForm.docDate) }}</span>
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-baseline mb-0">
+                    <span class="fw-bold text-nowrap" style="font-size: 20pt; width: 15mm; flex-shrink: 0;">เรื่อง</span>
+                    <span style="font-size: 16pt;">{{ dutyMemoForm.subject }}</span>
+                  </div>
+                  <div class="d-flex align-items-baseline mb-3">
+                    <span class="fw-bold text-nowrap" style="font-size: 18pt; width: 15mm; flex-shrink: 0;">เรียน</span>
+                    <span style="font-size: 16pt;">ผู้อำนวยการโรงพยาบาลชานุมาน</span>
+                  </div>
+
+                  <p class="mb-2" style="text-indent: 25mm; text-align: justify; line-height: 1.15; font-size: 16pt;">
+                    {{ dutyMemoForm.reason }}
+                  </p>
+                  <p class="mb-2" style="text-indent: 25mm; text-align: justify; line-height: 1.15; font-size: 16pt;">
+                    ในการนี้ {{ selectedGroup?.department_name }} จึงขออนุมัติให้เจ้าหน้าที่ปฏิบัติงานนอกเวลาราชการ
+                    ประจำเดือน{{ months[selectedMonth - 1] }} {{ selectedYear + 543 }} ดังรายนามต่อไปนี้
+                  </p>
+
+                  <div class="ms-4 mb-2" style="font-size: 16pt; line-height: 1.15;">
+                    <div v-for="(emp, idx) in memoMembersList" :key="'memo-' + emp.id" class="d-flex">
+                      <span style="width: 24px; flex-shrink: 0;">{{ idx + 1 }}.</span>
+                      <span style="min-width: 195px; padding-right: 12px; white-space: nowrap;">{{ emp.person_name }}</span>
+                      <span class="text-nowrap">ตำแหน่ง {{ emp.position_name || '-' }}</span>
+                    </div>
+                    <div v-if="memoMembersList.length === 0" class="text-muted small fst-italic">
+                      - ยังไม่มีรายชื่อผู้ขึ้นเวรในเดือนนี้ -
+                    </div>
+                  </div>
+
+                  <p class="mb-2" style="text-indent: 25mm; font-size: 16pt;">จึงเรียนมาเพื่อโปรดทราบและพิจารณาอนุมัติ</p>
+
+                  <div class="ms-auto text-center mt-2 mb-2" style="width: 55%; line-height: 1.15; font-size: 16pt;">
+                    <br />
+                    <div class="mb-1">({{ dutyMemoForm.leaderName || '....................................................' }})</div>
+                    <div v-if="dutyMemoForm.leaderPos">{{ dutyMemoForm.leaderPos }}</div>
+                    <div>หัวหน้า{{ selectedGroup?.department_name }}</div>
+                  </div>
+
+                  <div class="mt-2 mb-2" style="line-height: 1.15; font-size: 16pt;">
+                    <div class="mb-1">เรียน ผู้อำนวยการโรงพยาบาลชานุมาน</div>
+                    <div class="ps-5">- ได้ตรวจสอบถูกต้องแล้ว</div>
+                    <div class="ps-5 mb-2">- เห็นควรอนุมัติ</div>
+                    <div class="text-center mt-2 text-nowrap" style="width: 42%; line-height: 1.15; font-size: 16pt;">
+                      <br />
+                      <div class="mb-1">(นายธนากร คนเพียร)</div>
+                      <div>นายแพทย์ชำนาญการ รักษาการในตำแหน่ง</div>
+                      <div>หัวหน้ากลุ่มงานบริหารทั่วไป</div>
+                    </div>
+                  </div>
+
+                  <div class="ms-auto text-center mt-2" style="width: 55%; line-height: 1.15; font-size: 16pt;">
+                    <div class="mb-1">อนุมัติ</div>
+                    <br />
+                    <div class="mt-1">(นายธนากร คนเพียร)</div>
+                    <div>นายแพทย์ชำนาญการ รักษาการในตำแหน่ง</div>
+                    <div>ผู้อำนวยการโรงพยาบาลชานุมาน</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer border-top px-4 py-3">
+            <button type="button" class="btn btn-light border rounded-pill px-4" @click="showDutyMemoModal = false">ปิด</button>
+            <button type="button" class="btn btn-dark rounded-pill px-4 fw-semibold" @click="printDutyMemo">
+              <i class="bi bi-printer me-1"></i> สั่งพิมพ์บันทึกข้อความ (A4 แนวตั้ง)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -884,6 +1079,7 @@
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
+import krutImg from '../../assets/krut.png';
 
 export default {
   name: 'DepartmentSchedule',
@@ -943,6 +1139,18 @@ export default {
       groupUsers: [],
       permUserSearch: '',
       showAllPermStaff: false,
+      krutImg,
+      showDutyMemoModal: false,
+      dutyMemoForm: {
+        agency: '',
+        docNo: 'อจ.0033/',
+        docDate: '',
+        subject: '',
+        reason: '',
+        leaderName: '',
+        leaderPos: '',
+        onlyScheduled: true
+      },
       permForm: {
         target_user_id: '',
         access_level: 'STAFF'
@@ -962,6 +1170,10 @@ export default {
     },
     canEditSchedule() {
       return this.isSystemAdmin || ['ADMIN', 'STAFF'].includes(this.selectedGroupAccess);
+    },
+    memoMembersList() {
+      if (!this.dutyMemoForm.onlyScheduled) return this.members;
+      return this.members.filter(m => this.countMemberShifts(m) > 0);
     },
     filteredPermStaffOptions() {
       const assignedIds = new Set(this.groupUsers.map(u => String(u.user_id)));
@@ -1306,6 +1518,29 @@ export default {
       });
       await this.fetchSchedule();
     },
+    async moveMember(idx, dir) {
+      const targetIdx = idx + dir;
+      if (targetIdx < 0 || targetIdx >= this.members.length) return;
+      const list = [...this.members];
+      const [moved] = list.splice(idx, 1);
+      list.splice(targetIdx, 0, moved);
+      this.members = list;
+      try {
+        const res = await axios.post('/api-digital/dept_schedule/api.php', {
+          action: 'reorder_members',
+          group_id: this.selectedGroupId,
+          member_ids: list.map(m => m.id),
+          ...this.authPayload()
+        });
+        if (res.data?.status !== 'success') {
+          Swal.fire('ไม่สามารถบันทึกลำดับได้', res.data?.message || 'เกิดข้อผิดพลาด', 'error');
+          await this.fetchSchedule();
+        }
+      } catch (err) {
+        console.error('Reorder failed:', err);
+        await this.fetchSchedule();
+      }
+    },
     async toggleCell(member, day) {
       const dayKey = String(day);
       const current = member.duties?.[dayKey] || '';
@@ -1392,7 +1627,17 @@ export default {
       const fname = `${this.selectedGroup?.title || 'ตารางเวร'}_${this.months[this.selectedMonth - 1]}_${this.selectedYear + 543}.xlsx`;
       XLSX.writeFile(wb, fname);
     },
+    setPrintPageRule(ruleCss) {
+      let styleEl = document.getElementById('dept-schedule-print-page');
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'dept-schedule-print-page';
+        document.head.appendChild(styleEl);
+      }
+      styleEl.textContent = ruleCss;
+    },
     printPage() {
+      this.setPrintPageRule('@page { size: A4 landscape; margin: 10mm 14mm; }');
       window.print();
     },
     getMophChannelLabel(code) {
@@ -1531,12 +1776,67 @@ export default {
         ...this.authPayload()
       });
       await this.fetchGroupUsers();
+    },
+    openDutyMemoModal() {
+      const g = this.selectedGroup;
+      if (!g) return;
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const bookPrefix = g.book_num ? (g.book_num.endsWith('/') ? g.book_num : `${g.book_num}/`) : 'อจ.0033/';
+      this.dutyMemoForm = {
+        agency: `${g.department_name} โรงพยาบาลชานุมาน`,
+        docNo: bookPrefix,
+        docDate: `${yyyy}-${mm}-${dd}`,
+        subject: `ขออนุมัติปฏิบัติงานนอกเวลาราชการ (${g.department_name})`,
+        reason: `ด้วย${g.department_name} มีความจำเป็นต้องจัดเจ้าหน้าที่ขึ้นปฏิบัติงานนอกเวลาราชการ เพื่อดูแลให้บริการผู้ป่วยและงานราชการได้อย่างต่อเนื่องและมีประสิทธิภาพ`,
+        leaderName: g.leader_name || '',
+        leaderPos: g.leader_position || '',
+        onlyScheduled: true
+      };
+      this.showDutyMemoModal = true;
+    },
+    formatThaiMemoDate(dateStr) {
+      if (!dateStr) return '-';
+      const parts = String(dateStr).split('-');
+      if (parts.length !== 3) return dateStr;
+      const y = parseInt(parts[0], 10) + 543;
+      const m = parseInt(parts[1], 10);
+      const d = parseInt(parts[2], 10);
+      return `${d} ${this.months[m - 1] || ''} ${y}`;
+    },
+    printDutyMemo() {
+      this.setPrintPageRule('@page { size: A4 portrait; margin: 0; }');
+      document.body.classList.add('printing-duty-memo');
+      const cleanup = () => {
+        document.body.classList.remove('printing-duty-memo');
+        this.setPrintPageRule('@page { size: A4 landscape; margin: 10mm 14mm; }');
+        window.removeEventListener('afterprint', cleanup);
+      };
+      window.addEventListener('afterprint', cleanup);
+      this.$nextTick(() => {
+        window.print();
+        setTimeout(cleanup, 1500);
+      });
     }
   }
 };
 </script>
 
 <style scoped>
+@font-face {
+  font-family: 'TH Sarabun New';
+  src: url('/fonts/THSarabun.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'TH Sarabun New';
+  src: url('/fonts/THSarabun%20Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
 .header-icon-box {
   width: 44px;
   height: 44px;
@@ -1637,19 +1937,15 @@ export default {
 }
 
 @media print {
-  @page {
-    size: A4 landscape;
-    margin: 10mm 10mm;
-  }
-
   .print-hide {
     display: none !important;
   }
 
   .dept-schedule-page {
-    padding: 0 !important;
+    padding: 0 10mm !important;
     margin: 0 !important;
     max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .print-sheet {
@@ -1716,6 +2012,67 @@ export default {
     min-width: 30px !important;
     color: #000 !important;
     background-color: transparent !important;
+  }
+}
+</style>
+
+<style>
+@media print {
+  body.printing-duty-memo header,
+  body.printing-duty-memo nav,
+  body.printing-duty-memo .navbar,
+  body.printing-duty-memo footer,
+  body.printing-duty-memo .dept-schedule-page > *:not(.duty-memo-modal-root),
+  body.printing-duty-memo .modal-backdrop,
+  body.printing-duty-memo .duty-memo-sidebar,
+  body.printing-duty-memo .modal-header,
+  body.printing-duty-memo .modal-footer {
+    display: none !important;
+  }
+
+  body.printing-duty-memo .dept-schedule-page {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  body.printing-duty-memo .duty-memo-modal-root {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  body.printing-duty-memo .duty-memo-modal-root .modal-dialog,
+  body.printing-duty-memo .duty-memo-modal-root .modal-content,
+  body.printing-duty-memo .duty-memo-modal-root .modal-body,
+  body.printing-duty-memo .duty-memo-modal-root .row,
+  body.printing-duty-memo .duty-memo-col {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    overflow: visible !important;
+  }
+
+  body.printing-duty-memo .duty-memo-paper {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 2.3cm 2cm 2cm 3cm !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
   }
 }
 </style>

@@ -62,9 +62,36 @@ try {
             w.code as warehouse_code,
             (SELECT COUNT(*) FROM inv_requisition_items WHERE requisition_id = r.id) as item_count,
             (SELECT SUM(qty_requested) FROM inv_requisition_items WHERE requisition_id = r.id) as total_qty_requested,
-            (SELECT SUM(qty_approved) FROM inv_requisition_items WHERE requisition_id = r.id) as total_qty_approved
+            (SELECT SUM(qty_approved) FROM inv_requisition_items WHERE requisition_id = r.id) as total_qty_approved,
+            COALESCE(
+                NULLIF(iss.total_amount, 0),
+                (
+                    SELECT SUM(
+                        (CASE WHEN r.status = 'APPROVED' AND ri.qty_approved > 0 THEN ri.qty_approved ELSE ri.qty_requested END) *
+                        COALESCE(
+                            NULLIF((SELECT l.unit_cost FROM inv_stock_lots l WHERE l.id = ri.lot_id LIMIT 1), 0),
+                            NULLIF(it.ave_rate, 0),
+                            NULLIF(it.standard_price, 0),
+                            NULLIF(it.last_purchase_price, 0),
+                            NULLIF((
+                                SELECT l2.unit_cost
+                                FROM inv_stock_lots l2
+                                WHERE l2.item_id = ri.item_id AND l2.warehouse_id = r.warehouse_id AND l2.balance_qty > 0
+                                ORDER BY CASE WHEN l2.expiry_date IS NULL THEN 1 ELSE 0 END, l2.expiry_date ASC, l2.id ASC
+                                LIMIT 1
+                            ), 0),
+                            0
+                        )
+                    )
+                    FROM inv_requisition_items ri
+                    LEFT JOIN inv_items it ON it.id = ri.item_id
+                    WHERE ri.requisition_id = r.id
+                ),
+                0
+            ) as total_amount
         FROM inv_requisitions r
         LEFT JOIN inv_warehouses w ON r.warehouse_id = w.id
+        LEFT JOIN inv_issues iss ON r.issue_id = iss.id
         WHERE $whereClause
         ORDER BY 
             CASE WHEN r.status = 'PENDING' THEN 0 ELSE 1 END,

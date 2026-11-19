@@ -9,6 +9,52 @@ if (!isset($pdo2)) {
     exit;
 }
 
+// Ensure warehouse report settings columns exist
+try {
+    $colCheck1 = $pdo2->query("SHOW COLUMNS FROM inv_warehouses LIKE 'doc_no_prefix'");
+    if (!$colCheck1 || !$colCheck1->fetch(PDO::FETCH_ASSOC)) {
+        $pdo2->exec("ALTER TABLE inv_warehouses ADD COLUMN doc_no_prefix VARCHAR(100) NULL DEFAULT NULL");
+    }
+    $colCheck2 = $pdo2->query("SHOW COLUMNS FROM inv_warehouses LIKE 'report_signers_json'");
+    if (!$colCheck2 || !$colCheck2->fetch(PDO::FETCH_ASSOC)) {
+        $pdo2->exec("ALTER TABLE inv_warehouses ADD COLUMN report_signers_json TEXT NULL DEFAULT NULL");
+    }
+} catch (Exception $e) {
+    // ignore if insufficient privileges
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    $whId = (int)($input['warehouse_id'] ?? 0);
+    $docNoPrefix = trim((string)($input['doc_no_prefix'] ?? ''));
+    $signersInput = isset($input['signers']) && is_array($input['signers']) ? $input['signers'] : null;
+
+    if ($whId <= 0) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'ไม่พบรหัสคลังวัสดุ']);
+        exit;
+    }
+
+    try {
+        if ($signersInput !== null) {
+            if ($docNoPrefix === '' && isset($signersInput['doc_no_prefix'])) {
+                $docNoPrefix = trim((string)$signersInput['doc_no_prefix']);
+            }
+            $signersJson = json_encode($signersInput, JSON_UNESCAPED_UNICODE);
+            $stUpd = $pdo2->prepare("UPDATE inv_warehouses SET doc_no_prefix = ?, report_signers_json = ? WHERE id = ?");
+            $stUpd->execute([$docNoPrefix !== '' ? $docNoPrefix : null, $signersJson, $whId]);
+        } else {
+            $stUpd = $pdo2->prepare("UPDATE inv_warehouses SET doc_no_prefix = ? WHERE id = ?");
+            $stUpd->execute([$docNoPrefix !== '' ? $docNoPrefix : null, $whId]);
+        }
+        echo json_encode(['status' => 'success', 'message' => 'บันทึกเลขที่หนังสือและการตั้งค่าเรียบร้อยแล้ว']);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+    exit;
+}
+
 $warehouse_id = isset($_GET['warehouse_id']) && $_GET['warehouse_id'] !== '' ? (int)$_GET['warehouse_id'] : 1;
 $report_mode = isset($_GET['report_mode']) ? trim($_GET['report_mode']) : 'monthly';
 $category_id = isset($_GET['category_id']) && $_GET['category_id'] !== '' ? (int)$_GET['category_id'] : null;
@@ -77,6 +123,20 @@ try {
             'signer3_pos' => 'นายแพทย์ชำนาญการ รักษาการในตำแหน่ง',
             'signer3_title' => 'ผู้อำนวยการโรงพยาบาลชานุมาน'
         ];
+    }
+
+    if ($warehouse && !empty($warehouse['report_signers_json'])) {
+        $savedSigners = json_decode($warehouse['report_signers_json'], true);
+        if (is_array($savedSigners)) {
+            foreach ($savedSigners as $k => $v) {
+                if (array_key_exists($k, $signers) && $v !== null && $v !== '') {
+                    $signers[$k] = $v;
+                }
+            }
+        }
+    }
+    if ($warehouse && !empty($warehouse['doc_no_prefix'])) {
+        $signers['doc_no_prefix'] = $warehouse['doc_no_prefix'];
     }
 
     // 2. Fetch Items in this warehouse

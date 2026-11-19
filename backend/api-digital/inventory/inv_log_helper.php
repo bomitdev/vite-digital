@@ -7,6 +7,7 @@
  */
 
 require_once __DIR__ . '/../../auth_utils.php';
+require_once __DIR__ . '/../../audit_log_helper.php';
 
 function ensureInvActivityLogsTable(PDO $pdo2): void
 {
@@ -182,6 +183,24 @@ function recordInvActivityLog(PDO $pdo2, array $entry, ?PDO $pdo3 = null): void
             ':ip' => getInvRequestClientIp(),
             ':ua' => $ua !== '' ? $ua : null,
         ]);
+
+        // Mirror inventory activity to Central Audit Log (90-day retention)
+        recordAuditLog($pdo2, [
+            'user_id' => $actor['user_id'],
+            'username' => $actor['username'],
+            'fullname' => $actor['user_fullname'],
+            'module' => 'inventory',
+            'action' => $entry['action'] ?? 'ACTION',
+            'target_type' => $entry['target_type'] ?? null,
+            'target_id' => $entry['target_id'] ?? null,
+            'status_code' => 200,
+            'details' => $entry['details'] ?? null,
+            'meta' => [
+                'warehouse_id' => $whId,
+                'warehouse_name' => $whName,
+                'page_code' => $entry['page_code'] ?? 'inventory',
+            ],
+        ], $pdo3);
     } catch (Throwable $e) {
         // Logging must never crash primary inventory operations
         error_log('inv_activity_logs error: ' . $e->getMessage());

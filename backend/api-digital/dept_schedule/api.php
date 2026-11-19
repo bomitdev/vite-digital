@@ -176,6 +176,67 @@ try {
             $g['notify_enabled'] = (int)($g['notify_enabled'] ?? 0);
             $g['notify_days'] = $g['notify_days'] ?: '1,2,3,4,5,6,7';
             $g['notify_time'] = $g['notify_time'] ?: '08:00';
+            $g['leader_name'] = '';
+            $g['leader_position'] = '';
+            $g['book_num'] = '';
+
+            if (isset($pdo3)) {
+                try {
+                    $leaderId = null;
+                    $bookNum = '';
+                    if ($g['department_id']) {
+                        $stLeader = $pdo3->prepare("
+                            SELECT COALESCE(NULLIF(ds.LEADER_HR_ID, ''), NULLIF(d.LEADER_HR_ID, '')) AS leader_id,
+                                   COALESCE(NULLIF(ds.BOOK_NUM, ''), NULLIF(d.BOOK_NUM, ''), '') AS book_num
+                            FROM hr_department_sub ds
+                            LEFT JOIN hr_department d ON ds.HR_DEPARTMENT_ID = d.HR_DEPARTMENT_ID
+                            WHERE ds.HR_DEPARTMENT_SUB_ID = ?
+                            LIMIT 1
+                        ");
+                        $stLeader->execute([$g['department_id']]);
+                        $ldRow = $stLeader->fetch(PDO::FETCH_ASSOC);
+                        $leaderId = $ldRow['leader_id'] ?? null;
+                        $bookNum = trim((string)($ldRow['book_num'] ?? ''));
+                    }
+                    if (!$leaderId && !empty($g['department_name'])) {
+                        $stLeader2 = $pdo3->prepare("
+                            SELECT COALESCE(NULLIF(ds.LEADER_HR_ID, ''), NULLIF(d.LEADER_HR_ID, '')) AS leader_id,
+                                   COALESCE(NULLIF(ds.BOOK_NUM, ''), NULLIF(d.BOOK_NUM, ''), '') AS book_num
+                            FROM hr_department_sub ds
+                            LEFT JOIN hr_department d ON ds.HR_DEPARTMENT_ID = d.HR_DEPARTMENT_ID
+                            WHERE ds.HR_DEPARTMENT_SUB_NAME = ? OR d.HR_DEPARTMENT_NAME = ?
+                            LIMIT 1
+                        ");
+                        $stLeader2->execute([$g['department_name'], $g['department_name']]);
+                        $ldRow2 = $stLeader2->fetch(PDO::FETCH_ASSOC);
+                        $leaderId = $ldRow2['leader_id'] ?? null;
+                        if ($bookNum === '') {
+                            $bookNum = trim((string)($ldRow2['book_num'] ?? ''));
+                        }
+                    }
+                    $g['book_num'] = $bookNum;
+                    if ($leaderId) {
+                        $stPerson = $pdo3->prepare("
+                            SELECT TRIM(CONCAT(COALESCE(pf.HR_PREFIX_NAME, ''), p.HR_FNAME, ' ', p.HR_LNAME)) AS fullname,
+                                   TRIM(CONCAT(COALESCE(pos.HR_POSITION_NAME, ''), IF(hl.HR_LEVEL_NAME IS NOT NULL AND hl.HR_LEVEL_NAME != '', CONCAT('', hl.HR_LEVEL_NAME), ''))) AS position_name
+                            FROM hr_person p
+                            LEFT JOIN hr_prefix pf ON p.HR_PREFIX_ID = pf.HR_PREFIX_ID
+                            LEFT JOIN hr_position pos ON p.HR_POSITION_ID = pos.HR_POSITION_ID
+                            LEFT JOIN hr_level hl ON p.HR_LEVEL_ID = hl.HR_LEVEL_ID
+                            WHERE p.ID = ?
+                            LIMIT 1
+                        ");
+                        $stPerson->execute([(int)$leaderId]);
+                        $pRow = $stPerson->fetch(PDO::FETCH_ASSOC);
+                        if ($pRow) {
+                            $g['leader_name'] = trim((string)($pRow['fullname'] ?? ''));
+                            $g['leader_position'] = trim((string)($pRow['position_name'] ?? ''));
+                        }
+                    }
+                } catch (Throwable $e) {
+                    // ignore HR lookup errors
+                }
+            }
         }
         echo json_encode(['status' => 'success', 'data' => $groups], JSON_UNESCAPED_UNICODE);
         exit;
@@ -350,9 +411,36 @@ try {
             $entriesMap[$mid][$day] = $row['shift_code'];
         }
 
+        $posMap = [];
+        if (isset($pdo3) && !empty($members)) {
+            $personIds = array_values(array_unique(array_filter(array_map(function ($x) {
+                return (int)($x['person_id'] ?? 0);
+            }, $members))));
+            if (!empty($personIds)) {
+                try {
+                    $ph = implode(',', array_fill(0, count($personIds), '?'));
+                    $stPos = $pdo3->prepare("
+                        SELECT p.ID,
+                               TRIM(CONCAT(COALESCE(pos.HR_POSITION_NAME, ''), IF(hl.HR_LEVEL_NAME IS NOT NULL AND hl.HR_LEVEL_NAME != '', CONCAT('', hl.HR_LEVEL_NAME), ''))) AS position_name
+                        FROM hr_person p
+                        LEFT JOIN hr_position pos ON p.HR_POSITION_ID = pos.HR_POSITION_ID
+                        LEFT JOIN hr_level hl ON p.HR_LEVEL_ID = hl.HR_LEVEL_ID
+                        WHERE p.ID IN ($ph)
+                    ");
+                    $stPos->execute($personIds);
+                    while ($pr = $stPos->fetch(PDO::FETCH_ASSOC)) {
+                        $posMap[(int)$pr['ID']] = trim((string)($pr['position_name'] ?? ''));
+                    }
+                } catch (Throwable $e) {
+                    // ignore position lookup errors
+                }
+            }
+        }
+
         foreach ($members as &$m) {
             $m['id'] = (int)$m['id'];
             $m['person_id'] = $m['person_id'] ? (int)$m['person_id'] : null;
+            $m['position_name'] = ($m['person_id'] && isset($posMap[$m['person_id']])) ? $posMap[$m['person_id']] : '';
             $m['duties'] = $entriesMap[(string)$m['id']] ?? (object)[];
         }
 
@@ -409,6 +497,30 @@ try {
         if ($member_id > 0) {
             $stmt = $pdo2->prepare("UPDATE dept_schedule_members SET active = 0 WHERE id = ?");
             $stmt->execute([$member_id]);
+        }
+        echo json_encode(['status' => 'success'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    if ($action === 'reorder_members') {
+        $group_id = (int)($body['group_id'] ?? 0);
+        $member_ids = $body['member_ids'] ?? [];
+        $callerAccess = getUserGroupAccessLevel($pdo2, $group_id, $req_user_id, $req_is_admin);
+        if (!in_array($callerAccess, ['ADMIN', 'STAFF'])) {
+            echo json_encode(['status' => 'error', 'message' => 'ไม่มีสิทธิ์เรียงลำดับรายชื่อในตารางเวรนี้'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+        if ($group_id > 0 && is_array($member_ids) && !empty($member_ids)) {
+            $pdo2->beginTransaction();
+            $upd = $pdo2->prepare("UPDATE dept_schedule_members SET sort_order = ? WHERE id = ? AND group_id = ?");
+            $pos = 1;
+            foreach ($member_ids as $mid) {
+                $midInt = (int)$mid;
+                if ($midInt > 0) {
+                    $upd->execute([$pos++, $midInt, $group_id]);
+                }
+            }
+            $pdo2->commit();
         }
         echo json_encode(['status' => 'success'], JSON_UNESCAPED_UNICODE);
         exit;
