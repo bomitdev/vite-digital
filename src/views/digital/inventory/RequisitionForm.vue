@@ -830,7 +830,8 @@ export default {
           Swal.fire('ข้อผิดพลาด', res.data.message, 'error');
         }
       } catch (err) {
-        Swal.fire('ข้อผิดพลาด', 'ระบบขัดข้อง กรุณาลองใหม่อีกครั้ง', 'error');
+        const msg = err?.response?.data?.message || 'ระบบขัดข้อง กรุณาลองใหม่อีกครั้ง';
+        Swal.fire('ข้อผิดพลาด', msg, 'error');
       } finally {
         this.submitting = false;
       }

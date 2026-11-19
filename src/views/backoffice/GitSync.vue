@@ -162,10 +162,11 @@ export default {
           name: 'สคริปต์แจ้งเตือนอัตโนมัติ (MOPH Notify Cron)',
           badge: 'cron scripts',
           icon: 'bi-bell-fill',
-          desc: 'cron_daily_repair_notify.php, cron_daily_schedule_notify.php, run-daily-notify.bat/vbs',
+          desc: 'cron_daily_repair_notify.php, cron_daily_schedule_notify.php, cron_daily_dept_schedule_notify.php, run-daily-notify.bat/vbs',
           paths: [
             'cron_daily_repair_notify.php',
             'cron_daily_schedule_notify.php',
+            'cron_daily_dept_schedule_notify.php',
             'run-daily-notify.bat',
             'run-daily-notify.vbs'
           ]

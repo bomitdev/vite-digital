@@ -5,3 +5,4 @@ if not exist "%PHP_EXE%" set PHP_EXE=php
 
 "%PHP_EXE%" "%~dp0cron_daily_schedule_notify.php" --auto
 "%PHP_EXE%" "%~dp0cron_daily_repair_notify.php" --auto
+"%PHP_EXE%" "%~dp0cron_daily_dept_schedule_notify.php" --auto

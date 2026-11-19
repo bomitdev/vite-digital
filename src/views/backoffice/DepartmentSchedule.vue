@@ -1,7 +1,7 @@
 <template>
   <div class="dept-schedule-page container-fluid py-4 px-3 px-lg-4">
     <!-- Header Card -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card border-0 shadow-sm rounded-4 mb-4 print-hide">
       <div class="card-body p-3 p-lg-4">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
           <div class="d-flex align-items-center gap-3">
@@ -168,9 +168,14 @@
                   <small class="text-muted">{{ g.department_name }}</small>
                 </td>
                 <td>
-                  <span v-if="g.notify_channel" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">
-                    <i class="bi bi-bell-fill me-1"></i>{{ getMophChannelLabel(g.notify_channel) }}
-                  </span>
+                  <div v-if="g.notify_channel">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">
+                      <i class="bi bi-bell-fill me-1"></i>{{ getMophChannelLabel(g.notify_channel) }}
+                    </span>
+                    <div v-if="g.notify_enabled" class="small text-muted mt-1">
+                      <i class="bi bi-clock me-1"></i>{{ formatNotifyDays(g.notify_days) }} เวลา {{ g.notify_time || '08:00' }} น.
+                    </div>
+                  </div>
                   <small v-else class="text-muted">- ไม่แจ้งเตือน -</small>
                 </td>
                 <td>
@@ -349,8 +354,18 @@
       </div>
 
       <!-- Schedule Table -->
-      <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-        <div class="card-header bg-white border-bottom px-4 py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden print-sheet">
+        <!-- Official Print Header (Visible only when printing) -->
+        <div class="d-none d-print-block text-center mb-2 pt-1">
+          <h5 class="fw-bold mb-1 text-dark" style="font-size: 14pt;">
+            {{ selectedGroup.title }} โรงพยาบาลชานุมาน
+          </h5>
+          <div class="fw-semibold text-dark" style="font-size: 12pt;">
+            {{ selectedGroup.department_name }} • ประจำเดือน {{ months[selectedMonth - 1] }} พ.ศ. {{ selectedYear + 543 }}
+          </div>
+        </div>
+
+        <div class="card-header bg-white border-bottom px-4 py-3 d-flex flex-wrap justify-content-between align-items-center gap-2 print-hide">
           <div>
             <div class="d-flex flex-wrap align-items-center gap-2">
               <h5 class="fw-bold mb-0 text-dark">
@@ -388,10 +403,11 @@
             </button>
           </div>
 
-          <div v-else class="table-responsive">
+          <div v-else class="table-responsive print-table-wrap">
             <table class="table table-bordered align-middle mb-0 schedule-table">
               <thead>
                 <tr>
+                  <th class="text-center d-none d-print-table-cell" style="width: 34px;">ลำดับ</th>
                   <th class="sticky-col text-start ps-3" style="min-width: 220px;">ชื่อ - สกุล</th>
                   <th
                     v-for="day in daysInMonth"
@@ -409,12 +425,13 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="m in members" :key="m.id">
+                <tr v-for="(m, idx) in members" :key="m.id">
+                  <td class="text-center d-none d-print-table-cell">{{ idx + 1 }}</td>
                   <td class="sticky-col text-start ps-3">
                     <div class="d-flex justify-content-between align-items-center gap-2">
                       <div>
                         <div class="fw-semibold text-dark text-nowrap">{{ m.person_name }}</div>
-                        <small v-if="m.phone" class="text-muted font-monospace">
+                        <small v-if="m.phone" class="text-muted font-monospace print-hide">
                           <i class="bi bi-telephone me-1"></i>{{ m.phone }}
                         </small>
                       </div>
@@ -456,6 +473,28 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- Official Print Footer: Legend & Signatures (Visible only when printing) -->
+          <div class="d-none d-print-block mt-3 px-2 print-footer">
+            <div class="mb-3" style="font-size: 10pt;">
+              <strong>หมายเหตุ :</strong>
+              <span v-for="st in selectedGroup.shift_types" :key="'leg-' + st.code" class="ms-3">
+                <strong>{{ st.code }}</strong> = {{ st.label }}
+              </span>
+            </div>
+            <div class="row mt-4 text-center" style="font-size: 11pt;">
+              <div class="col-6">
+                <div class="mb-1">(ลงชื่อ)........................................................................ ผู้จัดตารางเวร / หัวหน้ากลุ่มงาน</div>
+                <div>(........................................................................)</div>
+                <div>{{ selectedGroup.department_name }}</div>
+              </div>
+              <div class="col-6">
+                <div class="mb-1">(ลงชื่อ)........................................................................ ผู้อนุมัติ</div>
+                <div>(นายธนากร คนเพียร)</div>
+                <div>ผู้อำนวยการโรงพยาบาลชานุมาน</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -527,12 +566,74 @@
                 <label class="form-label fw-bold small">
                   <i class="bi bi-bell-fill text-success me-1"></i>ช่องทางแจ้งเตือน MOPH Notify (Channel)
                 </label>
-                <select class="form-select" v-model="groupForm.notify_channel">
-                  <option value="">-- ไม่ส่งแจ้งเตือน --</option>
-                  <option v-for="ch in mophChannels" :key="ch.channel_code" :value="ch.channel_code">
-                    {{ ch.channel_name }} ({{ ch.channel_code }})
-                  </option>
-                </select>
+                <div class="d-flex gap-2">
+                  <select class="form-select" v-model="groupForm.notify_channel">
+                    <option value="">-- ไม่ส่งแจ้งเตือน --</option>
+                    <option v-for="ch in mophChannels" :key="ch.channel_code" :value="ch.channel_code">
+                      {{ ch.channel_name }} ({{ ch.channel_code }})
+                    </option>
+                  </select>
+                  <button
+                    v-if="groupForm.notify_channel"
+                    type="button"
+                    class="btn btn-outline-success text-nowrap fw-semibold px-3"
+                    @click="testNotifyChannel"
+                    :disabled="sendingNotify"
+                  >
+                    <span v-if="sendingNotify" class="spinner-border spinner-border-sm me-1"></span>
+                    <i v-else class="bi bi-send-check me-1"></i>
+                    ทดสอบส่ง
+                  </button>
+                </div>
+              </div>
+
+              <!-- Auto Notify Schedule (Days & Time) -->
+              <div v-if="groupForm.notify_channel" class="col-12">
+                <div class="border rounded-3 p-3 bg-light-subtle">
+                  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                    <div class="form-check form-switch mb-0">
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        id="deptNotifyEnabled"
+                        v-model="groupForm.notify_enabled"
+                      />
+                      <label class="form-check-label fw-bold small" for="deptNotifyEnabled">
+                        เปิดแจ้งเตือนเวรอัตโนมัติ (ตามวันและเวลาที่กำหนด)
+                      </label>
+                    </div>
+                    <div v-if="groupForm.notify_enabled" class="d-flex gap-1">
+                      <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0" style="font-size: 0.72rem;" @click="groupForm.notify_days = [1,2,3,4,5,6,7]">
+                        ทุกวัน
+                      </button>
+                      <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0" style="font-size: 0.72rem;" @click="groupForm.notify_days = [1,2,3,4,5]">
+                        จ-ศ
+                      </button>
+                    </div>
+                  </div>
+
+                  <div v-if="groupForm.notify_enabled" class="row g-2 align-items-center mt-1">
+                    <div class="col-12 col-md-8">
+                      <label class="form-label small text-muted mb-1">วันที่ต้องการแจ้งเตือน</label>
+                      <div class="d-flex flex-wrap gap-1">
+                        <button
+                          v-for="wd in weekdayOptions"
+                          :key="wd.val"
+                          type="button"
+                          class="btn btn-sm rounded-pill px-2 fw-semibold"
+                          :class="groupForm.notify_days.includes(wd.val) ? 'btn-success' : 'btn-outline-secondary bg-white'"
+                          @click="toggleNotifyDay(wd.val)"
+                        >
+                          {{ wd.label }}
+                        </button>
+                      </div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label small text-muted mb-1">เวลาที่แจ้งเตือน</label>
+                      <input type="time" class="form-control form-control-sm" v-model="groupForm.notify_time" />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -800,6 +901,15 @@ export default {
       allStaff: [],
       mophChannels: [],
       sendingNotify: false,
+      weekdayOptions: [
+        { val: 1, label: 'จ' },
+        { val: 2, label: 'อ' },
+        { val: 3, label: 'พ' },
+        { val: 4, label: 'พฤ' },
+        { val: 5, label: 'ศ' },
+        { val: 6, label: 'ส' },
+        { val: 7, label: 'อา' }
+      ],
       selectedMonth: now.getMonth() + 1,
       selectedYear: curY,
       yearOptions: [curY - 1, curY, curY + 1],
@@ -815,6 +925,9 @@ export default {
         department_name: '',
         title: '',
         notify_channel: '',
+        notify_enabled: false,
+        notify_days: [1, 2, 3, 4, 5, 6, 7],
+        notify_time: '08:00',
         shift_types: []
       },
       showMemberModal: false,
@@ -1013,12 +1126,19 @@ export default {
     },
     openGroupModal(group = null) {
       if (group) {
+        const parsedDays = String(group.notify_days || '1,2,3,4,5,6,7')
+          .split(',')
+          .map(Number)
+          .filter(n => n >= 1 && n <= 7);
         this.groupForm = {
           id: group.id,
           department_id: group.department_id || '',
           department_name: group.department_name,
           title: group.title,
           notify_channel: group.notify_channel || '',
+          notify_enabled: Number(group.notify_enabled) === 1,
+          notify_days: parsedDays.length > 0 ? parsedDays : [1, 2, 3, 4, 5, 6, 7],
+          notify_time: group.notify_time || '08:00',
           shift_types: JSON.parse(JSON.stringify(group.shift_types || []))
         };
       } else {
@@ -1028,6 +1148,9 @@ export default {
           department_name: '',
           title: '',
           notify_channel: '',
+          notify_enabled: false,
+          notify_days: [1, 2, 3, 4, 5, 6, 7],
+          notify_time: '08:00',
           shift_types: [
             { code: 'ช', label: 'เวรเช้า', color: '#0ea5e9' },
             { code: 'บ', label: 'เวรบ่าย', color: '#f59e0b' },
@@ -1074,6 +1197,9 @@ export default {
           department_name: this.groupForm.department_name.trim(),
           title: this.groupForm.title.trim(),
           notify_channel: this.groupForm.notify_channel || '',
+          notify_enabled: this.groupForm.notify_enabled ? 1 : 0,
+          notify_days: this.groupForm.notify_days,
+          notify_time: this.groupForm.notify_time || '08:00',
           shift_types: validShifts,
           created_by: this.currentUserId || null,
           ...this.authPayload()
@@ -1274,6 +1400,24 @@ export default {
       const ch = this.mophChannels.find(c => c.channel_code === code);
       return ch ? `${ch.channel_name} (${ch.channel_code})` : code;
     },
+    toggleNotifyDay(val) {
+      const idx = this.groupForm.notify_days.indexOf(val);
+      if (idx >= 0) {
+        if (this.groupForm.notify_days.length > 1) {
+          this.groupForm.notify_days.splice(idx, 1);
+        }
+      } else {
+        this.groupForm.notify_days.push(val);
+        this.groupForm.notify_days.sort((a, b) => a - b);
+      }
+    },
+    formatNotifyDays(daysStr) {
+      const arr = String(daysStr || '1,2,3,4,5,6,7').split(',').map(Number).filter(n => n >= 1 && n <= 7);
+      if (arr.length === 7) return 'ทุกวัน';
+      if (arr.join(',') === '1,2,3,4,5') return 'จ-ศ';
+      const names = { 1: 'จ', 2: 'อ', 3: 'พ', 4: 'พฤ', 5: 'ศ', 6: 'ส', 7: 'อา' };
+      return arr.map(n => names[n]).join(', ');
+    },
     async sendTodayNotify() {
       if (!this.selectedGroupId) return;
       this.sendingNotify = true;
@@ -1290,6 +1434,28 @@ export default {
         }
       } catch (err) {
         Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการส่งแจ้งเตือน MOPH Notify', 'error');
+      } finally {
+        this.sendingNotify = false;
+      }
+    },
+    async testNotifyChannel() {
+      if (!this.groupForm.notify_channel) return;
+      this.sendingNotify = true;
+      try {
+        const res = await axios.post('/api-digital/dept_schedule/api.php', {
+          action: 'test_notify',
+          channel_code: this.groupForm.notify_channel,
+          title: this.groupForm.title || this.groupForm.department_name || 'ตารางเวรกลุ่มงาน',
+          group_id: this.groupForm.id || 0,
+          ...this.authPayload()
+        });
+        if (res.data?.status === 'success') {
+          Swal.fire('ทดสอบส่งสำเร็จ', res.data.message || 'ส่งข้อความทดสอบเข้า MOPH Notify เรียบร้อยแล้ว', 'success');
+        } else {
+          Swal.fire('ส่งไม่สำเร็จ', res.data?.message || 'ไม่สามารถส่งแจ้งเตือนได้', 'warning');
+        }
+      } catch (err) {
+        Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการทดสอบส่ง MOPH Notify', 'error');
       } finally {
         this.sendingNotify = false;
       }
@@ -1471,8 +1637,85 @@ export default {
 }
 
 @media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm 10mm;
+  }
+
   .print-hide {
     display: none !important;
+  }
+
+  .dept-schedule-page {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .print-sheet {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+  }
+
+  .print-table-wrap {
+    overflow: visible !important;
+  }
+
+  .schedule-table {
+    width: 100% !important;
+    font-size: 9pt !important;
+    border-color: #000 !important;
+  }
+
+  .schedule-table th,
+  .schedule-table td {
+    border-color: #000 !important;
+    padding: 2px 3px !important;
+    color: #000 !important;
+  }
+
+  .sticky-col {
+    position: static !important;
+    min-width: 145px !important;
+    border-right: 1px solid #000 !important;
+    padding-left: 6px !important;
+  }
+
+  .day-header,
+  .day-cell {
+    min-width: 19px !important;
+    width: 21px !important;
+    padding: 2px 1px !important;
+  }
+
+  .day-name {
+    font-size: 7pt !important;
+  }
+
+  .is-weekend-col {
+    background-color: #e2e8f0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .is-today-col {
+    background-color: transparent !important;
+  }
+
+  .duty-pill {
+    background-color: transparent !important;
+    color: #000 !important;
+    font-weight: 700 !important;
+    font-size: 9pt !important;
+    padding: 0 !important;
+    min-width: auto !important;
+  }
+
+  .total-col {
+    min-width: 30px !important;
+    color: #000 !important;
+    background-color: transparent !important;
   }
 }
 </style>

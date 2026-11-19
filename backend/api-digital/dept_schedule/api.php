@@ -17,6 +17,10 @@ function ensureDeptScheduleTables(PDO $pdo): void {
             department_name VARCHAR(255) NOT NULL,
             title VARCHAR(255) NOT NULL,
             notify_channel VARCHAR(100) NULL,
+            notify_enabled TINYINT(1) DEFAULT 0,
+            notify_days VARCHAR(50) DEFAULT '1,2,3,4,5,6,7',
+            notify_time VARCHAR(5) DEFAULT '08:00',
+            last_notified_date DATE NULL,
             shift_types_json TEXT NULL,
             active TINYINT(1) DEFAULT 1,
             created_by INT NULL,
@@ -24,9 +28,18 @@ function ensureDeptScheduleTables(PDO $pdo): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
 
-    $colChk = $pdo->query("SHOW COLUMNS FROM dept_schedule_groups LIKE 'notify_channel'")->fetch(PDO::FETCH_ASSOC);
-    if (!$colChk) {
-        $pdo->exec("ALTER TABLE dept_schedule_groups ADD COLUMN notify_channel VARCHAR(100) NULL AFTER title");
+    $extraCols = [
+        'notify_channel' => "ALTER TABLE dept_schedule_groups ADD COLUMN notify_channel VARCHAR(100) NULL AFTER title",
+        'notify_enabled' => "ALTER TABLE dept_schedule_groups ADD COLUMN notify_enabled TINYINT(1) DEFAULT 0 AFTER notify_channel",
+        'notify_days' => "ALTER TABLE dept_schedule_groups ADD COLUMN notify_days VARCHAR(50) DEFAULT '1,2,3,4,5,6,7' AFTER notify_enabled",
+        'notify_time' => "ALTER TABLE dept_schedule_groups ADD COLUMN notify_time VARCHAR(5) DEFAULT '08:00' AFTER notify_days",
+        'last_notified_date' => "ALTER TABLE dept_schedule_groups ADD COLUMN last_notified_date DATE NULL AFTER notify_time"
+    ];
+    foreach ($extraCols as $colName => $alterSql) {
+        $colChk = $pdo->query("SHOW COLUMNS FROM dept_schedule_groups LIKE '$colName'")->fetch(PDO::FETCH_ASSOC);
+        if (!$colChk) {
+            $pdo->exec($alterSql);
+        }
     }
 
     $pdo->exec("
@@ -160,6 +173,9 @@ try {
             $g['department_id'] = $g['department_id'] ? (int)$g['department_id'] : null;
             $g['member_count'] = (int)$g['member_count'];
             $g['user_count'] = (int)($g['user_count'] ?? 0);
+            $g['notify_enabled'] = (int)($g['notify_enabled'] ?? 0);
+            $g['notify_days'] = $g['notify_days'] ?: '1,2,3,4,5,6,7';
+            $g['notify_time'] = $g['notify_time'] ?: '08:00';
         }
         echo json_encode(['status' => 'success', 'data' => $groups], JSON_UNESCAPED_UNICODE);
         exit;
@@ -225,6 +241,16 @@ try {
         $department_name = trim($body['department_name'] ?? '');
         $title = trim($body['title'] ?? '');
         $notify_channel = trim((string)($body['notify_channel'] ?? ''));
+        $notify_enabled = !empty($body['notify_enabled']) && $notify_channel !== '' ? 1 : 0;
+        $notify_days_raw = $body['notify_days'] ?? '1,2,3,4,5,6,7';
+        if (is_array($notify_days_raw)) {
+            $notify_days = implode(',', array_filter(array_map('intval', $notify_days_raw), fn($d) => $d >= 1 && $d <= 7));
+        } else {
+            $notify_days = trim((string)$notify_days_raw);
+        }
+        if ($notify_days === '') $notify_days = '1,2,3,4,5,6,7';
+        $notify_time = trim((string)($body['notify_time'] ?? '08:00'));
+        if (!preg_match('/^\d{2}:\d{2}$/', $notify_time)) $notify_time = '08:00';
         $shift_types = $body['shift_types'] ?? defaultShiftTypes();
         $created_by = !empty($body['created_by']) ? (int)$body['created_by'] : null;
 
@@ -243,20 +269,20 @@ try {
             }
             $stmt = $pdo2->prepare("
                 UPDATE dept_schedule_groups
-                SET department_id = ?, department_name = ?, title = ?, notify_channel = ?, shift_types_json = ?
+                SET department_id = ?, department_name = ?, title = ?, notify_channel = ?, notify_enabled = ?, notify_days = ?, notify_time = ?, shift_types_json = ?
                 WHERE id = ?
             ");
-            $stmt->execute([$department_id, $department_name, $title, $notify_channel !== '' ? $notify_channel : null, $shiftJson, $id]);
+            $stmt->execute([$department_id, $department_name, $title, $notify_channel !== '' ? $notify_channel : null, $notify_enabled, $notify_days, $notify_time, $shiftJson, $id]);
         } else {
             if (!$req_is_admin) {
                 echo json_encode(['status' => 'error', 'message' => 'เฉพาะผู้ดูแลระบบเท่านั้นที่สร้างกลุ่มตารางเวรใหม่ได้'], JSON_UNESCAPED_UNICODE);
                 exit;
             }
             $stmt = $pdo2->prepare("
-                INSERT INTO dept_schedule_groups (department_id, department_name, title, notify_channel, shift_types_json, created_by)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO dept_schedule_groups (department_id, department_name, title, notify_channel, notify_enabled, notify_days, notify_time, shift_types_json, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmt->execute([$department_id, $department_name, $title, $notify_channel !== '' ? $notify_channel : null, $shiftJson, $created_by]);
+            $stmt->execute([$department_id, $department_name, $title, $notify_channel !== '' ? $notify_channel : null, $notify_enabled, $notify_days, $notify_time, $shiftJson, $created_by]);
             $id = (int)$pdo2->lastInsertId();
         }
 
@@ -488,42 +514,58 @@ try {
             exit;
         }
 
-        $y = (int)date('Y');
-        $m = (int)date('n');
-        $d = (int)date('j');
-        $thaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-        $dateLabel = $d . ' ' . $thaiMonths[$m] . ' ' . ($y + 543);
+        require_once __DIR__ . '/../../moph_notify_helper.php';
+        require_once __DIR__ . '/notify_helper.php';
+        $payload = buildDeptScheduleFlexPayload($pdo2, $group, date('Y-m-d'), false);
+        if (!$payload) {
+            echo json_encode(['status' => 'error', 'message' => 'ไม่พบรายการเวรในช่วง 14 วันข้างหน้า'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+        $res = sendMophNotifyToChannel($pdo2, $group['notify_channel'], $payload);
 
-        $stmtOn = $pdo2->prepare("
-            SELECT m.person_name, m.phone, e.shift_code
-            FROM dept_schedule_entries e
-            JOIN dept_schedule_members m ON e.member_id = m.id
-            WHERE e.group_id = ? AND e.duty_year = ? AND e.duty_month = ? AND e.duty_day = ? AND m.active = 1
-            ORDER BY m.sort_order ASC, m.id ASC
-        ");
-        $stmtOn->execute([$group_id, $y, $m, $d]);
-        $onCalls = $stmtOn->fetchAll(PDO::FETCH_ASSOC);
+        if (!empty($res['ok'])) {
+            echo json_encode(['status' => 'success', 'message' => 'ส่งแจ้งเตือนเข้า MOPH Notify เรียบร้อยแล้ว'], JSON_UNESCAPED_UNICODE);
+        } else {
+            $errMsg = $res['curl_error'] ?: ($res['decoded']['message'] ?? "HTTP {$res['http_code']}");
+            echo json_encode(['status' => 'error', 'message' => 'ส่งแจ้งเตือนไม่สำเร็จ: ' . $errMsg], JSON_UNESCAPED_UNICODE);
+        }
+        exit;
+    }
 
-        if (empty($onCalls)) {
-            echo json_encode(['status' => 'error', 'message' => "ไม่พบผู้ขึ้นเวรในวันที่ $dateLabel"], JSON_UNESCAPED_UNICODE);
+    if ($action === 'test_notify') {
+        if (!$req_is_admin && $req_user_id <= 0) {
+            echo json_encode(['status' => 'error', 'message' => 'ไม่มีสิทธิ์ทดสอบส่งแจ้งเตือน'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+        $channel_code = trim((string)($body['channel_code'] ?? ''));
+        $title = trim((string)($body['title'] ?? 'ตารางเวรกลุ่มงาน'));
+        $group_id = (int)($body['group_id'] ?? 0);
+        if ($channel_code === '') {
+            echo json_encode(['status' => 'error', 'message' => 'กรุณาเลือก Channel MOPH Notify ก่อน'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
-        $lines = ["📅 แจ้งเตือนเวรประจำวัน ($dateLabel)", "🏥 {$group['title']}"];
-        foreach ($onCalls as $oc) {
-            $phoneTxt = !empty($oc['phone']) ? " (โทร {$oc['phone']})" : '';
-            $lines[] = "• [{$oc['shift_code']}] {$oc['person_name']}{$phoneTxt}";
+        $groupData = ['id' => $group_id, 'title' => $title, 'department_name' => '', 'shift_types_json' => '[]'];
+        if ($group_id > 0) {
+            $stG = $pdo2->prepare("SELECT * FROM dept_schedule_groups WHERE id = ? LIMIT 1");
+            $stG->execute([$group_id]);
+            $found = $stG->fetch(PDO::FETCH_ASSOC);
+            if ($found) {
+                $groupData = $found;
+                if ($title !== '') $groupData['title'] = $title;
+            }
         }
-        $textMsg = implode("\n", $lines);
 
         require_once __DIR__ . '/../../moph_notify_helper.php';
-        $payload = ['messages' => [['type' => 'text', 'text' => $textMsg]]];
-        $res = sendMophNotifyToChannel($pdo2, $group['notify_channel'], $payload);
+        require_once __DIR__ . '/notify_helper.php';
+        $payload = buildDeptScheduleFlexPayload($pdo2, $groupData, date('Y-m-d'), true);
+        $res = sendMophNotifyToChannel($pdo2, $channel_code, $payload);
 
-        if (!empty($res['success'])) {
-            echo json_encode(['status' => 'success', 'message' => 'ส่งแจ้งเตือนเข้า MOPH Notify เรียบร้อยแล้ว'], JSON_UNESCAPED_UNICODE);
+        if (!empty($res['ok'])) {
+            echo json_encode(['status' => 'success', 'message' => 'ส่ง Flex Message ทดสอบเข้า MOPH Notify เรียบร้อยแล้ว'], JSON_UNESCAPED_UNICODE);
         } else {
-            echo json_encode(['status' => 'error', 'message' => $res['message'] ?? 'ส่งแจ้งเตือนไม่สำเร็จ'], JSON_UNESCAPED_UNICODE);
+            $errMsg = $res['curl_error'] ?: ($res['decoded']['message'] ?? "HTTP {$res['http_code']}");
+            echo json_encode(['status' => 'error', 'message' => 'ส่งแจ้งเตือนไม่สำเร็จ: ' . $errMsg], JSON_UNESCAPED_UNICODE);
         }
         exit;
     }

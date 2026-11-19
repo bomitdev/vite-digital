@@ -53,7 +53,7 @@ function isInvWarehouseManager(PDO $pdo2, ?PDO $pdo3, int $warehouseId, array $c
 
 function normalizeInvPersonName(string $name): string {
     $clean = trim(preg_replace('/\s+/u', ' ', $name));
-    $clean = preg_replace('/^(นาย|นางสาว|นาง|น\.ส\.|ดร\.|พญ\.|นพ\.|ทพ\.|ทพญ\.|ภก\.|ภญ\.)\s*/u', '', $clean);
+    $clean = preg_replace('/^(ว่าที่ร้อยตรี|ว่าที่ร้อยโท|ว่าที่ร้อยเอก|ว่าที่ร\.ต\.|นาย|นางสาว|นาง|น\.ส\.|ดร\.|พญ\.|นพ\.|ทพ\.|ทพญ\.|ภก\.|ภญ\.)\s*/u', '', $clean);
     return mb_strtolower(trim($clean), 'UTF-8');
 }
 
