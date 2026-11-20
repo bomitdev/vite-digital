@@ -269,11 +269,13 @@
                       <span>แก้ไข</span>
                     </button>
 
-                    <!-- PDF Preview & Download Button -->
+                    <!-- PDF Preview & Download Button (Allowed only after approval) -->
                     <button 
-                      class="btn btn-sm bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 fw-semibold d-inline-flex align-items-center gap-1 action-pill-btn"
+                      class="btn btn-sm rounded-pill px-2 fw-semibold d-inline-flex align-items-center gap-1 action-pill-btn"
+                      :class="req.status === 'APPROVED' ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'btn-light text-muted border opacity-50'"
+                      :disabled="req.status !== 'APPROVED'"
                       @click="openPdfPreview(req)"
-                      title="แสดงตัวอย่างและดาวน์โหลด PDF"
+                      :title="req.status === 'APPROVED' ? 'แสดงตัวอย่างและดาวน์โหลด PDF' : 'พิมพ์ PDF ได้เมื่ออนุมัติจ่ายแล้วเท่านั้น'"
                     >
                       <i class="bi bi-file-earmark-pdf-fill"></i>
                       <span>PDF</span>
@@ -1219,6 +1221,10 @@ export default {
       return doc;
     },
     async openPdfPreview(req) {
+      if (!req || req.status !== 'APPROVED') {
+        Swal.fire('ไม่สามารถพิมพ์ PDF ได้', 'สามารถพิมพ์ PDF ได้เฉพาะใบขอเบิกที่อนุมัติจ่ายแล้วเท่านั้น', 'info');
+        return;
+      }
       this.loadingPdf = true;
       this.showPreviewModal = true;
       this.previewDocId = req.req_no || '';
