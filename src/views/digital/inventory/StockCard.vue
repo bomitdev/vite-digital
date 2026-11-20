@@ -138,8 +138,7 @@
                     <span class="d-block text-muted small fw-bold">ยอดคงเหลือปัจจุบัน</span>
                     <span class="fs-2 fw-bold text-success">{{ formatQty(currentBalance) }}</span>
                     <span class="ms-2 text-muted">{{ selectedItem.unit_name }}</span>
-                    <div class="border-top mt-2 pt-2 d-flex justify-content-between small">
-                      <span class="text-muted">ราคา/หน่วย: <strong class="text-dark">{{ formatCurrency(currentUnitCost) }} บ.</strong></span>
+                    <div class="border-top mt-2 pt-2 text-end small">
                       <span class="text-muted">ยอดรวม: <strong class="text-primary">{{ formatCurrency(currentTotalValue) }} บ.</strong></span>
                     </div>
                   </div>

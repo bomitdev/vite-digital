@@ -18,15 +18,16 @@ if (!$item_id || !$warehouse_id) {
 }
 
 try {
-    // Fetch lots with balance > 0, ordered by Expiry Date (FEFO)
+    // Fetch lots with balance > 0, ordered by Expiry Date (FEFO) then Receive Date (FIFO)
     $stmt = $pdo2->prepare("
-        SELECT id as lot_id, lot_number, expiry_date, unit_cost, balance_qty 
-        FROM inv_stock_lots 
-        WHERE item_id = ? AND warehouse_id = ? AND balance_qty > 0
+        SELECT l.id as lot_id, l.lot_number, l.expiry_date, l.unit_cost, l.balance_qty 
+        FROM inv_stock_lots l
+        WHERE l.item_id = ? AND l.warehouse_id = ? AND l.balance_qty > 0
         ORDER BY 
-            CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, 
-            expiry_date ASC, 
-            id ASC
+            CASE WHEN l.expiry_date IS NULL THEN 1 ELSE 0 END, 
+            l.expiry_date ASC, 
+            COALESCE((SELECT MIN(t.transaction_date) FROM inv_stock_transactions t WHERE t.lot_id = l.id AND t.transaction_type = 'IN'), l.created_at) ASC,
+            l.id ASC
     ");
     $stmt->execute([$item_id, $warehouse_id]);
     $lots = $stmt->fetchAll();

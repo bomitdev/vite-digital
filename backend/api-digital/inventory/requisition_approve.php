@@ -61,13 +61,14 @@ try {
     // Prepared statements for lots and balances
     $stmtLotCheck = $pdo2->prepare("SELECT balance_qty, unit_cost, lot_number FROM inv_stock_lots WHERE id = ? AND warehouse_id = ? FOR UPDATE");
     $stmtFefoLots = $pdo2->prepare("
-        SELECT id, balance_qty, unit_cost, lot_number 
-        FROM inv_stock_lots 
-        WHERE item_id = ? AND warehouse_id = ? AND balance_qty > 0 
+        SELECT l.id, l.balance_qty, l.unit_cost, l.lot_number 
+        FROM inv_stock_lots l
+        WHERE l.item_id = ? AND l.warehouse_id = ? AND l.balance_qty > 0 
         ORDER BY 
-            CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, 
-            expiry_date ASC, 
-            id ASC 
+            CASE WHEN l.expiry_date IS NULL THEN 1 ELSE 0 END, 
+            l.expiry_date ASC, 
+            COALESCE((SELECT MIN(t.transaction_date) FROM inv_stock_transactions t WHERE t.lot_id = l.id AND t.transaction_type = 'IN'), l.created_at) ASC,
+            l.id ASC 
         FOR UPDATE
     ");
 
