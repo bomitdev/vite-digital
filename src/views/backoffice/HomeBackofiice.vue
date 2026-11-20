@@ -1455,7 +1455,7 @@
 
     <!-- Department Schedule Selection Modal -->
     <div v-if="showDeptScheduleModal" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
-      <div class="modal-dialog modal-dialog-centered modal-lg animate-fade-in-up">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl animate-fade-in-up" style="max-width: 1180px;">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
           <div class="modal-header border-0 text-white p-4 bg-gradient-purple">
             <div class="d-flex align-items-center gap-3">
@@ -1514,8 +1514,8 @@
                           <i class="bi bi-eye me-1"></i> ดูอย่างเดียว
                         </span>
                       </div>
-                      <h6 class="fw-bold text-dark mb-1 text-truncate" :title="g.title">{{ g.title }}</h6>
-                      <small class="text-muted d-block text-truncate">{{ g.department_name }}</small>
+                      <h6 class="fw-bold text-dark mb-1" :title="g.title">{{ g.title }}</h6>
+                      <small class="text-muted d-block">{{ g.department_name }}</small>
                     </div>
                   </div>
                   <div class="pt-2 border-top d-flex align-items-center justify-content-between fw-semibold small text-primary">

@@ -27,7 +27,17 @@
         <small class="text-muted">ตรวจสอบคำขอเบิกพัสดุจากหน่วยงาน และพิจารณาอนุมัติตัดจ่ายสต๊อก</small>
       </div>
 
-      <div class="d-flex gap-2">
+      <div class="d-flex flex-wrap gap-2">
+        <button
+          v-if="isSystemAdmin"
+          class="btn btn-outline-primary rounded-pill px-3 shadow-sm fw-semibold"
+          @click="recalculateBalances"
+          :disabled="recalculating"
+          title="คำนวณยอดคงเหลือคลังและยอดคงเหลือในบัญชีคุมใหม่"
+        >
+          <span v-if="recalculating" class="spinner-border spinner-border-sm me-1"></span>
+          <i v-else class="bi bi-calculator me-1"></i> คำนวณยอดคงเหลือใหม่
+        </button>
         <button class="btn btn-outline-secondary rounded-pill px-3 shadow-sm" @click="fetchRequisitions">
           <i class="bi bi-arrow-clockwise me-1" :class="{ 'spin-anim': loading }"></i> รีเฟรช
         </button>
@@ -228,6 +238,9 @@
                   <span v-else-if="req.status === 'REJECTED'" class="badge bg-danger-subtle text-danger rounded-pill px-3 py-1">
                     <i class="bi bi-x-circle-fill me-1"></i>ไม่อนุมัติ
                   </span>
+                  <span v-else-if="req.status === 'CANCELLED'" class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>ยกเลิกแล้ว
+                  </span>
                   <span v-else class="badge bg-light text-dark rounded-pill px-3 py-1">
                     {{ req.status }}
                   </span>
@@ -264,6 +277,17 @@
                     >
                       <i class="bi bi-file-earmark-pdf-fill"></i>
                       <span>PDF</span>
+                    </button>
+
+                    <!-- Cancel Approved & Restore Stock Button (System Admin only) -->
+                    <button
+                      v-if="req.status === 'APPROVED' && isSystemAdmin"
+                      class="btn btn-sm bg-secondary-subtle text-dark border border-secondary-subtle rounded-pill px-2 fw-semibold d-inline-flex align-items-center gap-1 action-pill-btn"
+                      @click="confirmCancelApproved(req)"
+                      title="ยกเลิกการจ่ายและคืนยอดพัสดุเข้าสต๊อก"
+                    >
+                      <i class="bi bi-arrow-counterclockwise"></i>
+                      <span>ยกเลิกการจ่าย</span>
                     </button>
 
                     <!-- Cancel / Delete Button -->
@@ -554,6 +578,7 @@ export default {
       showApproveModal: false,
       loadingReqDetails: false,
       submittingAction: false,
+      recalculating: false,
       activeReq: null,
       activeReqItems: [],
       approverName: localStorage.getItem('user_name') || 'ผู้ดูแลระบบ',
@@ -573,6 +598,7 @@ export default {
 
       // User permissions
       userProfile: null,
+      isSystemAdmin: false,
       isInventoryAdmin: false,
       managedWarehouseIds: []
     };
@@ -630,6 +656,7 @@ export default {
             this.approverName = this.userProfile.fullname;
           }
           const perms = this.userProfile.access_user ? String(this.userProfile.access_user).split(':') : [];
+          this.isSystemAdmin = perms.includes('administrator');
           this.isInventoryAdmin = perms.some(p => ['administrator', 'menu_inventory_admin', 'menu_inventory_manage'].includes(p));
 
           const uid = this.userProfile.id || this.userProfile.user_id || localStorage.getItem('user_id') || '';
@@ -852,6 +879,79 @@ export default {
         Swal.fire('ข้อผิดพลาด', 'ไม่สามารถดำเนินการได้', 'error');
       } finally {
         this.submittingAction = false;
+      }
+    },
+    async recalculateBalances() {
+      const whId = Number(this.warehouseId || this.$route?.query?.warehouse_id || localStorage.getItem('selected_warehouse_id') || 0);
+      const cf = await Swal.fire({
+        title: 'คำนวณยอดคงเหลือใหม่?',
+        text: 'ระบบจะซิงค์ยอดคงเหลือคลังจากยอด Lot จริง และคำนวณยอดคงเหลือในบัญชีคุม (Stock Card / PDF) ตามลำดับเวลาใหม่ทั้งหมด',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'คำนวณใหม่ทันที',
+        cancelButtonText: 'ยกเลิก'
+      });
+      if (!cf.isConfirmed) return;
+
+      this.recalculating = true;
+      try {
+        const res = await axios.post('/api-digital/inventory/recalculate_balances.php', {
+          warehouse_id: whId
+        });
+        if (res.data?.status === 'success') {
+          await Swal.fire({
+            icon: 'success',
+            title: 'คำนวณยอดใหม่สำเร็จ',
+            text: res.data.message,
+            timer: 2200,
+            showConfirmButton: false
+          });
+          this.fetchRequisitions();
+        } else {
+          Swal.fire('ไม่สำเร็จ', res.data?.message || 'ไม่สามารถคำนวณยอดใหม่ได้', 'error');
+        }
+      } catch (err) {
+        Swal.fire('ข้อผิดพลาด', err?.response?.data?.message || 'ไม่สามารถดำเนินการได้', 'error');
+      } finally {
+        this.recalculating = false;
+      }
+    },
+    async confirmCancelApproved(req) {
+      const { value: reason, isConfirmed } = await Swal.fire({
+        title: `ยกเลิกการจ่าย ${req.req_no}?`,
+        text: 'ระบบจะคืนยอดพัสดุกลับเข้าสต๊อกเดิมและยกเลิกใบตัดจ่ายที่เกี่ยวข้อง',
+        input: 'text',
+        inputPlaceholder: 'ระบุเหตุผลในการยกเลิกการจ่าย (ถ้ามี)...',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'ยืนยันยกเลิกการจ่าย (คืนสต๊อก)',
+        cancelButtonText: 'ปิด'
+      });
+
+      if (!isConfirmed) return;
+
+      try {
+        const res = await axios.post('/api-digital/inventory/requisition_cancel_approved.php', {
+          requisition_id: req.id,
+          cancel_reason: reason || '',
+          actor_name: this.approverName || this.userProfile?.fullname || ''
+        });
+        if (res.data?.status === 'success') {
+          await Swal.fire({
+            icon: 'success',
+            title: 'ยกเลิกการจ่ายสำเร็จ',
+            text: res.data.message || 'คืนยอดสต๊อกเรียบร้อยแล้ว',
+            timer: 1800,
+            showConfirmButton: false
+          });
+          this.fetchRequisitions();
+        } else {
+          Swal.fire('ไม่สามารถยกเลิกได้', res.data?.message || 'เกิดข้อผิดพลาด', 'error');
+        }
+      } catch (err) {
+        Swal.fire('ข้อผิดพลาด', err?.response?.data?.message || 'ไม่สามารถดำเนินการได้', 'error');
       }
     },
     async confirmDelete(req) {

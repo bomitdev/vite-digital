@@ -510,27 +510,53 @@
                 <strong>{{ st.code }}</strong> = {{ st.label }}
               </span>
             </div>
-            <div class="row mt-4 text-center" style="font-size: 11pt;">
-              <div class="col-6">
+            <div class="row mt-4 text-center g-2" style="font-size: 10pt;">
+              <div class="col-4">
                 <div class="text-center" style="display: inline-grid; grid-template-columns: auto auto auto; column-gap: 4px; row-gap: 2px; align-items: baseline;">
-                  <span>(ลงชื่อ)</span>
-                  <span>..................................................................</span>
-                  <span>ผู้จัดตารางเวร / หัวหน้ากลุ่มงาน</span>
+                  <span>ลงชื่อ</span>
+                  <span>............................................</span>
+                  <span>ผู้จัดตารางเวร</span>
                   <span></span>
-                  <span class="text-nowrap">({{ selectedGroup.leader_name || '..................................................................' }})</span>
+                  <span class="text-nowrap">({{ displaySchedulerName }})</span>
                   <span></span>
+                  <template v-if="displaySchedulerPosition">
+                    <span></span>
+                    <span class="text-nowrap">{{ displaySchedulerPosition }}</span>
+                    <span></span>
+                  </template>
                   <span></span>
-                  <span class="text-nowrap">{{ selectedGroup.department_name }}</span>
+                  <span class="text-nowrap">ผู้จัดตารางเวรปฏิบัติงาน</span>
                   <span></span>
                 </div>
               </div>
-              <div class="col-6">
+              <div class="col-4">
                 <div class="text-center" style="display: inline-grid; grid-template-columns: auto auto auto; column-gap: 4px; row-gap: 2px; align-items: baseline;">
                   <span>(ลงชื่อ)</span>
-                  <span>..................................................................</span>
+                  <span>............................................</span>
+                  <span>ผู้ขออนุมัติตารางเวร</span>
+                  <span></span>
+                  <span class="text-nowrap">({{ selectedGroup.leader_name || '............................................' }})</span>
+                  <span></span>
+                  <template v-if="selectedGroup.leader_position">
+                    <span></span>
+                    <span class="text-nowrap">{{ selectedGroup.leader_position }}</span>
+                    <span></span>
+                  </template>
+                  <span></span>
+                  <span class="text-nowrap">หัวหน้า{{ selectedGroup.department_name }}</span>
+                  <span></span>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="text-center" style="display: inline-grid; grid-template-columns: auto auto auto; column-gap: 4px; row-gap: 2px; align-items: baseline;">
+                  <span>(ลงชื่อ)</span>
+                  <span>............................................</span>
                   <span>ผู้อนุมัติ</span>
                   <span></span>
                   <span class="text-nowrap">(นายธนากร คนเพียร)</span>
+                  <span></span>
+                  <span></span>
+                  <span class="text-nowrap">นายแพทย์ชำนาญการ รักษาการในตำแหน่ง</span>
                   <span></span>
                   <span></span>
                   <span class="text-nowrap">ผู้อำนวยการโรงพยาบาลชานุมาน</span>
@@ -605,6 +631,33 @@
                   placeholder="เช่น ตารางเวรนอกเวลากลุ่มงานเภสัชกรรม"
                 />
               </div>
+              <!-- Scheduler Signature Settings -->
+              <div class="col-12">
+                <div class="border rounded-3 p-3 bg-light-subtle">
+                  <div class="fw-bold small mb-2">
+                    <i class="bi bi-pen me-1 text-primary"></i>ผู้จัดตารางเวร (สำหรับลงนามในหน้าพิมพ์)
+                  </div>
+                  <div class="row g-2">
+                    <div class="col-md-6">
+                      <input
+                        type="text"
+                        class="form-control form-control-sm"
+                        v-model="groupForm.scheduler_name"
+                        placeholder="ชื่อ-สกุล ผู้จัดตารางเวร (เว้นว่าง = ใช้ชื่อผู้ล็อกอิน)"
+                      />
+                    </div>
+                    <div class="col-md-6">
+                      <input
+                        type="text"
+                        class="form-control form-control-sm"
+                        v-model="groupForm.scheduler_position"
+                        placeholder="ตำแหน่ง (เช่น นักวิชาการสาธารณสุขปฏิบัติการ)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div class="col-12">
                 <label class="form-label fw-bold small">
                   <i class="bi bi-bell-fill text-success me-1"></i>ช่องทางแจ้งเตือน MOPH Notify (Channel)
@@ -1124,6 +1177,8 @@ export default {
         notify_enabled: false,
         notify_days: [1, 2, 3, 4, 5, 6, 7],
         notify_time: '08:00',
+        scheduler_name: '',
+        scheduler_position: '',
         shift_types: []
       },
       showMemberModal: false,
@@ -1174,6 +1229,21 @@ export default {
     memoMembersList() {
       if (!this.dutyMemoForm.onlyScheduled) return this.members;
       return this.members.filter(m => this.countMemberShifts(m) > 0);
+    },
+    displaySchedulerName() {
+      const saved = String(this.selectedGroup?.scheduler_name || '').trim();
+      if (saved) return saved;
+      return localStorage.getItem('user_name') || '............................................';
+    },
+    displaySchedulerPosition() {
+      const saved = String(this.selectedGroup?.scheduler_position || '').trim();
+      if (saved) return saved;
+      const myName = (localStorage.getItem('user_name') || '').replace(/\s+/g, '');
+      if (myName) {
+        const me = this.members.find(m => String(m.person_name || '').replace(/\s+/g, '') === myName);
+        if (me?.position_name) return me.position_name;
+      }
+      return '';
     },
     filteredPermStaffOptions() {
       const assignedIds = new Set(this.groupUsers.map(u => String(u.user_id)));
@@ -1351,6 +1421,8 @@ export default {
           notify_enabled: Number(group.notify_enabled) === 1,
           notify_days: parsedDays.length > 0 ? parsedDays : [1, 2, 3, 4, 5, 6, 7],
           notify_time: group.notify_time || '08:00',
+          scheduler_name: group.scheduler_name || '',
+          scheduler_position: group.scheduler_position || '',
           shift_types: JSON.parse(JSON.stringify(group.shift_types || []))
         };
       } else {
@@ -1363,6 +1435,8 @@ export default {
           notify_enabled: false,
           notify_days: [1, 2, 3, 4, 5, 6, 7],
           notify_time: '08:00',
+          scheduler_name: '',
+          scheduler_position: '',
           shift_types: [
             { code: 'ช', label: 'เวรเช้า', color: '#0ea5e9' },
             { code: 'บ', label: 'เวรบ่าย', color: '#f59e0b' },
@@ -1412,6 +1486,8 @@ export default {
           notify_enabled: this.groupForm.notify_enabled ? 1 : 0,
           notify_days: this.groupForm.notify_days,
           notify_time: this.groupForm.notify_time || '08:00',
+          scheduler_name: this.groupForm.scheduler_name || '',
+          scheduler_position: this.groupForm.scheduler_position || '',
           shift_types: validShifts,
           created_by: this.currentUserId || null,
           ...this.authPayload()

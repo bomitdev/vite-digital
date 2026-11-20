@@ -33,7 +33,9 @@ function ensureDeptScheduleTables(PDO $pdo): void {
         'notify_enabled' => "ALTER TABLE dept_schedule_groups ADD COLUMN notify_enabled TINYINT(1) DEFAULT 0 AFTER notify_channel",
         'notify_days' => "ALTER TABLE dept_schedule_groups ADD COLUMN notify_days VARCHAR(50) DEFAULT '1,2,3,4,5,6,7' AFTER notify_enabled",
         'notify_time' => "ALTER TABLE dept_schedule_groups ADD COLUMN notify_time VARCHAR(5) DEFAULT '08:00' AFTER notify_days",
-        'last_notified_date' => "ALTER TABLE dept_schedule_groups ADD COLUMN last_notified_date DATE NULL AFTER notify_time"
+        'last_notified_date' => "ALTER TABLE dept_schedule_groups ADD COLUMN last_notified_date DATE NULL AFTER notify_time",
+        'scheduler_name' => "ALTER TABLE dept_schedule_groups ADD COLUMN scheduler_name VARCHAR(255) NULL AFTER last_notified_date",
+        'scheduler_position' => "ALTER TABLE dept_schedule_groups ADD COLUMN scheduler_position VARCHAR(255) NULL AFTER scheduler_name"
     ];
     foreach ($extraCols as $colName => $alterSql) {
         $colChk = $pdo->query("SHOW COLUMNS FROM dept_schedule_groups LIKE '$colName'")->fetch(PDO::FETCH_ASSOC);
@@ -313,6 +315,8 @@ try {
         $notify_time = trim((string)($body['notify_time'] ?? '08:00'));
         if (!preg_match('/^\d{2}:\d{2}$/', $notify_time)) $notify_time = '08:00';
         $shift_types = $body['shift_types'] ?? defaultShiftTypes();
+        $scheduler_name = trim((string)($body['scheduler_name'] ?? ''));
+        $scheduler_position = trim((string)($body['scheduler_position'] ?? ''));
         $created_by = !empty($body['created_by']) ? (int)$body['created_by'] : null;
 
         if ($department_name === '' || $title === '') {
@@ -330,20 +334,20 @@ try {
             }
             $stmt = $pdo2->prepare("
                 UPDATE dept_schedule_groups
-                SET department_id = ?, department_name = ?, title = ?, notify_channel = ?, notify_enabled = ?, notify_days = ?, notify_time = ?, shift_types_json = ?
+                SET department_id = ?, department_name = ?, title = ?, notify_channel = ?, notify_enabled = ?, notify_days = ?, notify_time = ?, scheduler_name = ?, scheduler_position = ?, shift_types_json = ?
                 WHERE id = ?
             ");
-            $stmt->execute([$department_id, $department_name, $title, $notify_channel !== '' ? $notify_channel : null, $notify_enabled, $notify_days, $notify_time, $shiftJson, $id]);
+            $stmt->execute([$department_id, $department_name, $title, $notify_channel !== '' ? $notify_channel : null, $notify_enabled, $notify_days, $notify_time, $scheduler_name !== '' ? $scheduler_name : null, $scheduler_position !== '' ? $scheduler_position : null, $shiftJson, $id]);
         } else {
             if (!$req_is_admin) {
                 echo json_encode(['status' => 'error', 'message' => 'เฉพาะผู้ดูแลระบบเท่านั้นที่สร้างกลุ่มตารางเวรใหม่ได้'], JSON_UNESCAPED_UNICODE);
                 exit;
             }
             $stmt = $pdo2->prepare("
-                INSERT INTO dept_schedule_groups (department_id, department_name, title, notify_channel, notify_enabled, notify_days, notify_time, shift_types_json, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO dept_schedule_groups (department_id, department_name, title, notify_channel, notify_enabled, notify_days, notify_time, scheduler_name, scheduler_position, shift_types_json, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmt->execute([$department_id, $department_name, $title, $notify_channel !== '' ? $notify_channel : null, $notify_enabled, $notify_days, $notify_time, $shiftJson, $created_by]);
+            $stmt->execute([$department_id, $department_name, $title, $notify_channel !== '' ? $notify_channel : null, $notify_enabled, $notify_days, $notify_time, $scheduler_name !== '' ? $scheduler_name : null, $scheduler_position !== '' ? $scheduler_position : null, $shiftJson, $created_by]);
             $id = (int)$pdo2->lastInsertId();
         }
 
