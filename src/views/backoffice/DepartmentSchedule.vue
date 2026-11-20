@@ -10,7 +10,9 @@
             </div>
             <div>
               <h4 class="fw-bold mb-0 text-dark">ตารางเวรแต่ละกลุ่มงาน</h4>
-              <small class="text-muted">สร้างและจัดการตารางเวรแยกตามกลุ่มงาน พร้อมส่งออก Excel / พิมพ์ตารางเวร</small>
+              <small class="text-muted"
+                >สร้างและจัดการตารางเวรแยกตามกลุ่มงาน พร้อมส่งออก Excel / พิมพ์ตารางเวร</small
+              >
             </div>
           </div>
 
@@ -22,7 +24,10 @@
               :class="viewMode === 'settings' ? 'btn-dark' : 'btn-outline-dark'"
               @click="viewMode = viewMode === 'settings' ? 'schedule' : 'settings'"
             >
-              <i class="bi me-1" :class="viewMode === 'settings' ? 'bi-calendar3' : 'bi-list-ul'"></i>
+              <i
+                class="bi me-1"
+                :class="viewMode === 'settings' ? 'bi-calendar3' : 'bi-list-ul'"
+              ></i>
               {{ viewMode === 'settings' ? 'กลับหน้าตารางเวร' : 'รายชื่อกลุ่มงานทั้งหมด' }}
             </button>
             <button
@@ -60,17 +65,18 @@
         </div>
 
         <!-- Filter & Controls Bar -->
-        <div v-if="viewMode === 'schedule'" class="row g-2 align-items-end mt-3 pt-3 border-top print-hide">
+        <div
+          v-if="viewMode === 'schedule'"
+          class="row g-2 align-items-end mt-3 pt-3 border-top print-hide"
+        >
           <div class="col-12 col-md-4">
             <label class="form-label small fw-bold text-secondary mb-1">
               กลุ่มงาน / ตารางเวร
-              <span v-if="groups.length > 0" class="text-primary fw-normal">({{ groups.length }} กลุ่มงาน)</span>
+              <span v-if="groups.length > 0" class="text-primary fw-normal"
+                >({{ groups.length }} กลุ่มงาน)</span
+              >
             </label>
-            <select
-              v-model="selectedGroupId"
-              class="form-select"
-              @change="fetchSchedule"
-            >
+            <select v-model="selectedGroupId" class="form-select" @change="fetchSchedule">
               <option value="" disabled>-- เลือกกลุ่มงาน --</option>
               <option v-for="g in groups" :key="g.id" :value="g.id">
                 {{ g.title }} ({{ g.department_name }})
@@ -138,7 +144,10 @@
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
           <div>
             <h5 class="fw-bold text-dark mb-1">รายชื่อตารางเวรกลุ่มงานทั้งหมด</h5>
-            <small class="text-muted">เฉพาะผู้ดูแลระบบ (Admin) สามารถเพิ่มกลุ่มงานใหม่ และผู้ดูแลกลุ่มงานสามารถตั้งค่าสิทธิ์เข้าถึงได้</small>
+            <small class="text-muted"
+              >เฉพาะผู้ดูแลระบบ (Admin) สามารถเพิ่มกลุ่มงานใหม่
+              และผู้ดูแลกลุ่มงานสามารถตั้งค่าสิทธิ์เข้าถึงได้</small
+            >
           </div>
           <button
             v-if="isSystemAdmin"
@@ -169,7 +178,9 @@
               </tr>
               <tr v-for="(g, idx) in groups" :key="g.id">
                 <td>
-                  <span class="badge bg-secondary rounded-2 px-2 py-1">{{ String(idx + 1).padStart(2, '0') }}</span>
+                  <span class="badge bg-secondary rounded-2 px-2 py-1">{{
+                    String(idx + 1).padStart(2, '0')
+                  }}</span>
                 </td>
                 <td>
                   <div class="fw-bold text-dark">{{ g.title }}</div>
@@ -177,11 +188,15 @@
                 </td>
                 <td>
                   <div v-if="g.notify_channel">
-                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">
-                      <i class="bi bi-bell-fill me-1"></i>{{ getMophChannelLabel(g.notify_channel) }}
+                    <span
+                      class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1"
+                    >
+                      <i class="bi bi-bell-fill me-1"></i
+                      >{{ getMophChannelLabel(g.notify_channel) }}
                     </span>
                     <div v-if="g.notify_enabled" class="small text-muted mt-1">
-                      <i class="bi bi-clock me-1"></i>{{ formatNotifyDays(g.notify_days) }} เวลา {{ g.notify_time || '08:00' }} น.
+                      <i class="bi bi-clock me-1"></i>{{ formatNotifyDays(g.notify_days) }} เวลา
+                      {{ g.notify_time || '08:00' }} น.
                     </div>
                   </div>
                   <small v-else class="text-muted">- ไม่แจ้งเตือน -</small>
@@ -208,7 +223,8 @@
                     v-if="isSystemAdmin || g.access_level === 'ADMIN'"
                     class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1"
                   >
-                    <i class="bi bi-shield-check me-1"></i> {{ isSystemAdmin ? 'ผู้ดูแลระบบ' : 'ผู้ดูแลกลุ่มงาน' }}
+                    <i class="bi bi-shield-check me-1"></i>
+                    {{ isSystemAdmin ? 'ผู้ดูแลระบบ' : 'ผู้ดูแลกลุ่มงาน' }}
                   </span>
                   <span
                     v-else-if="g.access_level === 'STAFF'"
@@ -216,10 +232,7 @@
                   >
                     <i class="bi bi-pencil-square me-1"></i> ผู้จัดเวร
                   </span>
-                  <span
-                    v-else
-                    class="badge bg-light text-secondary border rounded-pill px-3 py-1"
-                  >
+                  <span v-else class="badge bg-light text-secondary border rounded-pill px-3 py-1">
                     <i class="bi bi-eye me-1"></i> ดูอย่างเดียว
                   </span>
                 </td>
@@ -266,12 +279,23 @@
           <i class="bi bi-calendar-plus fs-1 text-primary"></i>
         </div>
         <h5 class="fw-bold text-dark">
-          {{ isSystemAdmin ? 'ยังไม่มีตารางเวรกลุ่มงาน' : 'ยังไม่ได้รับสิทธิ์เข้าถึงตารางเวรกลุ่มงาน' }}
+          {{
+            isSystemAdmin ? 'ยังไม่มีตารางเวรกลุ่มงาน' : 'ยังไม่ได้รับสิทธิ์เข้าถึงตารางเวรกลุ่มงาน'
+          }}
         </h5>
         <p class="text-muted mb-3">
-          {{ isSystemAdmin ? 'เริ่มต้นด้วยการสร้างตารางเวรสำหรับกลุ่มงานแรกของคุณ' : 'กรุณาติดต่อผู้ดูแลระบบหรือหัวหน้ากลุ่มงานเพื่อกำหนดสิทธิ์เข้าใช้งาน' }}
+          {{
+            isSystemAdmin
+              ? 'เริ่มต้นด้วยการสร้างตารางเวรสำหรับกลุ่มงานแรกของคุณ'
+              : 'กรุณาติดต่อผู้ดูแลระบบหรือหัวหน้ากลุ่มงานเพื่อกำหนดสิทธิ์เข้าใช้งาน'
+          }}
         </p>
-        <button v-if="isSystemAdmin" type="button" class="btn btn-primary rounded-pill px-4 fw-semibold" @click="openGroupModal()">
+        <button
+          v-if="isSystemAdmin"
+          type="button"
+          class="btn btn-primary rounded-pill px-4 fw-semibold"
+          @click="openGroupModal()"
+        >
           <i class="bi bi-plus-circle me-1"></i> สร้างตารางเวรกลุ่มงาน
         </button>
       </div>
@@ -284,10 +308,15 @@
         v-if="isCurrentMonth && todayOnCall.length > 0"
         class="card border-0 shadow-sm rounded-4 mb-4 oncall-banner"
       >
-        <div class="card-body p-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div
+          class="card-body p-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-3"
+        >
           <div class="d-flex align-items-center gap-3">
-            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 fw-semibold">
-              <i class="bi bi-broadcast me-1"></i> เวรประจำวันนี้ ({{ currentDay }} {{ months[selectedMonth - 1] }})
+            <span
+              class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 fw-semibold"
+            >
+              <i class="bi bi-broadcast me-1"></i> เวรประจำวันนี้ ({{ currentDay }}
+              {{ months[selectedMonth - 1] }})
             </span>
             <div class="d-flex flex-wrap gap-2">
               <div
@@ -295,10 +324,7 @@
                 :key="oc.member.id"
                 class="oncall-chip d-inline-flex align-items-center gap-2"
               >
-                <span
-                  class="shift-badge"
-                  :style="{ backgroundColor: getShiftColor(oc.shift) }"
-                >
+                <span class="shift-badge" :style="{ backgroundColor: getShiftColor(oc.shift) }">
                   {{ oc.shift }}
                 </span>
                 <span class="fw-semibold text-dark">{{ oc.member.person_name }}</span>
@@ -324,7 +350,9 @@
 
       <!-- Shift Brush & Member Toolbar -->
       <div v-if="canEditSchedule" class="card border-0 shadow-sm rounded-4 mb-4 print-hide">
-        <div class="card-body p-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div
+          class="card-body p-3 d-flex flex-wrap justify-content-between align-items-center gap-3"
+        >
           <div class="d-flex flex-wrap align-items-center gap-2">
             <span class="small fw-bold text-secondary me-1">
               <i class="bi bi-brush-fill text-primary me-1"></i>เลือกเวรเพื่อคลิกลงตาราง:
@@ -335,7 +363,11 @@
               type="button"
               class="btn btn-sm rounded-pill px-3 fw-semibold brush-btn"
               :class="{ 'brush-active': activeBrush === st.code }"
-              :style="activeBrush === st.code ? { backgroundColor: st.color, color: '#fff', borderColor: st.color } : { borderColor: st.color, color: st.color, backgroundColor: '#fff' }"
+              :style="
+                activeBrush === st.code
+                  ? { backgroundColor: st.color, color: '#fff', borderColor: st.color }
+                  : { borderColor: st.color, color: st.color, backgroundColor: '#fff' }
+              "
               @click="activeBrush = st.code"
             >
               <span class="me-1">{{ st.code }}</span>
@@ -365,19 +397,23 @@
       <div class="card border-0 shadow-sm rounded-4 overflow-hidden print-sheet">
         <!-- Official Print Header (Visible only when printing) -->
         <div class="d-none d-print-block text-center mb-2 pt-1">
-          <h5 class="fw-bold mb-1 text-dark" style="font-size: 14pt;">
+          <h5 class="fw-bold mb-1 text-dark" style="font-size: 14pt">
             {{ selectedGroup.title }} โรงพยาบาลชานุมาน
           </h5>
-          <div class="fw-semibold text-dark" style="font-size: 12pt;">
-            {{ selectedGroup.department_name }} • ประจำเดือน {{ months[selectedMonth - 1] }} พ.ศ. {{ selectedYear + 543 }}
+          <div class="fw-semibold text-dark" style="font-size: 12pt">
+            {{ selectedGroup.department_name }} • ประจำเดือน {{ months[selectedMonth - 1] }} พ.ศ.
+            {{ selectedYear + 543 }}
           </div>
         </div>
 
-        <div class="card-header bg-white border-bottom px-4 py-3 d-flex flex-wrap justify-content-between align-items-center gap-2 print-hide">
+        <div
+          class="card-header bg-white border-bottom px-4 py-3 d-flex flex-wrap justify-content-between align-items-center gap-2 print-hide"
+        >
           <div>
             <div class="d-flex flex-wrap align-items-center gap-2">
               <h5 class="fw-bold mb-0 text-dark">
-                {{ selectedGroup.title }} — เดือน {{ months[selectedMonth - 1] }} {{ selectedYear + 543 }}
+                {{ selectedGroup.title }} — เดือน {{ months[selectedMonth - 1] }}
+                {{ selectedYear + 543 }}
               </h5>
               <span
                 v-if="!canEditSchedule"
@@ -386,10 +422,16 @@
                 <i class="bi bi-eye me-1"></i>โหมดดูข้อมูล (เฉพาะผู้ได้รับสิทธิ์จึงจะแก้ไขได้)
               </span>
             </div>
-            <small class="text-muted">{{ selectedGroup.department_name }} ({{ members.length }} คน)</small>
+            <small class="text-muted"
+              >{{ selectedGroup.department_name }} ({{ members.length }} คน)</small
+            >
           </div>
           <div class="d-flex flex-wrap gap-2 small text-muted">
-            <span v-for="st in selectedGroup.shift_types" :key="st.code" class="d-inline-flex align-items-center gap-1">
+            <span
+              v-for="st in selectedGroup.shift_types"
+              :key="st.code"
+              class="d-inline-flex align-items-center gap-1"
+            >
               <span class="legend-dot" :style="{ backgroundColor: st.color }"></span>
               <span>{{ st.code }} = {{ st.label }}</span>
             </span>
@@ -406,7 +448,11 @@
             <i class="bi bi-people fs-1 d-block mb-2 opacity-50"></i>
             <div class="fw-semibold text-dark mb-1">ยังไม่มีรายชื่อเจ้าหน้าที่ในตารางเวรนี้</div>
             <p class="small mb-3">กดปุ่ม "เพิ่มเจ้าหน้าที่ในตารางเวร" เพื่อดึงรายชื่อจากแผนก</p>
-            <button type="button" class="btn btn-primary btn-sm rounded-pill px-3" @click="openAddMemberModal">
+            <button
+              type="button"
+              class="btn btn-primary btn-sm rounded-pill px-3"
+              @click="openAddMemberModal"
+            >
               <i class="bi bi-person-plus-fill me-1"></i> เพิ่มเจ้าหน้าที่
             </button>
           </div>
@@ -415,8 +461,8 @@
             <table class="table table-bordered align-middle mb-0 schedule-table">
               <thead>
                 <tr>
-                  <th class="text-center d-none d-print-table-cell" style="width: 34px;">ลำดับ</th>
-                  <th class="sticky-col text-start ps-3" style="min-width: 220px;">ชื่อ - สกุล</th>
+                  <th class="text-center d-none d-print-table-cell" style="width: 34px">ลำดับ</th>
+                  <th class="sticky-col text-start ps-3" style="min-width: 220px">ชื่อ - สกุล</th>
                   <th
                     v-for="day in daysInMonth"
                     :key="day"
@@ -443,7 +489,10 @@
                           <i class="bi bi-telephone me-1"></i>{{ m.phone }}
                         </small>
                       </div>
-                      <div v-if="canEditSchedule" class="d-inline-flex align-items-center gap-1 print-hide">
+                      <div
+                        v-if="canEditSchedule"
+                        class="d-inline-flex align-items-center gap-1 print-hide"
+                      >
                         <button
                           type="button"
                           class="btn btn-link text-secondary p-0 opacity-50 hover-opacity-100"
@@ -504,64 +553,42 @@
 
           <!-- Official Print Footer: Legend & Signatures (Visible only when printing) -->
           <div class="d-none d-print-block mt-3 px-2 print-footer">
-            <div class="mb-3" style="font-size: 10pt;">
+            <div class="mb-3" style="font-size: 10pt">
               <strong>หมายเหตุ :</strong>
               <span v-for="st in selectedGroup.shift_types" :key="'leg-' + st.code" class="ms-3">
                 <strong>{{ st.code }}</strong> = {{ st.label }}
               </span>
             </div>
-            <div class="row mt-4 text-center g-2" style="font-size: 10pt;">
+            <div
+              class="row mt-4 text-center g-2 align-items-start"
+              style="font-size: 9.5pt; line-height: 1.4"
+            >
               <div class="col-4">
-                <div class="text-center" style="display: inline-grid; grid-template-columns: auto auto auto; column-gap: 4px; row-gap: 2px; align-items: baseline;">
-                  <span>ลงชื่อ</span>
-                  <span>............................................</span>
-                  <span>ผู้จัดตารางเวร</span>
-                  <span></span>
-                  <span class="text-nowrap">({{ displaySchedulerName }})</span>
-                  <span></span>
-                  <template v-if="displaySchedulerPosition">
-                    <span></span>
-                    <span class="text-nowrap">{{ displaySchedulerPosition }}</span>
-                    <span></span>
-                  </template>
-                  <span></span>
-                  <span class="text-nowrap">ผู้จัดตารางเวรปฏิบัติงาน</span>
-                  <span></span>
+                <div class="text-nowrap mb-1">
+                  (ลงชื่อ).................................................... ผู้จัดตารางเวร
                 </div>
+                <div class="text-nowrap">({{ displaySchedulerName }})</div>
+                <div v-if="displaySchedulerPosition">{{ displaySchedulerPosition }}</div>
+                <div>ผู้จัดตารางเวรปฏิบัติงาน</div>
               </div>
               <div class="col-4">
-                <div class="text-center" style="display: inline-grid; grid-template-columns: auto auto auto; column-gap: 4px; row-gap: 2px; align-items: baseline;">
-                  <span>(ลงชื่อ)</span>
-                  <span>............................................</span>
-                  <span>ผู้ขออนุมัติตารางเวร</span>
-                  <span></span>
-                  <span class="text-nowrap">({{ selectedGroup.leader_name || '............................................' }})</span>
-                  <span></span>
-                  <template v-if="selectedGroup.leader_position">
-                    <span></span>
-                    <span class="text-nowrap">{{ selectedGroup.leader_position }}</span>
-                    <span></span>
-                  </template>
-                  <span></span>
-                  <span class="text-nowrap">หัวหน้า{{ selectedGroup.department_name }}</span>
-                  <span></span>
+                <div class="text-nowrap mb-1">
+                  (ลงชื่อ).............................................................
+                  ผู้ขออนุมัติตารางเวร
                 </div>
+                <div class="text-nowrap">
+                  ({{ selectedGroup.leader_name || '....................................' }})
+                </div>
+                <div v-if="selectedGroup.leader_position">{{ selectedGroup.leader_position }}</div>
+                <div>หัวหน้า{{ selectedGroup.department_name }}</div>
               </div>
               <div class="col-4">
-                <div class="text-center" style="display: inline-grid; grid-template-columns: auto auto auto; column-gap: 4px; row-gap: 2px; align-items: baseline;">
-                  <span>(ลงชื่อ)</span>
-                  <span>............................................</span>
-                  <span>ผู้อนุมัติ</span>
-                  <span></span>
-                  <span class="text-nowrap">(นายธนากร คนเพียร)</span>
-                  <span></span>
-                  <span></span>
-                  <span class="text-nowrap">นายแพทย์ชำนาญการ รักษาการในตำแหน่ง</span>
-                  <span></span>
-                  <span></span>
-                  <span class="text-nowrap">ผู้อำนวยการโรงพยาบาลชานุมาน</span>
-                  <span></span>
+                <div class="text-nowrap mb-1">
+                  (ลงชื่อ).......................................................... ผู้อนุมัติ
                 </div>
+                <div class="text-nowrap">(นายธนากร คนเพียร)</div>
+                <div>นายแพทย์ชำนาญการ รักษาการในตำแหน่ง</div>
+                <div>ผู้อำนวยการโรงพยาบาลชานุมาน</div>
               </div>
             </div>
           </div>
@@ -583,7 +610,10 @@
           </div>
           <div class="modal-body p-4">
             <!-- Summary of already created groups -->
-            <div v-if="!groupForm.id && groups.length > 0" class="mb-3 p-3 rounded-3 bg-light border">
+            <div
+              v-if="!groupForm.id && groups.length > 0"
+              class="mb-3 p-3 rounded-3 bg-light border"
+            >
               <div class="small fw-bold text-secondary mb-2">
                 <i class="bi bi-check-circle-fill text-success me-1"></i>
                 กลุ่มงานที่สร้างตารางเวรแล้ว ({{ groups.length }} กลุ่มงาน):
@@ -608,8 +638,13 @@
                   @change="onSelectDepartment"
                 >
                   <option value="">-- เลือกกลุ่มงานจากระบบ --</option>
-                  <option v-for="d in departments" :key="d.HR_DEPARTMENT_SUB_ID" :value="d.HR_DEPARTMENT_SUB_ID">
-                    {{ hasDepartmentSchedule(d.HR_DEPARTMENT_SUB_ID) ? '✓ [สร้างแล้ว] ' : '' }}{{ d.HR_DEPARTMENT_SUB_NAME }}
+                  <option
+                    v-for="d in departments"
+                    :key="d.HR_DEPARTMENT_SUB_ID"
+                    :value="d.HR_DEPARTMENT_SUB_ID"
+                  >
+                    {{ hasDepartmentSchedule(d.HR_DEPARTMENT_SUB_ID) ? '✓ [สร้างแล้ว] ' : ''
+                    }}{{ d.HR_DEPARTMENT_SUB_NAME }}
                   </option>
                 </select>
               </div>
@@ -635,7 +670,8 @@
               <div class="col-12">
                 <div class="border rounded-3 p-3 bg-light-subtle">
                   <div class="fw-bold small mb-2">
-                    <i class="bi bi-pen me-1 text-primary"></i>ผู้จัดตารางเวร (สำหรับลงนามในหน้าพิมพ์)
+                    <i class="bi bi-pen me-1 text-primary"></i>ผู้จัดตารางเวร
+                    (สำหรับลงนามในหน้าพิมพ์)
                   </div>
                   <div class="row g-2">
                     <div class="col-md-6">
@@ -660,12 +696,17 @@
 
               <div class="col-12">
                 <label class="form-label fw-bold small">
-                  <i class="bi bi-bell-fill text-success me-1"></i>ช่องทางแจ้งเตือน MOPH Notify (Channel)
+                  <i class="bi bi-bell-fill text-success me-1"></i>ช่องทางแจ้งเตือน MOPH Notify
+                  (Channel)
                 </label>
                 <div class="d-flex gap-2">
                   <select class="form-select" v-model="groupForm.notify_channel">
                     <option value="">-- ไม่ส่งแจ้งเตือน --</option>
-                    <option v-for="ch in mophChannels" :key="ch.channel_code" :value="ch.channel_code">
+                    <option
+                      v-for="ch in mophChannels"
+                      :key="ch.channel_code"
+                      :value="ch.channel_code"
+                    >
                       {{ ch.channel_name }} ({{ ch.channel_code }})
                     </option>
                   </select>
@@ -686,7 +727,9 @@
               <!-- Auto Notify Schedule (Days & Time) -->
               <div v-if="groupForm.notify_channel" class="col-12">
                 <div class="border rounded-3 p-3 bg-light-subtle">
-                  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                  <div
+                    class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2"
+                  >
                     <div class="form-check form-switch mb-0">
                       <input
                         class="form-check-input"
@@ -699,10 +742,20 @@
                       </label>
                     </div>
                     <div v-if="groupForm.notify_enabled" class="d-flex gap-1">
-                      <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0" style="font-size: 0.72rem;" @click="groupForm.notify_days = [1,2,3,4,5,6,7]">
+                      <button
+                        type="button"
+                        class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0"
+                        style="font-size: 0.72rem"
+                        @click="groupForm.notify_days = [1, 2, 3, 4, 5, 6, 7]"
+                      >
                         ทุกวัน
                       </button>
-                      <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0" style="font-size: 0.72rem;" @click="groupForm.notify_days = [1,2,3,4,5]">
+                      <button
+                        type="button"
+                        class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0"
+                        style="font-size: 0.72rem"
+                        @click="groupForm.notify_days = [1, 2, 3, 4, 5]"
+                      >
                         จ-ศ
                       </button>
                     </div>
@@ -717,7 +770,11 @@
                           :key="wd.val"
                           type="button"
                           class="btn btn-sm rounded-pill px-2 fw-semibold"
-                          :class="groupForm.notify_days.includes(wd.val) ? 'btn-success' : 'btn-outline-secondary bg-white'"
+                          :class="
+                            groupForm.notify_days.includes(wd.val)
+                              ? 'btn-success'
+                              : 'btn-outline-secondary bg-white'
+                          "
                           @click="toggleNotifyDay(wd.val)"
                         >
                           {{ wd.label }}
@@ -726,7 +783,11 @@
                     </div>
                     <div class="col-12 col-md-4">
                       <label class="form-label small text-muted mb-1">เวลาที่แจ้งเตือน</label>
-                      <input type="time" class="form-control form-control-sm" v-model="groupForm.notify_time" />
+                      <input
+                        type="time"
+                        class="form-control form-control-sm"
+                        v-model="groupForm.notify_time"
+                      />
                     </div>
                   </div>
                 </div>
@@ -736,19 +797,41 @@
             <div class="border rounded-3 p-3 bg-light-subtle">
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <label class="form-label fw-bold small mb-0">รหัสเวรที่ใช้ในกลุ่มงานนี้</label>
-                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2" @click="addShiftTypeRow">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-primary rounded-pill px-2"
+                  @click="addShiftTypeRow"
+                >
                   <i class="bi bi-plus me-1"></i> เพิ่มรหัสเวร
                 </button>
               </div>
-              <div v-for="(st, idx) in groupForm.shift_types" :key="idx" class="row g-2 align-items-center mb-2">
+              <div
+                v-for="(st, idx) in groupForm.shift_types"
+                :key="idx"
+                class="row g-2 align-items-center mb-2"
+              >
                 <div class="col-3">
-                  <input type="text" class="form-control form-control-sm" v-model="st.code" placeholder="รหัส (เช่น ช)" />
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    v-model="st.code"
+                    placeholder="รหัส (เช่น ช)"
+                  />
                 </div>
                 <div class="col-5">
-                  <input type="text" class="form-control form-control-sm" v-model="st.label" placeholder="ความหมาย (เช่น เวรเช้า)" />
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    v-model="st.label"
+                    placeholder="ความหมาย (เช่น เวรเช้า)"
+                  />
                 </div>
                 <div class="col-2">
-                  <input type="color" class="form-control form-control-color form-control-sm w-100" v-model="st.color" />
+                  <input
+                    type="color"
+                    class="form-control form-control-color form-control-sm w-100"
+                    v-model="st.color"
+                  />
                 </div>
                 <div class="col-2 text-end">
                   <button
@@ -774,8 +857,19 @@
             </button>
             <div v-else></div>
             <div class="d-flex gap-2">
-              <button type="button" class="btn btn-light border rounded-pill px-4" @click="showGroupModal = false">ยกเลิก</button>
-              <button type="button" class="btn btn-primary rounded-pill px-4 fw-semibold" @click="saveGroup" :disabled="saving">
+              <button
+                type="button"
+                class="btn btn-light border rounded-pill px-4"
+                @click="showGroupModal = false"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary rounded-pill px-4 fw-semibold"
+                @click="saveGroup"
+                :disabled="saving"
+              >
                 <i class="bi bi-save me-1"></i> บันทึก
               </button>
             </div>
@@ -807,7 +901,12 @@
               </div>
               <div class="col-md-5">
                 <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" id="showAllHospitalStaff" v-model="showAllStaff" />
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="showAllHospitalStaff"
+                    v-model="showAllStaff"
+                  />
                   <label class="form-check-label small fw-semibold" for="showAllHospitalStaff">
                     แสดงเจ้าหน้าที่ทุกแผนก
                   </label>
@@ -815,8 +914,11 @@
               </div>
             </div>
 
-            <div class="border rounded-3 p-2" style="max-height: 280px; overflow-y: auto;">
-              <div v-if="filteredStaffOptions.length === 0" class="text-center py-4 text-muted small">
+            <div class="border rounded-3 p-2" style="max-height: 280px; overflow-y: auto">
+              <div
+                v-if="filteredStaffOptions.length === 0"
+                class="text-center py-4 text-muted small"
+              >
                 ไม่พบรายชื่อเจ้าหน้าที่ (ลองเปิด "แสดงเจ้าหน้าที่ทุกแผนก")
               </div>
               <label
@@ -825,7 +927,12 @@
                 class="d-flex align-items-center justify-content-between p-2 rounded-2 staff-option cursor-pointer"
               >
                 <div class="d-flex align-items-center gap-2">
-                  <input type="checkbox" class="form-check-input mt-0" :value="s" v-model="selectedStaffToAdd" />
+                  <input
+                    type="checkbox"
+                    class="form-check-input mt-0"
+                    :value="s"
+                    v-model="selectedStaffToAdd"
+                  />
                   <div>
                     <div class="fw-semibold text-dark small">{{ s.FULLNAME }}</div>
                     <small class="text-muted">{{ s.HR_DEPARTMENT_SUB_NAME || '-' }}</small>
@@ -840,19 +947,41 @@
               <label class="form-label small fw-bold text-secondary">หรือเพิ่มชื่อด้วยตนเอง</label>
               <div class="row g-2">
                 <div class="col-md-6">
-                  <input type="text" class="form-control form-control-sm" v-model="manualMemberName" placeholder="ชื่อ - สกุล" />
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    v-model="manualMemberName"
+                    placeholder="ชื่อ - สกุล"
+                  />
                 </div>
                 <div class="col-md-4">
-                  <input type="text" class="form-control form-control-sm" v-model="manualMemberPhone" placeholder="เบอร์โทร (ถ้ามี)" />
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    v-model="manualMemberPhone"
+                    placeholder="เบอร์โทร (ถ้ามี)"
+                  />
                 </div>
                 <div class="col-md-2">
-                  <button type="button" class="btn btn-sm btn-outline-primary w-100" @click="addManualMember">เพิ่ม</button>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-primary w-100"
+                    @click="addManualMember"
+                  >
+                    เพิ่ม
+                  </button>
                 </div>
               </div>
             </div>
           </div>
           <div class="modal-footer border-top px-4 py-3">
-            <button type="button" class="btn btn-light border rounded-pill px-4" @click="showMemberModal = false">ปิด</button>
+            <button
+              type="button"
+              class="btn btn-light border rounded-pill px-4"
+              @click="showMemberModal = false"
+            >
+              ปิด
+            </button>
             <button
               type="button"
               class="btn btn-primary rounded-pill px-4 fw-semibold"
@@ -873,17 +1002,24 @@
         <div class="modal-content border-0 shadow-lg rounded-4">
           <div class="modal-header border-bottom px-4 py-3">
             <h5 class="modal-title fw-bold">
-              <i class="bi bi-shield-lock-fill text-primary me-2"></i>ตั้งค่าสิทธิ์ผู้เข้าใช้ — {{ selectedGroup?.title }}
+              <i class="bi bi-shield-lock-fill text-primary me-2"></i>ตั้งค่าสิทธิ์ผู้เข้าใช้ —
+              {{ selectedGroup?.title }}
             </h5>
             <button type="button" class="btn-close" @click="showPermissionModal = false"></button>
           </div>
           <div class="modal-body p-4">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <small class="text-muted">
-                แสดงรายชื่อใน: <strong class="text-dark">{{ selectedGroup?.department_name }}</strong>
+                แสดงรายชื่อใน:
+                <strong class="text-dark">{{ selectedGroup?.department_name }}</strong>
               </small>
               <div class="form-check form-switch mb-0">
-                <input class="form-check-input" type="checkbox" id="showAllPermStaffSwitch" v-model="showAllPermStaff" />
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="showAllPermStaffSwitch"
+                  v-model="showAllPermStaff"
+                />
                 <label class="form-check-label small fw-semibold" for="showAllPermStaffSwitch">
                   แสดงเจ้าหน้าที่ทุกแผนก
                 </label>
@@ -901,7 +1037,8 @@
                 <select v-model="permForm.target_user_id" class="form-select form-select-sm">
                   <option value="">-- เลือกเจ้าหน้าที่ --</option>
                   <option v-for="s in filteredPermStaffOptions" :key="s.ID" :value="s.ID">
-                    {{ s.FULLNAME }} {{ s.HR_DEPARTMENT_SUB_NAME ? `(${s.HR_DEPARTMENT_SUB_NAME})` : '' }}
+                    {{ s.FULLNAME }}
+                    {{ s.HR_DEPARTMENT_SUB_NAME ? `(${s.HR_DEPARTMENT_SUB_NAME})` : '' }}
                   </option>
                 </select>
               </div>
@@ -925,7 +1062,7 @@
               </div>
             </div>
 
-            <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+            <div class="table-responsive" style="max-height: 280px; overflow-y: auto">
               <table class="table table-sm table-hover align-middle mb-0">
                 <thead class="table-light">
                   <tr>
@@ -968,7 +1105,13 @@
             </div>
           </div>
           <div class="modal-footer border-top px-4 py-3">
-            <button type="button" class="btn btn-light border rounded-pill px-4" @click="showPermissionModal = false">ปิด</button>
+            <button
+              type="button"
+              class="btn btn-light border rounded-pill px-4"
+              @click="showPermissionModal = false"
+            >
+              ปิด
+            </button>
           </div>
         </div>
       </div>
@@ -976,7 +1119,12 @@
 
     <!-- Modal: Duty Request Memo (บันทึกข้อความขอขึ้นเวร) -->
     <div v-if="showDutyMemoModal" class="modal-backdrop fade show"></div>
-    <div v-if="showDutyMemoModal" class="modal fade show d-block duty-memo-modal-root" tabindex="-1" @click.self="showDutyMemoModal = false">
+    <div
+      v-if="showDutyMemoModal"
+      class="modal fade show d-block duty-memo-modal-root"
+      tabindex="-1"
+      @click.self="showDutyMemoModal = false"
+    >
       <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg rounded-4">
           <div class="modal-header border-bottom px-4 py-3">
@@ -991,42 +1139,83 @@
               <div class="col-lg-4 duty-memo-sidebar">
                 <div class="card border-0 shadow-sm rounded-4">
                   <div class="card-body p-3">
-                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-sliders me-1"></i>ตั้งค่าข้อความ</h6>
+                    <h6 class="fw-bold text-primary mb-3">
+                      <i class="bi bi-sliders me-1"></i>ตั้งค่าข้อความ
+                    </h6>
                     <div class="mb-2">
                       <label class="form-label small fw-bold mb-1">ส่วนราชการ</label>
-                      <input type="text" class="form-control form-control-sm" v-model="dutyMemoForm.agency" />
+                      <input
+                        type="text"
+                        class="form-control form-control-sm"
+                        v-model="dutyMemoForm.agency"
+                      />
                     </div>
                     <div class="row g-2 mb-2">
                       <div class="col-6">
                         <label class="form-label small fw-bold mb-1">ที่</label>
-                        <input type="text" class="form-control form-control-sm" v-model="dutyMemoForm.docNo" />
+                        <input
+                          type="text"
+                          class="form-control form-control-sm"
+                          v-model="dutyMemoForm.docNo"
+                        />
                       </div>
                       <div class="col-6">
                         <label class="form-label small fw-bold mb-1">วันที่</label>
-                        <input type="date" class="form-control form-control-sm" v-model="dutyMemoForm.docDate" />
+                        <input
+                          type="date"
+                          class="form-control form-control-sm"
+                          v-model="dutyMemoForm.docDate"
+                        />
                       </div>
                     </div>
                     <div class="mb-2">
                       <label class="form-label small fw-bold mb-1">เรื่อง</label>
-                      <input type="text" class="form-control form-control-sm" v-model="dutyMemoForm.subject" />
+                      <input
+                        type="text"
+                        class="form-control form-control-sm"
+                        v-model="dutyMemoForm.subject"
+                      />
                     </div>
                     <div class="mb-2">
-                      <label class="form-label small fw-bold mb-1">เหตุผลความจำเป็น (ย่อหน้า 1)</label>
-                      <textarea class="form-control form-control-sm" rows="4" v-model="dutyMemoForm.reason"></textarea>
+                      <label class="form-label small fw-bold mb-1"
+                        >เหตุผลความจำเป็น (ย่อหน้า 1)</label
+                      >
+                      <textarea
+                        class="form-control form-control-sm"
+                        rows="4"
+                        v-model="dutyMemoForm.reason"
+                      ></textarea>
                     </div>
                     <div class="row g-2 mb-2">
                       <div class="col-6">
-                        <label class="form-label small fw-bold mb-1">ผู้เสนอ (หัวหน้ากลุ่มงาน)</label>
-                        <input type="text" class="form-control form-control-sm" v-model="dutyMemoForm.leaderName" />
+                        <label class="form-label small fw-bold mb-1"
+                          >ผู้เสนอ (หัวหน้ากลุ่มงาน)</label
+                        >
+                        <input
+                          type="text"
+                          class="form-control form-control-sm"
+                          v-model="dutyMemoForm.leaderName"
+                        />
                       </div>
                       <div class="col-6">
                         <label class="form-label small fw-bold mb-1">ตำแหน่ง</label>
-                        <input type="text" class="form-control form-control-sm" v-model="dutyMemoForm.leaderPos" />
+                        <input
+                          type="text"
+                          class="form-control form-control-sm"
+                          v-model="dutyMemoForm.leaderPos"
+                        />
                       </div>
                     </div>
                     <div class="form-check form-switch mt-2">
-                      <input class="form-check-input" type="checkbox" id="onlyScheduledChk" v-model="dutyMemoForm.onlyScheduled" />
-                      <label class="form-check-label small" for="onlyScheduledChk">แสดงเฉพาะผู้ที่มีเวรในเดือนนี้</label>
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        id="onlyScheduledChk"
+                        v-model="dutyMemoForm.onlyScheduled"
+                      />
+                      <label class="form-check-label small" for="onlyScheduledChk"
+                        >แสดงเฉพาะผู้ที่มีเวรในเดือนนี้</label
+                      >
                     </div>
                   </div>
                 </div>
@@ -1034,49 +1223,119 @@
 
               <!-- Right: A4 Portrait Memo Preview -->
               <div class="col-lg-8 duty-memo-col">
-                <div ref="dutyMemoPreview" class="bg-white shadow-sm rounded-3 mx-auto p-4 p-md-5 duty-memo-paper" style="font-family: 'TH Sarabun New', 'Sarabun', sans-serif; font-size: 16pt; color: #000; line-height: 1.15;">
+                <div
+                  ref="dutyMemoPreview"
+                  class="bg-white shadow-sm rounded-3 mx-auto p-4 p-md-5 duty-memo-paper"
+                  style="
+                    font-family: 'TH Sarabun New', 'Sarabun', sans-serif;
+                    font-size: 16pt;
+                    color: #000;
+                    line-height: 1.15;
+                  "
+                >
                   <div class="d-flex align-items-center mb-2">
-                    <img :src="krutImg" alt="Garuda" style="height: 2cm; width: auto;" class="me-3" />
-                    <div class="flex-grow-1 text-center" style="margin-right: 1.5cm;">
-                      <h1 class="fw-bold mb-0" style="font-size: 29pt; font-family: 'TH Sarabun New', 'Sarabun', sans-serif;">บันทึกข้อความ</h1>
+                    <img
+                      :src="krutImg"
+                      alt="Garuda"
+                      style="height: 2cm; width: auto"
+                      class="me-3"
+                    />
+                    <div class="flex-grow-1 text-center" style="margin-right: 1.5cm">
+                      <h1
+                        class="fw-bold mb-0"
+                        style="
+                          font-size: 29pt;
+                          font-family: 'TH Sarabun New', 'Sarabun', sans-serif;
+                        "
+                      >
+                        บันทึกข้อความ
+                      </h1>
                     </div>
                   </div>
 
                   <div class="d-flex align-items-baseline mb-0">
-                    <span class="fw-bold text-nowrap" style="font-size: 20pt; width: 25mm; flex-shrink: 0;">ส่วนราชการ</span>
-                    <span style="font-size: 16pt;">{{ dutyMemoForm.agency }}</span>
+                    <span
+                      class="fw-bold text-nowrap"
+                      style="font-size: 20pt; width: 25mm; flex-shrink: 0"
+                      >ส่วนราชการ</span
+                    >
+                    <span style="font-size: 16pt">{{ dutyMemoForm.agency }}</span>
                   </div>
                   <div class="row g-0 align-items-baseline">
                     <div class="col-6 d-flex align-items-baseline">
-                      <span class="fw-bold text-nowrap" style="font-size: 18pt; width: 10mm; flex-shrink: 0;">ที่</span>
-                      <span style="font-size: 16pt;">{{ dutyMemoForm.docNo }}</span>
+                      <span
+                        class="fw-bold text-nowrap"
+                        style="font-size: 18pt; width: 10mm; flex-shrink: 0"
+                        >ที่</span
+                      >
+                      <span style="font-size: 16pt">{{ dutyMemoForm.docNo }}</span>
                     </div>
                     <div class="col-6 d-flex align-items-baseline">
-                      <span class="fw-bold text-nowrap" style="font-size: 20pt; width: 15mm; flex-shrink: 0;">วันที่</span>
-                      <span style="font-size: 16pt;">{{ formatThaiMemoDate(dutyMemoForm.docDate) }}</span>
+                      <span
+                        class="fw-bold text-nowrap"
+                        style="font-size: 20pt; width: 15mm; flex-shrink: 0"
+                        >วันที่</span
+                      >
+                      <span style="font-size: 16pt">{{
+                        formatThaiMemoDate(dutyMemoForm.docDate)
+                      }}</span>
                     </div>
                   </div>
                   <div class="d-flex align-items-baseline mb-0">
-                    <span class="fw-bold text-nowrap" style="font-size: 20pt; width: 15mm; flex-shrink: 0;">เรื่อง</span>
-                    <span style="font-size: 16pt;">{{ dutyMemoForm.subject }}</span>
+                    <span
+                      class="fw-bold text-nowrap"
+                      style="font-size: 20pt; width: 15mm; flex-shrink: 0"
+                      >เรื่อง</span
+                    >
+                    <span style="font-size: 16pt">{{ dutyMemoForm.subject }}</span>
                   </div>
                   <div class="d-flex align-items-baseline mb-3">
-                    <span class="fw-bold text-nowrap" style="font-size: 18pt; width: 15mm; flex-shrink: 0;">เรียน</span>
-                    <span style="font-size: 16pt;">ผู้อำนวยการโรงพยาบาลชานุมาน</span>
+                    <span
+                      class="fw-bold text-nowrap"
+                      style="font-size: 18pt; width: 15mm; flex-shrink: 0"
+                      >เรียน</span
+                    >
+                    <span style="font-size: 16pt">ผู้อำนวยการโรงพยาบาลชานุมาน</span>
                   </div>
 
-                  <p class="mb-2" style="text-indent: 25mm; text-align: justify; line-height: 1.15; font-size: 16pt;">
+                  <p
+                    class="mb-2"
+                    style="
+                      text-indent: 25mm;
+                      text-align: justify;
+                      line-height: 1.15;
+                      font-size: 16pt;
+                    "
+                  >
                     {{ dutyMemoForm.reason }}
                   </p>
-                  <p class="mb-2" style="text-indent: 25mm; text-align: justify; line-height: 1.15; font-size: 16pt;">
-                    ในการนี้ {{ selectedGroup?.department_name }} จึงขออนุมัติให้เจ้าหน้าที่ปฏิบัติงานนอกเวลาราชการ
-                    ประจำเดือน{{ months[selectedMonth - 1] }} {{ selectedYear + 543 }} ดังรายนามต่อไปนี้
+                  <p
+                    class="mb-2"
+                    style="
+                      text-indent: 25mm;
+                      text-align: justify;
+                      line-height: 1.15;
+                      font-size: 16pt;
+                    "
+                  >
+                    ในการนี้
+                    {{ selectedGroup?.department_name }}
+                    จึงขออนุมัติให้เจ้าหน้าที่ปฏิบัติงานนอกเวลาราชการ ประจำเดือน{{
+                      months[selectedMonth - 1]
+                    }}
+                    {{ selectedYear + 543 }} ดังรายนามต่อไปนี้
                   </p>
 
-                  <div class="ms-4 mb-2" style="font-size: 16pt; line-height: 1.15;">
-                    <div v-for="(emp, idx) in memoMembersList" :key="'memo-' + emp.id" class="d-flex">
-                      <span style="width: 24px; flex-shrink: 0;">{{ idx + 1 }}.</span>
-                      <span style="min-width: 195px; padding-right: 12px; white-space: nowrap;">{{ emp.person_name }}</span>
+                  <div class="ms-4 mb-2" style="font-size: 16pt; line-height: 1.15">
+                    <div
+                      v-for="(emp, idx) in memoMembersList"
+                      :key="'memo-' + emp.id"
+                      class="d-flex"
+                    >
+                      <span style="width: 24px; flex-shrink: 0">{{ idx + 1 }}.</span>
+                      <span style="min-width: 195px; padding-right: 12px; white-space: nowrap">{{
+                        emp.person_name
+                      }}</span>
                       <span class="text-nowrap">ตำแหน่ง {{ emp.position_name || '-' }}</span>
                     </div>
                     <div v-if="memoMembersList.length === 0" class="text-muted small fst-italic">
@@ -1084,20 +1343,33 @@
                     </div>
                   </div>
 
-                  <p class="mb-2" style="text-indent: 25mm; font-size: 16pt;">จึงเรียนมาเพื่อโปรดทราบและพิจารณาอนุมัติ</p>
+                  <p class="mb-2" style="text-indent: 25mm; font-size: 16pt">
+                    จึงเรียนมาเพื่อโปรดทราบและพิจารณาอนุมัติ
+                  </p>
 
-                  <div class="ms-auto text-center mt-2 mb-2" style="width: 55%; line-height: 1.15; font-size: 16pt;">
+                  <div
+                    class="ms-auto text-center mt-2 mb-2"
+                    style="width: 55%; line-height: 1.15; font-size: 16pt"
+                  >
                     <br />
-                    <div class="mb-1">({{ dutyMemoForm.leaderName || '....................................................' }})</div>
+                    <div class="mb-1">
+                      ({{
+                        dutyMemoForm.leaderName ||
+                        '....................................................'
+                      }})
+                    </div>
                     <div v-if="dutyMemoForm.leaderPos">{{ dutyMemoForm.leaderPos }}</div>
                     <div>หัวหน้า{{ selectedGroup?.department_name }}</div>
                   </div>
 
-                  <div class="mt-2 mb-2" style="line-height: 1.15; font-size: 16pt;">
+                  <div class="mt-2 mb-2" style="line-height: 1.15; font-size: 16pt">
                     <div class="mb-1">เรียน ผู้อำนวยการโรงพยาบาลชานุมาน</div>
                     <div class="ps-5">- ได้ตรวจสอบถูกต้องแล้ว</div>
                     <div class="ps-5 mb-2">- เห็นควรอนุมัติ</div>
-                    <div class="text-center mt-2 text-nowrap" style="width: 42%; line-height: 1.15; font-size: 16pt;">
+                    <div
+                      class="text-center mt-2 text-nowrap"
+                      style="width: 42%; line-height: 1.15; font-size: 16pt"
+                    >
                       <br />
                       <div class="mb-1">(นายธนากร คนเพียร)</div>
                       <div>นายแพทย์ชำนาญการ รักษาการในตำแหน่ง</div>
@@ -1105,7 +1377,10 @@
                     </div>
                   </div>
 
-                  <div class="ms-auto text-center mt-2" style="width: 55%; line-height: 1.15; font-size: 16pt;">
+                  <div
+                    class="ms-auto text-center mt-2"
+                    style="width: 55%; line-height: 1.15; font-size: 16pt"
+                  >
                     <div class="mb-1">อนุมัติ</div>
                     <br />
                     <div class="mt-1">(นายธนากร คนเพียร)</div>
@@ -1117,8 +1392,18 @@
             </div>
           </div>
           <div class="modal-footer border-top px-4 py-3">
-            <button type="button" class="btn btn-light border rounded-pill px-4" @click="showDutyMemoModal = false">ปิด</button>
-            <button type="button" class="btn btn-dark rounded-pill px-4 fw-semibold" @click="printDutyMemo">
+            <button
+              type="button"
+              class="btn btn-light border rounded-pill px-4"
+              @click="showDutyMemoModal = false"
+            >
+              ปิด
+            </button>
+            <button
+              type="button"
+              class="btn btn-dark rounded-pill px-4 fw-semibold"
+              @click="printDutyMemo"
+            >
               <i class="bi bi-printer me-1"></i> สั่งพิมพ์บันทึกข้อความ (A4 แนวตั้ง)
             </button>
           </div>
@@ -1163,8 +1448,18 @@ export default {
       selectedYear: curY,
       yearOptions: [curY - 1, curY, curY + 1],
       months: [
-        'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-        'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+        'มกราคม',
+        'กุมภาพันธ์',
+        'มีนาคม',
+        'เมษายน',
+        'พฤษภาคม',
+        'มิถุนายน',
+        'กรกฎาคม',
+        'สิงหาคม',
+        'กันยายน',
+        'ตุลาคม',
+        'พฤศจิกายน',
+        'ธันวาคม'
       ],
       activeBrush: 'ช',
       showGroupModal: false,
@@ -1214,7 +1509,7 @@ export default {
   },
   computed: {
     selectedGroup() {
-      return this.groups.find(g => String(g.id) === String(this.selectedGroupId)) || null;
+      return this.groups.find((g) => String(g.id) === String(this.selectedGroupId)) || null;
     },
     selectedGroupAccess() {
       if (this.isSystemAdmin) return 'ADMIN';
@@ -1228,7 +1523,7 @@ export default {
     },
     memoMembersList() {
       if (!this.dutyMemoForm.onlyScheduled) return this.members;
-      return this.members.filter(m => this.countMemberShifts(m) > 0);
+      return this.members.filter((m) => this.countMemberShifts(m) > 0);
     },
     displaySchedulerName() {
       const saved = String(this.selectedGroup?.scheduler_name || '').trim();
@@ -1240,23 +1535,31 @@ export default {
       if (saved) return saved;
       const myName = (localStorage.getItem('user_name') || '').replace(/\s+/g, '');
       if (myName) {
-        const me = this.members.find(m => String(m.person_name || '').replace(/\s+/g, '') === myName);
+        const me = this.members.find(
+          (m) => String(m.person_name || '').replace(/\s+/g, '') === myName
+        );
         if (me?.position_name) return me.position_name;
       }
       return '';
     },
     filteredPermStaffOptions() {
-      const assignedIds = new Set(this.groupUsers.map(u => String(u.user_id)));
-      let list = this.allStaff.filter(s => !assignedIds.has(String(s.ID)));
+      const assignedIds = new Set(this.groupUsers.map((u) => String(u.user_id)));
+      let list = this.allStaff.filter((s) => !assignedIds.has(String(s.ID)));
       if (!this.showAllPermStaff && this.selectedGroup?.department_id) {
-        list = list.filter(s => String(s.HR_DEPARTMENT_SUB_ID) === String(this.selectedGroup.department_id));
+        list = list.filter(
+          (s) => String(s.HR_DEPARTMENT_SUB_ID) === String(this.selectedGroup.department_id)
+        );
       }
       const q = this.permUserSearch.trim().toLowerCase();
       if (q) {
         list = list.filter(
-          s =>
-            String(s.FULLNAME || '').toLowerCase().includes(q) ||
-            String(s.HR_DEPARTMENT_SUB_NAME || '').toLowerCase().includes(q)
+          (s) =>
+            String(s.FULLNAME || '')
+              .toLowerCase()
+              .includes(q) ||
+            String(s.HR_DEPARTMENT_SUB_NAME || '')
+              .toLowerCase()
+              .includes(q)
         );
       }
       return list.slice(0, 80);
@@ -1283,17 +1586,23 @@ export default {
       return list;
     },
     filteredStaffOptions() {
-      const existingNames = new Set(this.members.map(m => m.person_name.trim()));
-      let list = this.allStaff.filter(s => !existingNames.has(String(s.FULLNAME || '').trim()));
+      const existingNames = new Set(this.members.map((m) => m.person_name.trim()));
+      let list = this.allStaff.filter((s) => !existingNames.has(String(s.FULLNAME || '').trim()));
       if (!this.showAllStaff && this.selectedGroup?.department_id) {
-        list = list.filter(s => String(s.HR_DEPARTMENT_SUB_ID) === String(this.selectedGroup.department_id));
+        list = list.filter(
+          (s) => String(s.HR_DEPARTMENT_SUB_ID) === String(this.selectedGroup.department_id)
+        );
       }
       const q = this.staffSearch.trim().toLowerCase();
       if (q) {
         list = list.filter(
-          s =>
-            String(s.FULLNAME || '').toLowerCase().includes(q) ||
-            String(s.HR_DEPARTMENT_SUB_NAME || '').toLowerCase().includes(q)
+          (s) =>
+            String(s.FULLNAME || '')
+              .toLowerCase()
+              .includes(q) ||
+            String(s.HR_DEPARTMENT_SUB_NAME || '')
+              .toLowerCase()
+              .includes(q)
         );
       }
       return list.slice(0, 100);
@@ -1302,7 +1611,7 @@ export default {
   async mounted() {
     await Promise.all([this.loadUserProfile(), this.fetchDepartmentsAndStaff()]);
     if (!this.currentUserDeptId && this.currentUserId && this.allStaff.length > 0) {
-      const me = this.allStaff.find(s => String(s.ID) === String(this.currentUserId));
+      const me = this.allStaff.find((s) => String(s.ID) === String(this.currentUserId));
       if (me?.HR_DEPARTMENT_SUB_ID) {
         this.currentUserDeptId = String(me.HR_DEPARTMENT_SUB_ID);
       }
@@ -1312,7 +1621,7 @@ export default {
       this.openGroupModal();
     } else if (this.groups.length > 0) {
       const qId = this.$route.query.group_id;
-      const found = qId ? this.groups.find(g => String(g.id) === String(qId)) : null;
+      const found = qId ? this.groups.find((g) => String(g.id) === String(qId)) : null;
       this.selectedGroupId = found ? found.id : this.groups[0].id;
       this.activeBrush = (found || this.groups[0]).shift_types?.[0]?.code || 'ช';
       await this.fetchSchedule();
@@ -1380,7 +1689,9 @@ export default {
     async fetchSchedule() {
       if (!this.selectedGroupId) return;
       if (String(this.$route.query.group_id || '') !== String(this.selectedGroupId)) {
-        this.$router.replace({ query: { ...this.$route.query, group_id: this.selectedGroupId, create: undefined } });
+        this.$router.replace({
+          query: { ...this.$route.query, group_id: this.selectedGroupId, create: undefined }
+        });
       }
       this.loading = true;
       try {
@@ -1396,7 +1707,11 @@ export default {
         if (res.data?.status === 'success') {
           this.members = res.data.data.members || [];
           const shifts = res.data.data.group?.shift_types || [];
-          if (shifts.length > 0 && !shifts.some(s => s.code === this.activeBrush) && this.activeBrush !== '') {
+          if (
+            shifts.length > 0 &&
+            !shifts.some((s) => s.code === this.activeBrush) &&
+            this.activeBrush !== ''
+          ) {
             this.activeBrush = shifts[0].code;
           }
         }
@@ -1411,7 +1726,7 @@ export default {
         const parsedDays = String(group.notify_days || '1,2,3,4,5,6,7')
           .split(',')
           .map(Number)
-          .filter(n => n >= 1 && n <= 7);
+          .filter((n) => n >= 1 && n <= 7);
         this.groupForm = {
           id: group.id,
           department_id: group.department_id || '',
@@ -1448,7 +1763,9 @@ export default {
       this.showGroupModal = true;
     },
     onSelectDepartment() {
-      const dept = this.departments.find(d => String(d.HR_DEPARTMENT_SUB_ID) === String(this.groupForm.department_id));
+      const dept = this.departments.find(
+        (d) => String(d.HR_DEPARTMENT_SUB_ID) === String(this.groupForm.department_id)
+      );
       if (dept) {
         this.groupForm.department_name = dept.HR_DEPARTMENT_SUB_NAME;
         if (!this.groupForm.title) {
@@ -1461,14 +1778,14 @@ export default {
     },
     hasDepartmentSchedule(deptId) {
       if (!deptId) return false;
-      return this.groups.some(g => String(g.department_id) === String(deptId));
+      return this.groups.some((g) => String(g.department_id) === String(deptId));
     },
     async saveGroup() {
       if (!this.groupForm.department_name.trim() || !this.groupForm.title.trim()) {
         Swal.fire('กรอกข้อมูลไม่ครบ', 'กรุณาระบุชื่อกลุ่มงานและชื่อตารางเวร', 'warning');
         return;
       }
-      const validShifts = this.groupForm.shift_types.filter(s => s.code.trim() !== '');
+      const validShifts = this.groupForm.shift_types.filter((s) => s.code.trim() !== '');
       if (validShifts.length === 0) {
         Swal.fire('กรอกข้อมูลไม่ครบ', 'กรุณาระบุรหัสเวรอย่างน้อย 1 รายการ', 'warning');
         return;
@@ -1547,7 +1864,7 @@ export default {
         await axios.post('/api-digital/dept_schedule/api.php', {
           action: 'add_members',
           group_id: this.selectedGroupId,
-          members: this.selectedStaffToAdd.map(s => ({
+          members: this.selectedStaffToAdd.map((s) => ({
             person_id: s.ID,
             person_name: s.FULLNAME,
             phone: s.HR_PHONE || ''
@@ -1605,7 +1922,7 @@ export default {
         const res = await axios.post('/api-digital/dept_schedule/api.php', {
           action: 'reorder_members',
           group_id: this.selectedGroupId,
-          member_ids: list.map(m => m.id),
+          member_ids: list.map((m) => m.id),
           ...this.authPayload()
         });
         if (res.data?.status !== 'success') {
@@ -1670,7 +1987,7 @@ export default {
       }
     },
     getShiftColor(code) {
-      const st = this.selectedGroup?.shift_types?.find(s => s.code === code);
+      const st = this.selectedGroup?.shift_types?.find((s) => s.code === code);
       return st?.color || '#4f46e5';
     },
     countMemberShifts(member) {
@@ -1689,8 +2006,8 @@ export default {
       return names[wd];
     },
     exportExcel() {
-      const rows = this.members.map(m => {
-        const obj = { 'ชื่อ - สกุล': m.person_name, 'เบอร์โทร': m.phone || '' };
+      const rows = this.members.map((m) => {
+        const obj = { 'ชื่อ - สกุล': m.person_name, เบอร์โทร: m.phone || '' };
         for (const d of this.daysInMonth) {
           obj[String(d)] = m.duties?.[String(d)] || '';
         }
@@ -1718,7 +2035,7 @@ export default {
     },
     getMophChannelLabel(code) {
       if (!code) return '';
-      const ch = this.mophChannels.find(c => c.channel_code === code);
+      const ch = this.mophChannels.find((c) => c.channel_code === code);
       return ch ? `${ch.channel_name} (${ch.channel_code})` : code;
     },
     toggleNotifyDay(val) {
@@ -1733,11 +2050,14 @@ export default {
       }
     },
     formatNotifyDays(daysStr) {
-      const arr = String(daysStr || '1,2,3,4,5,6,7').split(',').map(Number).filter(n => n >= 1 && n <= 7);
+      const arr = String(daysStr || '1,2,3,4,5,6,7')
+        .split(',')
+        .map(Number)
+        .filter((n) => n >= 1 && n <= 7);
       if (arr.length === 7) return 'ทุกวัน';
       if (arr.join(',') === '1,2,3,4,5') return 'จ-ศ';
       const names = { 1: 'จ', 2: 'อ', 3: 'พ', 4: 'พฤ', 5: 'ศ', 6: 'ส', 7: 'อา' };
-      return arr.map(n => names[n]).join(', ');
+      return arr.map((n) => names[n]).join(', ');
     },
     async sendTodayNotify() {
       if (!this.selectedGroupId) return;
@@ -1749,7 +2069,11 @@ export default {
           ...this.authPayload()
         });
         if (res.data?.status === 'success') {
-          Swal.fire('ส่งแจ้งเตือนสำเร็จ', res.data.message || 'ส่งข้อมูลเข้า MOPH Notify เรียบร้อยแล้ว', 'success');
+          Swal.fire(
+            'ส่งแจ้งเตือนสำเร็จ',
+            res.data.message || 'ส่งข้อมูลเข้า MOPH Notify เรียบร้อยแล้ว',
+            'success'
+          );
         } else {
           Swal.fire('ไม่สำเร็จ', res.data?.message || 'ไม่สามารถส่งแจ้งเตือนได้', 'warning');
         }
@@ -1771,7 +2095,11 @@ export default {
           ...this.authPayload()
         });
         if (res.data?.status === 'success') {
-          Swal.fire('ทดสอบส่งสำเร็จ', res.data.message || 'ส่งข้อความทดสอบเข้า MOPH Notify เรียบร้อยแล้ว', 'success');
+          Swal.fire(
+            'ทดสอบส่งสำเร็จ',
+            res.data.message || 'ส่งข้อความทดสอบเข้า MOPH Notify เรียบร้อยแล้ว',
+            'success'
+          );
         } else {
           Swal.fire('ส่งไม่สำเร็จ', res.data?.message || 'ไม่สามารถส่งแจ้งเตือนได้', 'warning');
         }
@@ -1811,7 +2139,9 @@ export default {
       }
     },
     async saveGroupUserPermission() {
-      const staff = this.allStaff.find(s => String(s.ID) === String(this.permForm.target_user_id));
+      const staff = this.allStaff.find(
+        (s) => String(s.ID) === String(this.permForm.target_user_id)
+      );
       if (!staff) return;
       this.saving = true;
       try {
@@ -1860,7 +2190,11 @@ export default {
       const yyyy = now.getFullYear();
       const mm = String(now.getMonth() + 1).padStart(2, '0');
       const dd = String(now.getDate()).padStart(2, '0');
-      const bookPrefix = g.book_num ? (g.book_num.endsWith('/') ? g.book_num : `${g.book_num}/`) : 'อจ.0033/';
+      const bookPrefix = g.book_num
+        ? g.book_num.endsWith('/')
+          ? g.book_num
+          : `${g.book_num}/`
+        : 'อจ.0033/';
       this.dutyMemoForm = {
         agency: `${g.department_name} โรงพยาบาลชานุมาน`,
         docNo: bookPrefix,
@@ -2152,4 +2486,3 @@ export default {
   }
 }
 </style>
-
