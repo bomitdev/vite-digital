@@ -306,7 +306,7 @@
       <!-- Today's On-Call Banner -->
       <div
         v-if="isCurrentMonth && todayOnCall.length > 0"
-        class="card border-0 shadow-sm rounded-4 mb-4 oncall-banner"
+        class="card border-0 shadow-sm rounded-4 mb-4 oncall-banner d-print-none print-hide"
       >
         <div
           class="card-body p-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-3"
