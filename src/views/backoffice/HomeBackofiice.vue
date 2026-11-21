@@ -1922,6 +1922,7 @@ export default {
   position: absolute;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
+  pointer-events: none;
 }
 
 .bg-decoration-circle-1 {
@@ -1929,6 +1930,7 @@ export default {
   height: 300px;
   top: -100px;
   right: -50px;
+  animation: floatCircle1 8s ease-in-out infinite alternate;
 }
 
 .bg-decoration-circle-2 {
@@ -1936,14 +1938,27 @@ export default {
   height: 200px;
   bottom: -50px;
   left: -50px;
+  animation: floatCircle2 6s ease-in-out infinite alternate;
 }
 
 .avatar-ring {
+  position: relative;
   width: 200px;
   height: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
+  animation: avatarGlow 3.2s ease-in-out infinite;
+}
+
+.avatar-ring::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 255, 255, 0.45);
+  animation: spinSlow 18s linear infinite;
+  pointer-events: none;
 }
 
 .avatar-circle {
@@ -1956,6 +1971,8 @@ export default {
   justify-content: center;
   overflow: hidden;
   border: 4px solid #fff;
+  position: relative;
+  z-index: 1;
 }
 
 .profile-img {
@@ -1974,6 +1991,64 @@ export default {
   border: 3px solid #fff;
   border-radius: 50%;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 2;
+}
+
+.status-badge::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid #22c55e;
+  animation: statusPulse 2s ease-out infinite;
+}
+
+@keyframes floatCircle1 {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(-25px, 20px) scale(1.08);
+  }
+}
+
+@keyframes floatCircle2 {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(22px, -18px) scale(1.1);
+  }
+}
+
+@keyframes avatarGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(255, 255, 255, 0);
+  }
+}
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes statusPulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
 }
 
 .backdrop-blur {
