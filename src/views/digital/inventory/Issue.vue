@@ -52,10 +52,23 @@
                     </div>
                     <div class="col-md-3">
                       <label class="form-label">หน่วยงานที่เบิก</label>
-                      <select class="form-select" v-model="form.department_id" @change="updateDeptName">
+                      <select class="form-select" v-model="selectedDeptKey" @change="onDeptSelectChange">
                         <option value="">-- เลือกหน่วยงาน --</option>
-                        <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
+                        <optgroup label="หน่วยงานภายในโรงพยาบาล">
+                          <option v-for="d in departments" :key="'int:' + d.id" :value="'int:' + d.id">{{ d.name }}</option>
+                        </optgroup>
+                        <optgroup v-if="externalDepartments.length" label="รพ.สต. / หน่วยงานภายนอก">
+                          <option v-for="ext in externalDepartments" :key="'ext:' + ext.id" :value="'ext:' + ext.id">{{ ext.name }}</option>
+                        </optgroup>
+                        <option value="custom">+ ระบุหน่วยงานภายนอกอื่นๆ เอง...</option>
                       </select>
+                      <input
+                        v-if="selectedDeptKey === 'custom'"
+                        type="text"
+                        class="form-control mt-2"
+                        v-model="form.department_name"
+                        placeholder="พิมพ์ชื่อ รพ.สต. หรือหน่วยงานภายนอก"
+                      />
                     </div>
                     <div class="col-md-6">
                       <label class="form-label d-flex justify-content-between align-items-center">
@@ -218,6 +231,8 @@ export default {
     return {
       warehouses: [],
       departments: [],
+      externalDepartments: [],
+      selectedDeptKey: '',
       staffList: [],
       items: [],
       availableLots: [],
@@ -291,6 +306,12 @@ export default {
            ];
         }
 
+        // Fetch external departments (รพ.สต.)
+        const extDeptRes = await axios.get('/api-digital/inventory/external_departments.php').catch(() => null);
+        if (extDeptRes?.data?.status === 'success' && Array.isArray(extDeptRes.data.data)) {
+          this.externalDepartments = extDeptRes.data.data;
+        }
+
         // Fetch staff list
         const staffRes = await axios.get('/api-hosoffice/get_all_staff.php').catch(() => null);
         if (staffRes && staffRes.data && staffRes.data.status === 'success' && Array.isArray(staffRes.data.data)) {
@@ -298,6 +319,30 @@ export default {
         }
       } catch (err) {
         console.error(err);
+      }
+    },
+    onDeptSelectChange() {
+      const key = this.selectedDeptKey || '';
+      if (key.startsWith('int:')) {
+        const id = parseInt(key.slice(4));
+        const d = this.departments.find(x => Number(x.id) === id);
+        this.form.department_id = id;
+        this.form.department_name = d ? d.name : '';
+      } else if (key.startsWith('ext:')) {
+        const extId = parseInt(key.slice(4));
+        const ext = this.externalDepartments.find(x => Number(x.id) === extId);
+        this.form.department_id = null;
+        this.form.department_name = ext ? ext.name : '';
+      } else if (key === 'custom') {
+        this.form.department_id = null;
+        const isPresetName = this.departments.some(d => d.name === this.form.department_name)
+          || this.externalDepartments.some(e => e.name === this.form.department_name);
+        if (isPresetName) {
+          this.form.department_name = '';
+        }
+      } else {
+        this.form.department_id = '';
+        this.form.department_name = '';
       }
     },
     updateDeptName() {
@@ -308,7 +353,7 @@ export default {
       const name = (this.form.requester_name || '').trim();
       if (!name) return;
       const staff = this.staffList.find(s => s.FULLNAME.trim() === name);
-      if (staff && !this.form.department_id) {
+      if (staff && !this.selectedDeptKey && !this.form.department_id) {
         const dept = this.departments.find(d => {
           if (staff.HR_DEPARTMENT_SUB_ID && Number(d.id) === Number(staff.HR_DEPARTMENT_SUB_ID)) return true;
           if (staff.HR_DEPARTMENT_SUB_NAME && (d.name.includes(staff.HR_DEPARTMENT_SUB_NAME) || staff.HR_DEPARTMENT_SUB_NAME.includes(d.name))) return true;
@@ -317,6 +362,7 @@ export default {
         if (dept) {
           this.form.department_id = dept.id;
           this.form.department_name = dept.name;
+          this.selectedDeptKey = `int:${dept.id}`;
         }
       }
     },
@@ -397,6 +443,7 @@ export default {
     },
     resetAll() {
       this.form.issue_no = `IS-${moment().format('YYMMDDHHmmss')}`;
+      this.selectedDeptKey = '';
       this.form.department_id = '';
       this.form.department_name = '';
       this.form.requester_name = '';
@@ -415,7 +462,7 @@ export default {
           warehouse_id: this.form.warehouse_id,
           issue_date: this.form.issue_date,
           issue_no: this.form.issue_no,
-          department_id: this.form.department_id,
+          department_id: this.form.department_id ? parseInt(this.form.department_id) : null,
           department_name: this.form.department_name,
           requester_name: this.form.requester_name,
           remark: this.form.remark,

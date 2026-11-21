@@ -72,10 +72,27 @@
               <!-- หน่วยงานที่ขอเบิก -->
               <div class="col-md-4">
                 <label class="form-label fw-bold">หน่วยงาน / แผนกที่ขอเบิก <span class="text-danger">*</span></label>
-                <select class="form-select form-select-lg" v-model="form.department_id" @change="updateDepartmentName" required>
+                <select class="form-select form-select-lg" v-model="selectedDeptKey" @change="onDeptSelectChange" required>
                   <option value="">-- เลือกหน่วยงาน --</option>
-                  <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
+                  <optgroup label="หน่วยงานภายในโรงพยาบาล">
+                    <option v-for="d in departments" :key="'int:' + d.id" :value="'int:' + d.id">{{ d.name }}</option>
+                  </optgroup>
+                  <optgroup v-if="externalDepartments.length" label="รพ.สต. / หน่วยงานภายนอก">
+                    <option v-for="ext in externalDepartments" :key="'ext:' + ext.id" :value="'ext:' + ext.id">{{ ext.name }}</option>
+                  </optgroup>
+                  <option value="custom">+ ระบุหน่วยงานภายนอกอื่นๆ เอง...</option>
                 </select>
+                <input
+                  v-if="selectedDeptKey === 'custom'"
+                  type="text"
+                  class="form-control mt-2"
+                  v-model="form.department_name"
+                  placeholder="พิมพ์ชื่อ รพ.สต. หรือหน่วยงานภายนอก"
+                  required
+                />
+                <div v-if="selectedExternalDept" class="form-text text-primary small mt-1">
+                  <i class="bi bi-person-badge me-1"></i>ผู้ขอใช้พัสดุ (PDF): {{ selectedExternalDept.head_name }} ({{ selectedExternalDept.head_position }})
+                </div>
               </div>
 
               <!-- วันที่ขอเบิก -->
@@ -112,10 +129,24 @@
                     </option>
                   </datalist>
                 </div>
+              </div>
 
-                <!-- Quick Select Pills for department staff -->
-                <div v-if="departmentStaffList.length > 0" class="mt-2 p-2 bg-light rounded-3 border">
-                  <div class="small text-muted mb-1 d-flex align-items-center justify-content-between gap-1">
+              <!-- เบอร์โทรศัพท์ -->
+              <div class="col-md-4">
+                <label class="form-label fw-bold">เบอร์โทรติดต่อ / ภายใน</label>
+                <input type="text" class="form-control" v-model="form.requester_phone" placeholder="เช่น 102 หรือ 081-xxx-xxxx" />
+              </div>
+
+              <!-- วัตถุประสงค์ -->
+              <div class="col-md-4">
+                <label class="form-label fw-bold">วัตถุประสงค์การนำไปใช้งาน</label>
+                <input type="text" class="form-control" v-model="form.purpose" placeholder="เช่น ใช้งานประจำห้องตรวจ / ทดแทนของชำรุด" />
+              </div>
+
+              <!-- Quick Select Pills for department staff (Full Width) -->
+              <div v-if="departmentStaffList.length > 0" class="col-12">
+                <div class="p-2 px-3 bg-light rounded-3 border">
+                  <div class="small text-muted mb-2 d-flex align-items-center justify-content-between gap-1">
                     <span class="d-flex align-items-center gap-1">
                       <i class="bi bi-person-check-fill text-success"></i>
                       <span>เจ้าหน้าที่ในแผนกนี้ (คลิกเพื่อเลือกทันที):</span>
@@ -136,18 +167,6 @@
                     </button>
                   </div>
                 </div>
-              </div>
-
-              <!-- เบอร์โทรศัพท์ -->
-              <div class="col-md-4">
-                <label class="form-label fw-bold">เบอร์โทรติดต่อ / ภายใน</label>
-                <input type="text" class="form-control" v-model="form.requester_phone" placeholder="เช่น 102 หรือ 081-xxx-xxxx" />
-              </div>
-
-              <!-- วัตถุประสงค์ -->
-              <div class="col-md-4">
-                <label class="form-label fw-bold">วัตถุประสงค์การนำไปใช้งาน</label>
-                <input type="text" class="form-control" v-model="form.purpose" placeholder="เช่น ใช้งานประจำห้องตรวจ / ทดแทนของชำรุด" />
               </div>
             </div>
           </div>
@@ -344,6 +363,8 @@ export default {
     return {
       warehouses: [],
       departments: [],
+      externalDepartments: [],
+      selectedDeptKey: '',
       staffList: [],
       userProfile: null,
       isInventoryAdmin: false,
@@ -379,6 +400,11 @@ export default {
     };
   },
   computed: {
+    selectedExternalDept() {
+      if (!this.selectedDeptKey || !this.selectedDeptKey.startsWith('ext:')) return null;
+      const extId = Number(this.selectedDeptKey.slice(4));
+      return this.externalDepartments.find(e => Number(e.id) === extId) || null;
+    },
     canRequestRestrictedItems() {
       if (this.isInventoryAdmin) return true;
       const whId = Number(this.form.warehouse_id);
@@ -512,6 +538,12 @@ export default {
           ];
         }
 
+        // Fetch external departments (รพ.สต.)
+        const extDeptRes = await axios.get('/api-digital/inventory/external_departments.php').catch(() => null);
+        if (extDeptRes?.data?.status === 'success' && Array.isArray(extDeptRes.data.data)) {
+          this.externalDepartments = extDeptRes.data.data;
+        }
+
         // Fetch Staff List
         const staffRes = await axios.get('/api-hosoffice/get_all_staff.php').catch(() => null);
         if (staffRes && staffRes.data && staffRes.data.status === 'success' && Array.isArray(staffRes.data.data)) {
@@ -547,9 +579,11 @@ export default {
             if (myDept) {
               this.form.department_id = myDept.id;
               this.form.department_name = myDept.name;
+              this.selectedDeptKey = `int:${myDept.id}`;
             } else if (this.userProfile.department_id) {
               this.form.department_id = this.userProfile.department_id;
               this.form.department_name = this.userProfile.department;
+              this.selectedDeptKey = `int:${this.userProfile.department_id}`;
             }
           }
         }
@@ -576,8 +610,18 @@ export default {
           this.editId = r.id;
           this.editReqNo = r.req_no || '';
           this.form.warehouse_id = parseInt(r.warehouse_id);
-          this.form.department_id = r.department_id ? parseInt(r.department_id) : '';
+          this.form.department_id = r.department_id ? parseInt(r.department_id) : null;
           this.form.department_name = r.department_name || '';
+          if (r.department_id) {
+            this.selectedDeptKey = `int:${parseInt(r.department_id)}`;
+          } else if (r.department_name) {
+            const matchedExt = this.externalDepartments.find(
+              e => e.name.trim() === String(r.department_name).trim()
+            );
+            this.selectedDeptKey = matchedExt ? `ext:${matchedExt.id}` : 'custom';
+          } else {
+            this.selectedDeptKey = '';
+          }
           this.form.request_date = r.request_date ? moment(r.request_date).format('YYYY-MM-DDTHH:mm') : this.form.request_date;
           this.form.requester_name = r.requester_name || '';
           this.form.requester_phone = r.requester_phone || '';
@@ -597,6 +641,37 @@ export default {
       } catch (err) {
         console.error('Load edit requisition failed:', err);
         Swal.fire('ข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลใบขอเบิกสำหรับแก้ไขได้', 'error');
+      }
+    },
+    onDeptSelectChange() {
+      const key = this.selectedDeptKey || '';
+      if (key.startsWith('int:')) {
+        const id = parseInt(key.slice(4));
+        const d = this.departments.find(x => Number(x.id) === id);
+        this.form.department_id = id;
+        this.form.department_name = d ? d.name : '';
+      } else if (key.startsWith('ext:')) {
+        const extId = parseInt(key.slice(4));
+        const ext = this.externalDepartments.find(x => Number(x.id) === extId);
+        this.form.department_id = null;
+        this.form.department_name = ext ? ext.name : '';
+        if (!this.editId && this.userProfile?.fullname && this.form.requester_name === this.userProfile.fullname) {
+          this.form.requester_name = '';
+          this.form.requester_phone = '';
+        }
+      } else if (key === 'custom') {
+        this.form.department_id = null;
+        const isInternalName = this.departments.some(d => d.name === this.form.department_name);
+        if (isInternalName || this.externalDepartments.some(e => e.name === this.form.department_name)) {
+          this.form.department_name = '';
+        }
+        if (!this.editId && this.userProfile?.fullname && this.form.requester_name === this.userProfile.fullname) {
+          this.form.requester_name = '';
+          this.form.requester_phone = '';
+        }
+      } else {
+        this.form.department_id = '';
+        this.form.department_name = '';
       }
     },
     updateDepartmentName() {
@@ -622,7 +697,7 @@ export default {
       }
     },
     matchDepartmentFromStaff(staff) {
-      if (this.form.department_id) return; // ถ้าเลือกแผนกไว้แล้ว ไม่เปลี่ยนทับ
+      if (this.selectedDeptKey || this.form.department_id) return; // ถ้าเลือกแผนกไว้แล้ว ไม่เปลี่ยนทับ
       const dept = this.departments.find(d => {
         if (staff.HR_DEPARTMENT_SUB_ID && Number(d.id) === Number(staff.HR_DEPARTMENT_SUB_ID)) return true;
         if (staff.HR_DEPARTMENT_SUB_NAME && (d.name.includes(staff.HR_DEPARTMENT_SUB_NAME) || staff.HR_DEPARTMENT_SUB_NAME.includes(d.name))) return true;
@@ -631,6 +706,7 @@ export default {
       if (dept) {
         this.form.department_id = dept.id;
         this.form.department_name = dept.name;
+        this.selectedDeptKey = `int:${dept.id}`;
       } else if (staff.HR_DEPARTMENT_SUB_NAME) {
         this.form.department_name = staff.HR_DEPARTMENT_SUB_NAME;
       }
@@ -778,7 +854,7 @@ export default {
         const payload = {
           requisition_id: this.editId || undefined,
           warehouse_id: this.form.warehouse_id,
-          department_id: this.form.department_id,
+          department_id: this.form.department_id ? parseInt(this.form.department_id) : null,
           department_name: this.form.department_name,
           request_date: this.form.request_date,
           requester_name: this.form.requester_name,

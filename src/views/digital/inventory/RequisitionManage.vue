@@ -602,7 +602,8 @@ export default {
       userProfile: null,
       isSystemAdmin: false,
       isInventoryAdmin: false,
-      managedWarehouseIds: []
+      managedWarehouseIds: [],
+      externalDepartments: []
     };
   },
   computed: {
@@ -651,6 +652,10 @@ export default {
     },
     async fetchCurrentUserPermissions() {
       try {
+        const extRes = await axios.get('/api-digital/inventory/external_departments.php?all=1').catch(() => null);
+        if (extRes?.data?.status === 'success' && Array.isArray(extRes.data.data)) {
+          this.externalDepartments = extRes.data.data;
+        }
         const res = await axios.get('/api-hosoffice/get_user_profile.php');
         if (res.data && res.data.status === 'success') {
           this.userProfile = res.data;
@@ -1140,12 +1145,20 @@ export default {
 
       const deptSigner = requestData.dept_signer || {};
       const globalSettings = requestData.global_settings || {};
+      const deptNameNorm = String(requestData.department_name || '').replace(/\s+/g, '').trim();
+      const matchedExt = !requestData.department_id && deptNameNorm
+        ? this.externalDepartments.find(
+            e => String(e.name || '').replace(/\s+/g, '').trim() === deptNameNorm
+          )
+        : null;
 
       const reqName =
+        (matchedExt && matchedExt.head_name) ||
         deptSigner.requester_name ||
         requestData.requester_name ||
         '...........................................';
       const reqPos =
+        (matchedExt && matchedExt.head_position) ||
         deptSigner.requester_position ||
         requestData.requester_position ||
         '.....................................................';

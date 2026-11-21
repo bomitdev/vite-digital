@@ -129,7 +129,7 @@
               v-if="selectedGroup && members.length > 0"
               type="button"
               class="btn btn-dark btn-sm rounded-pill px-3"
-              @click="printPage"
+              @click="openPrintModal"
             >
               <i class="bi bi-printer me-1"></i> พิมพ์ตารางเวร
             </button>
@@ -554,10 +554,15 @@
           <!-- Official Print Footer: Legend & Signatures (Visible only when printing) -->
           <div class="d-none d-print-block mt-3 px-2 print-footer">
             <div class="mb-3" style="font-size: 10pt">
-              <strong>หมายเหตุ :</strong>
-              <span v-for="st in selectedGroup.shift_types" :key="'leg-' + st.code" class="ms-3">
-                <strong>{{ st.code }}</strong> = {{ st.label }}
-              </span>
+              <div>
+                <strong>หมายเหตุ :</strong>
+                <span v-for="st in selectedGroup.shift_types" :key="'leg-' + st.code" class="ms-3">
+                  <strong>{{ st.code }}</strong> = {{ st.label }}
+                </span>
+              </div>
+              <div v-if="printNote && printNote.trim()" class="mt-1 ps-4" style="white-space: pre-line;">
+                {{ printNote }}
+              </div>
             </div>
             <div
               class="row mt-4 text-center g-2 align-items-start"
@@ -595,6 +600,64 @@
         </div>
       </div>
     </template>
+
+    <!-- Modal: Before Print Note -->
+    <div v-if="showPrintModal" class="modal-backdrop fade show no-print"></div>
+    <div v-if="showPrintModal" class="modal fade show d-block no-print" tabindex="-1">
+      <div class="modal-dialog modal-lg modal-dialog-centered" style="max-width: 780px;">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+          <div class="modal-header border-bottom px-4 py-3">
+            <h5 class="modal-title fw-bold">
+              <i class="bi bi-printer text-primary me-2"></i>ตั้งค่าก่อนพิมพ์ตารางเวร
+            </h5>
+            <button type="button" class="btn-close" @click="showPrintModal = false"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div v-if="selectedGroup && selectedGroup.shift_types?.length" class="mb-3 p-3 rounded-3 bg-light border small">
+              <div class="fw-bold text-secondary mb-1">คำอธิบายเวร (แสดงอัตโนมัติ):</div>
+              <div>
+                <span v-for="st in selectedGroup.shift_types" :key="'pm-' + st.code" class="me-3">
+                  <strong>{{ st.code }}</strong> = {{ st.label }}
+                </span>
+              </div>
+            </div>
+            <div>
+              <label class="form-label fw-bold small">
+                <i class="bi bi-chat-left-text me-1 text-primary"></i>หมายเหตุเพิ่มเติม (ก่อนพิมพ์)
+              </label>
+              <textarea
+                class="form-control"
+                rows="7"
+                v-model="printNote"
+                placeholder="พิมพ์หมายเหตุเพิ่มเติมที่ต้องการให้แสดงท้ายตารางเวร (ถ้ามี)..."
+              ></textarea>
+              <div class="form-text small text-muted">
+                ระบบจะจำหมายเหตุนี้ไว้ให้สำหรับกลุ่มงานนี้ในครั้งถัดไป สามารถแก้ไขหรือลบออกได้ตลอดเวลา
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer border-top px-4 py-3 d-flex justify-content-between">
+            <button
+              v-if="printNote"
+              type="button"
+              class="btn btn-outline-danger btn-sm rounded-pill px-3"
+              @click="printNote = ''"
+            >
+              ล้างหมายเหตุ
+            </button>
+            <span v-else></span>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-light rounded-pill px-4" @click="showPrintModal = false">
+                ยกเลิก
+              </button>
+              <button type="button" class="btn btn-dark rounded-pill px-4 fw-bold" @click="confirmPrintPage">
+                <i class="bi bi-printer me-1"></i> สั่งพิมพ์เลย
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Modal: Create / Edit Group -->
     <div v-if="showGroupModal" class="modal-backdrop fade show"></div>
@@ -672,6 +735,22 @@
                   <div class="fw-bold small mb-2">
                     <i class="bi bi-pen me-1 text-primary"></i>ผู้จัดตารางเวร
                     (สำหรับลงนามในหน้าพิมพ์)
+                  </div>
+                  <div class="mb-2" v-if="schedulerStaffOptions.length > 0">
+                    <select
+                      class="form-select form-select-sm"
+                      :value="selectedSchedulerStaffId"
+                      @change="onSelectSchedulerStaff($event.target.value)"
+                    >
+                      <option value="">-- เลือกรายชื่อจากกลุ่มงาน (หรือกรอกเองด้านล่าง) --</option>
+                      <option
+                        v-for="s in schedulerStaffOptions"
+                        :key="'sch-' + s.ID"
+                        :value="String(s.ID)"
+                      >
+                        {{ s.FULLNAME }}{{ s.HR_POSITION_NAME ? ` (${s.HR_POSITION_NAME})` : '' }}
+                      </option>
+                    </select>
                   </div>
                   <div class="row g-2">
                     <div class="col-md-6">
@@ -1462,6 +1541,8 @@ export default {
         'ธันวาคม'
       ],
       activeBrush: 'ช',
+      showPrintModal: false,
+      printNote: '',
       showGroupModal: false,
       groupForm: {
         id: 0,
@@ -1541,6 +1622,24 @@ export default {
         if (me?.position_name) return me.position_name;
       }
       return '';
+    },
+    schedulerStaffOptions() {
+      if (!this.allStaff || !this.allStaff.length) return [];
+      if (this.groupForm.department_id) {
+        const deptList = this.allStaff.filter(
+          (s) => String(s.HR_DEPARTMENT_SUB_ID) === String(this.groupForm.department_id)
+        );
+        if (deptList.length > 0) return deptList;
+      }
+      return this.allStaff.slice(0, 100);
+    },
+    selectedSchedulerStaffId() {
+      const name = String(this.groupForm.scheduler_name || '').trim();
+      if (!name) return '';
+      const matched = this.schedulerStaffOptions.find(
+        (s) => String(s.FULLNAME || '').trim() === name
+      );
+      return matched ? String(matched.ID) : '';
     },
     filteredPermStaffOptions() {
       const assignedIds = new Set(this.groupUsers.map((u) => String(u.user_id)));
@@ -2028,6 +2127,27 @@ export default {
         document.head.appendChild(styleEl);
       }
       styleEl.textContent = ruleCss;
+    },
+    onSelectSchedulerStaff(staffId) {
+      if (!staffId) return;
+      const staff = this.allStaff.find((s) => String(s.ID) === String(staffId));
+      if (staff) {
+        this.groupForm.scheduler_name = staff.FULLNAME || '';
+        this.groupForm.scheduler_position = staff.HR_POSITION_NAME || '';
+      }
+    },
+    openPrintModal() {
+      const gid = this.selectedGroupId || 'default';
+      this.printNote = localStorage.getItem(`dept_schedule_print_note_${gid}`) || '';
+      this.showPrintModal = true;
+    },
+    confirmPrintPage() {
+      const gid = this.selectedGroupId || 'default';
+      localStorage.setItem(`dept_schedule_print_note_${gid}`, this.printNote || '');
+      this.showPrintModal = false;
+      setTimeout(() => {
+        this.printPage();
+      }, 150);
     },
     printPage() {
       this.setPrintPageRule('@page { size: A4 landscape; margin: 10mm 14mm; }');
