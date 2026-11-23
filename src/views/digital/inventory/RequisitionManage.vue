@@ -554,19 +554,44 @@
     <!-- Global Signers & Signatures Modal (PDF) -->
     <div v-if="showGlobalSigModal" class="modal-backdrop fade show"></div>
     <div v-if="showGlobalSigModal" class="modal fade show d-block" tabindex="-1">
-      <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg rounded-4">
           <div class="modal-header border-bottom px-4 py-3">
             <h5 class="modal-title fw-bold">
-              <i class="bi bi-pen text-primary me-2"></i>ตั้งค่าผู้จ่าย / ผู้สั่งจ่าย และลายเซ็น (สำหรับ PDF)
+              <i class="bi bi-pen text-primary me-2"></i>ตั้งค่าผู้ลงนามและลายเซ็น (สำหรับ PDF)
             </h5>
             <button type="button" class="btn-close" @click="showGlobalSigModal = false"></button>
+          </div>
+          <div class="px-4 pt-3 border-bottom bg-light d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <ul class="nav nav-tabs border-0">
+              <li class="nav-item">
+                <button
+                  type="button"
+                  class="nav-link fw-semibold"
+                  :class="sigModalTab === 'global' ? 'active bg-white text-primary' : 'text-secondary'"
+                  @click="sigModalTab = 'global'"
+                >
+                  <i class="bi bi-gear me-1"></i>ผู้จ่าย / ผู้สั่งจ่าย (ส่วนกลาง)
+                </button>
+              </li>
+              <li class="nav-item">
+                <button
+                  type="button"
+                  class="nav-link fw-semibold"
+                  :class="sigModalTab === 'dept' ? 'active bg-white text-primary' : 'text-secondary'"
+                  @click="sigModalTab = 'dept'"
+                >
+                  <i class="bi bi-people-fill me-1"></i>หัวหน้ากลุ่มงาน ({{ deptSignersList.length }})
+                </button>
+              </li>
+            </ul>
           </div>
           <div class="modal-body p-4">
             <div v-if="loadingGlobalSig" class="text-center py-4 text-muted">
               <div class="spinner-border spinner-border-sm text-primary me-2"></div>กำลังโหลดการตั้งค่า...
             </div>
-            <div v-else class="row g-4">
+            <!-- Tab 1: Global Signers -->
+            <div v-else-if="sigModalTab === 'global'" class="row g-4">
               <!-- ผู้จ่าย -->
               <div class="col-md-6">
                 <div class="p-3 rounded-4 bg-light border h-100">
@@ -635,12 +660,134 @@
                 </div>
               </div>
             </div>
+
+            <!-- Tab 2: Department Heads (ผู้ขอใช้พัสดุ / ผู้เบิก) -->
+            <div v-else>
+              <div class="p-3 rounded-4 bg-light border mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h6 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-person-plus-fill text-primary me-1"></i>
+                    {{ editingDeptSigner ? 'แก้ไขหัวหน้ากลุ่มงาน' : 'เพิ่ม / แก้ไขหัวหน้ากลุ่มงาน (ผู้ขอใช้พัสดุ / ผู้เบิก)' }}
+                  </h6>
+                  <button
+                    v-if="editingDeptSigner"
+                    type="button"
+                    class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0"
+                    style="font-size: 0.75rem;"
+                    @click="resetDeptSignerForm"
+                  >
+                    ยกเลิกการแก้ไข
+                  </button>
+                </div>
+                <div class="row g-2 align-items-end">
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold mb-1">ชื่อกลุ่มงาน / แผนก *</label>
+                    <input
+                      type="text"
+                      class="form-control form-control-sm"
+                      v-model="deptSignerForm.department_name"
+                      :readonly="editingDeptSigner"
+                      placeholder="เช่น กลุ่มงานสุขภาพดิจิทัล"
+                    />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold mb-1">ชื่อหัวหน้ากลุ่มงาน *</label>
+                    <input
+                      type="text"
+                      class="form-control form-control-sm"
+                      v-model="deptSignerForm.requester_name"
+                      placeholder="ระบุชื่อ-นามสกุล"
+                    />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold mb-1">ตำแหน่ง</label>
+                    <input
+                      type="text"
+                      class="form-control form-control-sm"
+                      v-model="deptSignerForm.requester_position"
+                      placeholder="ระบุตำแหน่ง"
+                    />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold mb-1">รูปลายเซ็น (PNG/JPG)</label>
+                    <div class="d-flex gap-1">
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg"
+                        class="form-control form-control-sm"
+                        @change="handleDeptSigUpload"
+                      />
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-success text-nowrap px-3 fw-bold"
+                        @click="saveDeptSigner"
+                        :disabled="savingDeptSigner"
+                      >
+                        <span v-if="savingDeptSigner" class="spinner-border spinner-border-sm"></span>
+                        <span v-else>บันทึก</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div v-if="deptSignerForm.signature_image" class="col-12 mt-2 d-flex align-items-center gap-2">
+                    <span class="small text-muted">ตัวอย่างลายเซ็น:</span>
+                    <img :src="deptSignerForm.signature_image" alt="Dept Sig" class="bg-white border rounded p-1" style="max-height: 40px;" />
+                    <button type="button" class="btn btn-xs btn-outline-danger py-0 px-2" style="font-size: 0.72rem;" @click="deptSignerForm.signature_image = null">
+                      ลบลายเซ็น
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="table-responsive border rounded-3">
+                <table class="table table-sm table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th class="ps-3">กลุ่มงาน / แผนก</th>
+                      <th>ชื่อหัวหน้า (ผู้ขอใช้พัสดุ / ผู้เบิก)</th>
+                      <th>ตำแหน่ง</th>
+                      <th class="text-center">ลายเซ็น</th>
+                      <th class="text-center pe-3" style="width: 130px;">จัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-if="deptSignersList.length === 0">
+                      <td colspan="5" class="text-center py-4 text-muted">ยังไม่มีข้อมูลหัวหน้ากลุ่มงาน</td>
+                    </tr>
+                    <tr v-for="d in deptSignersList" :key="'ds-' + d.department_name">
+                      <td class="ps-3 fw-semibold text-primary small">{{ d.department_name }}</td>
+                      <td class="small fw-semibold">{{ d.requester_name || '-' }}</td>
+                      <td class="small text-muted">{{ d.requester_position || '-' }}</td>
+                      <td class="text-center">
+                        <img v-if="d.signature_image" :src="d.signature_image" alt="Sig" style="max-height: 28px;" />
+                        <span v-else class="text-muted small">-</span>
+                      </td>
+                      <td class="text-center pe-3">
+                        <div class="btn-group btn-group-sm">
+                          <button type="button" class="btn btn-outline-primary" @click="editDeptSigner(d)" title="แก้ไข">
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                          <button type="button" class="btn btn-outline-danger" @click="deleteDeptSigner(d.department_name)" title="ลบ">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
           <div class="modal-footer border-top px-4 py-3">
             <button type="button" class="btn btn-light rounded-pill px-4" @click="showGlobalSigModal = false">ปิด</button>
-            <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold" @click="saveGlobalSigSettings" :disabled="savingGlobalSig">
+            <button
+              v-if="sigModalTab === 'global'"
+              type="button"
+              class="btn btn-primary rounded-pill px-4 fw-bold"
+              @click="saveGlobalSigSettings"
+              :disabled="savingGlobalSig"
+            >
               <span v-if="savingGlobalSig" class="spinner-border spinner-border-sm me-1"></span>
-              <i v-else class="bi bi-save me-1"></i> บันทึกการตั้งค่า
+              <i v-else class="bi bi-save me-1"></i> บันทึกการตั้งค่าส่วนกลาง
             </button>
           </div>
         </div>
@@ -711,6 +858,7 @@ export default {
 
       // Global Signer & Signature Modal
       showGlobalSigModal: false,
+      sigModalTab: 'global',
       loadingGlobalSig: false,
       savingGlobalSig: false,
       globalSigForm: {
@@ -720,6 +868,15 @@ export default {
         approver_name: '',
         approver_position: '',
         approver_signature: ''
+      },
+      deptSignersList: [],
+      editingDeptSigner: false,
+      savingDeptSigner: false,
+      deptSignerForm: {
+        department_name: '',
+        requester_name: '',
+        requester_position: '',
+        signature_image: null
       }
     };
   },
@@ -1385,20 +1542,101 @@ export default {
       this.loadingGlobalSig = true;
       try {
         const res = await axios.get('/api-digital/admin_material/admin_get_print_settings.php');
-        if (res.data?.success && res.data.global) {
-          this.globalSigForm = {
-            payer_name: res.data.global.payer_name || 'นางภรภัค อรอินทร์',
-            payer_position: res.data.global.payer_position || 'เจ้าพนักงานพัสดุ',
-            payer_signature: res.data.global.payer_signature || '',
-            approver_name: res.data.global.approver_name || 'นางสาวศิริลักษณ์ พรหมสาขา ณ สกลนคร',
-            approver_position: res.data.global.approver_position || 'นักวิชาการพัสดุ',
-            approver_signature: res.data.global.approver_signature || ''
-          };
+        if (res.data?.success) {
+          if (res.data.global) {
+            this.globalSigForm = {
+              payer_name: res.data.global.payer_name || 'นางภรภัค อรอินทร์',
+              payer_position: res.data.global.payer_position || 'เจ้าพนักงานพัสดุ',
+              payer_signature: res.data.global.payer_signature || '',
+              approver_name: res.data.global.approver_name || 'นางสาวศิริลักษณ์ พรหมสาขา ณ สกลนคร',
+              approver_position: res.data.global.approver_position || 'นักวิชาการพัสดุ',
+              approver_signature: res.data.global.approver_signature || ''
+            };
+          }
+          this.deptSignersList = res.data.departments || [];
         }
       } catch (err) {
         console.error(err);
       } finally {
         this.loadingGlobalSig = false;
+      }
+    },
+    resetDeptSignerForm() {
+      this.editingDeptSigner = false;
+      this.deptSignerForm = {
+        department_name: '',
+        requester_name: '',
+        requester_position: '',
+        signature_image: null
+      };
+    },
+    editDeptSigner(d) {
+      this.editingDeptSigner = true;
+      this.deptSignerForm = {
+        department_name: d.department_name,
+        requester_name: d.requester_name || '',
+        requester_position: d.requester_position || '',
+        signature_image: d.signature_image || null
+      };
+    },
+    handleDeptSigUpload(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      if (!file.type.match(/image\/(png|jpeg|jpg)/)) {
+        Swal.fire('ข้อผิดพลาด', 'กรุณาอัปโหลดไฟล์รูปภาพ (PNG หรือ JPG) เท่านั้น', 'warning');
+        return;
+      }
+      if (file.size > 3 * 1024 * 1024) {
+        Swal.fire('ข้อผิดพลาด', 'ขนาดไฟล์รูปภาพต้องไม่เกิน 3MB', 'warning');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        this.deptSignerForm.signature_image = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    },
+    async saveDeptSigner() {
+      if (!this.deptSignerForm.department_name.trim() || !this.deptSignerForm.requester_name.trim()) {
+        Swal.fire('ข้อมูลไม่ครบ', 'กรุณาระบุชื่อกลุ่มงานและชื่อหัวหน้ากลุ่มงาน', 'warning');
+        return;
+      }
+      this.savingDeptSigner = true;
+      try {
+        const res = await axios.post('/api-digital/admin_material/admin_save_dept_signer.php', this.deptSignerForm);
+        if (res.data?.success) {
+          Swal.fire({ icon: 'success', title: 'บันทึกหัวหน้ากลุ่มงานเรียบร้อย', timer: 1300, showConfirmButton: false });
+          this.resetDeptSignerForm();
+          await this.openGlobalSigModal();
+        } else {
+          Swal.fire('ข้อผิดพลาด', res.data?.message || 'ไม่สามารถบันทึกได้', 'error');
+        }
+      } catch (err) {
+        Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการบันทึก', 'error');
+      } finally {
+        this.savingDeptSigner = false;
+      }
+    },
+    async deleteDeptSigner(deptName) {
+      const confirm = await Swal.fire({
+        title: 'ยืนยันการลบ?',
+        text: `ต้องการลบข้อมูลผู้ลงนาม "${deptName}" ใช่หรือไม่?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'ลบ'
+      });
+      if (!confirm.isConfirmed) return;
+      try {
+        const res = await axios.post('/api-digital/admin_material/admin_delete_dept_signer.php', {
+          department_name: deptName
+        });
+        if (res.data?.success) {
+          await this.openGlobalSigModal();
+        }
+      } catch (err) {
+        Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการลบ', 'error');
       }
     },
     handleGlobalSigUpload(e, field) {

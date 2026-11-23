@@ -275,48 +275,75 @@
                     <p class="text-muted small mb-0">กรุณาคลิกปุ่ม "เบิก" จากรายการด้านซ้าย</p>
                   </div>
 
-                  <!-- Cart Items -->
-                  <div v-else class="flex-grow-1" style="max-height: 440px; overflow-y: auto; padding-right: 4px;">
-                    <div v-for="(item, index) in selectedItems" :key="item.item_id" class="card border-0 shadow-sm mb-3 rounded-4 overflow-hidden">
-                      <div class="card-body p-3">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                          <div class="fw-bold text-dark lh-sm pe-2">
-                            <span class="badge bg-dark rounded-circle me-1" style="font-size: 0.7rem; padding: 0.35em 0.55em;">{{ index + 1 }}</span>
-                            {{ item.item_name }}
-                            <div class="small text-muted fw-normal font-monospace mt-1">
-                              [{{ item.item_code }}] • คงเหลือในคลัง: {{ formatQty(item.on_hand) }} {{ item.unit_name }}
+                  <!-- Cart Items (Compact Scannable List) -->
+                  <div v-else class="flex-grow-1 d-flex flex-column">
+                    <div class="bg-white rounded-3 border shadow-xs overflow-auto" style="max-height: 460px;">
+                      <div
+                        v-for="(item, index) in selectedItems"
+                        :key="item.item_id"
+                        class="px-3 py-2 border-bottom cart-row"
+                      >
+                        <div class="d-flex align-items-center justify-content-between gap-2">
+                          <div class="min-w-0 flex-grow-1">
+                            <div class="d-flex align-items-center gap-2">
+                              <span class="badge bg-dark rounded-pill flex-shrink-0" style="font-size: 0.68rem;">{{ index + 1 }}</span>
+                              <span class="fw-bold text-dark text-truncate" style="font-size: 0.9rem;" :title="item.item_name">
+                                {{ item.item_name }}
+                              </span>
+                            </div>
+                            <div class="d-flex flex-wrap align-items-center gap-2 mt-1 ps-4" style="font-size: 0.75rem;">
+                              <span class="text-muted font-monospace">[{{ item.item_code }}]</span>
+                              <span
+                                class="badge rounded-pill fw-normal"
+                                :class="item.qty > item.on_hand ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success'"
+                              >
+                                คงเหลือ {{ formatQty(item.on_hand) }} {{ item.unit_name }}
+                              </span>
                             </div>
                           </div>
-                          <button type="button" class="btn btn-sm btn-light text-danger shadow-sm rounded-circle p-1 flex-shrink-0" @click="removeItem(index)" style="width: 32px; height: 32px;" title="นำออก">
-                            <i class="bi bi-trash-fill"></i>
-                          </button>
-                        </div>
 
-                        <div class="d-flex justify-content-between align-items-center mt-2 bg-light rounded-3 p-2 border">
-                          <span class="small fw-bold text-secondary">ระบุจำนวน:</span>
-                          <div class="d-flex align-items-center gap-2">
-                            <div class="input-group input-group-sm shadow-sm rounded-pill overflow-hidden" style="width: 126px;">
-                              <button type="button" class="btn btn-primary px-2" @click="item.qty > 1 ? item.qty-- : null"><i class="bi bi-dash"></i></button>
+                          <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                            <div class="input-group input-group-sm rounded-pill overflow-hidden border border-primary" style="width: 108px;">
+                              <button type="button" class="btn btn-primary px-2 py-0" @click="item.qty > 1 ? item.qty-- : null"><i class="bi bi-dash"></i></button>
                               <input
                                 type="number"
                                 step="1"
                                 min="1"
                                 v-model.number="item.qty"
                                 @change="item.qty = Math.max(1, Math.round(Number(item.qty) || 1))"
-                                class="form-control text-center fw-bold border-primary text-primary px-0 hide-arrows"
+                                class="form-control text-center fw-bold border-0 text-primary px-0 hide-arrows"
                                 required
-                                style="max-width: 54px;"
+                                style="max-width: 42px; font-size: 0.85rem;"
                               >
-                              <button type="button" class="btn btn-primary px-2" @click="item.qty++"><i class="bi bi-plus"></i></button>
+                              <button type="button" class="btn btn-primary px-2 py-0" @click="item.qty++"><i class="bi bi-plus"></i></button>
                             </div>
-                            <span class="small fw-bold text-dark text-nowrap">{{ item.unit_name || 'หน่วย' }}</span>
+                            <span class="small fw-semibold text-secondary text-nowrap" style="min-width: 36px;">{{ item.unit_name || 'หน่วย' }}</span>
+                            <button
+                              type="button"
+                              class="btn btn-sm btn-link text-danger p-1"
+                              @click="removeItem(index)"
+                              title="นำออก"
+                            >
+                              <i class="bi bi-trash-fill"></i>
+                            </button>
                           </div>
                         </div>
 
-                        <div class="mt-2">
-                          <input type="text" class="form-control form-control-sm bg-light border-0" v-model="item.item_note" placeholder="หมายเหตุรายการนี้ (ถ้ามี)..." />
+                        <div class="mt-1 ps-4">
+                          <input
+                            type="text"
+                            class="form-control form-control-sm bg-light border-0 py-0 px-2 text-muted"
+                            style="font-size: 0.76rem; height: 24px;"
+                            v-model="item.item_note"
+                            placeholder="หมายเหตุรายการนี้ (ถ้ามี)..."
+                          />
                         </div>
                       </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-2 px-2 small text-muted">
+                      <span>รวมทั้งหมด <strong class="text-dark">{{ selectedItems.length }}</strong> รายการ</span>
+                      <span>จำนวนรวม <strong class="text-primary">{{ selectedItems.reduce((s, it) => s + (Number(it.qty) || 0), 0).toLocaleString() }}</strong> ชิ้น/หน่วย</span>
                     </div>
                   </div>
                 </div>

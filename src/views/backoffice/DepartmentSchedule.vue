@@ -100,7 +100,7 @@
 
           <div class="col-12 col-md-4 d-flex flex-wrap justify-content-md-end gap-2">
             <button
-              v-if="selectedGroup && canEditSchedule"
+              v-if="selectedGroup && canEditSchedule && !isLocked"
               type="button"
               class="btn btn-outline-primary btn-sm rounded-pill px-3"
               @click="copyPrevMonth"
@@ -132,6 +132,19 @@
               @click="openPrintModal"
             >
               <i class="bi bi-printer me-1"></i> พิมพ์ตารางเวร
+            </button>
+            <button
+              v-if="selectedGroup && canEditSchedule"
+              type="button"
+              class="btn btn-sm rounded-pill px-3 fw-semibold"
+              :class="isLocked ? 'btn-warning text-dark' : 'btn-outline-secondary'"
+              @click="toggleScheduleLock(!isLocked)"
+              :disabled="togglingLock"
+              :title="isLocked ? 'ปลดล็อกเพื่อแก้ไขตารางเวร' : 'ล็อกตารางเวรป้องกันการแก้ไขโดยไม่ตั้งใจ'"
+            >
+              <span v-if="togglingLock" class="spinner-border spinner-border-sm me-1"></span>
+              <i v-else class="bi me-1" :class="isLocked ? 'bi-unlock-fill' : 'bi-lock-fill'"></i>
+              {{ isLocked ? 'ปลดล็อกแก้ไข' : 'ล็อกตาราง' }}
             </button>
           </div>
         </div>
@@ -348,8 +361,33 @@
         </div>
       </div>
 
+      <!-- Locked Banner -->
+      <div
+        v-if="isLocked"
+        class="alert alert-warning border border-warning-subtle rounded-4 shadow-sm mb-4 d-flex flex-wrap align-items-center justify-content-between gap-2 print-hide"
+      >
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-lock-fill fs-5 text-warning-emphasis"></i>
+          <div>
+            <span class="fw-bold text-dark">ตารางเวรเดือนนี้ถูกล็อกไว้แล้ว</span>
+            <span v-if="lockInfo?.locked_by" class="small text-muted ms-2">
+              (ล็อกโดย: {{ lockInfo.locked_by }})
+            </span>
+          </div>
+        </div>
+        <button
+          v-if="canEditSchedule"
+          type="button"
+          class="btn btn-warning btn-sm rounded-pill px-3 fw-bold text-dark"
+          @click="toggleScheduleLock(false)"
+          :disabled="togglingLock"
+        >
+          <i class="bi bi-unlock-fill me-1"></i> ปลดล็อกเพื่อแก้ไข
+        </button>
+      </div>
+
       <!-- Shift Brush & Member Toolbar -->
-      <div v-if="canEditSchedule" class="card border-0 shadow-sm rounded-4 mb-4 print-hide">
+      <div v-if="canEditSchedule && !isLocked" class="card border-0 shadow-sm rounded-4 mb-4 print-hide">
         <div
           class="card-body p-3 d-flex flex-wrap justify-content-between align-items-center gap-3"
         >
@@ -469,8 +507,9 @@
                     class="text-center day-header"
                     :class="{
                       'is-today-col': isToday(day),
-                      'is-weekend-col': isWeekend(day) && !isToday(day)
+                      'is-weekend-col': isHolidayOrWeekend(day) && !isToday(day)
                     }"
+                    :title="getHolidayName(day)"
                   >
                     <div class="day-num">{{ day }}</div>
                     <div class="day-name">{{ getThaiWeekdayShort(day) }}</div>
@@ -490,7 +529,7 @@
                         </small>
                       </div>
                       <div
-                        v-if="canEditSchedule"
+                        v-if="canEditSchedule && !isLocked"
                         class="d-inline-flex align-items-center gap-1 print-hide"
                       >
                         <button
@@ -528,11 +567,11 @@
                     :key="day"
                     class="text-center day-cell"
                     :class="{
-                      'cursor-pointer': canEditSchedule,
+                      'cursor-pointer': canEditSchedule && !isLocked,
                       'is-today-col': isToday(day),
-                      'is-weekend-col': isWeekend(day) && !isToday(day)
+                      'is-weekend-col': isHolidayOrWeekend(day) && !isToday(day)
                     }"
-                    @click="canEditSchedule && toggleCell(m, day)"
+                    @click="canEditSchedule && !isLocked && toggleCell(m, day)"
                   >
                     <span
                       v-if="m.duties && m.duties[String(day)]"
@@ -1541,6 +1580,10 @@ export default {
         'ธันวาคม'
       ],
       activeBrush: 'ช',
+      monthHolidays: {},
+      isLocked: false,
+      lockInfo: null,
+      togglingLock: false,
       showPrintModal: false,
       printNote: '',
       showGroupModal: false,
@@ -1793,6 +1836,7 @@ export default {
         });
       }
       this.loading = true;
+      this.fetchHolidays();
       try {
         const res = await axios.get('/api-digital/dept_schedule/api.php', {
           params: {
@@ -1805,6 +1849,8 @@ export default {
         });
         if (res.data?.status === 'success') {
           this.members = res.data.data.members || [];
+          this.lockInfo = res.data.data.lock_info || null;
+          this.isLocked = Boolean(this.lockInfo?.is_locked);
           const shifts = res.data.data.group?.shift_types || [];
           if (
             shifts.length > 0 &&
@@ -2094,6 +2140,64 @@ export default {
     },
     isToday(day) {
       return this.isCurrentMonth && day === this.currentDay;
+    },
+    async toggleScheduleLock(lock) {
+      if (!this.selectedGroupId) return;
+      this.togglingLock = true;
+      try {
+        const res = await axios.post('/api-digital/dept_schedule/api.php?action=toggle_lock', {
+          group_id: this.selectedGroupId,
+          year: this.selectedYear,
+          month: this.selectedMonth,
+          is_locked: lock ? 1 : 0,
+          locked_by: localStorage.getItem('user_name') || '',
+          ...this.authPayload()
+        });
+        if (res.data?.status === 'success') {
+          this.lockInfo = res.data.data || null;
+          this.isLocked = Boolean(this.lockInfo?.is_locked);
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: this.isLocked ? 'success' : 'info',
+            title: this.isLocked ? 'ล็อกตารางเวรเรียบร้อยแล้ว' : 'ปลดล็อกตารางเวรแล้ว สามารถแก้ไขได้',
+            showConfirmButton: false,
+            timer: 1800
+          });
+        } else {
+          Swal.fire('ข้อผิดพลาด', res.data?.message || 'ไม่สามารถเปลี่ยนสถานะล็อกได้', 'error');
+        }
+      } catch (err) {
+        Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+      } finally {
+        this.togglingLock = false;
+      }
+    },
+    async fetchHolidays() {
+      try {
+        const res = await axios.get('/api-digital/duties/get_holidays.php', {
+          params: {
+            year: this.selectedYear,
+            month: this.selectedMonth
+          }
+        });
+        if (res.data?.status === 'success' && res.data.data) {
+          this.monthHolidays = res.data.data;
+        } else {
+          this.monthHolidays = {};
+        }
+      } catch (err) {
+        this.monthHolidays = {};
+      }
+    },
+    getHolidayName(day) {
+      return this.monthHolidays?.[String(day)] || '';
+    },
+    isHoliday(day) {
+      return Boolean(this.monthHolidays?.[String(day)]);
+    },
+    isHolidayOrWeekend(day) {
+      return this.isWeekend(day) || this.isHoliday(day);
     },
     isWeekend(day) {
       const wd = new Date(this.selectedYear, this.selectedMonth - 1, day).getDay();
@@ -2450,7 +2554,12 @@ export default {
 }
 
 .is-weekend-col {
-  background-color: #f8fafc !important;
+  background-color: #cbd5e1 !important;
+}
+
+th.is-weekend-col {
+  background-color: #94a3b8 !important;
+  color: #0f172a !important;
 }
 
 .total-col {
@@ -2520,7 +2629,14 @@ export default {
   }
 
   .is-weekend-col {
-    background-color: #e2e8f0 !important;
+    background-color: #cbd5e1 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  th.is-weekend-col {
+    background-color: #94a3b8 !important;
+    color: #000 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }

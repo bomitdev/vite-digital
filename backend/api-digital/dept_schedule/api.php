@@ -130,6 +130,34 @@ try {
     $req_is_admin = isset($_GET['is_admin']) ? (int)$_GET['is_admin'] : (int)($body['is_admin'] ?? 0);
     $req_dept_id = isset($_GET['user_department_id']) ? (int)$_GET['user_department_id'] : (isset($_GET['department_id']) ? (int)$_GET['department_id'] : (int)($body['user_department_id'] ?? 0));
 
+    // Ensure table exists
+    $pdo2->exec("
+        CREATE TABLE IF NOT EXISTS dept_schedule_locks (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            group_id INT NOT NULL,
+            duty_year INT NOT NULL,
+            duty_month INT NOT NULL,
+            is_locked TINYINT(1) NOT NULL DEFAULT 0,
+            locked_by VARCHAR(255) DEFAULT '',
+            locked_at DATETIME DEFAULT NULL,
+            UNIQUE KEY uk_group_ym (group_id, duty_year, duty_month)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+
+    function getScheduleLockInfo(PDO $pdo2, int $group_id, int $year, int $month): array {
+        $st = $pdo2->prepare("SELECT is_locked, locked_by, locked_at FROM dept_schedule_locks WHERE group_id = ? AND duty_year = ? AND duty_month = ? LIMIT 1");
+        $st->execute([$group_id, $year, $month]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$row || !(int)$row['is_locked']) {
+            return ['is_locked' => false, 'locked_by' => '', 'locked_at' => null];
+        }
+        return [
+            'is_locked' => true,
+            'locked_by' => (string)($row['locked_by'] ?? ''),
+            'locked_at' => $row['locked_at'] ?? null
+        ];
+    }
+
     if ($action === 'moph_channels') {
         require_once __DIR__ . '/../../moph_notify_helper.php';
         ensureMophNotifyChannelsTable($pdo2);
@@ -448,11 +476,14 @@ try {
             $m['duties'] = $entriesMap[(string)$m['id']] ?? (object)[];
         }
 
+        $lockInfo = getScheduleLockInfo($pdo2, $group_id, $year, $month);
+
         echo json_encode([
             'status' => 'success',
             'data' => [
                 'group' => $group,
-                'members' => $members
+                'members' => $members,
+                'lock_info' => $lockInfo
             ]
         ], JSON_UNESCAPED_UNICODE);
         exit;
@@ -548,6 +579,12 @@ try {
             exit;
         }
 
+        $lockInfo = getScheduleLockInfo($pdo2, $group_id, $year, $month);
+        if ($lockInfo['is_locked']) {
+            echo json_encode(['status' => 'error', 'message' => 'ตารางเวรเดือนนี้ถูกล็อกไว้แล้ว กรุณาปลดล็อกก่อนแก้ไข'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
         if ($shift_code === '') {
             $del = $pdo2->prepare("
                 DELETE FROM dept_schedule_entries
@@ -567,6 +604,41 @@ try {
         exit;
     }
 
+    if ($action === 'toggle_lock') {
+        $group_id = (int)($body['group_id'] ?? 0);
+        $year = (int)($body['year'] ?? 0);
+        $month = (int)($body['month'] ?? 0);
+        $is_locked = !empty($body['is_locked']) ? 1 : 0;
+        $locked_by = trim((string)($body['locked_by'] ?? ''));
+
+        $callerAccess = getUserGroupAccessLevel($pdo2, $group_id, $req_user_id, $req_is_admin);
+        if (!in_array($callerAccess, ['ADMIN', 'STAFF'])) {
+            echo json_encode(['status' => 'error', 'message' => 'ไม่มีสิทธิ์ล็อก/ปลดล็อกตารางเวรนี้'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        if ($group_id <= 0 || $year <= 0 || $month <= 0) {
+            echo json_encode(['status' => 'error', 'message' => 'ข้อมูลไม่ครบถ้วน'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $stmt = $pdo2->prepare("
+            INSERT INTO dept_schedule_locks (group_id, duty_year, duty_month, is_locked, locked_by, locked_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE
+                is_locked = VALUES(is_locked),
+                locked_by = VALUES(locked_by),
+                locked_at = NOW()
+        ");
+        $stmt->execute([$group_id, $year, $month, $is_locked, $locked_by]);
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => getScheduleLockInfo($pdo2, $group_id, $year, $month)
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     if ($action === 'copy_prev_month') {
         $group_id = (int)($body['group_id'] ?? 0);
         $year = (int)($body['year'] ?? 0);
@@ -574,6 +646,12 @@ try {
 
         if ($group_id <= 0 || $year <= 0 || $month <= 0) {
             echo json_encode(['status' => 'error', 'message' => 'ข้อมูลไม่ครบถ้วน'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $lockInfo = getScheduleLockInfo($pdo2, $group_id, $year, $month);
+        if ($lockInfo['is_locked']) {
+            echo json_encode(['status' => 'error', 'message' => 'ตารางเวรเดือนนี้ถูกล็อกไว้แล้ว กรุณาปลดล็อกก่อนแก้ไข'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
