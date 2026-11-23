@@ -29,6 +29,14 @@
 
       <div class="d-flex flex-wrap gap-2">
         <button
+          v-if="isInventoryAdmin"
+          class="btn btn-outline-dark rounded-pill px-3 shadow-sm fw-semibold"
+          @click="openGlobalSigModal"
+          title="ตั้งค่าชื่อ ตำแหน่ง และลายเซ็น ผู้จ่าย / ผู้สั่งจ่าย สำหรับ PDF"
+        >
+          <i class="bi bi-pen me-1"></i> ตั้งค่าลายเซ็น (PDF)
+        </button>
+        <button
           v-if="isSystemAdmin"
           class="btn btn-outline-primary rounded-pill px-3 shadow-sm fw-semibold"
           @click="recalculateBalances"
@@ -543,6 +551,102 @@
       </div>
     </div>
 
+    <!-- Global Signers & Signatures Modal (PDF) -->
+    <div v-if="showGlobalSigModal" class="modal-backdrop fade show"></div>
+    <div v-if="showGlobalSigModal" class="modal fade show d-block" tabindex="-1">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+          <div class="modal-header border-bottom px-4 py-3">
+            <h5 class="modal-title fw-bold">
+              <i class="bi bi-pen text-primary me-2"></i>ตั้งค่าผู้จ่าย / ผู้สั่งจ่าย และลายเซ็น (สำหรับ PDF)
+            </h5>
+            <button type="button" class="btn-close" @click="showGlobalSigModal = false"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div v-if="loadingGlobalSig" class="text-center py-4 text-muted">
+              <div class="spinner-border spinner-border-sm text-primary me-2"></div>กำลังโหลดการตั้งค่า...
+            </div>
+            <div v-else class="row g-4">
+              <!-- ผู้จ่าย -->
+              <div class="col-md-6">
+                <div class="p-3 rounded-4 bg-light border h-100">
+                  <h6 class="fw-bold text-primary mb-3">
+                    <i class="bi bi-person-check me-1"></i>ผู้จ่ายพัสดุ
+                  </h6>
+                  <div class="mb-2">
+                    <label class="form-label small fw-bold">ชื่อผู้จ่าย</label>
+                    <input type="text" class="form-control form-control-sm" v-model="globalSigForm.payer_name" placeholder="ระบุชื่อผู้จ่าย" />
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label small fw-bold">ตำแหน่ง</label>
+                    <input type="text" class="form-control form-control-sm" v-model="globalSigForm.payer_position" placeholder="ระบุตำแหน่งผู้จ่าย" />
+                  </div>
+                  <div>
+                    <label class="form-label small fw-bold">ลายเซ็นผู้จ่าย (PNG/JPG)</label>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg"
+                      class="form-control form-control-sm"
+                      @change="handleGlobalSigUpload($event, 'payer_signature')"
+                    />
+                    <div v-if="globalSigForm.payer_signature" class="mt-2 p-2 bg-white border rounded text-center">
+                      <img :src="globalSigForm.payer_signature" alt="Payer Signature" style="max-height: 50px;" />
+                      <div class="mt-1">
+                        <button type="button" class="btn btn-xs btn-outline-danger py-0 px-2" style="font-size: 0.72rem;" @click="globalSigForm.payer_signature = ''">
+                          ลบลายเซ็น
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ผู้สั่งจ่าย -->
+              <div class="col-md-6">
+                <div class="p-3 rounded-4 bg-light border h-100">
+                  <h6 class="fw-bold text-success mb-3">
+                    <i class="bi bi-award me-1"></i>ผู้สั่งจ่าย (ผู้อนุมัติใบเบิก)
+                  </h6>
+                  <div class="mb-2">
+                    <label class="form-label small fw-bold">ชื่อผู้สั่งจ่าย</label>
+                    <input type="text" class="form-control form-control-sm" v-model="globalSigForm.approver_name" placeholder="ระบุชื่อผู้สั่งจ่าย" />
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label small fw-bold">ตำแหน่ง</label>
+                    <input type="text" class="form-control form-control-sm" v-model="globalSigForm.approver_position" placeholder="ระบุตำแหน่งผู้สั่งจ่าย" />
+                  </div>
+                  <div>
+                    <label class="form-label small fw-bold">ลายเซ็นผู้สั่งจ่าย (PNG/JPG)</label>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg"
+                      class="form-control form-control-sm"
+                      @change="handleGlobalSigUpload($event, 'approver_signature')"
+                    />
+                    <div v-if="globalSigForm.approver_signature" class="mt-2 p-2 bg-white border rounded text-center">
+                      <img :src="globalSigForm.approver_signature" alt="Approver Signature" style="max-height: 50px;" />
+                      <div class="mt-1">
+                        <button type="button" class="btn btn-xs btn-outline-danger py-0 px-2" style="font-size: 0.72rem;" @click="globalSigForm.approver_signature = ''">
+                          ลบลายเซ็น
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer border-top px-4 py-3">
+            <button type="button" class="btn btn-light rounded-pill px-4" @click="showGlobalSigModal = false">ปิด</button>
+            <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold" @click="saveGlobalSigSettings" :disabled="savingGlobalSig">
+              <span v-if="savingGlobalSig" class="spinner-border spinner-border-sm me-1"></span>
+              <i v-else class="bi bi-save me-1"></i> บันทึกการตั้งค่า
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -603,7 +707,20 @@ export default {
       isSystemAdmin: false,
       isInventoryAdmin: false,
       managedWarehouseIds: [],
-      externalDepartments: []
+      externalDepartments: [],
+
+      // Global Signer & Signature Modal
+      showGlobalSigModal: false,
+      loadingGlobalSig: false,
+      savingGlobalSig: false,
+      globalSigForm: {
+        payer_name: '',
+        payer_position: '',
+        payer_signature: '',
+        approver_name: '',
+        approver_position: '',
+        approver_signature: ''
+      }
     };
   },
   computed: {
@@ -1096,7 +1213,7 @@ export default {
       const items = requestData.items || [];
       const tableBody = items.map((item, index) => [
         (index + 1).toString(),
-        item.item_name + (item.item_code ? `\n(${item.item_code})` : ''),
+        item.item_name || '',
         item.unit_name || 'ชิ้น',
         this.formatNumber(item.qty_requested),
         item.status === 'APPROVED'
@@ -1111,7 +1228,7 @@ export default {
 
       autoTable(doc, {
         startY: 92,
-        head: [['ลำดับที่', 'รายการ', 'หน่วยนับ', 'จำนวนเบิก', 'อนุมัติ', 'คงเหลือในบัญชีคุม']],
+        head: [['ลำดับ\nที่', 'รายการ', 'หน่วย\nนับ', 'จำนวน\nเบิก', 'อนุมัติ', 'คงเหลือ\nในบัญชีคุม']],
         body: tableBody,
         styles: {
           font: 'Sarabun',
@@ -1123,25 +1240,27 @@ export default {
           lineWidth: 0.1
         },
         headStyles: {
-          fillColor: [240, 240, 240],
+          fillColor: [255, 255, 255],
           textColor: [0, 0, 0],
           font: 'Sarabun',
-          fontStyle: 'bold'
+          fontStyle: 'bold',
+          halign: 'center',
+          valign: 'middle'
         },
         columnStyles: {
-          0: { cellWidth: 20 },
+          0: { cellWidth: 15 },
           1: { halign: 'left', cellWidth: 'auto' },
-          2: { cellWidth: 25 },
-          3: { cellWidth: 25 },
-          4: { cellWidth: 25 },
-          5: { cellWidth: 35 }
+          2: { cellWidth: 18 },
+          3: { cellWidth: 18 },
+          4: { cellWidth: 18 },
+          5: { cellWidth: 26 }
         },
         theme: 'grid',
         margin: { left: 20, right: 20 }
       });
 
       // 6. 5 Signers Layout
-      let finalY = (doc.lastAutoTable || doc.previousAutoTable).finalY + 20;
+      let finalY = (doc.lastAutoTable || doc.previousAutoTable).finalY + 14;
 
       const deptSigner = requestData.dept_signer || {};
       const globalSettings = requestData.global_settings || {};
@@ -1173,46 +1292,46 @@ export default {
       const appPos =
         globalSettings.approver_position || 'นักวิชาการพัสดุ';
 
-      if (finalY > 230) {
+      if (finalY + 75 > 282) {
         doc.addPage();
-        finalY = 30;
+        finalY = 28;
       }
 
       // Row 1: ผู้ขอใช้พัสดุ (Left), ผู้จ่าย (Right)
       doc.text('ผู้ขอใช้พัสดุ...........................................ลงชื่อ', 60, finalY, {
         align: 'center'
       });
-      doc.text(`( ${reqName} )`, 60, finalY + 10, { align: 'center' });
-      doc.text(`ตำแหน่ง ${reqPos}`, 60, finalY + 18, { align: 'center' });
+      doc.text(`( ${reqName} )`, 60, finalY + 8, { align: 'center' });
+      doc.text(`ตำแหน่ง ${reqPos}`, 60, finalY + 15, { align: 'center' });
 
       doc.text('ผู้จ่าย...........................................ลงชื่อ', 150, finalY, {
         align: 'center'
       });
-      doc.text(`( ${payerName} )`, 150, finalY + 10, { align: 'center' });
-      doc.text(`ตำแหน่ง ${payerPos}`, 150, finalY + 18, { align: 'center' });
+      doc.text(`( ${payerName} )`, 150, finalY + 8, { align: 'center' });
+      doc.text(`ตำแหน่ง ${payerPos}`, 150, finalY + 15, { align: 'center' });
 
       // Row 2: ผู้เบิก (Left), ผู้สั่งจ่าย (Right)
-      doc.text('ผู้เบิก...........................................ลงชื่อ', 60, finalY + 35, {
+      doc.text('ผู้เบิก...........................................ลงชื่อ', 60, finalY + 28, {
         align: 'center'
       });
-      doc.text(`( ${reqName} )`, 60, finalY + 45, { align: 'center' });
-      doc.text(`ตำแหน่ง ${reqPos}`, 60, finalY + 53, { align: 'center' });
+      doc.text(`( ${reqName} )`, 60, finalY + 36, { align: 'center' });
+      doc.text(`ตำแหน่ง ${reqPos}`, 60, finalY + 43, { align: 'center' });
 
-      doc.text('ผู้สั่งจ่าย...........................................ลงชื่อ', 150, finalY + 35, {
+      doc.text('ผู้สั่งจ่าย...........................................ลงชื่อ', 150, finalY + 28, {
         align: 'center'
       });
-      doc.text(`( ${appName} )`, 150, finalY + 45, { align: 'center' });
-      doc.text(`ตำแหน่ง ${appPos}`, 150, finalY + 53, { align: 'center' });
+      doc.text(`( ${appName} )`, 150, finalY + 36, { align: 'center' });
+      doc.text(`ตำแหน่ง ${appPos}`, 150, finalY + 43, { align: 'center' });
 
       // Row 3: ผู้รับพัสดุ (Left)
-      doc.text('ผู้รับพัสดุ...........................................ลงชื่อ', 60, finalY + 70, {
+      doc.text('ผู้รับพัสดุ...........................................ลงชื่อ', 60, finalY + 56, {
         align: 'center'
       });
-      doc.text(`( ${requestData.requester_name} )`, 60, finalY + 80, { align: 'center' });
+      doc.text(`( ${requestData.requester_name || '...........................................'} )`, 60, finalY + 64, { align: 'center' });
       doc.text(
         `ตำแหน่ง ${requestData.requester_position || '.....................................................'}`,
         60,
-        finalY + 88,
+        finalY + 71,
         { align: 'center' }
       );
 
@@ -1225,13 +1344,104 @@ export default {
               ? 'JPEG'
               : 'PNG';
           doc.addImage(deptSigner.signature_image, sigFormat, 47, finalY - 8, 26, 10);
-          doc.addImage(deptSigner.signature_image, sigFormat, 47, finalY + 35 - 8, 26, 10);
+          doc.addImage(deptSigner.signature_image, sigFormat, 47, finalY + 28 - 8, 26, 10);
         } catch (sigErr) {
           console.warn('Could not add signature image to PDF:', sigErr);
         }
       }
 
+      // Digital Signature Overlay for ผู้จ่าย (Row 1 Right)
+      if (globalSettings && globalSettings.payer_signature) {
+        try {
+          const payerSigFmt =
+            globalSettings.payer_signature.includes('image/jpeg') ||
+            globalSettings.payer_signature.includes('image/jpg')
+              ? 'JPEG'
+              : 'PNG';
+          doc.addImage(globalSettings.payer_signature, payerSigFmt, 137, finalY - 8, 26, 10);
+        } catch (sigErr) {
+          console.warn('Could not add payer signature to PDF:', sigErr);
+        }
+      }
+
+      // Digital Signature Overlay for ผู้สั่งจ่าย (Row 2 Right)
+      if (globalSettings && globalSettings.approver_signature) {
+        try {
+          const appSigFmt =
+            globalSettings.approver_signature.includes('image/jpeg') ||
+            globalSettings.approver_signature.includes('image/jpg')
+              ? 'JPEG'
+              : 'PNG';
+          doc.addImage(globalSettings.approver_signature, appSigFmt, 137, finalY + 28 - 8, 26, 10);
+        } catch (sigErr) {
+          console.warn('Could not add approver signature to PDF:', sigErr);
+        }
+      }
+
       return doc;
+    },
+    async openGlobalSigModal() {
+      this.showGlobalSigModal = true;
+      this.loadingGlobalSig = true;
+      try {
+        const res = await axios.get('/api-digital/admin_material/admin_get_print_settings.php');
+        if (res.data?.success && res.data.global) {
+          this.globalSigForm = {
+            payer_name: res.data.global.payer_name || 'นางภรภัค อรอินทร์',
+            payer_position: res.data.global.payer_position || 'เจ้าพนักงานพัสดุ',
+            payer_signature: res.data.global.payer_signature || '',
+            approver_name: res.data.global.approver_name || 'นางสาวศิริลักษณ์ พรหมสาขา ณ สกลนคร',
+            approver_position: res.data.global.approver_position || 'นักวิชาการพัสดุ',
+            approver_signature: res.data.global.approver_signature || ''
+          };
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        this.loadingGlobalSig = false;
+      }
+    },
+    handleGlobalSigUpload(e, field) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      if (!file.type.match(/image\/(png|jpeg|jpg)/)) {
+        Swal.fire('ข้อผิดพลาด', 'กรุณาอัปโหลดไฟล์รูปภาพ (PNG หรือ JPG) เท่านั้น', 'warning');
+        return;
+      }
+      if (file.size > 3 * 1024 * 1024) {
+        Swal.fire('ข้อผิดพลาด', 'ขนาดไฟล์รูปภาพต้องไม่เกิน 3MB', 'warning');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        this.globalSigForm[field] = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    },
+    async saveGlobalSigSettings() {
+      this.savingGlobalSig = true;
+      try {
+        const res = await axios.post('/api-digital/admin_material/admin_save_global_settings.php', {
+          settings: this.globalSigForm
+        });
+        if (res.data?.success) {
+          this.showGlobalSigModal = false;
+          Swal.fire({
+            icon: 'success',
+            title: 'บันทึกลายเซ็นเรียบร้อย',
+            timer: 1400,
+            showConfirmButton: false
+          });
+        } else {
+          Swal.fire('ข้อผิดพลาด', res.data?.message || 'ไม่สามารถบันทึกได้', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการบันทึก', 'error');
+      } finally {
+        this.savingGlobalSig = false;
+      }
     },
     async openPdfPreview(req) {
       if (!req || req.status !== 'APPROVED') {

@@ -576,7 +576,7 @@
                             ไม่พบรายการเคลื่อนไหวในช่วงเวลานี้
                           </td>
                         </tr>
-                        <tr v-for="(it, idx) in officialReport.details" :key="it.id">
+                        <tr v-for="(it, idx) in officialReport.details" :key="it.id + '-' + (it.lot_id || 0)">
                           <td>{{ idx + 1 }}</td>
                           <td class="text-start fw-semibold">{{ it.name }}</td>
                           <td>{{ it.unit }}</td>
@@ -1857,6 +1857,7 @@ export default {
           'ลำดับ': idx + 1,
           'บริษัท/ร้าน': it.vendor || '-',
           'รหัสพัสดุ': it.item_code,
+          'Lot': it.lot_number || '-',
           'ชื่อพัสดุ': it.name,
           'หน่วยนับ': it.unit,
           'ราคา/หน่วย': it.price_per_unit,

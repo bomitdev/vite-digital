@@ -175,9 +175,19 @@ try {
     foreach ($items as $it) {
         $item_id = (int)$it['id'];
         $current_bal = (float)$it['current_balance'];
-        $price = (float)($it['last_purchase_price'] > 0 ? $it['last_purchase_price'] : ($it['standard_price'] > 0 ? $it['standard_price'] : 0));
+        $default_price = (float)($it['last_purchase_price'] > 0 ? $it['last_purchase_price'] : ($it['standard_price'] > 0 ? $it['standard_price'] : 0));
 
-        // 3. Transactions in period
+        // 3. Fetch Lots for this item in warehouse
+        $lotStmt = $pdo2->prepare("
+            SELECT id, lot_number, expiry_date, unit_cost, balance_qty
+            FROM inv_stock_lots
+            WHERE warehouse_id = ? AND item_id = ?
+            ORDER BY CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END ASC, expiry_date ASC, id ASC
+        ");
+        $lotStmt->execute([$warehouse_id, $item_id]);
+        $lots = $lotStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // 4. Transactions in period
         $txStmt = $pdo2->prepare("
             SELECT t.*, 
                    COALESCE(iss.department_name, mt.reference_dest, '') as resolved_dept,
@@ -185,7 +195,7 @@ try {
             FROM inv_stock_transactions t
             LEFT JOIN inv_issues iss ON t.document_type = 'ISSUE' AND t.document_id = iss.id
             LEFT JOIN mt_it_transactions mt ON t.remark LIKE CONCAT('%LegacyTX#', mt.id, '%')
-            LEFT JOIN inv_receipts r ON t.document_type = 'RECEIPT' AND t.document_id = r.id
+            LEFT JOIN inv_receipts r ON t.document_type IN ('RECEIVE', 'RECEIPT') AND t.document_id = r.id
             LEFT JOIN inv_vendors v ON r.vendor_id = v.id
             WHERE t.warehouse_id = ? AND t.item_id = ?
               AND t.transaction_date BETWEEN ? AND ?
@@ -194,79 +204,242 @@ try {
         $txStmt->execute([$warehouse_id, $item_id, $start_date, $end_date_str]);
         $periodTxs = $txStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $period_in = 0;
-        $period_out = 0;
-        $out_depts = [];
-        $vendor = '';
-
-        foreach ($periodTxs as $tx) {
-            $qty_in = (float)$tx['qty_in'];
-            $qty_out = (float)$tx['qty_out'];
-            if ($tx['unit_cost'] > 0 && $price == 0) {
-                $price = (float)$tx['unit_cost'];
-            }
-
-            if ($tx['transaction_type'] === 'IN') {
-                $period_in += $qty_in;
-                if (!empty($tx['resolved_vendor'])) {
-                    $vendor = $tx['resolved_vendor'];
-                }
-            } elseif ($tx['transaction_type'] === 'OUT') {
-                $period_out += $qty_out;
-                $dept = trim($tx['resolved_dept'] ?: 'ไม่ระบุหน่วยงาน');
-                if (!isset($out_depts[$dept])) {
-                    $out_depts[$dept] = 0;
-                }
-                $out_depts[$dept] += $qty_out;
-                $all_depts[$dept] = true;
-            }
+        // 5. Prior transactions before start_date grouped by lot_id (for exact ยอดยกมา)
+        $priorStmt = $pdo2->prepare("
+            SELECT COALESCE(lot_id, 0) as lot_id,
+                COALESCE(SUM(qty_in - qty_out), 0) as prior_net
+            FROM inv_stock_transactions
+            WHERE warehouse_id = ? AND item_id = ? AND transaction_date < ?
+            GROUP BY COALESCE(lot_id, 0)
+        ");
+        $priorStmt->execute([$warehouse_id, $item_id, $start_date]);
+        $priorByLot = [];
+        $total_prior_net = 0;
+        $hasPriorTx = false;
+        foreach ($priorStmt->fetchAll(PDO::FETCH_ASSOC) as $pr) {
+            $lid = (int)$pr['lot_id'];
+            $priorByLot[$lid] = (float)$pr['prior_net'];
+            $total_prior_net += (float)$pr['prior_net'];
+            $hasPriorTx = true;
         }
 
-        // 4. Future transactions after end_date to roll-back balance to period end
+        // 6. Future transactions after end_date grouped by lot_id (only for legacy fallback without transactions)
         $futStmt = $pdo2->prepare("
-            SELECT 
+            SELECT COALESCE(lot_id, 0) as lot_id,
                 COALESCE(SUM(CASE WHEN transaction_type = 'IN' THEN qty_in ELSE 0 END), 0) as future_in,
                 COALESCE(SUM(CASE WHEN transaction_type = 'OUT' THEN qty_out ELSE 0 END), 0) as future_out
             FROM inv_stock_transactions
             WHERE warehouse_id = ? AND item_id = ? AND transaction_date > ?
+            GROUP BY COALESCE(lot_id, 0)
         ");
         $futStmt->execute([$warehouse_id, $item_id, $end_date_str]);
-        $fut = $futStmt->fetch(PDO::FETCH_ASSOC);
-        $future_in = (float)$fut['future_in'];
-        $future_out = (float)$fut['future_out'];
-
-        $end_bal = $current_bal - $future_in + $future_out;
-        $begin_bal = $end_bal - $period_in + $period_out;
-
-        $forward_baht = $begin_bal * $price;
-        $in_baht = $period_in * $price;
-        $out_baht = $period_out * $price;
-        $balance_baht = $end_bal * $price;
-
-        $summary['forward_baht'] += $forward_baht;
-        $summary['in_baht'] += $in_baht;
-        $summary['out_baht'] += $out_baht;
-        $summary['balance_baht'] += $balance_baht;
-
-        if ($begin_bal > 0 || $period_in > 0 || $period_out > 0 || $end_bal > 0) {
-            $details[] = [
-                'id' => $item_id,
-                'item_code' => $it['item_code'],
-                'name' => $it['item_name'],
-                'unit' => $it['unit_name'] ?: 'หน่วย',
-                'price_per_unit' => $price,
-                'vendor' => $vendor,
-                'forward_qty' => $begin_bal,
-                'forward_baht' => $forward_baht,
-                'in_qty' => $period_in,
-                'in_baht' => $in_baht,
-                'total_qty' => $begin_bal + $period_in,
-                'out_qty' => $period_out,
-                'out_baht' => $out_baht,
-                'out_departments' => $out_depts,
-                'balance_qty' => $end_bal,
-                'balance_baht' => $balance_baht
+        $futureByLot = [];
+        $total_future_in = 0;
+        $total_future_out = 0;
+        foreach ($futStmt->fetchAll(PDO::FETCH_ASSOC) as $fr) {
+            $lid = (int)$fr['lot_id'];
+            $futureByLot[$lid] = [
+                'in' => (float)$fr['future_in'],
+                'out' => (float)$fr['future_out']
             ];
+            $total_future_in += (float)$fr['future_in'];
+            $total_future_out += (float)$fr['future_out'];
+        }
+
+        if (count($lots) > 0) {
+            // Split report rows by Lot so each lot uses its own unit_cost and balance
+            $lotBuckets = [];
+            foreach ($lots as $l) {
+                $lid = (int)$l['id'];
+                $lotPrice = (float)$l['unit_cost'] > 0 ? (float)$l['unit_cost'] : $default_price;
+                $lotBuckets[$lid] = [
+                    'lot_id' => $lid,
+                    'lot_number' => trim((string)($l['lot_number'] ?? '')),
+                    'expiry_date' => $l['expiry_date'] ?? null,
+                    'price' => $lotPrice,
+                    'current_bal' => (float)$l['balance_qty'],
+                    'period_in' => 0,
+                    'period_out' => 0,
+                    'out_depts' => [],
+                    'vendor' => ''
+                ];
+            }
+
+            foreach ($periodTxs as $tx) {
+                $txLotId = (int)($tx['lot_id'] ?? 0);
+                if (!isset($lotBuckets[$txLotId])) {
+                    $txPrice = (float)($tx['unit_cost'] ?? 0) > 0 ? (float)$tx['unit_cost'] : $default_price;
+                    $lotBuckets[$txLotId] = [
+                        'lot_id' => $txLotId,
+                        'lot_number' => '',
+                        'expiry_date' => null,
+                        'price' => $txPrice,
+                        'current_bal' => 0,
+                        'period_in' => 0,
+                        'period_out' => 0,
+                        'out_depts' => [],
+                        'vendor' => ''
+                    ];
+                }
+                $qty_in = (float)$tx['qty_in'];
+                $qty_out = (float)$tx['qty_out'];
+                if ($tx['unit_cost'] > 0 && $lotBuckets[$txLotId]['price'] == 0) {
+                    $lotBuckets[$txLotId]['price'] = (float)$tx['unit_cost'];
+                }
+                if ($tx['transaction_type'] === 'IN') {
+                    $lotBuckets[$txLotId]['period_in'] += $qty_in;
+                    if (!empty($tx['resolved_vendor'])) {
+                        $lotBuckets[$txLotId]['vendor'] = $tx['resolved_vendor'];
+                    }
+                } elseif ($tx['transaction_type'] === 'OUT') {
+                    $lotBuckets[$txLotId]['period_out'] += $qty_out;
+                    $dept = trim($tx['resolved_dept'] ?: 'ไม่ระบุหน่วยงาน');
+                    if (!isset($lotBuckets[$txLotId]['out_depts'][$dept])) {
+                        $lotBuckets[$txLotId]['out_depts'][$dept] = 0;
+                    }
+                    $lotBuckets[$txLotId]['out_depts'][$dept] += $qty_out;
+                }
+            }
+
+            // Ensure any lot_id present in priorByLot is also included
+            foreach ($priorByLot as $pLid => $pNet) {
+                if (!isset($lotBuckets[$pLid]) && $pNet != 0) {
+                    $lotBuckets[$pLid] = [
+                        'lot_id' => $pLid,
+                        'lot_number' => '',
+                        'expiry_date' => null,
+                        'price' => $default_price,
+                        'current_bal' => 0,
+                        'period_in' => 0,
+                        'period_out' => 0,
+                        'out_depts' => [],
+                        'vendor' => ''
+                    ];
+                }
+            }
+
+            $namedLotCount = count(array_filter($lotBuckets, fn($b) => $b['lot_number'] !== ''));
+            $hasMultipleLots = count($lotBuckets) > 1 && $namedLotCount > 0;
+            foreach ($lotBuckets as $lid => $lb) {
+                $begin_bal = $priorByLot[$lid] ?? 0;
+                $end_bal = $begin_bal + $lb['period_in'] - $lb['period_out'];
+
+                if ($begin_bal > 0 || $lb['period_in'] > 0 || $lb['period_out'] > 0 || $end_bal > 0) {
+                    $lotPrice = $lb['price'];
+                    $forward_baht = $begin_bal * $lotPrice;
+                    $in_baht = $lb['period_in'] * $lotPrice;
+                    $out_baht = $lb['period_out'] * $lotPrice;
+                    $balance_baht = $end_bal * $lotPrice;
+
+                    $summary['forward_baht'] += $forward_baht;
+                    $summary['in_baht'] += $in_baht;
+                    $summary['out_baht'] += $out_baht;
+                    $summary['balance_baht'] += $balance_baht;
+
+                    foreach (array_keys($lb['out_depts']) as $dName) {
+                        $all_depts[$dName] = true;
+                    }
+
+                    $displayName = $it['item_name'];
+                    if ($lb['lot_number'] !== '' && $hasMultipleLots) {
+                        $displayName .= " (Lot: {$lb['lot_number']})";
+                    }
+
+                    $details[] = [
+                        'id' => $item_id,
+                        'lot_id' => $lid,
+                        'lot_number' => $lb['lot_number'],
+                        'expiry_date' => $lb['expiry_date'],
+                        'item_code' => $it['item_code'],
+                        'name' => $displayName,
+                        'unit' => $it['unit_name'] ?: 'หน่วย',
+                        'price_per_unit' => $lotPrice,
+                        'vendor' => $lb['vendor'],
+                        'forward_qty' => $begin_bal,
+                        'forward_baht' => $forward_baht,
+                        'in_qty' => $lb['period_in'],
+                        'in_baht' => $in_baht,
+                        'total_qty' => $begin_bal + $lb['period_in'],
+                        'out_qty' => $lb['period_out'],
+                        'out_baht' => $out_baht,
+                        'out_departments' => $lb['out_depts'],
+                        'balance_qty' => $end_bal,
+                        'balance_baht' => $balance_baht
+                    ];
+                }
+            }
+        } else {
+            // Fallback for legacy items without lot records
+            $price = $default_price;
+            $period_in = 0;
+            $period_out = 0;
+            $out_depts = [];
+            $vendor = '';
+
+            foreach ($periodTxs as $tx) {
+                $qty_in = (float)$tx['qty_in'];
+                $qty_out = (float)$tx['qty_out'];
+                if ($tx['unit_cost'] > 0 && $price == 0) {
+                    $price = (float)$tx['unit_cost'];
+                }
+
+                if ($tx['transaction_type'] === 'IN') {
+                    $period_in += $qty_in;
+                    if (!empty($tx['resolved_vendor'])) {
+                        $vendor = $tx['resolved_vendor'];
+                    }
+                } elseif ($tx['transaction_type'] === 'OUT') {
+                    $period_out += $qty_out;
+                    $dept = trim($tx['resolved_dept'] ?: 'ไม่ระบุหน่วยงาน');
+                    if (!isset($out_depts[$dept])) {
+                        $out_depts[$dept] = 0;
+                    }
+                    $out_depts[$dept] += $qty_out;
+                    $all_depts[$dept] = true;
+                }
+            }
+
+            if ($hasPriorTx || count($periodTxs) > 0) {
+                $begin_bal = $total_prior_net;
+                $end_bal = $begin_bal + $period_in - $period_out;
+            } else {
+                $end_bal = $current_bal - $total_future_in + $total_future_out;
+                $begin_bal = $end_bal - $period_in + $period_out;
+            }
+
+            $forward_baht = $begin_bal * $price;
+            $in_baht = $period_in * $price;
+            $out_baht = $period_out * $price;
+            $balance_baht = $end_bal * $price;
+
+            $summary['forward_baht'] += $forward_baht;
+            $summary['in_baht'] += $in_baht;
+            $summary['out_baht'] += $out_baht;
+            $summary['balance_baht'] += $balance_baht;
+
+            if ($begin_bal > 0 || $period_in > 0 || $period_out > 0 || $end_bal > 0) {
+                $details[] = [
+                    'id' => $item_id,
+                    'lot_id' => 0,
+                    'lot_number' => '',
+                    'expiry_date' => null,
+                    'item_code' => $it['item_code'],
+                    'name' => $it['item_name'],
+                    'unit' => $it['unit_name'] ?: 'หน่วย',
+                    'price_per_unit' => $price,
+                    'vendor' => $vendor,
+                    'forward_qty' => $begin_bal,
+                    'forward_baht' => $forward_baht,
+                    'in_qty' => $period_in,
+                    'in_baht' => $in_baht,
+                    'total_qty' => $begin_bal + $period_in,
+                    'out_qty' => $period_out,
+                    'out_baht' => $out_baht,
+                    'out_departments' => $out_depts,
+                    'balance_qty' => $end_bal,
+                    'balance_baht' => $balance_baht
+                ];
+            }
         }
     }
 

@@ -51,7 +51,7 @@
                   placeholder="ระบุชื่อผู้จ่าย"
                 />
               </div>
-              <div class="mb-4">
+              <div class="mb-3">
                 <label class="form-label fw-bold">ตำแหน่งผู้จ่าย</label>
                 <input
                   type="text"
@@ -60,6 +60,29 @@
                   list="positionsList"
                   placeholder="ระบุตำแหน่งผู้จ่าย"
                 />
+              </div>
+              <div class="mb-4">
+                <label class="form-label fw-bold">ลายเซ็นผู้จ่าย (PNG/JPG)</label>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg"
+                    class="form-control form-control-sm"
+                    style="max-width: 260px"
+                    @change="handleGlobalSignatureUpload($event, 'payer_signature')"
+                  />
+                  <button
+                    v-if="globalSettings.payer_signature"
+                    type="button"
+                    class="btn btn-sm btn-outline-danger"
+                    @click="globalSettings.payer_signature = ''"
+                  >
+                    ลบลายเซ็น
+                  </button>
+                </div>
+                <div v-if="globalSettings.payer_signature" class="mt-2 p-2 bg-light border rounded d-inline-block">
+                  <img :src="globalSettings.payer_signature" alt="Payer Signature" style="max-height: 48px" />
+                </div>
               </div>
 
               <hr />
@@ -76,7 +99,7 @@
                   placeholder="ระบุชื่อผู้สั่งจ่าย"
                 />
               </div>
-              <div class="mb-4">
+              <div class="mb-3">
                 <label class="form-label fw-bold">ตำแหน่งผู้สั่งจ่าย</label>
                 <input
                   type="text"
@@ -85,6 +108,29 @@
                   list="positionsList"
                   placeholder="ระบุตำแหน่งผู้สั่งจ่าย"
                 />
+              </div>
+              <div class="mb-4">
+                <label class="form-label fw-bold">ลายเซ็นผู้สั่งจ่าย (PNG/JPG)</label>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg"
+                    class="form-control form-control-sm"
+                    style="max-width: 260px"
+                    @change="handleGlobalSignatureUpload($event, 'approver_signature')"
+                  />
+                  <button
+                    v-if="globalSettings.approver_signature"
+                    type="button"
+                    class="btn btn-sm btn-outline-danger"
+                    @click="globalSettings.approver_signature = ''"
+                  >
+                    ลบลายเซ็น
+                  </button>
+                </div>
+                <div v-if="globalSettings.approver_signature" class="mt-2 p-2 bg-light border rounded d-inline-block">
+                  <img :src="globalSettings.approver_signature" alt="Approver Signature" style="max-height: 48px" />
+                </div>
               </div>
 
               <div class="text-end">
@@ -311,8 +357,10 @@ export default {
       globalSettings: {
         payer_name: '',
         payer_position: '',
+        payer_signature: '',
         approver_name: '',
-        approver_position: ''
+        approver_position: '',
+        approver_signature: ''
       },
       departments: [],
       loading: true,
@@ -338,6 +386,24 @@ export default {
     this.deptModalInstance = new bootstrap.Modal(document.getElementById('deptModal'));
   },
   methods: {
+    handleGlobalSignatureUpload(e, field) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      if (!file.type.match(/image\/(png|jpeg|jpg)/)) {
+        Swal.fire('ข้อผิดพลาด', 'กรุณาอัปโหลดไฟล์รูปภาพ (PNG หรือ JPG) เท่านั้น', 'warning');
+        return;
+      }
+      if (file.size > 3 * 1024 * 1024) {
+        Swal.fire('ข้อผิดพลาด', 'ขนาดไฟล์รูปภาพต้องไม่เกิน 3MB', 'warning');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        this.globalSettings[field] = event.target.result;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    },
     handleSignatureUpload(e) {
       const file = e.target.files && e.target.files[0];
       if (!file) return;

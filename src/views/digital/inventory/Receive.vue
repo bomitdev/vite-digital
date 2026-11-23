@@ -285,6 +285,227 @@
             </div>
           </div>
         </div>
+
+        <!-- ประวัติการรับเข้าคลัง -->
+        <div class="col-12 mt-4">
+          <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div class="card-header bg-white border-bottom p-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-2">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-clock-history text-success fs-5"></i>
+                <h5 class="fw-bold mb-0">ประวัติการรับเข้าคลัง (Stock In History)</h5>
+                <span class="badge bg-success-subtle text-success border rounded-pill">{{ receiptHistory.length }} ใบ</span>
+              </div>
+              <div class="d-flex flex-wrap align-items-center gap-2">
+                <div class="input-group input-group-sm" style="width: 260px;">
+                  <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                  <input
+                    type="text"
+                    class="form-control"
+                    v-model="receiptHistorySearch"
+                    placeholder="ค้นหาเลขที่บิล / Invoice / ผู้จำหน่าย..."
+                    @keyup.enter="fetchReceiptsHistory"
+                  />
+                  <button
+                    v-if="receiptHistorySearch"
+                    type="button"
+                    class="btn btn-outline-secondary"
+                    @click="receiptHistorySearch = ''; fetchReceiptsHistory()"
+                  >
+                    <i class="bi bi-x"></i>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                  @click="fetchReceiptsHistory"
+                  :disabled="loadingReceipts"
+                >
+                  <i class="bi bi-arrow-clockwise me-1"></i>รีเฟรช
+                </button>
+              </div>
+            </div>
+            <div class="card-body p-0">
+              <div v-if="loadingReceipts" class="text-center py-4 text-muted">
+                <div class="spinner-border spinner-border-sm text-success me-2"></div>กำลังโหลดประวัติการรับเข้า...
+              </div>
+              <div v-else class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th class="ps-4">วันที่รับเข้า</th>
+                      <th>เลขที่บิล</th>
+                      <th>Invoice</th>
+                      <th>ผู้จำหน่าย / แหล่งที่มา</th>
+                      <th class="text-center">จำนวนรายการ</th>
+                      <th class="text-end">มูลค่ารวม (บาท)</th>
+                      <th>ผู้ทำรายการ</th>
+                      <th class="text-center">เอกสารแนบ</th>
+                      <th class="text-center pe-4">รายละเอียด</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-if="paginatedReceipts.length === 0">
+                      <td colspan="9" class="text-center py-4 text-muted">ไม่พบประวัติการรับเข้าในคลังนี้</td>
+                    </tr>
+                    <tr v-for="rc in paginatedReceipts" :key="'rc-' + rc.id">
+                      <td class="ps-4 small text-nowrap">{{ formatReceiptDate(rc.receipt_date) }}</td>
+                      <td>
+                        <span class="fw-bold text-primary">{{ rc.receipt_no }}</span>
+                      </td>
+                      <td class="small">{{ rc.invoice_no || '-' }}</td>
+                      <td class="small">{{ rc.vendor_name || '-' }}</td>
+                      <td class="text-center">
+                        <span class="badge bg-secondary-subtle text-dark border rounded-pill">{{ rc.item_count }} รายการ</span>
+                      </td>
+                      <td class="text-end fw-bold text-success">{{ formatCurrency(rc.total_amount) }}</td>
+                      <td class="small">{{ rc.receiver_name || '-' }}</td>
+                      <td class="text-center">
+                        <a
+                          v-if="rc.attachment_url"
+                          :href="formatFileUrl(rc.attachment_url)"
+                          target="_blank"
+                          class="btn btn-xs btn-outline-info rounded-pill px-2 py-0"
+                          style="font-size: 0.75rem;"
+                          :title="rc.attachment_name || 'ดูเอกสารแนบ'"
+                        >
+                          <i class="bi bi-paperclip me-1"></i>ดูไฟล์
+                        </a>
+                        <span v-else class="text-muted small">-</span>
+                      </td>
+                      <td class="text-center pe-4">
+                        <div class="d-inline-flex gap-1">
+                          <button
+                            type="button"
+                            class="btn btn-sm btn-outline-warning text-dark rounded-pill px-2"
+                            @click="editReceiptDate(rc)"
+                            title="แก้ไขวันที่รับเข้า"
+                          >
+                            <i class="bi bi-calendar-event me-1"></i>แก้วันที่
+                          </button>
+                          <button
+                            type="button"
+                            class="btn btn-sm btn-outline-primary rounded-pill px-3"
+                            @click="viewReceiptDetail(rc.id)"
+                          >
+                            <i class="bi bi-eye me-1"></i>ดูรายการ
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div
+              v-if="!loadingReceipts && receiptHistory.length > receiptHistoryPageSize"
+              class="card-footer bg-white border-top d-flex flex-wrap align-items-center justify-content-between gap-2 px-4 py-2"
+            >
+              <small class="text-muted">
+                แสดง {{ (receiptHistoryPage - 1) * receiptHistoryPageSize + 1 }}–{{ Math.min(receiptHistory.length, receiptHistoryPage * receiptHistoryPageSize) }} จาก {{ receiptHistory.length }} ใบ
+              </small>
+              <div class="btn-group btn-group-sm">
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  :disabled="receiptHistoryPage <= 1"
+                  @click="receiptHistoryPage--"
+                >
+                  ก่อนหน้า
+                </button>
+                <button type="button" class="btn btn-light disabled fw-bold">
+                  {{ receiptHistoryPage }} / {{ Math.ceil(receiptHistory.length / receiptHistoryPageSize) }}
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  :disabled="receiptHistoryPage >= Math.ceil(receiptHistory.length / receiptHistoryPageSize)"
+                  @click="receiptHistoryPage++"
+                >
+                  ถัดไป
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Receipt Detail Modal -->
+    <div v-if="showReceiptDetailModal" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.55); z-index: 1065;">
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+          <div class="modal-header bg-success text-white py-3 px-4 border-0">
+            <div>
+              <h5 class="modal-title fw-bold mb-0">
+                <i class="bi bi-receipt me-2"></i>รายละเอียดใบรับเข้า: {{ activeReceiptDetail?.receipt_no }}
+              </h5>
+              <small class="opacity-75">
+                วันที่รับ: {{ formatReceiptDate(activeReceiptDetail?.receipt_date) }}
+                <span v-if="activeReceiptDetail?.invoice_no"> • Invoice: {{ activeReceiptDetail.invoice_no }}</span>
+                <span v-if="activeReceiptDetail?.vendor_name"> • ผู้จำหน่าย: {{ activeReceiptDetail.vendor_name }}</span>
+              </small>
+            </div>
+            <button type="button" class="btn-close btn-close-white" @click="showReceiptDetailModal = false"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div v-if="loadingReceiptDetail" class="text-center py-5 text-muted">
+              <div class="spinner-border text-success mb-2"></div>
+              <div>กำลังโหลดรายการวัสดุ...</div>
+            </div>
+            <div v-else-if="activeReceiptDetail">
+              <div v-if="activeReceiptDetail.remark" class="alert alert-light border small mb-3">
+                <strong>หมายเหตุ:</strong> {{ activeReceiptDetail.remark }}
+              </div>
+              <div class="table-responsive">
+                <table class="table table-bordered table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th class="text-center" style="width: 50px;">#</th>
+                      <th style="width: 110px;">รหัส</th>
+                      <th>รายการวัสดุ</th>
+                      <th>Lot</th>
+                      <th>วันหมดอายุ</th>
+                      <th class="text-end">ราคา/หน่วย</th>
+                      <th class="text-end">จำนวน</th>
+                      <th class="text-center">หน่วย</th>
+                      <th class="text-end">รวมเป็นเงิน</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(it, idx) in (activeReceiptDetail.items || [])" :key="'rcd-' + idx">
+                      <td class="text-center text-muted">{{ idx + 1 }}</td>
+                      <td class="small">{{ it.item_code || '-' }}</td>
+                      <td class="fw-semibold">{{ it.item_name || '-' }}</td>
+                      <td class="small">{{ it.lot_number || '-' }}</td>
+                      <td class="small">{{ it.expiry_date || '-' }}</td>
+                      <td class="text-end">{{ formatCurrency(it.unit_cost) }}</td>
+                      <td class="text-end fw-bold text-success">{{ Number(it.qty || 0).toLocaleString() }}</td>
+                      <td class="text-center small">{{ it.unit_name || 'หน่วย' }}</td>
+                      <td class="text-end fw-bold">{{ formatCurrency(it.total_price) }}</td>
+                    </tr>
+                  </tbody>
+                  <tfoot class="table-light fw-bold">
+                    <tr>
+                      <td colspan="8" class="text-end">มูลค่ารวมทั้งสิ้น</td>
+                      <td class="text-end text-danger">{{ formatCurrency(activeReceiptDetail.total_amount) }} ฿</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer border-top px-4 py-2">
+            <a
+              v-if="activeReceiptDetail?.attachment_url"
+              :href="formatFileUrl(activeReceiptDetail.attachment_url)"
+              target="_blank"
+              class="btn btn-outline-info btn-sm rounded-pill px-3 me-auto"
+            >
+              <i class="bi bi-paperclip me-1"></i>เปิดไฟล์ใบส่งของแนบ
+            </a>
+            <button type="button" class="btn btn-secondary btn-sm rounded-pill px-4" @click="showReceiptDetailModal = false">ปิด</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -780,6 +1001,14 @@ export default {
       searchQuery: '',
       isDropdownOpen: false,
       isSubmitting: false,
+      receiptHistory: [],
+      loadingReceipts: false,
+      receiptHistorySearch: '',
+      receiptHistoryPage: 1,
+      receiptHistoryPageSize: 10,
+      showReceiptDetailModal: false,
+      loadingReceiptDetail: false,
+      activeReceiptDetail: null,
       
       form: {
         warehouse_id: '',
@@ -839,6 +1068,10 @@ export default {
     },
     totalAmount() {
       return this.selectedItems.reduce((sum, item) => sum + (item.qty * item.unit_cost), 0);
+    },
+    paginatedReceipts() {
+      const start = (this.receiptHistoryPage - 1) * this.receiptHistoryPageSize;
+      return this.receiptHistory.slice(start, start + this.receiptHistoryPageSize);
     },
     selectedParsedCount() {
       if (!this.parsedData || !this.parsedData.items) return 0;
@@ -1084,8 +1317,110 @@ export default {
     async onWarehouseChange() {
       await Promise.all([
         this.fetchItems(),
-        this.fetchVendors()
+        this.fetchVendors(),
+        this.fetchReceiptsHistory()
       ]);
+    },
+    formatReceiptDate(dt) {
+      if (!dt) return '-';
+      return moment(dt).format('DD/MM/YYYY HH:mm');
+    },
+    async fetchReceiptsHistory() {
+      if (!this.form.warehouse_id) {
+        this.receiptHistory = [];
+        return;
+      }
+      this.loadingReceipts = true;
+      this.receiptHistoryPage = 1;
+      try {
+        const params = new URLSearchParams({
+          warehouse_id: this.form.warehouse_id,
+          limit: '100'
+        });
+        if (this.receiptHistorySearch.trim()) {
+          params.set('search', this.receiptHistorySearch.trim());
+        }
+        const res = await axios.get(`/api-digital/inventory/receipts_list.php?${params.toString()}`);
+        if (res.data?.status === 'success') {
+          this.receiptHistory = res.data.data || [];
+        }
+      } catch (err) {
+        console.error('Error fetching receipts history:', err);
+      } finally {
+        this.loadingReceipts = false;
+      }
+    },
+    async viewReceiptDetail(receiptId) {
+      this.showReceiptDetailModal = true;
+      this.loadingReceiptDetail = true;
+      this.activeReceiptDetail = null;
+      try {
+        const res = await axios.get(`/api-digital/inventory/receipts_list.php?id=${receiptId}`);
+        if (res.data?.status === 'success') {
+          this.activeReceiptDetail = res.data.data;
+        }
+      } catch (err) {
+        console.error('Error fetching receipt detail:', err);
+      } finally {
+        this.loadingReceiptDetail = false;
+      }
+    },
+    async editReceiptDate(rc) {
+      if (!rc || !rc.id) return;
+      const currentVal = rc.receipt_date
+        ? moment(rc.receipt_date).format('YYYY-MM-DDTHH:mm')
+        : moment().format('YYYY-MM-DDTHH:mm');
+
+      const result = await Swal.fire({
+        title: `แก้ไขวันที่รับเข้า (${rc.receipt_no})`,
+        html: `
+          <div class="text-start">
+            <label class="form-label small fw-bold">วันที่และเวลารับเข้าใหม่</label>
+            <input id="swal-receipt-date" type="datetime-local" class="form-control" value="${currentVal}" />
+            <div class="form-text small text-muted mt-2">
+              * ระบบจะอัปเดตวันที่ในใบรับเข้าและประวัติความเคลื่อนไหว (Stock Card / รายงาน) ให้ตรงกัน
+            </div>
+          </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'บันทึกวันที่ใหม่',
+        cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: '#198754',
+        preConfirm: () => {
+          const el = document.getElementById('swal-receipt-date');
+          if (!el || !el.value) {
+            Swal.showValidationMessage('กรุณาระบุวันที่และเวลา');
+            return false;
+          }
+          return el.value;
+        }
+      });
+
+      if (!result.isConfirmed || !result.value) return;
+
+      try {
+        const res = await axios.post('/api-digital/inventory/receipts_list.php', {
+          id: rc.id,
+          receipt_date: result.value
+        });
+        if (res.data?.status === 'success') {
+          Swal.fire({
+            icon: 'success',
+            title: 'แก้ไขวันที่รับเข้าเรียบร้อย',
+            timer: 1300,
+            showConfirmButton: false
+          });
+          await this.fetchReceiptsHistory();
+          if (this.activeReceiptDetail && Number(this.activeReceiptDetail.id) === Number(rc.id)) {
+            this.activeReceiptDetail.receipt_date = res.data.receipt_date;
+          }
+        } else {
+          Swal.fire('ข้อผิดพลาด', res.data?.message || 'ไม่สามารถแก้ไขวันที่ได้', 'error');
+        }
+      } catch (err) {
+        Swal.fire('ข้อผิดพลาด', err.response?.data?.message || 'ไม่สามารถแก้ไขวันที่ได้', 'error');
+      }
     },
     async fetchVendors() {
       this.vendors = [];
@@ -1189,6 +1524,7 @@ export default {
           Swal.fire('บันทึกสำเร็จ!', 'รับเข้าวัสดุเรียบร้อยแล้ว ยอดคงเหลือถูกอัปเดตอัตโนมัติ', 'success').then(() => {
             this.resetAll();
             this.fetchItems();
+            this.fetchReceiptsHistory();
           });
         } else {
           Swal.fire('ข้อผิดพลาด', res.data.message, 'error');
