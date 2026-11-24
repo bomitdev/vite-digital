@@ -1466,44 +1466,41 @@
                   </p>
 
                   <div
-                    class="ms-auto text-center mt-2 mb-2"
-                    style="width: 55%; line-height: 1.15; font-size: 16pt"
+                    class="ms-auto text-center mt-1 mb-1"
+                    style="width: 62%; line-height: 1.15; font-size: 15.5pt"
                   >
-                    <br />
-                    <div class="mb-1">
+                    <div class="pt-3 mb-1 text-nowrap">
                       ({{
                         dutyMemoForm.leaderName ||
                         '....................................................'
                       }})
                     </div>
-                    <div v-if="dutyMemoForm.leaderPos">{{ dutyMemoForm.leaderPos }}</div>
-                    <div>หัวหน้า{{ selectedGroup?.department_name }}</div>
+                    <div v-if="dutyMemoForm.leaderPos" class="text-nowrap">{{ dutyMemoForm.leaderPos }}</div>
+                    <div class="text-nowrap">หัวหน้า{{ selectedGroup?.department_name }}</div>
                   </div>
 
-                  <div class="mt-2 mb-2" style="line-height: 1.15; font-size: 16pt">
+                  <div class="mt-1 mb-1" style="line-height: 1.15; font-size: 15.5pt">
                     <div class="mb-1">เรียน ผู้อำนวยการโรงพยาบาลชานุมาน</div>
                     <div class="ps-5">- ได้ตรวจสอบถูกต้องแล้ว</div>
-                    <div class="ps-5 mb-2">- เห็นควรอนุมัติ</div>
+                    <div class="ps-5 mb-1">- เห็นควรอนุมัติ</div>
                     <div
-                      class="text-center mt-2 text-nowrap"
-                      style="width: 42%; line-height: 1.15; font-size: 16pt"
+                      class="text-center mt-1 text-nowrap"
+                      style="width: 48%; line-height: 1.15; font-size: 15.5pt"
                     >
-                      <br />
-                      <div class="mb-1">(นายธนากร คนเพียร)</div>
+                      <div class="pt-3 mb-1">(นายธนากร คนเพียร)</div>
                       <div>นายแพทย์ชำนาญการ รักษาการในตำแหน่ง</div>
                       <div>หัวหน้ากลุ่มงานบริหารทั่วไป</div>
                     </div>
                   </div>
 
                   <div
-                    class="ms-auto text-center mt-2"
-                    style="width: 55%; line-height: 1.15; font-size: 16pt"
+                    class="ms-auto text-center mt-1"
+                    style="width: 62%; line-height: 1.15; font-size: 15.5pt"
                   >
                     <div class="mb-1">อนุมัติ</div>
-                    <br />
-                    <div class="mt-1">(นายธนากร คนเพียร)</div>
-                    <div>นายแพทย์ชำนาญการ รักษาการในตำแหน่ง</div>
-                    <div>ผู้อำนวยการโรงพยาบาลชานุมาน</div>
+                    <div class="pt-3 text-nowrap">(นายธนากร คนเพียร)</div>
+                    <div class="text-nowrap">นายแพทย์ชำนาญการ รักษาการในตำแหน่ง</div>
+                    <div class="text-nowrap">ผู้อำนวยการโรงพยาบาลชานุมาน</div>
                   </div>
                 </div>
               </div>
@@ -2554,11 +2551,11 @@ export default {
 }
 
 .is-weekend-col {
-  background-color: #cbd5e1 !important;
+  background-color: #e2e8f0 !important;
 }
 
 th.is-weekend-col {
-  background-color: #94a3b8 !important;
+  background-color: #e2e8f0 !important;
   color: #0f172a !important;
 }
 
@@ -2629,13 +2626,13 @@ th.is-weekend-col {
   }
 
   .is-weekend-col {
-    background-color: #cbd5e1 !important;
+    background-color: #e2e8f0 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
   th.is-weekend-col {
-    background-color: #94a3b8 !important;
+    background-color: #e2e8f0 !important;
     color: #000 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;

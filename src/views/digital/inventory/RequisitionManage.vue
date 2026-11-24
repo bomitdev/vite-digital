@@ -403,10 +403,18 @@
                         :disabled="!item.available_lots || item.available_lots.length === 0"
                       >
                         <option v-if="!item.available_lots || item.available_lots.length === 0" value="">-- สินค้าหมด (ไม่มี Lot) --</option>
+                        <option v-else-if="item.available_lots.length > 1" value="">-- ตัดจ่ายอัตโนมัติ (FEFO) --</option>
                         <option v-for="lot in item.available_lots" :key="lot.lot_id" :value="lot.lot_id">
                           Lot: {{ lot.lot_number || '-' }} | Exp: {{ lot.expiry_date || '-' }} (มี {{ formatNumber(lot.balance_qty) }})
                         </option>
                       </select>
+                      <small
+                        v-if="item.selected_lot_id && getSelectedLotBalance(item) < item.suggested_qty && item.suggested_qty <= item.current_stock"
+                        class="text-info d-block mt-1"
+                        style="font-size: 0.72rem;"
+                      >
+                        <i class="bi bi-info-circle me-1"></i>Lot นี้มี {{ formatNumber(getSelectedLotBalance(item)) }} ส่วนที่เหลือจะตัดจาก Lot ถัดไปอัตโนมัติ
+                      </small>
                     </td>
                     <td>
                       <div class="input-group input-group-sm">
@@ -1073,6 +1081,11 @@ export default {
       } finally {
         this.loadingReqDetails = false;
       }
+    },
+    getSelectedLotBalance(item) {
+      if (!item || !item.selected_lot_id || !item.available_lots) return 0;
+      const found = item.available_lots.find((l) => String(l.lot_id) === String(item.selected_lot_id));
+      return found ? Number(found.balance_qty) || 0 : 0;
     },
     async approveRequest() {
       if (this.isApproveDisabled) return;

@@ -294,84 +294,6 @@
                 </div>
               </div>
 
-              <!-- Material Request Form IT (ซ่อนชั่วคราว ยังไม่ลบ) -->
-              <div
-                class="col-6 col-md-4 col-lg-3"
-                v-if="false && hasPermission(['menu_it_material_req', 'backoffice_staff_all'])"
-              >
-                <div
-                  class="nav-card h-100 bg-gradient-blue text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group"
-                  @click="goToMaterialRequestForm"
-                >
-                  <div
-                    class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
-                  ></div>
-                  <div class="position-relative z-1 d-flex flex-column h-100">
-                    <div
-                      class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
-                    >
-                      <i class="bi bi-cart-plus fs-4"></i>
-                    </div>
-                    <h6 class="fw-bold text-white mb-1 text-truncate" title="ฟอร์มขอเบิกวัสดุคอมฯ">
-                      ขอเบิกวัสดุคอมฯ
-                    </h6>
-                    <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
-                      สำหรับขอเบิกอุปกรณ์ IT
-                    </p>
-                    <div
-                      class="d-flex align-items-center text-white fw-bold small mt-auto"
-                      style="font-size: 0.75rem"
-                    >
-                      เข้าใช้งาน
-                      <i
-                        class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
-                      ></i>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- ====== GROUP 4: Admin & Health ====== -->
-              <!-- Material Request Form Admin -->
-              <div
-                class="col-6 col-md-4 col-lg-3"
-                v-if="false && hasPermission(['menu_gm_material_req', 'backoffice_staff_all'])"
-              >
-                <div
-                  class="nav-card h-100 bg-gradient-purple text-white rounded-4 shadow-sm p-4 position-relative overflow-hidden cursor-pointer group"
-                  @click="goToMaterialAdminRequestForm"
-                >
-                  <div
-                    class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
-                  ></div>
-                  <div class="position-relative z-1 d-flex flex-column h-100">
-                    <div
-                      class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
-                    >
-                      <i class="bi bi-cart-check fs-4"></i>
-                    </div>
-                    <h6
-                      class="fw-bold text-white mb-1 text-truncate"
-                      title="ฟอร์มขอเบิกวัสดุบริหาร"
-                    >
-                      ขอเบิกวัสดุบริหารฯ
-                    </h6>
-                    <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
-                      สำหรับขอเบิกวัสดุทั่วไป
-                    </p>
-                    <div
-                      class="d-flex align-items-center text-white fw-bold small mt-auto"
-                      style="font-size: 0.75rem"
-                    >
-                      เข้าใช้งาน
-                      <i
-                        class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
-                      ></i>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               <!-- Central Inventory Requisition (เบิกวัสดุแบบรวมศูนย์) -->
               <div
                 class="col-6 col-md-4 col-lg-3"
@@ -636,40 +558,6 @@
               <i class="bi bi-graph-up me-2 text-primary"></i>งานบริหาร
             </h6>
             <div class="row g-3 mb-4">
-              <!-- Material Management Admin -->
-              <div class="col-6 col-md-4 col-lg-3" v-if="false && hasPermission('menu_gm_material_manage')">
-                <div
-                  class="nav-card h-100 bg-gradient-green text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
-                  @click="goToMaterialAdmin"
-                >
-                  <div
-                    class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
-                  ></div>
-                  <div class="position-relative z-1 d-flex flex-column h-100">
-                    <div
-                      class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
-                    >
-                      <i class="bi bi-archive-fill fs-4"></i>
-                    </div>
-                    <h6 class="fw-bold text-white mb-1 text-truncate" title="เบิก-จ่ายวัสดุบริหารฯ">
-                      เบิก-จ่ายวัสดุบริหารฯ
-                    </h6>
-                    <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
-                      หน้า Stock วัสดุงานบริหาร
-                    </p>
-                    <div
-                      class="d-flex align-items-center text-white fw-bold small mt-auto"
-                      style="font-size: 0.75rem"
-                    >
-                      เข้าใช้งาน
-                      <i
-                        class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
-                      ></i>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               <!-- Procurement Tracking -->
               <div class="col-6 col-md-4 col-lg-3" v-if="hasPermission('menu_procurement')">
                 <div
@@ -800,40 +688,6 @@
                     </h6>
                     <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
                       จัดการ License, วันหมดอายุ
-                    </p>
-                    <div
-                      class="d-flex align-items-center text-white fw-bold small mt-auto"
-                      style="font-size: 0.75rem"
-                    >
-                      เข้าใช้งาน
-                      <i
-                        class="bi bi-arrow-right ms-1 transition-transform group-hover-translate-x"
-                      ></i>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Material Management IT (ซ่อนชั่วคราว ยังไม่ลบ) -->
-              <div class="col-6 col-md-4 col-lg-3" v-if="false && hasPermission('menu_it_material_manage')">
-                <div
-                  class="nav-card h-100 bg-gradient-orange text-white rounded-4 shadow-sm p-3 position-relative overflow-hidden cursor-pointer group"
-                  @click="goToMaterialV2"
-                >
-                  <div
-                    class="card-bg-decoration bg-white opacity-10 group-hover-opacity-20 transition-all"
-                  ></div>
-                  <div class="position-relative z-1 d-flex flex-column h-100">
-                    <div
-                      class="icon-box-small bg-white bg-opacity-25 text-white rounded-3 mb-2 d-inline-flex align-items-center justify-content-center backdrop-blur"
-                    >
-                      <i class="bi bi-box-seam-fill fs-4"></i>
-                    </div>
-                    <h6 class="fw-bold text-white mb-1 text-truncate" title="เบิก-จ่ายวัสดุคอมฯ">
-                      เบิก-จ่ายวัสดุคอมฯ
-                    </h6>
-                    <p class="text-white-50 small mb-2 flex-grow-1" style="font-size: 0.75rem">
-                      หน้า Stock In/Out วัสดุ IT
                     </p>
                     <div
                       class="d-flex align-items-center text-white fw-bold small mt-auto"
@@ -1693,13 +1547,6 @@ export default {
         alert('คุณไม่มีสิทธิ์เข้าถึงเมนูนี้ (เฉพาะสิทธิ์งานบริการ IT)');
       }
     },
-    async checkITAccessAndGoGM(path) {
-      if (this.hasGMAccess || this.isAdmin) {
-        this.$router.push({ path: path });
-      } else {
-        alert('คุณไม่มีสิทธิ์เข้าถึงเมนูนี้ (เฉพาะสิทธิ์งานบริหาร)');
-      }
-    },
     async goToManagerSchedule() {
       await this.checkAdminAccessAndGo('/manager-schedule');
     },
@@ -1780,12 +1627,6 @@ export default {
     async goToIpAddress() {
       await this.checkITAccessAndGo('/ip-address');
     },
-    async goToMaterialV2() {
-      await this.checkITAccessAndGo('/material-it');
-    },
-    async goToMaterialAdmin() {
-      await this.checkITAccessAndGoGM('/material-admin');
-    },
     goToProcurement() {
       this.$router.push({ path: '/procurement' });
     },
@@ -1795,14 +1636,6 @@ export default {
     async goToCommunicationManagement() {
       await this.checkAdminAccessAndGo('/communication-dashboard');
     },
-    goToMaterialRequestForm() {
-      this.$router.push({ path: '/material-request' });
-    },
-
-    goToMaterialAdminRequestForm() {
-      this.$router.push({ path: '/material-admin-request' });
-    },
-
     goToComputerLoanForm() {
       this.$router.push({ path: '/computer-loan' });
     },

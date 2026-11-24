@@ -189,8 +189,9 @@
                       <td class="text-center">{{ formatDateTime(t.transaction_date) }}</td>
                       <td class="text-center">
                         <span class="badge" :class="t.transaction_type === 'IN' ? 'bg-success' : 'bg-danger'">
-                          {{ t.document_type }}
+                          {{ getDocTypeLabel(t.document_type) }}
                         </span>
+                        <div v-if="t.doc_no" class="small text-muted font-monospace mt-1">{{ t.doc_no }}</div>
                       </td>
                       <td class="text-center text-muted small">
                          {{ t.lot_number || '-' }}
@@ -201,8 +202,25 @@
                       <td class="text-center text-primary fw-bold bg-light">{{ formatQty(t.balance_qty) }}</td>
                       <td class="text-end text-nowrap">{{ formatCurrency(t.effective_unit_cost ?? t.unit_cost) }}</td>
                       <td class="text-end fw-bold text-nowrap">{{ formatCurrency(t.total_value) }}</td>
-                      <td class="text-center">{{ t.user_name }}</td>
-                      <td class="small">{{ t.remark }}</td>
+                      <td class="small">
+                        <div class="fw-semibold text-dark">
+                          <span class="text-muted fw-normal">{{ t.transaction_type === 'OUT' ? 'ผู้จ่าย:' : 'ผู้ทำรายการ:' }}</span>
+                          {{ t.user_name || '-' }}
+                        </div>
+                        <div v-if="t.transaction_type === 'OUT' && (t.dept_or_vendor || t.target_person)" class="text-muted mt-1" style="font-size: 0.76rem;">
+                          <div v-if="t.dept_or_vendor"><i class="bi bi-building me-1"></i>หน่วยงาน: <strong class="text-dark">{{ t.dept_or_vendor }}</strong></div>
+                          <div v-if="t.target_person"><i class="bi bi-person me-1"></i>ผู้ขอเบิก: <strong class="text-primary">{{ t.target_person }}</strong></div>
+                        </div>
+                        <div v-else-if="t.transaction_type === 'IN' && (t.dept_or_vendor || t.invoice_no)" class="text-muted mt-1" style="font-size: 0.76rem;">
+                          <div v-if="t.dept_or_vendor"><i class="bi bi-truck me-1"></i>{{ t.dept_or_vendor }}</div>
+                          <div v-if="t.invoice_no"><i class="bi bi-receipt me-1"></i>Inv: {{ t.invoice_no }}</div>
+                        </div>
+                      </td>
+                      <td class="small">
+                        <div>{{ t.remark || '-' }}</div>
+                        <div v-if="t.purpose" class="text-muted" style="font-size: 0.75rem;">วัตถุประสงค์: {{ t.purpose }}</div>
+                        <div v-if="t.created_at" class="text-muted" style="font-size: 0.72rem;">บันทึก: {{ formatDateTime(t.created_at) }}</div>
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -448,6 +466,20 @@ export default {
       } finally {
         this.isLoading = false;
       }
+    },
+    getDocTypeLabel(type) {
+      const map = {
+        ISSUE: 'เบิกจ่าย',
+        RECEIVE: 'รับเข้า',
+        RECEIPT: 'รับเข้า',
+        CANCEL_ISSUE: 'ยกเลิกเบิกจ่าย',
+        RETURN: 'รับคืน',
+        TRANSFER: 'โอนย้าย',
+        TRANSFER_IN: 'รับโอน',
+        TRANSFER_OUT: 'โอนออก',
+        ADJUST: 'ปรับยอด'
+      };
+      return map[String(type || '').toUpperCase()] || type || '-';
     }
   }
 };

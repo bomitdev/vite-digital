@@ -57,9 +57,10 @@ try {
     // 2. Validate items to approve
     $total_qty_to_issue = 0;
     $items_to_issue = [];
+    $approved_req_items = [];
 
     // Prepared statements for lots and balances
-    $stmtLotCheck = $pdo2->prepare("SELECT balance_qty, unit_cost, lot_number FROM inv_stock_lots WHERE id = ? AND warehouse_id = ? FOR UPDATE");
+    $stmtLotCheck = $pdo2->prepare("SELECT id, balance_qty, unit_cost, lot_number FROM inv_stock_lots WHERE id = ? AND warehouse_id = ? FOR UPDATE");
     $stmtFefoLots = $pdo2->prepare("
         SELECT l.id, l.balance_qty, l.unit_cost, l.lot_number 
         FROM inv_stock_lots l
@@ -85,31 +86,33 @@ try {
             continue;
         }
 
-        // If lot_id specified, check it
+        $remQty = $qty_approved;
+        $primary_lot_id = null;
+
+        // If lot_id specified, deduct from it first, then spill over to remaining FEFO lots if needed
         if ($lot_id > 0) {
             $stmtLotCheck->execute([$lot_id, $warehouse_id]);
             $lot = $stmtLotCheck->fetch(PDO::FETCH_ASSOC);
-            if (!$lot || (float)$lot['balance_qty'] < $qty_approved) {
-                throw new Exception("สต๊อกใน Lot ID $lot_id ไม่เพียงพอ (คงเหลือ: " . ($lot['balance_qty'] ?? 0) . ", ต้องการจ่าย: $qty_approved)");
+            if ($lot && (float)$lot['balance_qty'] > 0) {
+                $takeQty = min($remQty, (float)$lot['balance_qty']);
+                $items_to_issue[] = [
+                    'row_id' => $row_id,
+                    'item_id' => $item_id,
+                    'lot_id' => $lot_id,
+                    'qty' => $takeQty,
+                    'unit_cost' => (float)$lot['unit_cost']
+                ];
+                $primary_lot_id = $lot_id;
+                $remQty -= $takeQty;
             }
-            $items_to_issue[] = [
-                'row_id' => $row_id,
-                'item_id' => $item_id,
-                'lot_id' => $lot_id,
-                'qty' => $qty_approved,
-                'unit_cost' => (float)$lot['unit_cost']
-            ];
-            $total_qty_to_issue += $qty_approved;
-        } else {
-            // Auto pick FEFO lot
+        }
+
+        if ($remQty > 0) {
+            // Auto pick remaining from FEFO lots (excluding already used lot_id)
             $stmtFefoLots->execute([$item_id, $warehouse_id]);
             $availLots = $stmtFefoLots->fetchAll(PDO::FETCH_ASSOC);
-            if (empty($availLots)) {
-                throw new Exception("ไม่มีสินค้าในสต๊อกสำหรับรายการ ID $item_id");
-            }
-
-            $remQty = $qty_approved;
             foreach ($availLots as $l) {
+                if ((int)$l['id'] === $lot_id) continue;
                 if ($remQty <= 0) break;
                 $takeQty = min($remQty, (float)$l['balance_qty']);
                 $items_to_issue[] = [
@@ -119,14 +122,24 @@ try {
                     'qty' => $takeQty,
                     'unit_cost' => (float)$l['unit_cost']
                 ];
+                if ($primary_lot_id === null) {
+                    $primary_lot_id = (int)$l['id'];
+                }
                 $remQty -= $takeQty;
             }
-
-            if ($remQty > 0) {
-                throw new Exception("ยอดสต๊อกคงเหลือรวมในคลังไม่พอสำหรับรายการ ID $item_id (ขาดอีก $remQty)");
-            }
-            $total_qty_to_issue += $qty_approved;
         }
+
+        if ($remQty > 0) {
+            throw new Exception("ยอดสต๊อกคงเหลือรวมในคลังไม่พอสำหรับรายการ ID $item_id (ขาดอีก $remQty)");
+        }
+
+        if ($row_id > 0) {
+            $approved_req_items[$row_id] = [
+                'qty_approved' => $qty_approved,
+                'lot_id' => $primary_lot_id
+            ];
+        }
+        $total_qty_to_issue += $qty_approved;
     }
 
     if ($total_qty_to_issue <= 0) {
@@ -196,11 +209,10 @@ try {
             $warehouse_id, $it['item_id'], $it['lot_id'], $issue_id, $it['qty'], $it['unit_cost'],
             $warehouse_id, $it['item_id'], $approver_name, "อนุมัติจ่ายคำขอ " . $req['req_no']
         ]);
+    }
 
-        // Update requisition item
-        if (!empty($it['row_id'])) {
-            $stmtUpdateReqItem->execute([$it['qty'], $it['lot_id'], $it['row_id']]);
-        }
+    foreach ($approved_req_items as $rId => $meta) {
+        $stmtUpdateReqItem->execute([$meta['qty_approved'], $meta['lot_id'], $rId]);
     }
 
     // 5. Update requisition header

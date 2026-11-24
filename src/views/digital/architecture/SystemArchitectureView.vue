@@ -185,16 +185,6 @@ const diagrams = [
     tags: ['/inventory-dashboard', 'PR <-> PO <-> Receive', 'Requisition & FEFO', 'Transfer & Return', 'Master 3 ตารางยา']
   },
   {
-    id: 'materials',
-    file: 'pages-materials.html',
-    icon: 'bi-boxes',
-    shortLabel: '3. หน้าเชื่อมโยง: วัสดุ IT / บริหาร',
-    title: 'แผนผังหน้าเชื่อมโยง: ระบบวัสดุคอมพิวเตอร์ IT และวัสดุงานบริหาร',
-    description:
-      'แสดงหน้าจอขอเบิกสาธารณะ (/material-request, /material-admin-request) เชื่อมสู่หน้าอนุมัติ พิมพ์ใบเบิก รับเข้า ตัดจ่าย สต็อก และรายงานทั้งฝั่ง IT และงานบริหาร',
-    tags: ['/material-request', '/material-it/*', '/material-admin-request', '/material-admin/*', 'Request Print (:id)']
-  },
-  {
     id: 'portal',
     file: 'pages-portal-clinical.html',
     icon: 'bi-hospital-fill',

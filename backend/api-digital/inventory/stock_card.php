@@ -48,7 +48,7 @@ try {
     $current_total_value = $lotQty > 0 ? (float)$lotSummary['lot_value'] : ($current_balance * $itemDefaultPrice);
     $current_unit_cost = $current_balance > 0 ? ($current_total_value / $current_balance) : $itemDefaultPrice;
 
-    // Fetch Transactions
+    // Fetch Transactions with full actor / department / vendor context
     $stmtTx = $pdo2->prepare("
         SELECT 
             t.*,
@@ -56,10 +56,19 @@ try {
             l.expiry_date,
             COALESCE(NULLIF(t.unit_cost, 0), NULLIF(l.unit_cost, 0), NULLIF(i.ave_rate, 0), NULLIF(i.standard_price, 0), NULLIF(i.last_purchase_price, 0), 0) AS effective_unit_cost,
             (CASE WHEN t.qty_in > 0 THEN t.qty_in ELSE t.qty_out END) *
-                COALESCE(NULLIF(t.unit_cost, 0), NULLIF(l.unit_cost, 0), NULLIF(i.ave_rate, 0), NULLIF(i.standard_price, 0), NULLIF(i.last_purchase_price, 0), 0) AS total_value
+                COALESCE(NULLIF(t.unit_cost, 0), NULLIF(l.unit_cost, 0), NULLIF(i.ave_rate, 0), NULLIF(i.standard_price, 0), NULLIF(i.last_purchase_price, 0), 0) AS total_value,
+            COALESCE(req.req_no, iss.issue_no, r.receipt_no, '') AS doc_no,
+            COALESCE(NULLIF(req.department_name, ''), iss.department_name, v.vendor_name, '') AS dept_or_vendor,
+            COALESCE(NULLIF(req.requester_name, ''), iss.requester_name, r.receiver_name, '') AS target_person,
+            COALESCE(r.invoice_no, '') AS invoice_no,
+            COALESCE(req.purpose, '') AS purpose
         FROM inv_stock_transactions t
         LEFT JOIN inv_stock_lots l ON t.lot_id = l.id
         LEFT JOIN inv_items i ON t.item_id = i.id
+        LEFT JOIN inv_issues iss ON t.document_type = 'ISSUE' AND t.document_id = iss.id
+        LEFT JOIN inv_requisitions req ON req.issue_id = iss.id
+        LEFT JOIN inv_receipts r ON t.document_type IN ('RECEIVE', 'RECEIPT') AND t.document_id = r.id
+        LEFT JOIN inv_vendors v ON r.vendor_id = v.id
         WHERE t.item_id = ? AND t.warehouse_id = ?
         ORDER BY t.transaction_date DESC, t.id DESC
         LIMIT 100

@@ -1,6 +1,7 @@
 <template>
-  <div class="container-fluid py-4">
-    <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+  <div class="data-report-page container-fluid py-3 py-md-4 px-3 px-md-4 min-vh-100">
+    <div class="card main-card border-0 rounded-4 overflow-hidden">
+      <div class="card-top-accent"></div>
       <!-- Header -->
       <div class="card-header bg-white border-bottom px-4 py-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
         <div class="d-flex align-items-center gap-3">
@@ -146,16 +147,25 @@
                   </small>
                 </td>
                 <td style="max-width: 240px">
-                  <div class="text-dark">{{ item.reason_name || '-' }}</div>
-                  <small v-if="item.reason_other" class="text-muted d-block text-truncate" :title="item.reason_other">
+                  <span class="reason-pill">
+                    {{ item.reason_name || '-' }}
+                  </span>
+                  <small v-if="item.reason_other" class="text-muted d-block text-truncate mt-1" :title="item.reason_other">
                     ({{ item.reason_other }})
                   </small>
                 </td>
-                <td class="text-nowrap">{{ item.p_name || 'ไม่ทราบชื่อ' }}</td>
-                <td class="text-nowrap text-muted">{{ formatDate(item.crt_date) }}</td>
-                <td class="text-nowrap text-muted">{{ formatDate(item.want_date) || '-' }}</td>
+                <td class="text-nowrap">
+                  <i class="bi bi-person text-muted me-1"></i>{{ item.p_name || 'ไม่ทราบชื่อ' }}
+                </td>
+                <td class="text-nowrap text-muted">
+                  <i class="bi bi-calendar3 me-1 opacity-75"></i>{{ formatDate(item.crt_date) }}
+                </td>
+                <td class="text-nowrap text-muted">
+                  <i class="bi bi-calendar-check me-1 opacity-75"></i>{{ formatDate(item.want_date) || '-' }}
+                </td>
                 <td class="text-center">
-                  <span :class="getStatusBadge(item.data_status_id)" class="px-2 py-1 rounded-pill">
+                  <span :class="getStatusBadge(item.data_status_id)" class="status-pill-badge">
+                    <i :class="['bi me-1', getStatusIcon(item.data_status_id)]"></i>
                     {{ getStatusName(item.data_status_id) }}
                   </span>
                 </td>
@@ -206,7 +216,7 @@
 
         <!-- Pagination -->
         <div
-          class="d-flex justify-content-between align-items-center mt-3 p-3"
+          class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-top bg-light-subtle px-4 py-3"
           v-if="totalPages > 1"
         >
           <span class="text-muted small">
@@ -843,11 +853,20 @@ const formatDate = (dateStr) => {
 
 const getStatusBadge = (id) => {
   const mapping = {
-    1: 'badge bg-danger-subtle text-danger border border-danger',
-    2: 'badge bg-warning-subtle text-warning-emphasis border border-warning',
-    3: 'badge bg-success-subtle text-success border border-success'
+    1: 'bg-danger-subtle text-danger border border-danger-subtle',
+    2: 'bg-warning-subtle text-warning-emphasis border border-warning-subtle',
+    3: 'bg-success-subtle text-success border border-success-subtle'
   };
-  return mapping[id] || 'badge bg-secondary';
+  return mapping[id] || 'bg-secondary-subtle text-secondary border border-secondary-subtle';
+};
+
+const getStatusIcon = (id) => {
+  const mapping = {
+    1: 'bi-clock-fill',
+    2: 'bi-arrow-repeat',
+    3: 'bi-check-circle-fill'
+  };
+  return mapping[id] || 'bi-question-circle';
 };
 
 const getStatusName = (id) => {
@@ -906,17 +925,53 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.data-report-page {
+  background: radial-gradient(circle at top left, #eff6ff 0%, #f8fafc 45%, #f1f5f9 100%);
+}
+
+.main-card {
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  border: 1px solid #e2e8f0 !important;
+}
+
+.card-top-accent {
+  height: 4px;
+  background: linear-gradient(90deg, #2563eb 0%, #4f46e5 50%, #10b981 100%);
+}
+
 .header-icon-box {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #eff6ff, #dbeafe);
-  color: #2563eb;
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  color: #ffffff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 1.3rem;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.reason-pill {
+  display: inline-block;
+  background-color: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 0.18rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.status-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .status-filter-pill {

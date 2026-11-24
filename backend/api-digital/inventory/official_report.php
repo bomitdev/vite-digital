@@ -190,11 +190,10 @@ try {
         // 4. Transactions in period
         $txStmt = $pdo2->prepare("
             SELECT t.*, 
-                   COALESCE(iss.department_name, mt.reference_dest, '') as resolved_dept,
+                   COALESCE(iss.department_name, '') as resolved_dept,
                    COALESCE(v.vendor_name, '') as resolved_vendor
             FROM inv_stock_transactions t
             LEFT JOIN inv_issues iss ON t.document_type = 'ISSUE' AND t.document_id = iss.id
-            LEFT JOIN mt_it_transactions mt ON t.remark LIKE CONCAT('%LegacyTX#', mt.id, '%')
             LEFT JOIN inv_receipts r ON t.document_type IN ('RECEIVE', 'RECEIPT') AND t.document_id = r.id
             LEFT JOIN inv_vendors v ON r.vendor_id = v.id
             WHERE t.warehouse_id = ? AND t.item_id = ?

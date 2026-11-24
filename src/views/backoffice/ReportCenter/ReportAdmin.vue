@@ -1,77 +1,168 @@
 <template>
-  <div class="container-fluid py-4">
-    <div class="card shadow-sm border-0 rounded-3">
-      <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-        <h3 class="mb-0 text-primary fw-bold">
-          <i class="bi bi-code-square me-2"></i>จัดการรายงาน SQL (Admin)
-        </h3>
-        <div>
-          <button @click="openModal()" class="btn btn-primary rounded-pill shadow-sm">
+  <div class="report-admin-page container-fluid py-3 py-md-4 px-3 px-md-4 min-vh-100">
+    <div class="card main-card border-0 rounded-4 overflow-hidden">
+      <div class="card-top-accent"></div>
+
+      <!-- Header -->
+      <div class="card-header bg-white py-3 px-4 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <div class="header-icon-box shadow-sm">
+            <i class="bi bi-code-square"></i>
+          </div>
+          <div>
+            <div class="d-flex align-items-center gap-2">
+              <h5 class="mb-0 text-dark fw-bold">จัดการรายงาน SQL (Admin)</h5>
+              <span class="badge rounded-pill bg-primary-subtle text-primary fw-semibold">
+                {{ reports.length }} รายงาน
+              </span>
+            </div>
+            <small class="text-muted">สร้าง แก้ไข และทดสอบคำสั่ง SQL สำหรับระบบ Report Center</small>
+          </div>
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <button @click="openModal()" class="btn btn-primary btn-create-report rounded-pill px-3 shadow-sm fw-semibold">
             <i class="bi bi-plus-lg me-1"></i> สร้างรายงานใหม่
           </button>
-          <button @click="$router.push('/report')" class="btn btn-info rounded-pill ms-2 text-white">
+          <button @click="$router.push('/report')" class="btn btn-outline-info rounded-pill px-3 fw-medium">
             <i class="bi bi-chat-text-fill me-1"></i> ระบบขอรายงาน
           </button>
-          <button @click="$router.push('/report-center')" class="btn btn-secondary rounded-pill ms-2">
+          <button @click="$router.push('/report-center')" class="btn btn-outline-primary rounded-pill px-3 fw-medium">
             <i class="bi bi-table me-1"></i> หน้า Report Center
           </button>
-          <button @click="goHome" class="btn btn-outline-secondary rounded-pill ms-2">
-            <i class="bi bi-house me-1"></i> กลับหน้าหลัก
+          <button @click="goHome" class="btn btn-light border rounded-pill px-3 text-secondary fw-medium">
+            <i class="bi bi-house-fill me-1"></i> กลับหน้าหลัก
           </button>
         </div>
       </div>
 
-      <div class="card-body">
+      <div class="card-body p-3 p-md-4">
         <div v-if="loading" class="text-center py-5">
           <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Loading...</span>
           </div>
+          <div class="text-muted small mt-2">กำลังโหลดรายการรายงาน...</div>
         </div>
 
-        <div v-else class="table-responsive">
-          <div class="row mb-3">
-            <div class="col-md-4">
-              <div class="input-group shadow-sm">
-                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                <input type="text" class="form-control border-start-0" placeholder="ค้นหารายงาน..." v-model="searchQuery">
+        <div v-else>
+          <!-- Search & Filter Toolbar -->
+          <div class="filter-toolbar p-3 rounded-4 mb-3">
+            <div class="row g-2 align-items-center">
+              <div class="col-lg-5 col-md-6">
+                <div class="input-group search-input-group">
+                  <span class="input-group-text bg-white border-end-0 text-muted">
+                    <i class="bi bi-search"></i>
+                  </span>
+                  <input
+                    type="text"
+                    class="form-control border-start-0 shadow-none"
+                    placeholder="ค้นหาชื่อรายงาน, รายละเอียด, แผนก..."
+                    v-model="searchQuery"
+                  />
+                  <button
+                    v-if="searchQuery"
+                    type="button"
+                    class="btn btn-white border border-start-0 text-muted"
+                    @click="searchQuery = ''"
+                    title="ล้างคำค้นหา"
+                  >
+                    <i class="bi bi-x-lg"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="col-lg-3 col-md-3">
+                <select class="form-select rounded-pill border-slate shadow-none" v-model="selectedDeptFilter">
+                  <option value="">-- ทุกแผนก / กลุ่มงาน --</option>
+                  <option value="GENERAL">ทั่วไป</option>
+                  <option
+                    v-for="dept in usedDepartments"
+                    :key="dept.id"
+                    :value="String(dept.id)"
+                  >
+                    {{ dept.name }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="col-lg-2 col-md-3">
+                <select class="form-select rounded-pill border-slate shadow-none" v-model="selectedDbFilter">
+                  <option value="">-- ทุกฐานข้อมูล --</option>
+                  <option value="1">DB1 (HOSxP)</option>
+                  <option value="2">DB2 (Digital)</option>
+                  <option value="3">DB3 (HOSoffice)</option>
+                </select>
+              </div>
+
+              <div class="col-lg-2 text-lg-end small text-muted fw-medium">
+                แสดง {{ filteredReports.length }} จาก {{ reports.length }} รายการ
               </div>
             </div>
           </div>
-          <table class="table table-hover align-middle">
-            <thead class="table-light">
-              <tr>
-                <th scope="col">Title</th>
-                <th scope="col">Description</th>
-                <th scope="col">แผนก</th>
-                <th scope="col">DB Connection</th>
-                <th scope="col" style="width: 150px">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="report in filteredReports" :key="report.id">
-                <td class="fw-bold">{{ report.title }}</td>
-                <td>{{ report.description }}</td>
-                <td>
-                  <span class="badge bg-secondary rounded-pill" v-if="!report.department_id">ทั่วไป</span>
-                  <span class="badge bg-primary rounded-pill" v-else>{{ getDepartmentName(report.department_id) }}</span>
-                </td>
-                <td>
-                  <span class="badge bg-info text-dark">DB{{ report.db_connection }}</span>
-                </td>
-                <td>
-                  <button @click="openModal(report)" class="btn btn-sm btn-warning me-1 text-white">
-                    <i class="bi bi-pencil"></i>
-                  </button>
-                  <button @click="runPreview(report)" class="btn btn-sm btn-success">
-                    <i class="bi bi-play-fill"></i>
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="filteredReports.length === 0">
-                <td colspan="5" class="text-center text-muted py-4">ไม่พบรายงาน</td>
-              </tr>
-            </tbody>
-          </table>
+
+          <!-- Table -->
+          <div class="table-responsive rounded-3 border">
+            <table class="table table-hover align-middle mb-0 report-table">
+              <thead>
+                <tr>
+                  <th style="width: 52px" class="text-center">#</th>
+                  <th>ชื่อรายงาน / รายละเอียด</th>
+                  <th style="width: 240px">แผนก / กลุ่มงาน</th>
+                  <th style="width: 150px" class="text-center">ฐานข้อมูล</th>
+                  <th style="width: 130px" class="text-center">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(report, index) in filteredReports" :key="report.id">
+                  <td class="text-center text-muted small fw-semibold">{{ index + 1 }}</td>
+                  <td>
+                    <div class="fw-semibold text-dark">{{ report.title }}</div>
+                    <div v-if="report.description" class="small text-muted mt-1">
+                      {{ report.description }}
+                    </div>
+                  </td>
+                  <td>
+                    <span class="dept-pill dept-pill-general" v-if="!report.department_id">
+                      <i class="bi bi-folder2 me-1"></i>ทั่วไป
+                    </span>
+                    <span class="dept-pill dept-pill-active" v-else>
+                      <i class="bi bi-building me-1"></i>{{ getDepartmentName(report.department_id) }}
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    <span :class="['db-pill', getDbBadgeClass(report.db_connection)]">
+                      <i class="bi bi-database me-1"></i>{{ getDbLabel(report.db_connection) }}
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    <div class="d-inline-flex gap-1">
+                      <button
+                        @click="openModal(report)"
+                        class="btn btn-sm btn-outline-warning rounded-pill px-2 fw-medium"
+                        title="แก้ไขรายงาน"
+                      >
+                        <i class="bi bi-pencil-square"></i>
+                      </button>
+                      <button
+                        @click="runPreview(report)"
+                        class="btn btn-sm btn-success rounded-pill px-3 fw-medium"
+                        title="ทดสอบรัน SQL"
+                      >
+                        <i class="bi bi-play-fill me-1"></i>รัน
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-if="filteredReports.length === 0">
+                  <td colspan="5" class="text-center text-muted py-5">
+                    <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
+                    <div class="fw-medium">ไม่พบรายงานที่ตรงกับเงื่อนไข</div>
+                    <small>ลองเปลี่ยนคำค้นหาหรือตัวกรองแผนก/ฐานข้อมูล</small>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -80,12 +171,13 @@
     <div v-if="showModal" class="modal-backdrop fade show"></div>
     <div class="modal fade" :class="{ 'show d-block': showModal }" tabindex="-1">
       <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title fw-bold">
-              {{ isEdit ? 'แก้ไขรายงาน' : 'สร้างรายงานใหม่' }}
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+          <div class="modal-header modal-header-gradient text-white py-3 px-4">
+            <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+              <i class="bi bi-code-slash"></i>
+              <span>{{ isEdit ? 'แก้ไขรายงาน SQL' : 'สร้างรายงาน SQL ใหม่' }}</span>
             </h5>
-            <button type="button" class="btn-close" @click="closeModal"></button>
+            <button type="button" class="btn-close btn-close-white" @click="closeModal"></button>
           </div>
           <div class="modal-body">
             <div class="row g-3">
@@ -258,6 +350,8 @@ const loading = ref(false);
 const showModal = ref(false);
 const isEdit = ref(false);
 const searchQuery = ref('');
+const selectedDeptFilter = ref('');
+const selectedDbFilter = ref('');
 
 const getDepartmentName = (deptId) => {
   if (!deptId) return 'ทั่วไป';
@@ -265,14 +359,55 @@ const getDepartmentName = (deptId) => {
   return dept ? dept.HR_DEPARTMENT_SUB_NAME : 'ทั่วไป';
 };
 
+const getDbLabel = (conn) => {
+  switch (Number(conn)) {
+    case 1: return 'DB1 · HOSxP';
+    case 2: return 'DB2 · Digital';
+    case 3: return 'DB3 · HOSoffice';
+    default: return `DB${conn}`;
+  }
+};
+
+const getDbBadgeClass = (conn) => {
+  switch (Number(conn)) {
+    case 1: return 'db-pill-hosxp';
+    case 2: return 'db-pill-digital';
+    case 3: return 'db-pill-hosoffice';
+    default: return 'db-pill-default';
+  }
+};
+
+const usedDepartments = computed(() => {
+  const seen = new Map();
+  for (const r of reports.value) {
+    if (r.department_id) {
+      const id = String(r.department_id);
+      if (!seen.has(id)) {
+        seen.set(id, { id, name: getDepartmentName(r.department_id) });
+      }
+    }
+  }
+  return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name, 'th'));
+});
+
 const filteredReports = computed(() => {
-  if (!searchQuery.value) return reports.value;
-  const q = searchQuery.value.toLowerCase();
-  return reports.value.filter(r => 
-    (r.title && r.title.toLowerCase().includes(q)) || 
-    (r.description && r.description.toLowerCase().includes(q)) ||
-    (getDepartmentName(r.department_id).toLowerCase().includes(q))
-  );
+  return reports.value.filter((r) => {
+    if (selectedDeptFilter.value === 'GENERAL' && r.department_id) return false;
+    if (selectedDeptFilter.value && selectedDeptFilter.value !== 'GENERAL' && String(r.department_id) !== selectedDeptFilter.value) {
+      return false;
+    }
+    if (selectedDbFilter.value && String(r.db_connection) !== selectedDbFilter.value) {
+      return false;
+    }
+    if (searchQuery.value) {
+      const q = searchQuery.value.toLowerCase();
+      const matchTitle = r.title && r.title.toLowerCase().includes(q);
+      const matchDesc = r.description && r.description.toLowerCase().includes(q);
+      const matchDept = getDepartmentName(r.department_id).toLowerCase().includes(q);
+      if (!matchTitle && !matchDesc && !matchDept) return false;
+    }
+    return true;
+  });
 });
 
 const form = ref({
@@ -528,6 +663,136 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.report-admin-page {
+  background: radial-gradient(circle at top left, #eff6ff 0%, #f8fafc 45%, #f1f5f9 100%);
+}
+
+.main-card {
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  border: 1px solid #e2e8f0 !important;
+}
+
+.card-top-accent {
+  height: 4px;
+  background: linear-gradient(90deg, #2563eb 0%, #4f46e5 50%, #0ea5e9 100%);
+}
+
+.header-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.btn-create-report {
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  border: none;
+}
+
+.filter-toolbar {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.search-input-group .input-group-text,
+.search-input-group .form-control,
+.search-input-group .btn,
+.border-slate {
+  border-color: #cbd5e1;
+}
+
+.search-input-group .input-group-text {
+  border-top-left-radius: 999px;
+  border-bottom-left-radius: 999px;
+}
+
+.search-input-group .form-control:last-child,
+.search-input-group .btn:last-child {
+  border-top-right-radius: 999px;
+  border-bottom-right-radius: 999px;
+}
+
+.report-table thead th {
+  background-color: #f8fafc;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.75rem 0.85rem;
+  white-space: nowrap;
+}
+
+.report-table tbody td {
+  padding: 0.7rem 0.85rem;
+  border-color: #f1f5f9;
+}
+
+.dept-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  max-width: 100%;
+}
+
+.dept-pill-active {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.dept-pill-general {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.db-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.22rem 0.7rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.db-pill-hosxp {
+  background-color: #ecfeff;
+  color: #0e7490;
+  border: 1px solid #a5f3fc;
+}
+
+.db-pill-digital {
+  background-color: #f5f3ff;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+
+.db-pill-hosoffice {
+  background-color: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.db-pill-default {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.modal-header-gradient {
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+}
+
 .font-monospace {
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 14px;

@@ -131,7 +131,18 @@
                   </div>
                   <div class="row g-2 align-items-end">
                     <div class="col-md-3 position-relative">
-                      <label class="form-label mb-1">ค้นหารหัส/ชื่อวัสดุ</label>
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label mb-0">ค้นหารหัส/ชื่อวัสดุ</label>
+                        <button
+                          type="button"
+                          class="btn btn-link btn-sm p-0 text-decoration-none fw-bold text-success"
+                          style="font-size: 0.78rem;"
+                          @click="startNewItem"
+                          :disabled="!form.warehouse_id"
+                        >
+                          <i class="bi bi-plus-circle-fill me-1"></i>เพิ่มพัสดุใหม่
+                        </button>
+                      </div>
                       <input 
                         type="text" 
                         class="form-control" 
@@ -143,12 +154,15 @@
                       <div 
                         v-if="isDropdownOpen && form.warehouse_id" 
                         class="position-absolute w-100 bg-white border rounded shadow mt-1" 
-                        style="max-height: 250px; overflow-y: auto; z-index: 1050;"
+                        style="max-height: 260px; overflow-y: auto; z-index: 1050;"
                       >
-                        <div class="d-flex justify-content-between p-2 border-bottom bg-light">
-                          <button type="button" class="btn btn-sm btn-outline-secondary" @click="isDropdownOpen = false">ปิดหน้าต่าง</button>
+                        <div class="d-flex justify-content-between align-items-center p-2 border-bottom bg-light gap-1">
+                          <button type="button" class="btn btn-sm btn-success text-nowrap" @click="startNewItem">
+                            <i class="bi bi-plus-circle me-1"></i>ลงทะเบียนพัสดุใหม่{{ searchQuery.trim() ? `: "${searchQuery.trim()}"` : '' }}
+                          </button>
+                          <button type="button" class="btn btn-sm btn-outline-secondary" @click="isDropdownOpen = false">ปิด</button>
                         </div>
-                        <div v-if="filteredItems.length === 0" class="p-2 text-muted text-center">ไม่พบข้อมูลในคลังนี้</div>
+                        <div v-if="filteredItems.length === 0" class="p-2 text-muted text-center small">ไม่พบข้อมูลในคลังนี้ (กดปุ่มสีเขียวด้านบนเพื่อเพิ่มพัสดุใหม่)</div>
                         <div 
                           v-for="m in filteredItems" 
                           :key="m.id" 
@@ -161,27 +175,76 @@
                     </div>
                     <div class="col-md-2">
                       <label class="form-label mb-1">เลข Lot <span class="text-danger" v-if="currentItem.lot_control">*</span></label>
-                      <input type="text" class="form-control" v-model="currentItem.lot_number" placeholder="Lot Number" :disabled="!currentItem.item_id" />
+                      <input type="text" class="form-control" v-model="currentItem.lot_number" placeholder="Lot Number" :disabled="!currentItem.item_id && !currentItem.isNewItem" />
                     </div>
                     <div class="col-md-2">
                       <label class="form-label mb-1">วันหมดอายุ (Expiry) <span class="text-danger" v-if="currentItem.expiry_control">*</span></label>
-                      <input type="date" class="form-control" v-model="currentItem.expiry_date" :disabled="!currentItem.item_id" />
+                      <input type="date" class="form-control" v-model="currentItem.expiry_date" :disabled="!currentItem.item_id && !currentItem.isNewItem" />
                     </div>
                     <div class="col-md-2">
                       <label class="form-label mb-1">ราคา/หน่วย (บ.)</label>
-                      <input type="number" step="0.01" class="form-control" v-model.number="currentItem.unit_cost" min="0" placeholder="0.00" :disabled="!currentItem.item_id" />
+                      <input type="number" step="0.01" class="form-control" v-model.number="currentItem.unit_cost" min="0" placeholder="0.00" :disabled="!currentItem.item_id && !currentItem.isNewItem" />
                     </div>
                     <div class="col-md-2">
                       <label class="form-label mb-1">จำนวนที่รับเข้า</label>
                       <div class="input-group">
-                        <input type="number" step="1" class="form-control" v-model.number="currentItem.qty" min="1" @change="currentItem.qty = Math.max(1, Math.round(Number(currentItem.qty) || 1))" :disabled="!currentItem.item_id" />
+                        <input type="number" step="1" class="form-control" v-model.number="currentItem.qty" min="1" @change="currentItem.qty = Math.max(1, Math.round(Number(currentItem.qty) || 1))" :disabled="!currentItem.item_id && !currentItem.isNewItem" />
                         <span class="input-group-text">{{ currentItem.unit_name || 'หน่วย' }}</span>
                       </div>
                     </div>
                     <div class="col-md-1">
-                      <button type="button" class="btn btn-primary w-100" @click="addItem" :disabled="!currentItem.item_id || currentItem.qty <= 0">
+                      <button type="button" class="btn btn-primary w-100" @click="addItem" :disabled="(!currentItem.item_id && !currentItem.isNewItem) || currentItem.qty <= 0">
                         เพิ่ม
                       </button>
+                    </div>
+                  </div>
+
+                  <!-- New Item Inline Registration Fields (Category, Type, Unit) -->
+                  <div v-if="currentItem.isNewItem" class="mt-3 p-3 bg-white border border-success-subtle rounded-3 shadow-xs">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <span class="fw-bold text-success small">
+                        <i class="bi bi-sparkles me-1"></i>ลงทะเบียนพัสดุใหม่เข้าคลังอัตโนมัติ
+                      </span>
+                      <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" style="font-size: 0.75rem;" @click="resetCurrentItem">
+                        ยกเลิก
+                      </button>
+                    </div>
+                    <div class="row g-2">
+                      <div class="col-md-4">
+                        <label class="form-label small fw-bold mb-1">ชื่อพัสดุใหม่ <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" v-model="currentItem.item_name" placeholder="ระบุชื่อพัสดุ" />
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small fw-bold mb-1">รหัสพัสดุ</label>
+                        <input type="text" class="form-control form-control-sm" v-model="currentItem.item_code" placeholder="เว้นว่าง=สร้างอัตโนมัติ" />
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small fw-bold mb-1">หมวดหมู่</label>
+                        <select class="form-select form-select-sm" v-model="currentItem.category_id">
+                          <option value="">-- เลือกหมวดหมู่ --</option>
+                          <option v-for="c in categories" :key="'cat-' + c.id" :value="c.id">{{ c.name }}</option>
+                        </select>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small fw-bold mb-1">ประเภทพัสดุ</label>
+                        <select class="form-select form-select-sm" v-model="currentItem.item_type_id">
+                          <option value="">-- เลือกประเภท --</option>
+                          <option v-for="t in itemTypes" :key="'tp-' + t.id" :value="t.id">{{ t.name }}</option>
+                        </select>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small fw-bold mb-1">หน่วยนับ <span class="text-danger">*</span></label>
+                        <input
+                          type="text"
+                          class="form-control form-control-sm"
+                          v-model="currentItem.unit_name"
+                          list="receiveUnitOptions"
+                          placeholder="เช่น ชิ้น, กล่อง"
+                        />
+                        <datalist id="receiveUnitOptions">
+                          <option v-for="u in units" :key="'un-' + u.id" :value="u.name"></option>
+                        </datalist>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -212,7 +275,14 @@
                             <span v-else class="text-muted small">-</span>
                           </td>
                           <td>
-                            <div class="fw-bold">{{ item.item_name }}</div>
+                            <div class="fw-bold">
+                              {{ item.item_name }}
+                              <span v-if="!item.item_id" class="badge bg-success-subtle text-success border border-success-subtle ms-1">พัสดุใหม่</span>
+                            </div>
+                            <div v-if="!item.item_id && (item.category_name || item.item_type_name)" class="small text-muted mt-1">
+                              <span v-if="item.category_name" class="me-2">หมวด: {{ item.category_name }}</span>
+                              <span v-if="item.item_type_name">ประเภท: {{ item.item_type_name }}</span>
+                            </div>
                             <small v-if="item.qty_remaining" class="text-info">
                               <i class="bi bi-file-earmark-text me-1"></i>ค้างรับตาม PO: {{ item.qty_remaining }} {{ item.unit_name }}
                             </small>
@@ -995,6 +1065,9 @@ export default {
     return {
       warehouses: [],
       vendors: [],
+      categories: [],
+      itemTypes: [],
+      units: [],
       items: [],
       activePOs: [],
       selectedItems: [],
@@ -1025,8 +1098,11 @@ export default {
       
       currentItem: {
         item_id: '',
+        isNewItem: false,
         item_code: '',
         item_name: '',
+        category_id: '',
+        item_type_id: '',
         lot_number: '',
         expiry_date: '',
         qty: 1,
@@ -1318,8 +1394,29 @@ export default {
       await Promise.all([
         this.fetchItems(),
         this.fetchVendors(),
+        this.fetchMasterOptions(),
         this.fetchReceiptsHistory()
       ]);
+    },
+    async fetchMasterOptions() {
+      if (!this.form.warehouse_id) {
+        this.categories = [];
+        this.itemTypes = [];
+        this.units = [];
+        return;
+      }
+      try {
+        const [catRes, typeRes, unitRes] = await Promise.all([
+          axios.get(`/api-digital/inventory/categories.php?warehouse_id=${this.form.warehouse_id}`).catch(() => null),
+          axios.get(`/api-digital/inventory/item_types.php?warehouse_id=${this.form.warehouse_id}`).catch(() => null),
+          axios.get(`/api-digital/inventory/units.php?warehouse_id=${this.form.warehouse_id}`).catch(() => null)
+        ]);
+        this.categories = catRes?.data?.status === 'success' ? (catRes.data.data || []) : [];
+        this.itemTypes = typeRes?.data?.status === 'success' ? (typeRes.data.data || []) : [];
+        this.units = unitRes?.data?.status === 'success' ? (unitRes.data.data || []) : [];
+      } catch (err) {
+        console.error('Error fetching master options in Receive:', err);
+      }
     },
     formatReceiptDate(dt) {
       if (!dt) return '-';
@@ -1451,10 +1548,33 @@ export default {
         console.error(err);
       }
     },
+    startNewItem() {
+      const q = (this.searchQuery || '').trim();
+      this.currentItem = {
+        item_id: 0,
+        isNewItem: true,
+        item_code: '',
+        item_name: q,
+        category_id: '',
+        item_type_id: '',
+        lot_number: '',
+        expiry_date: '',
+        qty: 1,
+        unit_id: 0,
+        unit_name: 'ชิ้น',
+        unit_cost: 0,
+        lot_control: 0,
+        expiry_control: 0
+      };
+      this.isDropdownOpen = false;
+    },
     selectItem(m) {
+      this.currentItem.isNewItem = false;
       this.currentItem.item_id = m.id;
       this.currentItem.item_code = m.item_code;
       this.currentItem.item_name = m.item_name;
+      this.currentItem.category_id = m.category_id || '';
+      this.currentItem.item_type_id = m.item_type_id || '';
       this.currentItem.unit_id = m.unit_id;
       this.currentItem.unit_name = m.unit_name;
       this.currentItem.unit_cost = parseFloat(m.standard_price) || 0;
@@ -1465,7 +1585,16 @@ export default {
       this.isDropdownOpen = false;
     },
     addItem() {
-      if (!this.currentItem.item_id || this.currentItem.qty <= 0) return;
+      if ((!this.currentItem.item_id && !this.currentItem.isNewItem) || this.currentItem.qty <= 0) return;
+
+      if (this.currentItem.isNewItem) {
+        if (!String(this.currentItem.item_name || '').trim()) {
+          return Swal.fire('ข้อมูลไม่ครบ', 'กรุณาระบุชื่อพัสดุใหม่', 'warning');
+        }
+        if (!String(this.currentItem.unit_name || '').trim()) {
+          return Swal.fire('ข้อมูลไม่ครบ', 'กรุณาระบุหน่วยนับของพัสดุใหม่', 'warning');
+        }
+      }
       
       // Control Checks
       if (this.currentItem.lot_control && !this.currentItem.lot_number) {
@@ -1475,7 +1604,14 @@ export default {
         return Swal.fire('ข้อมูลไม่ครบ', 'วัสดุนี้จำเป็นต้องระบุวันหมดอายุ', 'warning');
       }
 
-      this.selectedItems.push({ ...this.currentItem });
+      const catObj = this.categories.find(c => Number(c.id) === Number(this.currentItem.category_id));
+      const typeObj = this.itemTypes.find(t => Number(t.id) === Number(this.currentItem.item_type_id));
+
+      this.selectedItems.push({
+        ...this.currentItem,
+        category_name: catObj ? catObj.name : '',
+        item_type_name: typeObj ? typeObj.name : ''
+      });
       this.resetCurrentItem();
       this.searchQuery = '';
     },
@@ -1484,8 +1620,8 @@ export default {
     },
     resetCurrentItem() {
       this.currentItem = {
-        item_id: '', item_code: '', item_name: '', lot_number: '', expiry_date: '',
-        qty: 1, unit_id: '', unit_name: '', unit_cost: 0, lot_control: 0, expiry_control: 0
+        item_id: '', isNewItem: false, item_code: '', item_name: '', category_id: '', item_type_id: '',
+        lot_number: '', expiry_date: '', qty: 1, unit_id: '', unit_name: '', unit_cost: 0, lot_control: 0, expiry_control: 0
       };
     },
     resetAll() {
