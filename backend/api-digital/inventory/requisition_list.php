@@ -70,16 +70,20 @@ try {
                         (CASE WHEN r.status = 'APPROVED' AND ri.qty_approved > 0 THEN ri.qty_approved ELSE ri.qty_requested END) *
                         COALESCE(
                             NULLIF((SELECT l.unit_cost FROM inv_stock_lots l WHERE l.id = ri.lot_id LIMIT 1), 0),
-                            NULLIF(it.ave_rate, 0),
-                            NULLIF(it.standard_price, 0),
-                            NULLIF(it.last_purchase_price, 0),
                             NULLIF((
                                 SELECT l2.unit_cost
                                 FROM inv_stock_lots l2
                                 WHERE l2.item_id = ri.item_id AND l2.warehouse_id = r.warehouse_id AND l2.balance_qty > 0
-                                ORDER BY CASE WHEN l2.expiry_date IS NULL THEN 1 ELSE 0 END, l2.expiry_date ASC, l2.id ASC
+                                ORDER BY
+                                    CASE WHEN l2.expiry_date IS NULL THEN 1 ELSE 0 END ASC,
+                                    l2.expiry_date ASC,
+                                    COALESCE((SELECT MIN(t.transaction_date) FROM inv_stock_transactions t WHERE t.lot_id = l2.id AND t.transaction_type = 'IN'), l2.created_at) ASC,
+                                    l2.id ASC
                                 LIMIT 1
                             ), 0),
+                            NULLIF(it.last_purchase_price, 0),
+                            NULLIF(it.standard_price, 0),
+                            NULLIF(it.ave_rate, 0),
                             0
                         )
                     )
