@@ -704,15 +704,19 @@ export default {
           this.form.purpose = r.purpose || '';
 
           await this.fetchItems();
-          this.selectedItems = (r.items || []).map(it => ({
-            item_id: Number(it.item_id),
-            item_code: it.item_code || '',
-            item_name: it.item_name || '',
-            unit_name: it.unit_name || 'หน่วย',
-            on_hand: Number(it.current_stock || 0),
-            qty: Math.max(1, Math.round(Number(it.qty_requested) || 1)),
-            item_note: it.item_note || ''
-          }));
+          this.selectedItems = (r.items || []).map(it => {
+            const matchedItem = this.items.find(m => Number(m.id) === Number(it.item_id));
+            return {
+              item_id: Number(it.item_id),
+              item_code: it.item_code || '',
+              item_name: it.item_name || '',
+              unit_name: it.unit_name || 'หน่วย',
+              on_hand: Number(it.current_stock ?? matchedItem?.on_hand ?? 0),
+              unit_price: Number(matchedItem?.effective_unit_cost ?? matchedItem?.last_purchase_price ?? matchedItem?.standard_price ?? it.unit_cost ?? 0),
+              qty: Math.max(1, Math.round(Number(it.qty_requested) || 1)),
+              item_note: it.item_note || ''
+            };
+          });
         }
       } catch (err) {
         console.error('Load edit requisition failed:', err);
