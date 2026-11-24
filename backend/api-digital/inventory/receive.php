@@ -264,7 +264,7 @@ try {
         // Insert Receipt Item
         $stmtReceiptItem->execute([$receipt_id, $item_id, $lot_number, $expiry_date, $qty, $unit_id, $unit_cost, $total_price]);
         
-        // Manage Lot
+        // Manage Lot (always create a lot even when lot_number is empty so FEFO & balance recalculation stay accurate)
         $lot_id = null;
         if ($lot_number !== '') {
             $stmtGetLot->execute([$item_id, $warehouse_id, $lot_number]);
@@ -277,6 +277,9 @@ try {
                 $stmtInsertLot->execute([$item_id, $warehouse_id, $lot_number, $expiry_date, $unit_cost, $qty, $qty]);
                 $lot_id = $pdo2->lastInsertId();
             }
+        } else {
+            $stmtInsertLot->execute([$item_id, $warehouse_id, '-', $expiry_date, $unit_cost, $qty, $qty]);
+            $lot_id = $pdo2->lastInsertId();
         }
         
         // Manage Stock Balance

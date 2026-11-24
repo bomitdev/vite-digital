@@ -702,6 +702,16 @@
                     <i class="bi bi-file-earmark-arrow-up fs-6"></i>
                     <span>นำเข้าด้วย Excel</span>
                   </button>
+                  <button
+                    v-if="isSuperAdmin"
+                    type="button"
+                    class="btn btn-outline-warning rounded-pill px-3 shadow-sm d-flex align-items-center gap-1 fw-semibold"
+                    @click="openMergeModal()"
+                    title="รวมพัสดุที่ซ้ำกันเข้าด้วยกัน (เฉพาะ Admin)"
+                  >
+                    <i class="bi bi-union fs-6"></i>
+                    <span>รวมพัสดุ</span>
+                  </button>
                   <button type="button" class="btn btn-primary rounded-pill px-3 shadow-sm d-flex align-items-center gap-1" @click="openItemModal()">
                     <i class="bi bi-plus-lg"></i>
                     <span>ลงทะเบียนวัสดุใหม่</span>
@@ -2691,6 +2701,128 @@
         </div>
       </div>
     </div>
+
+    <!-- Merge Items Modal (Admin Only) -->
+    <div class="modal fade" id="mergeItemsModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+          <div class="modal-header bg-warning-subtle border-bottom py-3 px-4">
+            <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+              <i class="bi bi-union text-warning-emphasis"></i>
+              <span>รวมพัสดุเข้าด้วยกัน (Admin)</span>
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="alert alert-info border-0 bg-info-subtle text-info-emphasis small mb-3">
+              <i class="bi bi-info-circle-fill me-1"></i>
+              ระบบจะย้าย <strong>Lot, ราคาต่อหน่วยเดิม, ยอดคงเหลือ และประวัติรับ-จ่ายทั้งหมด</strong> ของพัสดุต้นทางไปรวมไว้ภายใต้พัสดุปลายทาง แล้วลบรายการต้นทางที่ซ้ำออก
+            </div>
+
+            <form @submit.prevent="submitMergeItems">
+              <div class="mb-3">
+                <label class="form-label small fw-bold">คลังวัสดุ <span class="text-danger">*</span></label>
+                <select
+                  class="form-select"
+                  v-model="mergeForm.warehouse_id"
+                  :disabled="!!effectiveWarehouseId"
+                  @change="mergeForm.source_item_id = ''; mergeForm.target_item_id = '';"
+                  required
+                >
+                  <option value="" disabled>-- เลือกคลังวัสดุ --</option>
+                  <option v-for="w in warehouses" :key="w.id" :value="String(w.id)">
+                    [{{ w.code }}] {{ w.name }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <div class="p-3 rounded-3 border bg-danger-subtle bg-opacity-10 h-100">
+                    <label class="form-label small fw-bold text-danger mb-1">
+                      1. พัสดุต้นทาง (ตัวซ้ำที่จะยุบรวม/ลบออก) <span class="text-danger">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      class="form-control form-control-sm mb-2"
+                      v-model="mergeForm.source_search"
+                      placeholder="ค้นหารหัสหรือชื่อพัสดุต้นทาง..."
+                    />
+                    <select class="form-select form-select-sm" v-model="mergeForm.source_item_id" required>
+                      <option value="" disabled>-- เลือกพัสดุต้นทาง --</option>
+                      <option
+                        v-for="it in mergeSourceCandidates"
+                        :key="'src-' + it.id"
+                        :value="String(it.id)"
+                        :disabled="String(it.id) === String(mergeForm.target_item_id)"
+                      >
+                        [{{ it.item_code || '-' }}] {{ it.item_name }} (คงเหลือ: {{ Math.round(Number(it.on_hand) || 0) }} {{ it.unit_name || '' }})
+                      </option>
+                    </select>
+                    <div v-if="selectedMergeSource" class="mt-2 small text-muted">
+                      รหัส: <strong>{{ selectedMergeSource.item_code || '-' }}</strong> ·
+                      หน่วย: <strong>{{ selectedMergeSource.unit_name || '-' }}</strong> ·
+                      คงเหลือ: <strong class="text-danger">{{ Math.round(Number(selectedMergeSource.on_hand) || 0) }}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <div class="p-3 rounded-3 border bg-success-subtle bg-opacity-10 h-100">
+                    <label class="form-label small fw-bold text-success mb-1">
+                      2. พัสดุปลายทาง (ตัวหลักที่จะเก็บไว้) <span class="text-danger">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      class="form-control form-control-sm mb-2"
+                      v-model="mergeForm.target_search"
+                      placeholder="ค้นหารหัสหรือชื่อพัสดุปลายทาง..."
+                    />
+                    <select class="form-select form-select-sm" v-model="mergeForm.target_item_id" required>
+                      <option value="" disabled>-- เลือกพัสดุปลายทาง --</option>
+                      <option
+                        v-for="it in mergeTargetCandidates"
+                        :key="'tgt-' + it.id"
+                        :value="String(it.id)"
+                        :disabled="String(it.id) === String(mergeForm.source_item_id)"
+                      >
+                        [{{ it.item_code || '-' }}] {{ it.item_name }} (คงเหลือ: {{ Math.round(Number(it.on_hand) || 0) }} {{ it.unit_name || '' }})
+                      </option>
+                    </select>
+                    <div v-if="selectedMergeTarget" class="mt-2 small text-muted">
+                      รหัส: <strong>{{ selectedMergeTarget.item_code || '-' }}</strong> ·
+                      หน่วย: <strong>{{ selectedMergeTarget.unit_name || '-' }}</strong> ·
+                      คงเหลือ: <strong class="text-success">{{ Math.round(Number(selectedMergeTarget.on_hand) || 0) }}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                v-if="selectedMergeSource && selectedMergeTarget && String(selectedMergeSource.unit_id) !== String(selectedMergeTarget.unit_id)"
+                class="alert alert-warning small mt-3 mb-0"
+              >
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                คำเตือน: หน่วยนับของพัสดุต้นทาง (<strong>{{ selectedMergeSource.unit_name }}</strong>) กับปลายทาง (<strong>{{ selectedMergeTarget.unit_name }}</strong>) ไม่ตรงกัน โปรดตรวจสอบก่อนรวม
+              </div>
+
+              <div class="d-flex justify-content-end gap-2 mt-4">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ยกเลิก</button>
+                <button
+                  type="submit"
+                  class="btn btn-warning rounded-pill px-4 fw-bold"
+                  :disabled="isMergingItems || !mergeForm.source_item_id || !mergeForm.target_item_id"
+                >
+                  <span v-if="isMergingItems" class="spinner-border spinner-border-sm me-2"></span>
+                  <i v-else class="bi bi-union me-1"></i>
+                  ยืนยันรวมพัสดุ
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
 </template>
 
 <script>
@@ -2748,6 +2880,14 @@ export default {
       // Items Search and Import state
       itemSearchQuery: '',
       itemFilterCategory: '',
+      isMergingItems: false,
+      mergeForm: {
+        warehouse_id: '',
+        source_item_id: '',
+        target_item_id: '',
+        source_search: '',
+        target_search: ''
+      },
       itemFilterType: '',
       itemFilterDosageForm: '',
       itemFilterEdList: '',
@@ -3070,6 +3210,35 @@ export default {
     },
     canCreateWarehouse() {
       return this.isSuperAdmin;
+    },
+    mergeWarehouseItems() {
+      const whId = Number(this.mergeForm.warehouse_id || this.effectiveWarehouseId || 0);
+      if (!whId) return [];
+      return this.items.filter(i => Number(i.warehouse_id) === whId);
+    },
+    mergeSourceCandidates() {
+      const q = (this.mergeForm.source_search || '').trim().toLowerCase();
+      if (!q) return this.mergeWarehouseItems;
+      return this.mergeWarehouseItems.filter(i =>
+        (i.item_name && i.item_name.toLowerCase().includes(q)) ||
+        (i.item_code && i.item_code.toLowerCase().includes(q))
+      );
+    },
+    mergeTargetCandidates() {
+      const q = (this.mergeForm.target_search || '').trim().toLowerCase();
+      if (!q) return this.mergeWarehouseItems;
+      return this.mergeWarehouseItems.filter(i =>
+        (i.item_name && i.item_name.toLowerCase().includes(q)) ||
+        (i.item_code && i.item_code.toLowerCase().includes(q))
+      );
+    },
+    selectedMergeSource() {
+      if (!this.mergeForm.source_item_id) return null;
+      return this.mergeWarehouseItems.find(i => String(i.id) === String(this.mergeForm.source_item_id)) || null;
+    },
+    selectedMergeTarget() {
+      if (!this.mergeForm.target_item_id) return null;
+      return this.mergeWarehouseItems.find(i => String(i.id) === String(this.mergeForm.target_item_id)) || null;
     }
   },
   watch: {
@@ -3551,6 +3720,70 @@ export default {
           const msg = err.response?.data?.message || 'เกิดข้อผิดพลาดในการลบ';
           Swal.fire('ไม่สามารถลบได้', msg, 'error');
         }
+      }
+    },
+    openMergeModal() {
+      if (!this.isSuperAdmin) return;
+      const defaultWh = this.effectiveWarehouseId || (this.warehouses.length > 0 ? String(this.warehouses[0].id) : '');
+      this.mergeForm = {
+        warehouse_id: defaultWh ? String(defaultWh) : '',
+        source_item_id: '',
+        target_item_id: '',
+        source_search: '',
+        target_search: ''
+      };
+      const modal = new bootstrap.Modal(document.getElementById('mergeItemsModal'));
+      modal.show();
+    },
+    async submitMergeItems() {
+      if (!this.isSuperAdmin) return;
+      if (!this.mergeForm.source_item_id || !this.mergeForm.target_item_id) {
+        Swal.fire('แจ้งเตือน', 'กรุณาเลือกทั้งพัสดุต้นทางและปลายทาง', 'warning');
+        return;
+      }
+      if (String(this.mergeForm.source_item_id) === String(this.mergeForm.target_item_id)) {
+        Swal.fire('แจ้งเตือน', 'ไม่สามารถรวมพัสดุรายการเดียวกันได้', 'warning');
+        return;
+      }
+
+      const src = this.selectedMergeSource;
+      const tgt = this.selectedMergeTarget;
+      const confirm = await Swal.fire({
+        title: 'ยืนยันการรวมพัสดุ?',
+        html: `ต้องการย้าย Lot และประวัติทั้งหมดของ<br><strong class="text-danger">[${src?.item_code || '-'}] ${src?.item_name || ''}</strong><br>ไปรวมกับ<br><strong class="text-success">[${tgt?.item_code || '-'}] ${tgt?.item_name || ''}</strong> ใช่หรือไม่?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d97706',
+        confirmButtonText: 'ยืนยันรวมพัสดุ',
+        cancelButtonText: 'ยกเลิก'
+      });
+      if (!confirm.isConfirmed) return;
+
+      this.isMergingItems = true;
+      try {
+        const res = await axios.post('/api-digital/inventory/items_merge.php', {
+          source_item_id: Number(this.mergeForm.source_item_id),
+          target_item_id: Number(this.mergeForm.target_item_id)
+        });
+        if (res.data?.status === 'success') {
+          const modalEl = document.getElementById('mergeItemsModal');
+          const modalInst = bootstrap.Modal.getInstance(modalEl);
+          if (modalInst) modalInst.hide();
+          await Swal.fire({
+            icon: 'success',
+            title: 'รวมพัสดุสำเร็จ',
+            text: res.data.message,
+            timer: 2000,
+            showConfirmButton: false
+          });
+          await this.fetchData();
+        } else {
+          Swal.fire('ไม่สามารถรวมได้', res.data?.message || 'เกิดข้อผิดพลาด', 'error');
+        }
+      } catch (err) {
+        Swal.fire('ข้อผิดพลาด', err.response?.data?.message || 'ไม่สามารถเชื่อมต่อระบบได้', 'error');
+      } finally {
+        this.isMergingItems = false;
       }
     },
     openItemModal(item = null) {

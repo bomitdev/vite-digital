@@ -182,8 +182,8 @@
                     รายการวัสดุในคลัง
                   </h5>
                   <div class="d-flex gap-2 flex-wrap justify-content-end">
-                    <select v-model="selectedCategory" class="form-select shadow-sm border-light-subtle" style="max-width: 170px; font-size: 0.9rem;">
-                      <option value="">ทุกหมวดหมู่/ประเภท</option>
+                    <select v-model="selectedCategory" class="form-select shadow-sm border-light-subtle" style="max-width: 190px; font-size: 0.9rem;">
+                      <option value="">ทุกประเภท</option>
                       <option v-for="cat in uniqueCategories" :key="cat" :value="cat">{{ cat }}</option>
                     </select>
                     <div class="input-group shadow-sm" style="max-width: 260px;">
@@ -198,7 +198,7 @@
                     <thead class="table-light sticky-top shadow-sm" style="z-index: 10;">
                       <tr class="small text-secondary">
                         <th width="42%" class="ps-3">รหัส / ชื่อวัสดุ</th>
-                        <th width="22%" class="text-center">หมวดหมู่/ประเภท</th>
+                        <th width="22%" class="text-center">ประเภท</th>
                         <th width="16%" class="text-center">คงเหลือ</th>
                         <th width="20%" class="text-center pe-3">แอคชัน</th>
                       </tr>
@@ -228,7 +228,7 @@
                         </td>
                         <td class="text-center">
                           <span class="badge bg-secondary-subtle text-secondary border rounded-pill fw-normal">
-                            {{ mat.category_name || mat.item_type_name || '-' }}
+                            {{ mat.item_type_name || mat.category_name || '-' }}
                           </span>
                         </td>
                         <td class="text-center">
@@ -309,13 +309,14 @@
                                 type="number"
                                 step="1"
                                 min="1"
+                                :max="Math.max(1, Math.floor(Number(item.on_hand) || 0))"
                                 v-model.number="item.qty"
-                                @change="item.qty = Math.max(1, Math.round(Number(item.qty) || 1))"
+                                @change="onCartQtyChange(item)"
                                 class="form-control text-center fw-bold border-0 text-primary px-0 hide-arrows"
                                 required
                                 style="max-width: 42px; font-size: 0.85rem;"
                               >
-                              <button type="button" class="btn btn-primary px-2 py-0" @click="item.qty++"><i class="bi bi-plus"></i></button>
+                              <button type="button" class="btn btn-primary px-2 py-0" @click="incrementCartQty(item)"><i class="bi bi-plus"></i></button>
                             </div>
                             <span class="small fw-semibold text-secondary text-nowrap" style="min-width: 36px;">{{ item.unit_name || 'หน่วย' }}</span>
                             <button
@@ -440,19 +441,20 @@ export default {
     uniqueCategories() {
       const cats = new Set();
       this.items.forEach(m => {
+        if (Number(m.on_hand) <= 0) return;
         if (Number(m.admin_only_issue) === 1 && !this.canRequestRestrictedItems) return;
-        const c = m.category_name || m.item_type_name;
+        const c = m.item_type_name || m.category_name;
         if (c) cats.add(c);
       });
-      return Array.from(cats).sort();
+      return Array.from(cats).sort((a, b) => a.localeCompare(b, 'th'));
     },
     filteredItems() {
       let available = this.items.filter(
-        m => Number(m.admin_only_issue) !== 1 || this.canRequestRestrictedItems
+        m => Number(m.on_hand) > 0 && (Number(m.admin_only_issue) !== 1 || this.canRequestRestrictedItems)
       );
       if (this.selectedCategory) {
         available = available.filter(
-          m => (m.category_name || m.item_type_name) === this.selectedCategory
+          m => (m.item_type_name || m.category_name) === this.selectedCategory
         );
       }
       if (!this.searchQuery) return available;
@@ -762,6 +764,10 @@ export default {
     },
     addToCart(mat) {
       if (this.isItemInCart(mat.id)) return;
+      if (Number(mat.on_hand) <= 0) {
+        Swal.fire('ยอดคงเหลือไม่พอ', `${mat.item_name} ไม่มีสินค้าคงเหลือในคลัง`, 'warning');
+        return;
+      }
       this.selectedItems.push({
         item_id: mat.id,
         item_code: mat.item_code,
@@ -771,6 +777,35 @@ export default {
         qty: 1,
         item_note: ''
       });
+    },
+    incrementCartQty(item) {
+      const maxQty = Math.floor(Number(item.on_hand) || 0);
+      const nextQty = (Math.round(Number(item.qty) || 0)) + 1;
+      if (nextQty > maxQty) {
+        item.qty = Math.max(1, maxQty);
+        Swal.fire({
+          icon: 'warning',
+          title: 'ยอดคงเหลือไม่พอ',
+          text: `${item.item_name} คงเหลือ ${this.formatQty(maxQty)} ${item.unit_name || 'หน่วย'}`,
+          confirmButtonText: 'ตกลง'
+        });
+        return;
+      }
+      item.qty = nextQty;
+    },
+    onCartQtyChange(item) {
+      const maxQty = Math.floor(Number(item.on_hand) || 0);
+      let val = Math.max(1, Math.round(Number(item.qty) || 1));
+      if (val > maxQty) {
+        val = Math.max(1, maxQty);
+        Swal.fire({
+          icon: 'warning',
+          title: 'ยอดคงเหลือไม่พอ',
+          text: `${item.item_name} คงเหลือ ${this.formatQty(maxQty)} ${item.unit_name || 'หน่วย'}`,
+          confirmButtonText: 'ตกลง'
+        });
+      }
+      item.qty = val;
     },
     selectItem(m) {
       this.currentItem.item_id = m.id;
