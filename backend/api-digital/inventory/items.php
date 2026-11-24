@@ -186,6 +186,20 @@ try {
             ? "COALESCE((SELECT SUM(b.balance_qty) FROM inv_stock_balances b WHERE b.item_id = i.id AND b.warehouse_id = " . (int)$warehouse_id . "), 0)"
             : "COALESCE((SELECT SUM(b.balance_qty) FROM inv_stock_balances b WHERE b.item_id = i.id), 0)";
 
+        $whLotCond = $warehouse_id > 0 ? " AND l.warehouse_id = " . (int)$warehouse_id : "";
+        $effectivePriceSub = "COALESCE(
+            NULLIF((
+                SELECT l.unit_cost
+                FROM inv_stock_lots l
+                WHERE l.item_id = i.id AND l.balance_qty > 0{$whLotCond}
+                ORDER BY CASE WHEN l.expiry_date IS NULL THEN 1 ELSE 0 END ASC, l.expiry_date ASC, l.id ASC
+                LIMIT 1
+            ), 0),
+            NULLIF(i.last_purchase_price, 0),
+            i.standard_price,
+            0
+        )";
+
         $sql = "SELECT i.*, 
                        w.name as warehouse_name, 
                        c.name as category_name,
@@ -199,7 +213,8 @@ try {
                        ed.name as ed_list_name,
                        pc.code as product_cat_code,
                        pc.name as product_cat_name,
-                       $whOnHandSub as on_hand
+                       $whOnHandSub as on_hand,
+                       $effectivePriceSub as effective_unit_cost
                 FROM inv_items i 
                 LEFT JOIN inv_warehouses w ON i.warehouse_id = w.id
                 LEFT JOIN inv_categories c ON i.category_id = c.id

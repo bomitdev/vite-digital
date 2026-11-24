@@ -299,6 +299,12 @@
                               >
                                 คงเหลือ {{ formatQty(item.on_hand) }} {{ item.unit_name }}
                               </span>
+                              <span class="badge bg-light text-secondary border rounded-pill fw-normal">
+                                ราคา/หน่วย {{ formatCurrency(item.unit_price) }} ฿
+                              </span>
+                              <span class="badge bg-primary-subtle text-primary rounded-pill fw-semibold">
+                                รวม {{ formatCurrency((Number(item.qty) || 0) * (Number(item.unit_price) || 0)) }} ฿
+                              </span>
                             </div>
                           </div>
 
@@ -364,9 +370,12 @@
                       </div>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center mt-2 px-2 small text-muted">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2 px-2 small text-muted">
                       <span>รวมทั้งหมด <strong class="text-dark">{{ selectedItems.length }}</strong> รายการ</span>
-                      <span>จำนวนรวม <strong class="text-primary">{{ selectedItems.reduce((s, it) => s + (Number(it.qty) || 0), 0).toLocaleString() }}</strong> ชิ้น/หน่วย</span>
+                      <div class="d-flex align-items-center gap-3">
+                        <span>จำนวนรวม <strong class="text-primary">{{ selectedItems.reduce((s, it) => s + (Number(it.qty) || 0), 0).toLocaleString() }}</strong> ชิ้น/หน่วย</span>
+                        <span>ราคารวม <strong class="text-success">{{ formatCurrency(cartTotalAmount) }} ฿</strong></span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -460,6 +469,12 @@ export default {
       const whId = Number(this.form.warehouse_id);
       return whId > 0 && this.managedWarehouseIds.includes(whId);
     },
+    cartTotalAmount() {
+      return this.selectedItems.reduce(
+        (sum, it) => sum + ((Number(it.qty) || 0) * (Number(it.unit_price) || 0)),
+        0
+      );
+    },
     uniqueCategories() {
       const cats = new Set();
       this.items.forEach(m => {
@@ -542,6 +557,12 @@ export default {
   methods: {
     formatQty(val) {
       return Math.round(Number(val) || 0).toLocaleString('en-US');
+    },
+    formatCurrency(val) {
+      return (Number(val) || 0).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
     },
     handleBackToDashboard() {
       if (this.$route.path === '/inventory-requisition-form') {
@@ -796,6 +817,7 @@ export default {
         item_name: mat.item_name,
         unit_name: mat.unit_name || 'หน่วย',
         on_hand: mat.on_hand || 0,
+        unit_price: Number(mat.effective_unit_cost ?? mat.last_purchase_price ?? mat.standard_price ?? 0),
         qty: 1,
         item_note: ''
       });
