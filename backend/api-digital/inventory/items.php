@@ -192,7 +192,11 @@ try {
                 SELECT l.unit_cost
                 FROM inv_stock_lots l
                 WHERE l.item_id = i.id AND l.balance_qty > 0{$whLotCond}
-                ORDER BY CASE WHEN l.expiry_date IS NULL THEN 1 ELSE 0 END ASC, l.expiry_date ASC, l.id ASC
+                ORDER BY
+                    CASE WHEN l.expiry_date IS NULL THEN 1 ELSE 0 END ASC,
+                    l.expiry_date ASC,
+                    COALESCE((SELECT MIN(t.transaction_date) FROM inv_stock_transactions t WHERE t.lot_id = l.id AND t.transaction_type = 'IN'), l.created_at) ASC,
+                    l.id ASC
                 LIMIT 1
             ), 0),
             NULLIF(i.last_purchase_price, 0),
