@@ -302,31 +302,53 @@
                             </div>
                           </div>
 
-                          <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                            <div class="input-group input-group-sm rounded-pill overflow-hidden border border-primary" style="width: 108px;">
-                              <button type="button" class="btn btn-primary px-2 py-0" @click="item.qty > 1 ? item.qty-- : null"><i class="bi bi-dash"></i></button>
-                              <input
-                                type="number"
-                                step="1"
-                                min="1"
-                                :max="Math.max(1, Math.floor(Number(item.on_hand) || 0))"
-                                v-model.number="item.qty"
-                                @change="onCartQtyChange(item)"
-                                class="form-control text-center fw-bold border-0 text-primary px-0 hide-arrows"
-                                required
-                                style="max-width: 42px; font-size: 0.85rem;"
+                          <div class="d-flex flex-column align-items-end gap-1 flex-shrink-0">
+                            <div class="d-flex align-items-center gap-2">
+                              <div class="input-group input-group-sm rounded-pill overflow-hidden border border-primary" style="width: 108px;">
+                                <button type="button" class="btn btn-primary px-2 py-0" @click="item.qty > 1 ? item.qty-- : null"><i class="bi bi-dash"></i></button>
+                                <input
+                                  type="number"
+                                  step="1"
+                                  min="1"
+                                  :max="Math.max(1, Math.floor(Number(item.on_hand) || 0))"
+                                  v-model.number="item.qty"
+                                  @change="onCartQtyChange(item)"
+                                  class="form-control text-center fw-bold border-0 text-primary px-0 hide-arrows"
+                                  required
+                                  style="max-width: 42px; font-size: 0.85rem;"
+                                >
+                                <button type="button" class="btn btn-primary px-2 py-0" @click="incrementCartQty(item)"><i class="bi bi-plus"></i></button>
+                              </div>
+                              <span class="small fw-semibold text-secondary text-nowrap" style="min-width: 36px;">{{ item.unit_name || 'หน่วย' }}</span>
+                              <button
+                                type="button"
+                                class="btn btn-sm btn-link text-danger p-1"
+                                @click="removeItem(index)"
+                                title="นำออก"
                               >
-                              <button type="button" class="btn btn-primary px-2 py-0" @click="incrementCartQty(item)"><i class="bi bi-plus"></i></button>
+                                <i class="bi bi-trash-fill"></i>
+                              </button>
                             </div>
-                            <span class="small fw-semibold text-secondary text-nowrap" style="min-width: 36px;">{{ item.unit_name || 'หน่วย' }}</span>
-                            <button
-                              type="button"
-                              class="btn btn-sm btn-link text-danger p-1"
-                              @click="removeItem(index)"
-                              title="นำออก"
-                            >
-                              <i class="bi bi-trash-fill"></i>
-                            </button>
+                            <div class="d-flex align-items-center gap-1">
+                              <button
+                                type="button"
+                                class="btn btn-outline-secondary py-0 px-2 rounded-pill"
+                                style="font-size: 0.7rem;"
+                                @click="setCartMinQty(item)"
+                                :disabled="item.qty <= 1"
+                              >
+                                น้อยสุด (1)
+                              </button>
+                              <button
+                                type="button"
+                                class="btn btn-outline-primary py-0 px-2 rounded-pill"
+                                style="font-size: 0.7rem;"
+                                @click="setCartMaxQty(item)"
+                                :disabled="item.qty >= Math.floor(Number(item.on_hand) || 0)"
+                              >
+                                สูงสุด ({{ formatQty(Math.floor(Number(item.on_hand) || 0)) }})
+                              </button>
+                            </div>
                           </div>
                         </div>
 
@@ -806,6 +828,13 @@ export default {
         });
       }
       item.qty = val;
+    },
+    setCartMinQty(item) {
+      item.qty = 1;
+    },
+    setCartMaxQty(item) {
+      const maxQty = Math.floor(Number(item.on_hand) || 0);
+      item.qty = Math.max(1, maxQty);
     },
     selectItem(m) {
       this.currentItem.item_id = m.id;
