@@ -197,21 +197,22 @@
                   <table class="table table-hover align-middle mb-0">
                     <thead class="table-light sticky-top shadow-sm" style="z-index: 10;">
                       <tr class="small text-secondary">
-                        <th width="42%" class="ps-3">รหัส / ชื่อวัสดุ</th>
-                        <th width="22%" class="text-center">ประเภท</th>
-                        <th width="16%" class="text-center">คงเหลือ</th>
-                        <th width="20%" class="text-center pe-3">แอคชัน</th>
+                        <th width="36%" class="ps-3">รหัส / ชื่อวัสดุ</th>
+                        <th width="18%" class="text-center">ประเภท</th>
+                        <th width="14%" class="text-end">ราคา/หน่วย</th>
+                        <th width="14%" class="text-center">คงเหลือ</th>
+                        <th width="18%" class="text-center pe-3">แอคชัน</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr v-if="!form.warehouse_id">
-                        <td colspan="4" class="text-center py-5 text-muted">
+                        <td colspan="5" class="text-center py-5 text-muted">
                           <i class="bi bi-building fs-1 mb-2 d-block text-secondary"></i>
                           กรุณาเลือกคลังวัสดุที่ต้องการเบิกด้านบนก่อน
                         </td>
                       </tr>
                       <tr v-else-if="filteredItems.length === 0">
-                        <td colspan="4" class="text-center py-5 text-muted">
+                        <td colspan="5" class="text-center py-5 text-muted">
                           <i class="bi bi-search fs-1 mb-2 d-block text-secondary"></i>
                           ไม่พบรายการวัสดุที่ค้นหา
                         </td>
@@ -230,6 +231,9 @@
                           <span class="badge bg-secondary-subtle text-secondary border rounded-pill fw-normal">
                             {{ mat.item_type_name || mat.category_name || '-' }}
                           </span>
+                        </td>
+                        <td class="text-end text-nowrap small fw-semibold text-primary">
+                          {{ formatCurrency(mat.effective_unit_cost ?? mat.last_purchase_price ?? mat.standard_price ?? 0) }} ฿
                         </td>
                         <td class="text-center">
                           <span class="badge border px-2 py-1" :class="Number(mat.on_hand) > 0 ? 'bg-light text-dark' : 'bg-danger-subtle text-danger border-danger-subtle'">
