@@ -992,10 +992,12 @@ export default {
 .hide-arrows::-webkit-outer-spin-button,
 .hide-arrows::-webkit-inner-spin-button {
   -webkit-appearance: none;
+  appearance: none;
   margin: 0;
 }
 .hide-arrows {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 .nav-pill-btn {
   transition: all 0.2s ease;

@@ -454,8 +454,16 @@
                           </button>
                           <button
                             type="button"
+                            class="btn btn-sm btn-outline-success rounded-pill px-2"
+                            @click="viewReceiptDetail(rc.id, true)"
+                            title="แก้ไขรายการรับเข้า"
+                          >
+                            <i class="bi bi-pencil-square me-1"></i>แก้ไข
+                          </button>
+                          <button
+                            type="button"
                             class="btn btn-sm btn-outline-primary rounded-pill px-3"
-                            @click="viewReceiptDetail(rc.id)"
+                            @click="viewReceiptDetail(rc.id, false)"
                           >
                             <i class="bi bi-eye me-1"></i>ดูรายการ
                           </button>
@@ -500,14 +508,15 @@
       </div>
     </div>
 
-    <!-- Receipt Detail Modal -->
+    <!-- Receipt Detail / Edit Modal -->
     <div v-if="showReceiptDetailModal" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.55); z-index: 1065;">
       <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg rounded-4">
-          <div class="modal-header bg-success text-white py-3 px-4 border-0">
+          <div class="modal-header text-white py-3 px-4 border-0" :class="isEditingReceipt ? 'bg-warning text-dark' : 'bg-success'">
             <div>
               <h5 class="modal-title fw-bold mb-0">
-                <i class="bi bi-receipt me-2"></i>รายละเอียดใบรับเข้า: {{ activeReceiptDetail?.receipt_no }}
+                <i :class="isEditingReceipt ? 'bi bi-pencil-square me-2' : 'bi bi-receipt me-2'"></i>
+                {{ isEditingReceipt ? 'แก้ไขใบรับเข้า:' : 'รายละเอียดใบรับเข้า:' }} {{ activeReceiptDetail?.receipt_no }}
               </h5>
               <small class="opacity-75">
                 วันที่รับ: {{ formatReceiptDate(activeReceiptDetail?.receipt_date) }}
@@ -515,7 +524,7 @@
                 <span v-if="activeReceiptDetail?.vendor_name"> • ผู้จำหน่าย: {{ activeReceiptDetail.vendor_name }}</span>
               </small>
             </div>
-            <button type="button" class="btn-close btn-close-white" @click="showReceiptDetailModal = false"></button>
+            <button type="button" class="btn-close" :class="isEditingReceipt ? '' : 'btn-close-white'" @click="showReceiptDetailModal = false; isEditingReceipt = false;"></button>
           </div>
           <div class="modal-body p-4">
             <div v-if="loadingReceiptDetail" class="text-center py-5 text-muted">
@@ -523,45 +532,153 @@
               <div>กำลังโหลดรายการวัสดุ...</div>
             </div>
             <div v-else-if="activeReceiptDetail">
-              <div v-if="activeReceiptDetail.remark" class="alert alert-light border small mb-3">
-                <strong>หมายเหตุ:</strong> {{ activeReceiptDetail.remark }}
-              </div>
-              <div class="table-responsive">
-                <table class="table table-bordered table-sm align-middle mb-0">
-                  <thead class="table-light">
-                    <tr>
-                      <th class="text-center" style="width: 50px;">#</th>
-                      <th style="width: 110px;">รหัส</th>
-                      <th>รายการวัสดุ</th>
-                      <th>Lot</th>
-                      <th>วันหมดอายุ</th>
-                      <th class="text-end">ราคา/หน่วย</th>
-                      <th class="text-end">จำนวน</th>
-                      <th class="text-center">หน่วย</th>
-                      <th class="text-end">รวมเป็นเงิน</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="(it, idx) in (activeReceiptDetail.items || [])" :key="'rcd-' + idx">
-                      <td class="text-center text-muted">{{ idx + 1 }}</td>
-                      <td class="small">{{ it.item_code || '-' }}</td>
-                      <td class="fw-semibold">{{ it.item_name || '-' }}</td>
-                      <td class="small">{{ it.lot_number || '-' }}</td>
-                      <td class="small">{{ it.expiry_date || '-' }}</td>
-                      <td class="text-end">{{ formatCurrency(it.unit_cost) }}</td>
-                      <td class="text-end fw-bold text-success">{{ Number(it.qty || 0).toLocaleString() }}</td>
-                      <td class="text-center small">{{ it.unit_name || 'หน่วย' }}</td>
-                      <td class="text-end fw-bold">{{ formatCurrency(it.total_price) }}</td>
-                    </tr>
-                  </tbody>
-                  <tfoot class="table-light fw-bold">
-                    <tr>
-                      <td colspan="8" class="text-end">มูลค่ารวมทั้งสิ้น</td>
-                      <td class="text-end text-danger">{{ formatCurrency(activeReceiptDetail.total_amount) }} ฿</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+              <!-- Edit Mode -->
+              <template v-if="isEditingReceipt">
+                <div class="row g-3 mb-3 p-3 bg-light rounded-3 border">
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold mb-1">วันที่รับเข้า</label>
+                    <input type="datetime-local" class="form-control form-control-sm" v-model="editReceiptForm.receipt_date" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold mb-1">เลขที่ Invoice</label>
+                    <input type="text" class="form-control form-control-sm" v-model="editReceiptForm.invoice_no" placeholder="ถ้ามี" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold mb-1">ผู้จำหน่าย / แหล่งที่มา</label>
+                    <select class="form-select form-select-sm" v-model="editReceiptForm.vendor_id">
+                      <option value="">-- ไม่ระบุ --</option>
+                      <option v-for="v in vendors" :key="'ev-' + v.id" :value="String(v.id)">{{ v.vendor_name }}</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold mb-1">หมายเหตุ</label>
+                    <input type="text" class="form-control form-control-sm" v-model="editReceiptForm.remark" />
+                  </div>
+                </div>
+
+                <div class="table-responsive">
+                  <table class="table table-bordered table-sm align-middle mb-2">
+                    <thead class="table-light">
+                      <tr>
+                        <th class="text-center" style="width: 45px;">#</th>
+                        <th style="width: 100px;">รหัส</th>
+                        <th>รายการวัสดุ</th>
+                        <th style="width: 130px;">Lot</th>
+                        <th style="width: 145px;">วันหมดอายุ</th>
+                        <th class="text-end" style="width: 120px;">ราคา/หน่วย</th>
+                        <th class="text-end" style="width: 100px;">จำนวน</th>
+                        <th class="text-center" style="width: 75px;">หน่วย</th>
+                        <th class="text-end" style="width: 120px;">รวมเป็นเงิน</th>
+                        <th class="text-center" style="width: 55px;">ลบ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(it, idx) in editReceiptForm.items" :key="'erc-' + idx">
+                        <td class="text-center text-muted">{{ idx + 1 }}</td>
+                        <td class="small font-monospace">{{ it.item_code || '-' }}</td>
+                        <td>
+                          <select
+                            class="form-select form-select-sm"
+                            v-model="it.item_id"
+                            @change="onEditReceiptItemChange(it)"
+                            style="min-width: 220px;"
+                          >
+                            <option v-if="!items.some(m => String(m.id) === String(it.item_id))" :value="String(it.item_id)">
+                              [{{ it.item_code || '-' }}] {{ it.item_name }}
+                            </option>
+                            <option v-for="m in items" :key="'eropt-' + m.id" :value="String(m.id)">
+                              [{{ m.item_code || '-' }}] {{ m.item_name }}
+                            </option>
+                          </select>
+                        </td>
+                        <td>
+                          <input type="text" class="form-control form-control-sm" v-model="it.lot_number" placeholder="Lot" />
+                        </td>
+                        <td>
+                          <input type="date" class="form-control form-control-sm" v-model="it.expiry_date" />
+                        </td>
+                        <td>
+                          <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end" v-model.number="it.unit_cost" />
+                        </td>
+                        <td>
+                          <input type="number" step="1" min="1" class="form-control form-control-sm text-end fw-bold" v-model.number="it.qty" />
+                        </td>
+                        <td class="text-center small">{{ it.unit_name || 'หน่วย' }}</td>
+                        <td class="text-end fw-bold">{{ formatCurrency((Number(it.qty) || 0) * (Number(it.unit_cost) || 0)) }}</td>
+                        <td class="text-center">
+                          <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" @click="removeEditReceiptItem(idx)" title="ลบรายการนี้">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                    <tfoot class="table-light fw-bold">
+                      <tr>
+                        <td colspan="8" class="text-end">มูลค่ารวมทั้งสิ้น</td>
+                        <td class="text-end text-danger">{{ formatCurrency(editReceiptTotal) }} ฿</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                <!-- Add Item to Receipt -->
+                <div class="d-flex flex-wrap align-items-center gap-2 mt-2 p-2 bg-light rounded border">
+                  <span class="small fw-bold text-secondary"><i class="bi bi-plus-circle me-1"></i>เพิ่มพัสดุเข้าบิลนี้:</span>
+                  <select class="form-select form-select-sm" style="max-width: 360px;" v-model="editAddItemId">
+                    <option value="">-- เลือกรายการพัสดุ --</option>
+                    <option v-for="m in items" :key="'eadd-' + m.id" :value="String(m.id)">
+                      [{{ m.item_code }}] {{ m.item_name }} ({{ m.unit_name || 'หน่วย' }})
+                    </option>
+                  </select>
+                  <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" @click="addEditReceiptItem" :disabled="!editAddItemId">
+                    <i class="bi bi-plus-lg me-1"></i>เพิ่ม
+                  </button>
+                </div>
+              </template>
+
+              <!-- View Mode -->
+              <template v-else>
+                <div v-if="activeReceiptDetail.remark" class="alert alert-light border small mb-3">
+                  <strong>หมายเหตุ:</strong> {{ activeReceiptDetail.remark }}
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-bordered table-sm align-middle mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th class="text-center" style="width: 50px;">#</th>
+                        <th style="width: 110px;">รหัส</th>
+                        <th>รายการวัสดุ</th>
+                        <th>Lot</th>
+                        <th>วันหมดอายุ</th>
+                        <th class="text-end">ราคา/หน่วย</th>
+                        <th class="text-end">จำนวน</th>
+                        <th class="text-center">หน่วย</th>
+                        <th class="text-end">รวมเป็นเงิน</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(it, idx) in (activeReceiptDetail.items || [])" :key="'rcd-' + idx">
+                        <td class="text-center text-muted">{{ idx + 1 }}</td>
+                        <td class="small">{{ it.item_code || '-' }}</td>
+                        <td class="fw-semibold">{{ it.item_name || '-' }}</td>
+                        <td class="small">{{ it.lot_number || '-' }}</td>
+                        <td class="small">{{ it.expiry_date || '-' }}</td>
+                        <td class="text-end">{{ formatCurrency(it.unit_cost) }}</td>
+                        <td class="text-end fw-bold text-success">{{ Number(it.qty || 0).toLocaleString() }}</td>
+                        <td class="text-center small">{{ it.unit_name || 'หน่วย' }}</td>
+                        <td class="text-end fw-bold">{{ formatCurrency(it.total_price) }}</td>
+                      </tr>
+                    </tbody>
+                    <tfoot class="table-light fw-bold">
+                      <tr>
+                        <td colspan="8" class="text-end">มูลค่ารวมทั้งสิ้น</td>
+                        <td class="text-end text-danger">{{ formatCurrency(activeReceiptDetail.total_amount) }} ฿</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </template>
             </div>
           </div>
           <div class="modal-footer border-top px-4 py-2">
@@ -573,7 +690,19 @@
             >
               <i class="bi bi-paperclip me-1"></i>เปิดไฟล์ใบส่งของแนบ
             </a>
-            <button type="button" class="btn btn-secondary btn-sm rounded-pill px-4" @click="showReceiptDetailModal = false">ปิด</button>
+            <template v-if="isEditingReceipt">
+              <button type="button" class="btn btn-light border btn-sm rounded-pill px-4" @click="cancelEditReceipt" :disabled="savingReceiptEdit">ยกเลิก</button>
+              <button type="button" class="btn btn-warning btn-sm rounded-pill px-4 fw-bold" @click="saveEditedReceipt" :disabled="savingReceiptEdit">
+                <span v-if="savingReceiptEdit" class="spinner-border spinner-border-sm me-1"></span>
+                <i v-else class="bi bi-save me-1"></i>บันทึกการแก้ไข
+              </button>
+            </template>
+            <template v-else>
+              <button type="button" class="btn btn-outline-success btn-sm rounded-pill px-3" @click="startEditReceipt" v-if="activeReceiptDetail">
+                <i class="bi bi-pencil-square me-1"></i>แก้ไขรายการรับเข้า
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm rounded-pill px-4" @click="showReceiptDetailModal = false">ปิด</button>
+            </template>
           </div>
         </div>
       </div>
@@ -1130,7 +1259,18 @@ export default {
       importCsvText: '',
       importPreviewRows: [],
       importMarkAsOpening: true,
-      importIncludeZeroQty: true
+      importIncludeZeroQty: true,
+      isEditingReceipt: false,
+      savingReceiptEdit: false,
+      editAddItemId: '',
+      editReceiptForm: {
+        id: null,
+        receipt_date: '',
+        invoice_no: '',
+        vendor_id: '',
+        remark: '',
+        items: []
+      }
     };
   },
   computed: {
@@ -1148,6 +1288,12 @@ export default {
     paginatedReceipts() {
       const start = (this.receiptHistoryPage - 1) * this.receiptHistoryPageSize;
       return this.receiptHistory.slice(start, start + this.receiptHistoryPageSize);
+    },
+    editReceiptTotal() {
+      return (this.editReceiptForm.items || []).reduce(
+        (sum, it) => sum + ((Number(it.qty) || 0) * (Number(it.unit_cost) || 0)),
+        0
+      );
     },
     selectedParsedCount() {
       if (!this.parsedData || !this.parsedData.items) return 0;
@@ -1447,19 +1593,116 @@ export default {
         this.loadingReceipts = false;
       }
     },
-    async viewReceiptDetail(receiptId) {
+    async viewReceiptDetail(receiptId, startInEdit = false) {
       this.showReceiptDetailModal = true;
       this.loadingReceiptDetail = true;
+      this.isEditingReceipt = false;
       this.activeReceiptDetail = null;
       try {
         const res = await axios.get(`/api-digital/inventory/receipts_list.php?id=${receiptId}`);
         if (res.data?.status === 'success') {
           this.activeReceiptDetail = res.data.data;
+          if (startInEdit) {
+            this.startEditReceipt();
+          }
         }
       } catch (err) {
         console.error('Error fetching receipt detail:', err);
       } finally {
         this.loadingReceiptDetail = false;
+      }
+    },
+    startEditReceipt() {
+      if (!this.activeReceiptDetail) return;
+      const rc = this.activeReceiptDetail;
+      this.editAddItemId = '';
+      this.editReceiptForm = {
+        id: rc.id,
+        receipt_date: rc.receipt_date
+          ? moment(rc.receipt_date).format('YYYY-MM-DDTHH:mm')
+          : moment().format('YYYY-MM-DDTHH:mm'),
+        invoice_no: rc.invoice_no || '',
+        vendor_id: rc.vendor_id ? String(rc.vendor_id) : '',
+        remark: rc.remark || '',
+        items: (rc.items || []).map(it => ({
+          item_id: String(it.item_id || ''),
+          item_code: it.item_code || '',
+          item_name: it.item_name || '',
+          unit_id: it.unit_id || '',
+          unit_name: it.unit_name || 'หน่วย',
+          lot_number: it.lot_number || '',
+          expiry_date: it.expiry_date || '',
+          unit_cost: Number(it.unit_cost) || 0,
+          qty: Number(it.qty) || 1
+        }))
+      };
+      this.isEditingReceipt = true;
+    },
+    onEditReceiptItemChange(it) {
+      const m = this.items.find(x => String(x.id) === String(it.item_id));
+      if (!m) return;
+      it.item_code = m.item_code || '';
+      it.item_name = m.item_name || '';
+      it.unit_id = m.unit_id || '';
+      it.unit_name = m.unit_name || 'หน่วย';
+    },
+    cancelEditReceipt() {
+      this.isEditingReceipt = false;
+    },
+    addEditReceiptItem() {
+      if (!this.editAddItemId) return;
+      const m = this.items.find(x => String(x.id) === String(this.editAddItemId));
+      if (!m) return;
+      this.editReceiptForm.items.push({
+        item_id: m.id,
+        item_code: m.item_code || '',
+        item_name: m.item_name || '',
+        unit_id: m.unit_id || '',
+        unit_name: m.unit_name || 'หน่วย',
+        lot_number: '',
+        expiry_date: '',
+        unit_cost: Number(m.last_purchase_price || m.standard_price || 0),
+        qty: 1
+      });
+      this.editAddItemId = '';
+    },
+    removeEditReceiptItem(idx) {
+      if (this.editReceiptForm.items.length <= 1) {
+        Swal.fire('แจ้งเตือน', 'ใบรับเข้าต้องมีอย่างน้อย 1 รายการ', 'warning');
+        return;
+      }
+      this.editReceiptForm.items.splice(idx, 1);
+    },
+    async saveEditedReceipt() {
+      if (!this.editReceiptForm.id || this.editReceiptForm.items.length === 0) return;
+      for (const it of this.editReceiptForm.items) {
+        if ((Number(it.qty) || 0) <= 0) {
+          Swal.fire('ข้อมูลไม่ถูกต้อง', `จำนวนของ "${it.item_name}" ต้องมากกว่า 0`, 'warning');
+          return;
+        }
+      }
+      this.savingReceiptEdit = true;
+      try {
+        const res = await axios.post('/api-digital/inventory/receipt_update.php', this.editReceiptForm);
+        if (res.data?.status === 'success') {
+          Swal.fire({
+            icon: 'success',
+            title: 'บันทึกการแก้ไขเรียบร้อย',
+            text: res.data.message,
+            timer: 1500,
+            showConfirmButton: false
+          });
+          this.isEditingReceipt = false;
+          await this.fetchReceiptsHistory();
+          await this.fetchItems();
+          await this.viewReceiptDetail(this.editReceiptForm.id, false);
+        } else {
+          Swal.fire('ไม่สามารถแก้ไขได้', res.data?.message || 'เกิดข้อผิดพลาด', 'error');
+        }
+      } catch (err) {
+        Swal.fire('ข้อผิดพลาด', err.response?.data?.message || 'ไม่สามารถบันทึกการแก้ไขได้', 'error');
+      } finally {
+        this.savingReceiptEdit = false;
       }
     },
     async editReceiptDate(rc) {
