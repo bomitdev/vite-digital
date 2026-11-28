@@ -1544,7 +1544,7 @@
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">{{ isPharmacyWarehouse ? 'ประเภทเวชภัณฑ์' : 'ประเภทพัสดุ' }}</label>
-                  <select class="form-select" v-model="itemForm.item_type_id">
+                  <select class="form-select" v-model="itemForm.item_type_id" @change="onItemTypeChange">
                     <option value="">-- ไม่ระบุประเภท --</option>
                     <option v-for="t in displayItemTypes" :key="t.id" :value="t.id">
                       {{ t.code ? t.code + ' : ' : '' }}{{ t.name }}{{ t.moph_report_group ? ' [กลุ่มกระทรวง: ' + t.moph_report_group + ']' : '' }}
@@ -3851,8 +3851,9 @@ export default {
       try {
         const whId = this.itemForm.warehouse_id || this.effectiveWarehouseId || '';
         const catId = this.itemForm.category_id || '';
+        const typeId = this.itemForm.item_type_id || '';
         if (whId) {
-          const res = await axios.get(`/api-digital/inventory/items.php?action=next_code&warehouse_id=${whId}&category_id=${catId}`);
+          const res = await axios.get(`/api-digital/inventory/items.php?action=next_code&warehouse_id=${whId}&category_id=${catId}&item_type_id=${typeId}`);
           if (res.data?.status === 'success' && res.data?.next_code) {
             this.itemForm.item_code = res.data.next_code;
           }
@@ -3865,6 +3866,11 @@ export default {
     },
     onItemCategoryChange() {
       if (!this.isEditItem && (!this.itemForm.item_code || this.itemForm.item_code.startsWith('C') || this.itemForm.item_code.startsWith('M'))) {
+        this.fetchNextItemCode();
+      }
+    },
+    onItemTypeChange() {
+      if (!this.isEditItem) {
         this.fetchNextItemCode();
       }
     },

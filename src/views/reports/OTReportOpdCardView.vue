@@ -1,44 +1,57 @@
 <template>
-  <div class="report-container pt-3 pb-5 bg-light min-vh-100">
+  <div class="report-container py-4 bg-light min-vh-100">
     <div class="container d-print-none mb-4">
-      <div class="card shadow-sm border-0">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="h4 mb-0 text-purple fw-bold">
-              <i class="bi bi-file-earmark-spreadsheet me-2"></i> ระบบรายงานเบิกจ่าย OT (ห้องบัตร)
-            </h2>
+      <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-3 p-md-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3 pb-3 border-bottom">
+            <div class="d-flex align-items-center gap-3">
+              <div
+                class="d-flex align-items-center justify-content-center rounded-3 text-purple"
+                style="width: 48px; height: 48px; background: rgba(111, 66, 193, 0.1)"
+              >
+                <i class="bi bi-file-earmark-spreadsheet fs-3"></i>
+              </div>
+              <div>
+                <h2 class="h4 mb-0 text-purple fw-bold">
+                  ระบบรายงานเบิกจ่าย OT (ห้องบัตร)
+                </h2>
+                <div class="text-muted" style="font-size: 0.95rem">
+                  ประจำเดือน {{ monthNames[selectedMonth - 1] }} พ.ศ. {{ selectedYear + 543 }}
+                </div>
+              </div>
+            </div>
             <button
               @click="$router.push('/manager-schedule')"
-              class="btn btn-outline-secondary btn-sm"
+              class="btn btn-outline-secondary rounded-pill px-3 fw-semibold"
             >
               <i class="bi bi-arrow-left me-1"></i> กลับตารางเวร
             </button>
           </div>
 
-          <div class="row g-2 align-items-end">
-            <div class="col-md-3">
-              <label class="form-label fw-bold small text-muted">เลือกเดือน:</label>
+          <div class="row g-3 align-items-end">
+            <div class="col-6 col-md-4 col-lg-3">
+              <label class="form-label fw-bold text-secondary mb-1">เดือน</label>
               <select class="form-select" v-model="selectedMonth" @change="fetchData">
                 <option v-for="(mName, index) in monthNames" :key="index" :value="index + 1">
                   {{ mName }}
                 </option>
               </select>
             </div>
-            <div class="col-md-3">
-              <label class="form-label fw-bold small text-muted">เลือกปี (ค.ศ.):</label>
+            <div class="col-6 col-md-4 col-lg-3">
+              <label class="form-label fw-bold text-secondary mb-1">ปี พ.ศ.</label>
               <select class="form-select" v-model="selectedYear" @change="fetchData">
                 <option
                   v-for="y in [currentYear - 1, currentYear, currentYear + 1]"
                   :key="y"
                   :value="y"
                 >
-                  {{ y }} ({{ y + 543 }})
+                  {{ y + 543 }} ({{ y }})
                 </option>
               </select>
             </div>
-            <div class="col-md-3">
-              <label class="form-label fw-bold small text-muted">
-                วันที่บันทึกข้อความ (ขอขึ้นเวร):
+            <div class="col-12 col-md-4 col-lg-3">
+              <label class="form-label fw-bold text-secondary mb-1">
+                วันที่บันทึกข้อความ (ขอขึ้นเวร)
               </label>
               <input
                 type="date"
@@ -46,54 +59,80 @@
                 v-model="memoDate"
               />
             </div>
+            <div v-if="!isLoading && reportData.length > 0" class="col-12 col-lg-3">
+              <div
+                class="px-3 py-2 rounded-3 text-white d-flex align-items-center justify-content-between shadow-sm"
+                style="background: linear-gradient(135deg, #6f42c1 0%, #8e24aa 100%)"
+              >
+                <div>
+                  <div class="small opacity-75">ยอดรวม ({{ reportData.length }} ราย)</div>
+                  <div class="fs-5 fw-bold">{{ totalAmountAll.toLocaleString() }} ฿</div>
+                </div>
+                <i class="bi bi-cash-stack fs-3 opacity-75"></i>
+              </div>
+            </div>
           </div>
 
-          <div class="row mt-3 border-top pt-3 d-print-none">
-            <div class="col-12 d-flex flex-wrap gap-2 justify-content-center align-items-center">
-              <span class="fw-bold me-1 text-primary">ตารางเวรขอขึ้น:</span>
+          <div class="mt-3 pt-3 border-top d-print-none">
+            <div class="small fw-bold text-secondary mb-2">
+              <i class="bi bi-printer me-1 text-primary"></i> เลือกเอกสารที่ต้องการสั่งพิมพ์
+            </div>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
               <div class="btn-group">
-                <button class="btn btn-sm btn-outline-primary" @click="printReport('form1')">
-                  <i class="bi bi-printer me-1"></i> พิมพ์
+                <button class="btn btn-outline-primary rounded-pill px-3 fw-semibold" @click="printReport('form1')">
+                  <i class="bi bi-printer me-1"></i> ตารางเวรขอขึ้น
                 </button>
-                <button v-if="selectedMonth === 1 || selectedMonth === 4" class="btn btn-sm btn-outline-danger" @click="printReport('form1', null, true)">
+                <button
+                  v-if="selectedMonth === 1 || selectedMonth === 4"
+                  class="btn btn-outline-danger rounded-pill px-3 fw-semibold ms-1"
+                  @click="printReport('form1', null, true)"
+                >
                   <i class="bi bi-printer me-1"></i> (2 เท่า)
                 </button>
               </div>
 
-              <span class="fw-bold ms-3 me-1 text-success">หลักฐานเบิกจ่าย:</span>
               <div class="btn-group">
-                <button class="btn btn-sm btn-outline-success" @click="printReport('form2')">
-                  <i class="bi bi-printer me-1"></i> พิมพ์
+                <button class="btn btn-outline-success rounded-pill px-3 fw-semibold" @click="printReport('form2')">
+                  <i class="bi bi-printer me-1"></i> หลักฐานเบิกจ่าย
                 </button>
-                <button v-if="selectedMonth === 1 || selectedMonth === 4" class="btn btn-sm btn-outline-danger" @click="printReport('form2', null, true)">
+                <button
+                  v-if="selectedMonth === 1 || selectedMonth === 4"
+                  class="btn btn-outline-danger rounded-pill px-3 fw-semibold ms-1"
+                  @click="printReport('form2', null, true)"
+                >
                   <i class="bi bi-printer me-1"></i> (2 เท่า)
                 </button>
               </div>
 
-              <span class="fw-bold ms-3 me-1 text-warning text-dark">ตารางเวรปฏิบัติงาน:</span>
               <div class="btn-group">
-                <button class="btn btn-sm btn-outline-warning text-dark" @click="printReport('form3')">
-                  <i class="bi bi-printer me-1"></i> พิมพ์
+                <button class="btn btn-outline-warning text-dark rounded-pill px-3 fw-semibold" @click="printReport('form3')">
+                  <i class="bi bi-printer me-1"></i> ตารางเวรปฏิบัติงาน
                 </button>
-                <button v-if="selectedMonth === 1 || selectedMonth === 4" class="btn btn-sm btn-outline-danger" @click="printReport('form3', null, true)">
+                <button
+                  v-if="selectedMonth === 1 || selectedMonth === 4"
+                  class="btn btn-outline-danger rounded-pill px-3 fw-semibold ms-1"
+                  @click="printReport('form3', null, true)"
+                >
                   <i class="bi bi-printer me-1"></i> (2 เท่า)
                 </button>
               </div>
 
-              <span class="fw-bold ms-3 me-1 text-info">บันทึกข้อความ:</span>
-              <div class="btn-group me-3">
-                <button class="btn btn-sm btn-info text-white shadow-sm" @click="printReport('memoDuty')">
-                  <i class="bi bi-file-text me-1"></i> ขอขึ้นเวร
+              <div class="btn-group">
+                <button class="btn btn-info text-white rounded-pill px-3 fw-semibold shadow-sm" @click="printReport('memoDuty')">
+                  <i class="bi bi-file-text me-1"></i> บันทึกข้อความขอขึ้นเวร
                 </button>
-                <button v-if="selectedMonth === 1 || selectedMonth === 4" class="btn btn-sm btn-danger text-white shadow-sm" @click="printReport('memoDuty', null, true)">
+                <button
+                  v-if="selectedMonth === 1 || selectedMonth === 4"
+                  class="btn btn-danger text-white rounded-pill px-3 fw-semibold shadow-sm ms-1"
+                  @click="printReport('memoDuty', null, true)"
+                >
                   <i class="bi bi-file-text me-1"></i> (2 เท่า)
                 </button>
               </div>
 
-              <span class="fw-bold me-1 text-secondary">รายงานผล:</span>
               <div class="dropdown d-inline-block">
                 <button
-                  class="btn btn-sm btn-secondary text-white shadow-sm dropdown-toggle"
+                  class="btn btn-secondary text-white rounded-pill px-3 fw-semibold shadow-sm dropdown-toggle"
                   type="button"
                   @click="showDropdown = !showDropdown"
                   @blur="hideDropdown"

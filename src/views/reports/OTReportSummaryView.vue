@@ -1,23 +1,38 @@
 <template>
-  <div class="report-container pt-5 pb-5 bg-light min-vh-100">
+  <div class="report-container py-4 bg-light min-vh-100">
     <div class="container d-print-none mb-4">
-      <div class="card shadow-sm border-0">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="h3 mb-0 text-purple fw-bold" style="font-size: 1.75rem">
-              <i class="bi bi-file-earmark-spreadsheet me-2"></i> สรุปการเบิกค่าตอบแทนรวม
-              (กลุ่มงานสุขภาพดิจิทัล)
-            </h2>
-            <button @click="$router.push('/manager-schedule')" class="btn btn-outline-secondary">
+      <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+        <div class="card-body p-3 p-md-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3 pb-3 border-bottom">
+            <div class="d-flex align-items-center gap-3">
+              <div
+                class="d-flex align-items-center justify-content-center rounded-3 text-purple"
+                style="width: 48px; height: 48px; background: rgba(111, 66, 193, 0.1)"
+              >
+                <i class="bi bi-file-earmark-spreadsheet fs-3"></i>
+              </div>
+              <div>
+                <h2 class="h4 mb-0 text-purple fw-bold">
+                  สรุปการเบิกค่าตอบแทนรวม (กลุ่มงานสุขภาพดิจิทัล)
+                </h2>
+                <div class="text-muted" style="font-size: 0.95rem">
+                  ประจำเดือน {{ monthNames[selectedMonth - 1] }} พ.ศ. {{ selectedYear + 543 }}
+                </div>
+              </div>
+            </div>
+            <button
+              @click="$router.push('/manager-schedule')"
+              class="btn btn-outline-secondary rounded-pill px-3 fw-semibold"
+            >
               <i class="bi bi-arrow-left me-1"></i> กลับตารางเวร
             </button>
           </div>
 
-          <div class="row g-2 align-items-end">
-            <div class="col-md-3">
-              <label class="form-label fw-bold text-muted">เลือกเดือน:</label>
+          <div class="row g-3 align-items-end">
+            <div class="col-6 col-md-3 col-lg-2">
+              <label class="form-label fw-bold text-secondary mb-1">เดือน</label>
               <select
-                class="form-select form-select-lg"
+                class="form-select"
                 v-model="selectedMonth"
                 @change="fetchData"
               >
@@ -26,32 +41,106 @@
                 </option>
               </select>
             </div>
-            <div class="col-md-3">
-              <label class="form-label fw-bold text-muted">เลือกปี (ค.ศ.):</label>
-              <select class="form-select form-select-lg" v-model="selectedYear" @change="fetchData">
+            <div class="col-6 col-md-3 col-lg-2">
+              <label class="form-label fw-bold text-secondary mb-1">ปี พ.ศ.</label>
+              <select class="form-select" v-model="selectedYear" @change="fetchData">
                 <option
                   v-for="y in [currentYear - 1, currentYear, currentYear + 1]"
                   :key="y"
                   :value="y"
                 >
-                  {{ y }} ({{ y + 543 }})
+                  {{ y + 543 }} ({{ y }})
                 </option>
               </select>
             </div>
-          </div>
-
-          <div class="row mt-3 border-top pt-3 d-print-none">
-            <div class="col-12 d-flex flex-wrap gap-3 justify-content-center align-items-center">
+            <div class="col-12 col-md-6 col-lg-4">
+              <label class="form-label fw-bold text-secondary mb-1">มุมมองเอกสาร</label>
+              <div class="btn-group w-100" role="group">
+                <button
+                  type="button"
+                  class="btn fw-semibold"
+                  :class="activePreviewTab === 'all' ? 'btn-purple text-white' : 'btn-outline-secondary'"
+                  @click="activePreviewTab = 'all'"
+                >
+                  <i class="bi bi-layers me-1"></i> ทั้งหมด
+                </button>
+                <button
+                  type="button"
+                  class="btn fw-semibold"
+                  :class="activePreviewTab === 'memo' ? 'btn-purple text-white' : 'btn-outline-secondary'"
+                  @click="activePreviewTab = 'memo'"
+                >
+                  <i class="bi bi-file-text me-1"></i> บันทึกข้อความ
+                </button>
+                <button
+                  type="button"
+                  class="btn fw-semibold"
+                  :class="activePreviewTab === 'table' ? 'btn-purple text-white' : 'btn-outline-secondary'"
+                  @click="activePreviewTab = 'table'"
+                >
+                  <i class="bi bi-table me-1"></i> ตารางรวม
+                </button>
+              </div>
+            </div>
+            <div class="col-12 col-lg-4 d-flex flex-wrap justify-content-lg-end gap-2 mt-2 mt-lg-0">
               <button
-                class="btn btn-lg btn-info text-white shadow-sm px-4"
+                class="btn btn-info text-white rounded-pill px-3 fw-semibold shadow-sm"
                 @click="printReport('memo')"
+                :disabled="summaryData.length === 0"
               >
-                <i class="bi bi-printer me-2"></i> พิมพ์บันทึกข้อความ
+                <i class="bi bi-printer me-1"></i> พิมพ์บันทึกข้อความ
               </button>
+              <button
+                class="btn btn-success rounded-pill px-3 fw-semibold shadow-sm"
+                @click="printReport('table')"
+                :disabled="summaryData.length === 0"
+              >
+                <i class="bi bi-printer me-1"></i> พิมพ์ตารางรวม
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-              <button class="btn btn-lg btn-success shadow-sm px-4" @click="printReport('table')">
-                <i class="bi bi-printer me-2"></i> พิมพ์ตารางรวม
-              </button>
+      <!-- Summary KPI Cards -->
+      <div v-if="!isLoading && summaryData.length > 0" class="row g-3 mt-2">
+        <div class="col-6 col-md-4 col-lg">
+          <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-3">
+              <div class="small fw-semibold text-muted mb-1">ผู้มีสิทธิ์เบิก</div>
+              <div class="fs-4 fw-bold text-dark">{{ summaryData.length }} <span class="fs-6 fw-normal text-muted">ราย</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg">
+          <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-3">
+              <div class="small fw-semibold text-muted mb-1">ขึ้นเวรห้องบัตร</div>
+              <div class="fs-4 fw-bold text-primary">{{ totalOpdCard.toLocaleString() }} <span class="fs-6 fw-normal text-muted">฿</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg">
+          <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-3">
+              <div class="small fw-semibold text-muted mb-1">ขึ้นเวรคอมพิวเตอร์ (IT)</div>
+              <div class="fs-4 fw-bold text-info">{{ totalIt.toLocaleString() }} <span class="fs-6 fw-normal text-muted">฿</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-6 col-lg">
+          <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-3">
+              <div class="small fw-semibold text-muted mb-1">ขึ้นเวรเบิกเคลม</div>
+              <div class="fs-4 fw-bold text-warning">{{ totalClaim.toLocaleString() }} <span class="fs-6 fw-normal text-muted">฿</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-md-6 col-lg">
+          <div class="card border-0 shadow-sm rounded-3 h-100 text-white" style="background: linear-gradient(135deg, #6f42c1 0%, #8e24aa 100%)">
+            <div class="card-body p-3">
+              <div class="small fw-semibold opacity-75 mb-1">ยอดเบิกรวมทั้งหมด</div>
+              <div class="fs-4 fw-bold">{{ grandTotal.toLocaleString() }} <span class="fs-6 fw-normal opacity-75">฿</span></div>
             </div>
           </div>
         </div>
@@ -70,7 +159,8 @@
       <!-- 1: บันทึกข้อความ (Page 1 - แนวตั้ง Portrait) -->
       <div
         v-if="summaryData.length > 0"
-        class="print-page memo-section portrait-section bg-white shadow-sm mb-4 mx-auto pt-5 pb-4 px-4 memo-print-section"
+        v-show="activePreviewTab === 'all' || activePreviewTab === 'memo' || printMode === 'memo'"
+        class="print-page memo-section portrait-section bg-white shadow-sm rounded-3 mb-4 mx-auto pt-5 pb-4 px-4 memo-print-section"
       >
         <!-- Header: Garuda and Title -->
         <div class="memo-header d-flex align-items-center mb-2">
@@ -175,7 +265,8 @@
       <!-- 2: สรุปตารางรวม (Page 2 - แนวนอน Landscape) -->
       <div
         v-if="summaryData.length > 0"
-        class="print-page table-section landscape-section bg-white shadow-sm mb-4 mx-auto pt-5 pb-4 px-4"
+        v-show="activePreviewTab === 'all' || activePreviewTab === 'table' || printMode === 'table'"
+        class="print-page table-section landscape-section bg-white shadow-sm rounded-3 mb-4 mx-auto pt-5 pb-4 px-4"
       >
         <div class="text-center mb-2">
           <h2 class="fw-bold" style="font-size: 16pt">
@@ -282,6 +373,7 @@ export default {
       ],
       isLoading: false,
       summaryData: [],
+      activePreviewTab: 'all', // 'all', 'memo', 'table'
       printMode: '', // '', memo, table
       memoCategory: 'payment', // payment, duty
       dutyDept: 'opd', // opd, it, claim
@@ -624,5 +716,21 @@ export default {
   .table .memo-section {
     display: none !important;
   }
+}
+
+.text-purple {
+  color: #6f42c1 !important;
+}
+
+.btn-purple {
+  background-color: #6f42c1;
+  border-color: #6f42c1;
+  color: #fff;
+}
+
+.btn-purple:hover {
+  background-color: #5b34a6;
+  border-color: #5b34a6;
+  color: #fff;
 }
 </style>

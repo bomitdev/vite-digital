@@ -1404,6 +1404,7 @@ export default {
           font: 'Sarabun',
           fontStyle: 'normal',
           fontSize: 14,
+          cellPadding: { top: 1.5, right: 2, bottom: 1.5, left: 2 },
           halign: 'center',
           valign: 'middle',
           lineColor: [0, 0, 0],
@@ -1430,7 +1431,7 @@ export default {
       });
 
       // 6. 5 Signers Layout
-      let finalY = (doc.lastAutoTable || doc.previousAutoTable).finalY + 14;
+      let finalY = (doc.lastAutoTable || doc.previousAutoTable).finalY + 10;
 
       const deptSigner = requestData.dept_signer || {};
       const globalSettings = requestData.global_settings || {};
@@ -1462,46 +1463,46 @@ export default {
       const appPos =
         globalSettings.approver_position || 'นักวิชาการพัสดุ';
 
-      if (finalY + 75 > 282) {
+      if (finalY + 56 > 286) {
         doc.addPage();
-        finalY = 28;
+        finalY = 24;
       }
 
       // Row 1: ผู้ขอใช้พัสดุ (Left), ผู้จ่าย (Right)
       doc.text('ผู้ขอใช้พัสดุ...........................................ลงชื่อ', 60, finalY, {
         align: 'center'
       });
-      doc.text(`( ${reqName} )`, 60, finalY + 8, { align: 'center' });
-      doc.text(`ตำแหน่ง ${reqPos}`, 60, finalY + 15, { align: 'center' });
+      doc.text(`( ${reqName} )`, 60, finalY + 6, { align: 'center' });
+      doc.text(`ตำแหน่ง ${reqPos}`, 60, finalY + 11.5, { align: 'center' });
 
       doc.text('ผู้จ่าย...........................................ลงชื่อ', 150, finalY, {
         align: 'center'
       });
-      doc.text(`( ${payerName} )`, 150, finalY + 8, { align: 'center' });
-      doc.text(`ตำแหน่ง ${payerPos}`, 150, finalY + 15, { align: 'center' });
+      doc.text(`( ${payerName} )`, 150, finalY + 6, { align: 'center' });
+      doc.text(`ตำแหน่ง ${payerPos}`, 150, finalY + 11.5, { align: 'center' });
 
       // Row 2: ผู้เบิก (Left), ผู้สั่งจ่าย (Right)
-      doc.text('ผู้เบิก...........................................ลงชื่อ', 60, finalY + 28, {
+      doc.text('ผู้เบิก...........................................ลงชื่อ', 60, finalY + 21, {
         align: 'center'
       });
-      doc.text(`( ${reqName} )`, 60, finalY + 36, { align: 'center' });
-      doc.text(`ตำแหน่ง ${reqPos}`, 60, finalY + 43, { align: 'center' });
+      doc.text(`( ${reqName} )`, 60, finalY + 27, { align: 'center' });
+      doc.text(`ตำแหน่ง ${reqPos}`, 60, finalY + 32.5, { align: 'center' });
 
-      doc.text('ผู้สั่งจ่าย...........................................ลงชื่อ', 150, finalY + 28, {
+      doc.text('ผู้สั่งจ่าย...........................................ลงชื่อ', 150, finalY + 21, {
         align: 'center'
       });
-      doc.text(`( ${appName} )`, 150, finalY + 36, { align: 'center' });
-      doc.text(`ตำแหน่ง ${appPos}`, 150, finalY + 43, { align: 'center' });
+      doc.text(`( ${appName} )`, 150, finalY + 27, { align: 'center' });
+      doc.text(`ตำแหน่ง ${appPos}`, 150, finalY + 32.5, { align: 'center' });
 
       // Row 3: ผู้รับพัสดุ (Left)
-      doc.text('ผู้รับพัสดุ...........................................ลงชื่อ', 60, finalY + 56, {
+      doc.text('ผู้รับพัสดุ...........................................ลงชื่อ', 60, finalY + 42, {
         align: 'center'
       });
-      doc.text(`( ${requestData.requester_name || '...........................................'} )`, 60, finalY + 64, { align: 'center' });
+      doc.text(`( ${requestData.requester_name || '...........................................'} )`, 60, finalY + 48, { align: 'center' });
       doc.text(
         `ตำแหน่ง ${requestData.requester_position || '.....................................................'}`,
         60,
-        finalY + 71,
+        finalY + 53.5,
         { align: 'center' }
       );
 
@@ -1513,8 +1514,8 @@ export default {
             deptSigner.signature_image.includes('image/jpg')
               ? 'JPEG'
               : 'PNG';
-          doc.addImage(deptSigner.signature_image, sigFormat, 47, finalY - 8, 26, 10);
-          doc.addImage(deptSigner.signature_image, sigFormat, 47, finalY + 28 - 8, 26, 10);
+          doc.addImage(deptSigner.signature_image, sigFormat, 47, finalY - 7, 26, 9);
+          doc.addImage(deptSigner.signature_image, sigFormat, 47, finalY + 21 - 7, 26, 9);
         } catch (sigErr) {
           console.warn('Could not add signature image to PDF:', sigErr);
         }
@@ -1528,7 +1529,7 @@ export default {
             globalSettings.payer_signature.includes('image/jpg')
               ? 'JPEG'
               : 'PNG';
-          doc.addImage(globalSettings.payer_signature, payerSigFmt, 137, finalY - 8, 26, 10);
+          doc.addImage(globalSettings.payer_signature, payerSigFmt, 137, finalY - 7, 26, 9);
         } catch (sigErr) {
           console.warn('Could not add payer signature to PDF:', sigErr);
         }
@@ -1542,7 +1543,7 @@ export default {
             globalSettings.approver_signature.includes('image/jpg')
               ? 'JPEG'
               : 'PNG';
-          doc.addImage(globalSettings.approver_signature, appSigFmt, 137, finalY + 28 - 8, 26, 10);
+          doc.addImage(globalSettings.approver_signature, appSigFmt, 137, finalY + 21 - 7, 26, 9);
         } catch (sigErr) {
           console.warn('Could not add approver signature to PDF:', sigErr);
         }

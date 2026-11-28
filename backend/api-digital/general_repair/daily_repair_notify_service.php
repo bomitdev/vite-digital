@@ -5,6 +5,7 @@
 
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../moph_notify_helper.php';
+require_once __DIR__ . '/sync_hosoffice_helper.php';
 
 date_default_timezone_set('Asia/Bangkok');
 
@@ -142,6 +143,9 @@ function formatThaiDateLong(string $ymd): string
 
 function buildDailyRepairSummaryPayload(PDO $pdo2, string $targetDate): array
 {
+    global $pdo3;
+    syncHosofficeRepairs($pdo2, $pdo3 ?? null);
+
     // 1. New requests on targetDate
     $stmtNew = $pdo2->prepare("
         SELECT id, ticket_no, repair_title, location_name, requester_name, priority_id, priority_name, status, created_at

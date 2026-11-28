@@ -163,11 +163,14 @@
             <i class="bi bi-printer"></i> รายงาน OT
           </button>
 
-          <button v-if="currentTab !== 'leave'" class="btn btn-warning btn-sm text-dark fw-bold border" @click="goToDeletePage">
-            <i class="bi bi-pencil-square"></i> แก้ไข
-          </button>
-          <button v-if="currentTab !== 'leave'" class="btn btn-purple btn-sm text-white" @click="goToAddPage">
-            <i class="bi bi-plus-lg"></i> เพิ่มเวร
+          <button
+            v-if="currentTab !== 'leave'"
+            type="button"
+            class="btn btn-info btn-sm text-white fw-bold border"
+            @click="openEmployeesModal"
+            title="จัดการพนักงานและเรท OT"
+          >
+            <i class="bi bi-person-lines-fill me-1"></i> จัดการพนักงาน
           </button>
           <button
             @click="$router.push('/home-backoffice')"
@@ -203,62 +206,349 @@
                 </button>
               </div>
 
-              <div class="d-flex align-items-center bg-light px-2 py-1 rounded border">
-                <label class="me-2 small text-muted text-nowrap">ไปยังเดือน:</label>
-                <select
-                  class="form-select form-select-sm border-0 bg-transparent"
-                  v-model="selectedMonth"
-                  @change="handleMonthSelectChange"
-                  style="width: auto; cursor: pointer"
+              <div class="d-flex flex-wrap align-items-center gap-2">
+                <button
+                  type="button"
+                  class="btn btn-sm rounded-pill px-3 fw-semibold"
+                  :class="isMatrixLocked ? 'btn-warning text-dark shadow-sm' : 'btn-outline-secondary'"
+                  @click="toggleMatrixLock"
+                  :title="isMatrixLocked ? 'ปลดล็อกเพื่อแก้ไขตารางเวร' : 'ล็อกตารางเวรป้องกันการแก้ไขโดยไม่ตั้งใจ'"
                 >
-                  <option v-for="(m, i) in months" :key="i" :value="i + 1">{{ m }}</option>
-                </select>
-              </div>
-            </div>
+                  <i class="bi me-1" :class="isMatrixLocked ? 'bi-unlock-fill' : 'bi-lock-fill'"></i>
+                  {{ isMatrixLocked ? 'ปลดล็อกแก้ไข' : 'ล็อกตาราง' }}
+                </button>
 
-            <div class="calendar-grid-header bg-light border-top border-bottom">
-              <div
-                v-for="day in weekDays"
-                :key="day"
-                class="text-center py-2 fw-bold text-secondary small"
-              >
-                {{ day }}
-              </div>
-            </div>
-
-            <div class="calendar-grid-body flex-grow-1 bg-light">
-              <div
-                v-for="(date, index) in calendarDays"
-                :key="index"
-                class="calendar-cell bg-white border-end border-bottom p-2 position-relative d-flex flex-column"
-                :class="{ 'text-muted bg-light-subtle': !date.isCurrentMonth }"
-              >
-                <div class="d-flex justify-content-between align-items-start mb-1">
-                  <span
-                    class="date-number d-flex align-items-center justify-content-center"
-                    :class="{ 'today-circle': date.isToday }"
+                <div class="btn-group btn-group-sm" role="group">
+                  <button
+                    type="button"
+                    class="btn fw-semibold"
+                    :class="viewStyle === 'matrix' ? 'btn-purple text-white' : 'btn-outline-secondary'"
+                    @click="viewStyle = 'matrix'"
                   >
-                    {{ date.day }}
-                  </span>
+                    <i class="bi bi-grid-3x3-gap-fill me-1"></i> ตารางคลิกเวร
+                  </button>
+                  <button
+                    type="button"
+                    class="btn fw-semibold"
+                    :class="viewStyle === 'calendar' ? 'btn-purple text-white' : 'btn-outline-secondary'"
+                    @click="viewStyle = 'calendar'"
+                  >
+                    <i class="bi bi-calendar3 me-1"></i> ปฏิทิน
+                  </button>
                 </div>
 
-                <div class="shift-container custom-scrollbar flex-grow-1">
-                  <div
-                    v-for="(staff, sIdx) in getStaffOnDuty(date.day, date.isCurrentMonth)"
-                    :key="sIdx"
-                    class="badge w-100 text-start fw-normal mb-1 d-flex justify-content-between align-items-center shadow-sm border"
-                    :class="getShiftClass(staff.shift)"
+                <div class="d-flex align-items-center bg-light px-2 py-1 rounded border">
+                  <label class="me-2 small text-muted text-nowrap">ไปยังเดือน:</label>
+                  <select
+                    class="form-select form-select-sm border-0 bg-transparent"
+                    v-model="selectedMonth"
+                    @change="handleMonthSelectChange"
+                    style="width: auto; cursor: pointer"
                   >
-                    <span class="text-truncate" style="max-width: 70%">{{ staff.name }}</span>
-                    <span class="fw-bold small opacity-75">{{ staff.shift }}</span>
+                    <option v-for="(m, i) in months" :key="i" :value="i + 1">{{ m }}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Matrix Click-to-Assign View (เหมือนตารางเวรกลุ่มงาน) -->
+            <div v-if="viewStyle === 'matrix'" class="d-flex flex-column flex-grow-1 overflow-hidden">
+              <div
+                v-if="isMatrixLocked"
+                class="px-3 py-2 bg-warning-subtle border-top border-bottom d-flex align-items-center justify-content-between gap-2 text-dark"
+              >
+                <span class="small fw-semibold">
+                  <i class="bi bi-lock-fill text-warning me-1"></i>
+                  ตารางเวรเดือนนี้ถูกล็อกป้องกันการแก้ไขอยู่ (กดปุ่ม <strong>ปลดล็อกแก้ไข</strong> ด้านบนหากต้องการปรับเปลี่ยน)
+                </span>
+              </div>
+              <div v-else class="px-3 py-2 bg-light border-top border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <span class="small fw-bold text-secondary">
+                    <i class="bi bi-brush me-1"></i> เลือกประเภทเวรเพื่อคลิกลงตาราง:
+                  </span>
+                  <button
+                    type="button"
+                    class="btn btn-sm rounded-pill px-3 fw-semibold"
+                    :class="matrixBrush === 0 ? 'btn-primary shadow-sm' : 'btn-outline-primary bg-white'"
+                    @click="matrixBrush = 0"
+                  >
+                    <span class="badge bg-white text-primary me-1">X</span> เวรปกติ
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-sm rounded-pill px-3 fw-semibold"
+                    :class="matrixBrush === 1 ? 'btn-warning text-dark shadow-sm' : 'btn-outline-warning text-dark bg-white'"
+                    @click="matrixBrush = 1"
+                  >
+                    <span class="badge bg-dark text-warning me-1">พ</span> วันหยุดพิเศษ
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-sm rounded-pill px-3 fw-semibold"
+                    :class="matrixBrush === 2 ? 'btn-danger shadow-sm' : 'btn-outline-danger bg-white'"
+                    @click="matrixBrush = 2"
+                  >
+                    <span class="badge bg-white text-danger me-1">2x</span> เรท 2 เท่า
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-sm rounded-pill px-3 fw-semibold"
+                    :class="matrixBrush === 'eraser' ? 'btn-secondary shadow-sm' : 'btn-outline-secondary bg-white'"
+                    @click="matrixBrush = 'eraser'"
+                  >
+                    <i class="bi bi-eraser me-1"></i> ล้างช่อง
+                  </button>
+                </div>
+                <span class="small text-muted">
+                  * คลิกที่ช่องเพื่อลงเวร หรือคลิกซ้ำเพื่อลบออก
+                </span>
+              </div>
+
+              <div class="table-responsive flex-grow-1 bg-white">
+                <table class="table table-bordered table-hover align-middle mb-0 matrix-table">
+                  <thead class="table-light sticky-top" style="z-index: 5">
+                    <tr>
+                      <th class="matrix-name-col bg-light">ชื่อ - สกุล</th>
+                      <th
+                        v-for="d in matrixDays"
+                        :key="'mh-' + d"
+                        class="text-center p-1 matrix-day-col"
+                        :class="{
+                          'matrix-weekend': isMatrixHolidayOrWeekend(d) && !isMatrixHoliday(d),
+                          'matrix-holiday': isMatrixHoliday(d),
+                          'matrix-today': isMatrixToday(d)
+                        }"
+                        :title="getHolidayName(d)"
+                      >
+                        <div style="font-size: 0.72rem; line-height: 1.1" :class="{ 'text-danger fw-bold': isMatrixHoliday(d) }">
+                          {{ d }}
+                        </div>
+                        <div class="text-muted" style="font-size: 0.65rem; font-weight: 500">
+                          {{ getThaiWeekdayShort(d) }}
+                        </div>
+                        <div v-if="isMatrixHoliday(d)" class="mx-auto mt-1 rounded-circle bg-danger" style="width: 4px; height: 4px"></div>
+                      </th>
+                      <th class="text-center bg-light" style="min-width: 52px">รวม</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-if="tabEmployees.length === 0">
+                      <td :colspan="matrixDays.length + 2" class="text-center text-muted py-4">
+                        ไม่พบรายชื่อเจ้าหน้าที่ในกลุ่มงานนี้
+                      </td>
+                    </tr>
+                    <tr v-for="(emp, idx) in tabEmployees" :key="'mr-' + emp.id">
+                      <td class="matrix-name-col bg-white">
+                        <div class="d-flex align-items-center justify-content-between gap-2">
+                          <div style="min-width: 0">
+                            <div class="fw-semibold small text-dark text-truncate" style="max-width: 175px">
+                              {{ emp.name }}
+                            </div>
+                            <div v-if="emp.phone" class="text-muted" style="font-size: 0.72rem">
+                              <i class="bi bi-telephone me-1"></i>{{ emp.phone }}
+                            </div>
+                          </div>
+                          <div v-if="!isMatrixLocked" class="d-flex align-items-center gap-1 flex-shrink-0">
+                            <button
+                              type="button"
+                              class="btn btn-sm btn-link p-0 text-secondary"
+                              :disabled="idx === 0"
+                              @click="moveEmployeeOrder(idx, -1)"
+                              title="เลื่อนขึ้น"
+                            >
+                              <i class="bi bi-arrow-up-short fs-6"></i>
+                            </button>
+                            <button
+                              type="button"
+                              class="btn btn-sm btn-link p-0 text-secondary"
+                              :disabled="idx === tabEmployees.length - 1"
+                              @click="moveEmployeeOrder(idx, 1)"
+                              title="เลื่อนลง"
+                            >
+                              <i class="bi bi-arrow-down-short fs-6"></i>
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                      <td
+                        v-for="d in matrixDays"
+                        :key="'mc-' + emp.id + '-' + d"
+                        class="text-center p-0 matrix-cell"
+                        :class="{
+                          'matrix-weekend': isMatrixHolidayOrWeekend(d) && !isMatrixHoliday(d),
+                          'matrix-holiday': isMatrixHoliday(d),
+                          'matrix-today': isMatrixToday(d),
+                          'opacity-50': savingCellKey === emp.id + '-' + d
+                        }"
+                        :title="getHolidayName(d)"
+                        @click="toggleMatrixCell(emp, d)"
+                      >
+                        <template v-if="getMatrixCellBadge(emp, d)">
+                          <span
+                            class="matrix-pill"
+                            :class="getMatrixCellBadge(emp, d).cls"
+                            :title="getMatrixCellBadge(emp, d).title"
+                          >
+                            {{ getMatrixCellBadge(emp, d).label }}
+                          </span>
+                        </template>
+                      </td>
+                      <td class="text-center fw-bold text-purple bg-light">
+                        {{ countEmployeeShifts(emp) }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <template v-else>
+              <div class="calendar-grid-header bg-light border-top border-bottom">
+                <div
+                  v-for="day in weekDays"
+                  :key="day"
+                  class="text-center py-2 fw-bold text-secondary small"
+                >
+                  {{ day }}
+                </div>
+              </div>
+
+              <div class="calendar-grid-body flex-grow-1 bg-light">
+                <div
+                  v-for="(date, index) in calendarDays"
+                  :key="index"
+                  class="calendar-cell bg-white border-end border-bottom p-2 position-relative d-flex flex-column"
+                  :class="{ 'text-muted bg-light-subtle': !date.isCurrentMonth }"
+                >
+                  <div class="d-flex justify-content-between align-items-start mb-1">
+                    <span
+                      class="date-number d-flex align-items-center justify-content-center"
+                      :class="{ 'today-circle': date.isToday }"
+                    >
+                      {{ date.day }}
+                    </span>
+                  </div>
+
+                  <div class="shift-container custom-scrollbar flex-grow-1">
+                    <div
+                      v-for="(staff, sIdx) in getStaffOnDuty(date.day, date.isCurrentMonth)"
+                      :key="sIdx"
+                      class="badge w-100 text-start fw-normal mb-1 d-flex justify-content-between align-items-center shadow-sm border"
+                      :class="getShiftClass(staff.shift)"
+                    >
+                      <span class="text-truncate" style="max-width: 70%">{{ staff.name }}</span>
+                      <span class="fw-bold small opacity-75">{{ staff.shift }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </template>
           </div>
         </div>
       </div>
     </main>
+
+    <!-- Modal จัดการพนักงาน (เรท OT) -->
+    <div
+      v-if="showEmployeesModal"
+      class="modal fade show d-block"
+      tabindex="-1"
+      style="background-color: rgba(0, 0, 0, 0.5); z-index: 1055"
+    >
+      <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+          <div class="modal-header bg-info text-white">
+            <h5 class="modal-title fw-bold">
+              <i class="bi bi-person-lines-fill me-2"></i>จัดการพนักงานและเรท OT ({{ currentTabName }})
+            </h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              @click="showEmployeesModal = false"
+            ></button>
+          </div>
+          <div class="modal-body p-0">
+            <div class="table-responsive" style="max-height: 520px">
+              <table class="table table-hover table-bordered mb-0 align-middle">
+                <thead class="table-light position-sticky top-0 shadow-sm" style="z-index: 1">
+                  <tr>
+                    <th>ชื่อ</th>
+                    <th>ตำแหน่ง</th>
+                    <th class="text-center">เรทวันหยุด</th>
+                    <th class="text-center">เรททำการ</th>
+                    <th class="text-center">เรทวันหยุด(พิเศษ)</th>
+                    <th class="text-center">เรทวันหยุด 2 เท่า</th>
+                    <th class="text-center">จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="emp in tabEmployees" :key="'emp-m-' + emp.id">
+                    <td class="text-nowrap fw-semibold">{{ emp.name }}</td>
+                    <td>
+                      <input
+                        type="text"
+                        class="form-control form-control-sm"
+                        v-model="emp.position"
+                        placeholder="ตำแหน่ง"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        class="form-control form-control-sm text-center"
+                        v-model="emp.rate_holiday"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        class="form-control form-control-sm text-center"
+                        v-model="emp.rate_weekday"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        class="form-control form-control-sm text-center"
+                        v-model="emp.rate_holiday_special"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        class="form-control form-control-sm text-center"
+                        v-model="emp.rate_weekday_special"
+                      />
+                    </td>
+                    <td class="text-center">
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-success text-nowrap"
+                        :disabled="savingEmpId === emp.id"
+                        @click="saveEmployee(emp)"
+                      >
+                        <span v-if="savingEmpId === emp.id" class="spinner-border spinner-border-sm me-1"></span>
+                        <i v-else class="bi bi-floppy me-1"></i>
+                        บันทึก
+                      </button>
+                    </td>
+                  </tr>
+                  <tr v-if="tabEmployees.length === 0">
+                    <td colspan="7" class="text-center text-muted py-3">ไม่พบข้อมูลพนักงาน</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="showEmployeesModal = false">
+              ปิด
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Modal for Adding Forgotten Time -->
     <div
@@ -955,6 +1245,15 @@ export default {
     return {
       hasAccess: false,
       currentTab: 'card',
+      viewStyle: 'matrix',
+      matrixBrush: 0,
+      tabEmployees: [],
+      tabDuties: [],
+      monthHolidays: {},
+      savingCellKey: '',
+      showEmployeesModal: false,
+      savingEmpId: null,
+      lockStateTick: 0,
       selectedMonth: new Date().getMonth() + 1,
       currentYear: new Date().getFullYear(),
       weekDays: ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'],
@@ -1049,6 +1348,22 @@ export default {
       if (this.currentTab === 'claim') return 'งานประกัน/เบิกเครม';
       return 'ห้องบัตร';
     },
+    matrixDays() {
+      const count = new Date(this.currentYear, this.selectedMonth, 0).getDate();
+      return Array.from({ length: count }, (_, i) => i + 1);
+    },
+    isMatrixLocked() {
+      void this.lockStateTick;
+      try {
+        return (
+          localStorage.getItem(
+            `manager_schedule_locked_${this.currentTab}_${this.currentYear}_${this.selectedMonth}`
+          ) === '1'
+        );
+      } catch {
+        return false;
+      }
+    },
     calendarDays() {
       const year = this.currentYear;
       const monthIndex = this.selectedMonth - 1;
@@ -1108,43 +1423,303 @@ export default {
       this.fetchSchedule();
     },
 
+    getTabConfig() {
+      if (this.currentTab === 'it') {
+        return {
+          scheduleUrl: '/api-digital/duties/get-schedule.php',
+          crudUrl: '/api-digital/duties/crud_duties_it.php',
+          addUrl: '/api-digital/duties/add_duties.php',
+          empField: 'employee_id'
+        };
+      }
+      if (this.currentTab === 'claim') {
+        return {
+          scheduleUrl: '/api-digital/duties_claim/get-schedule-claim.php',
+          crudUrl: '/api-digital/duties_claim/crud_duties_claim.php',
+          addUrl: '/api-digital/duties_claim/add_duties_claim.php',
+          empField: 'employees_claim_id'
+        };
+      }
+      return {
+        scheduleUrl: '/api-digital/duties_opdcard/get-schedule-opdcard.php',
+        crudUrl: '/api-digital/duties_opdcard/crud_duties_opdcard.php',
+        addUrl: '/api-digital/duties_opdcard/add_duties_opdcard.php',
+        empField: 'employees_opdcard_id'
+      };
+    },
+
     // --- ใช้ Axios เพื่อดึงข้อมูล ---
     async fetchSchedule() {
+      if (this.currentTab === 'leave') return;
       try {
-        let apiUrl = '';
-        if (this.currentTab === 'card') {
-          apiUrl = `/api-digital/duties_opdcard/get-schedule-opdcard.php`;
-        } else if (this.currentTab === 'it') {
-          apiUrl = `/api-digital/duties/get-schedule.php`;
-        } else if (this.currentTab === 'claim') {
-          apiUrl = `/api-digital/duties_claim/get-schedule-claim.php`;
-        }
-
+        const cfg = this.getTabConfig();
         const token = localStorage.getItem('user_token');
+        const headers = { Authorization: `Bearer ${token}` };
 
-        const response = await axios.get(apiUrl, {
-          params: {
-            year: this.currentYear,
-            month: this.selectedMonth
-          },
-          headers: {
-            Authorization: `Bearer ${token}` // ส่ง Token เพื่อ Verify
-          }
-        });
+        const [schedRes, empRes, dutiesRes, holidayRes] = await Promise.all([
+          axios.get(cfg.scheduleUrl, {
+            params: { year: this.currentYear, month: this.selectedMonth },
+            headers
+          }),
+          axios.get(`${cfg.crudUrl}?action=getEmployees`, { headers }).catch(() => ({ data: [] })),
+          axios
+            .get(`${cfg.crudUrl}?action=getDuties&month=${this.selectedMonth}&year=${this.currentYear}`, {
+              headers
+            })
+            .catch(() => ({ data: [] })),
+          axios
+            .get('/api-digital/duties/get_holidays.php', {
+              params: { year: this.currentYear, month: this.selectedMonth }
+            })
+            .catch(() => ({ data: null }))
+        ]);
 
-        if (response.data && response.data.data) {
-          this.rawScheduleData = response.data.data;
-          this.contacts = this.extractContacts(response.data.data);
+        if (schedRes.data && schedRes.data.data) {
+          this.rawScheduleData = schedRes.data.data;
+          this.contacts = this.extractContacts(schedRes.data.data);
         } else {
           this.rawScheduleData = [];
           this.contacts = [];
         }
+
+        const empList = Array.isArray(empRes.data) ? empRes.data : [];
+        const phoneByName = new Map(
+          (this.rawScheduleData || []).map((p) => [String(p.name || '').trim(), p.phone || ''])
+        );
+        this.tabEmployees = this.applySavedEmployeeOrder(
+          empList.map((e) => ({
+            ...e,
+            phone: e.phone || phoneByName.get(String(e.name || '').trim()) || ''
+          }))
+        );
+        this.syncContactsFromEmployees();
+        this.tabDuties = Array.isArray(dutiesRes.data) ? dutiesRes.data : [];
+        this.monthHolidays =
+          holidayRes.data?.status === 'success' && holidayRes.data.data ? holidayRes.data.data : {};
       } catch (error) {
         console.error('Fetch Error:', error);
         // ถ้า Unauthorized (401) ให้ Logout ทันที
         if (error.response && error.response.status === 401) {
           this.logout();
         }
+      }
+    },
+
+    getThaiWeekdayShort(day) {
+      const names = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+      const wd = new Date(this.currentYear, this.selectedMonth - 1, day).getDay();
+      return names[wd];
+    },
+
+    isMatrixWeekend(day) {
+      const wd = new Date(this.currentYear, this.selectedMonth - 1, day).getDay();
+      return wd === 0 || wd === 6;
+    },
+
+    getHolidayName(day) {
+      return this.monthHolidays?.[String(day)] || '';
+    },
+
+    isMatrixHoliday(day) {
+      return Boolean(this.monthHolidays?.[String(day)]);
+    },
+
+    isMatrixHolidayOrWeekend(day) {
+      return this.isMatrixWeekend(day) || this.isMatrixHoliday(day);
+    },
+
+    isMatrixToday(day) {
+      const today = new Date();
+      return (
+        day === today.getDate() &&
+        this.selectedMonth === today.getMonth() + 1 &&
+        this.currentYear === today.getFullYear()
+      );
+    },
+
+    formatIsoDate(day) {
+      const mm = String(this.selectedMonth).padStart(2, '0');
+      const dd = String(day).padStart(2, '0');
+      return `${this.currentYear}-${mm}-${dd}`;
+    },
+
+    getDutyRecord(emp, day) {
+      const iso = this.formatIsoDate(day);
+      return this.tabDuties.find(
+        (d) => String(d.employee_id) === String(emp.id) && String(d.date) === iso
+      );
+    },
+
+    getMatrixCellBadge(emp, day) {
+      const rec = this.getDutyRecord(emp, day);
+      if (rec) {
+        const sp = Number(rec.is_special || 0);
+        if (sp === 2) {
+          return { label: '2x', cls: 'bg-danger text-white', title: 'เรทวันหยุด 2 เท่า' };
+        }
+        if (sp === 1) {
+          return { label: 'พ', cls: 'bg-warning text-dark', title: 'เรทวันหยุดพิเศษ' };
+        }
+        return { label: 'X', cls: 'bg-primary text-white', title: 'เวรปกติ' };
+      }
+      const person = (this.rawScheduleData || []).find(
+        (p) => String(p.name || '').trim() === String(emp.name || '').trim()
+      );
+      const val = person?.[`d${day}`];
+      if (val && String(val).trim() !== '') {
+        return { label: 'X', cls: 'bg-primary text-white', title: String(val) };
+      }
+      return null;
+    },
+
+    countEmployeeShifts(emp) {
+      let count = 0;
+      for (const d of this.matrixDays) {
+        if (this.getMatrixCellBadge(emp, d)) count++;
+      }
+      return count;
+    },
+
+    applySavedEmployeeOrder(list) {
+      try {
+        const raw = localStorage.getItem(`manager_schedule_emp_order_${this.currentTab}`);
+        if (!raw) return list;
+        const order = JSON.parse(raw);
+        if (!Array.isArray(order) || order.length === 0) return list;
+        const rank = new Map(order.map((id, idx) => [String(id), idx]));
+        return [...list].sort((a, b) => {
+          const ra = rank.has(String(a.id)) ? rank.get(String(a.id)) : 99999;
+          const rb = rank.has(String(b.id)) ? rank.get(String(b.id)) : 99999;
+          return ra - rb;
+        });
+      } catch {
+        return list;
+      }
+    },
+
+    syncContactsFromEmployees() {
+      const list = (this.tabEmployees || [])
+        .filter((e) => e.phone)
+        .map((e) => ({ name: e.name, phone: e.phone }));
+      if (list.length > 0) {
+        this.contacts = list;
+      }
+    },
+
+    toggleMatrixLock() {
+      const key = `manager_schedule_locked_${this.currentTab}_${this.currentYear}_${this.selectedMonth}`;
+      try {
+        if (this.isMatrixLocked) {
+          localStorage.removeItem(key);
+        } else {
+          localStorage.setItem(key, '1');
+        }
+      } catch {
+        // ignore
+      }
+      this.lockStateTick++;
+    },
+
+    moveEmployeeOrder(index, direction) {
+      if (this.isMatrixLocked) return;
+      const target = index + direction;
+      if (target < 0 || target >= this.tabEmployees.length) return;
+      const arr = [...this.tabEmployees];
+      const [moved] = arr.splice(index, 1);
+      arr.splice(target, 0, moved);
+      this.tabEmployees = arr;
+      this.syncContactsFromEmployees();
+      try {
+        localStorage.setItem(
+          `manager_schedule_emp_order_${this.currentTab}`,
+          JSON.stringify(arr.map((e) => e.id))
+        );
+      } catch {
+        // ignore storage errors
+      }
+    },
+
+    async openEmployeesModal() {
+      this.showEmployeesModal = true;
+      const cfg = this.getTabConfig();
+      const token = localStorage.getItem('user_token');
+      try {
+        const res = await axios.get(`${cfg.crudUrl}?action=getEmployees`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (Array.isArray(res.data)) {
+          this.tabEmployees = this.applySavedEmployeeOrder(res.data);
+          this.syncContactsFromEmployees();
+        }
+      } catch (e) {
+        console.error('openEmployeesModal error:', e);
+      }
+    },
+
+    async saveEmployee(emp) {
+      const cfg = this.getTabConfig();
+      this.savingEmpId = emp.id;
+      try {
+        const res = await axios.post(`${cfg.crudUrl}?action=updateEmployee`, emp);
+        if (res.data?.message === 'Update employee successful') {
+          Swal.fire({
+            icon: 'success',
+            title: 'บันทึกข้อมูลพนักงานเรียบร้อย',
+            timer: 1300,
+            showConfirmButton: false
+          });
+        } else {
+          Swal.fire('เกิดข้อผิดพลาด', res.data?.message || 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+        }
+      } catch (e) {
+        console.error('saveEmployee error:', e);
+        Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+      } finally {
+        this.savingEmpId = null;
+      }
+    },
+
+    async toggleMatrixCell(emp, day) {
+      if (this.isMatrixLocked) return;
+      const key = `${emp.id}-${day}`;
+      if (this.savingCellKey === key) return;
+      this.savingCellKey = key;
+
+      const cfg = this.getTabConfig();
+      const iso = this.formatIsoDate(day);
+      const existing = this.getDutyRecord(emp, day);
+
+      try {
+        if (this.matrixBrush === 'eraser') {
+          if (existing?.id) {
+            await axios.post(`${cfg.crudUrl}?action=deleteDuty`, { id: existing.id });
+          }
+        } else {
+          const targetSpecial = Number(this.matrixBrush);
+          if (existing?.id) {
+            if (Number(existing.is_special || 0) === targetSpecial) {
+              await axios.post(`${cfg.crudUrl}?action=deleteDuty`, { id: existing.id });
+            } else {
+              await axios.post(`${cfg.crudUrl}?action=updateDuty`, {
+                ...existing,
+                date: iso,
+                employee_id: emp.id,
+                is_special: targetSpecial
+              });
+            }
+          } else {
+            await axios.post(cfg.addUrl, {
+              [cfg.empField]: emp.id,
+              dates: [{ date: iso, is_special: targetSpecial }]
+            });
+          }
+        }
+        await this.fetchSchedule();
+      } catch (err) {
+        console.error('toggleMatrixCell error:', err);
+        Swal.fire('บันทึกไม่สำเร็จ', 'ไม่สามารถปรับข้อมูลเวรได้ กรุณาลองใหม่อีกครั้ง', 'error');
+      } finally {
+        this.savingCellKey = '';
       }
     },
 
@@ -1915,6 +2490,65 @@ header {
     min-height: 80px;
     padding: 0.25rem !important;
   }
+}
+
+/* Matrix Schedule Styles */
+.matrix-table th,
+.matrix-table td {
+  border-color: #e2e8f0;
+  vertical-align: middle;
+}
+
+.matrix-name-col {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  min-width: 190px;
+  padding: 0.45rem 0.75rem !important;
+  box-shadow: 2px 0 6px rgba(15, 23, 42, 0.05);
+}
+
+.matrix-day-col {
+  min-width: 34px;
+  user-select: none;
+}
+
+.matrix-cell {
+  height: 44px;
+  min-width: 34px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.12s ease;
+}
+
+.matrix-cell:hover {
+  background-color: #f3e8ff !important;
+}
+
+.matrix-weekend {
+  background-color: #eef2f7 !important;
+}
+
+.matrix-holiday {
+  background-color: #ffe4e6 !important;
+}
+
+.matrix-today {
+  background-color: #faf5ff !important;
+  box-shadow: inset 0 2px 0 #7c3aed;
+}
+
+.matrix-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 5px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 </style>
 ```

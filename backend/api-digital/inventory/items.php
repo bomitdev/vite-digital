@@ -17,8 +17,26 @@ if (!isset($pdo2)) {
  * @param int|null $category_id
  * @return string
  */
-function getNextItemCode(PDO $pdo2, ?int $warehouse_id = 0, ?int $category_id = 0): string {
+function getNextItemCode(PDO $pdo2, ?int $warehouse_id = 0, ?int $category_id = 0, ?int $item_type_id = 0): string {
     if (!$warehouse_id) return 'C001';
+
+    $typePrefix = '';
+    $typePadLen = 4;
+    $typeStartNum = 1;
+    if ($item_type_id > 0) {
+        $typeStmt = $pdo2->prepare("SELECT code FROM inv_item_types WHERE id = ?");
+        $typeStmt->execute([$item_type_id]);
+        $typeCode = trim((string)($typeStmt->fetchColumn() ?: ''));
+        if ($typeCode !== '') {
+            if (preg_match('/^([A-Za-z]+?)(\d+)$/', $typeCode, $tm)) {
+                $typePrefix = strtoupper($tm[1]);
+                $typePadLen = strlen($tm[2]);
+                $typeStartNum = max(1, (int)$tm[2]);
+            } elseif (preg_match('/^([A-Za-z]+)$/', $typeCode, $tm)) {
+                $typePrefix = strtoupper($tm[1]);
+            }
+        }
+    }
 
     $categoryPrefix = '';
     if ($category_id > 0) {
@@ -36,6 +54,26 @@ function getNextItemCode(PDO $pdo2, ?int $warehouse_id = 0, ?int $category_id = 
     $stmt = $pdo2->prepare($sql);
     $stmt->execute([$warehouse_id]);
     $codes = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    // Priority 1: Run sequentially by item_type prefix (e.g. OS0001, HK0001, CM0001, EM0001)
+    if ($typePrefix !== '') {
+        $maxNum = 0;
+        $padLen = $typePadLen;
+        foreach ($codes as $c) {
+            $c = trim((string)$c);
+            if (preg_match('/^' . preg_quote($typePrefix, '/') . '(\d+)$/i', $c, $cm)) {
+                $numVal = (int)$cm[1];
+                if ($numVal > $maxNum) {
+                    $maxNum = $numVal;
+                }
+                if (strlen($cm[1]) > $padLen) {
+                    $padLen = strlen($cm[1]);
+                }
+            }
+        }
+        $nextNum = $maxNum > 0 ? max($maxNum + 1, $typeStartNum) : $typeStartNum;
+        return $typePrefix . str_pad((string)$nextNum, max($padLen, strlen((string)$nextNum)), '0', STR_PAD_LEFT);
+    }
 
     if (empty($codes)) {
         if (!empty($categoryPrefix)) {
@@ -175,9 +213,10 @@ try {
         $action = trim($_GET['action'] ?? '');
         $warehouse_id = isset($_GET['warehouse_id']) ? (int)$_GET['warehouse_id'] : 0;
         $category_id = isset($_GET['category_id']) ? (int)$_GET['category_id'] : 0;
+        $item_type_id = isset($_GET['item_type_id']) ? (int)$_GET['item_type_id'] : 0;
 
         if ($action === 'next_code') {
-            $nextCode = getNextItemCode($pdo2, $warehouse_id, $category_id);
+            $nextCode = getNextItemCode($pdo2, $warehouse_id, $category_id, $item_type_id);
             echo json_encode(['status' => 'success', 'next_code' => $nextCode]);
             exit;
         }

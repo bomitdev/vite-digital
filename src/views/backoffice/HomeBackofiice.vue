@@ -1122,12 +1122,12 @@
             class="modal-header border-0 p-4 text-white position-relative"
             :style="
               warehouseModalMode === 'requisition'
-                ? 'background: linear-gradient(135deg, #0d9488 0%, #0284c7 100%);'
-                : 'background: linear-gradient(135deg, #1e3a8a 0%, #0284c7 100%);'
+                ? 'background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 55%, #4f46e5 100%);'
+                : 'background: linear-gradient(135deg, #5b21b6 0%, #4338ca 100%);'
             "
           >
             <div class="d-flex align-items-center gap-3">
-              <div class="rounded-3 p-3 bg-white bg-opacity-20 d-flex align-items-center justify-content-center shadow-sm backdrop-blur" style="width: 52px; height: 52px;">
+              <div class="rounded-3 p-3 bg-white bg-opacity-25 d-flex align-items-center justify-content-center shadow-sm backdrop-blur" style="width: 52px; height: 52px;">
                 <i :class="warehouseModalMode === 'requisition' ? 'bi bi-cart-plus-fill fs-3 text-white' : 'bi bi-box-seam-fill fs-3 text-white'"></i>
               </div>
               <div>
@@ -1230,7 +1230,7 @@
                   <div class="d-flex align-items-start gap-3 mb-3">
                     <div
                       class="wh-icon-box text-white rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs"
-                      :class="warehouseModalMode === 'requisition' ? 'bg-gradient-teal' : 'bg-gradient-blue'"
+                      :class="warehouseModalMode === 'requisition' ? 'bg-gradient-purple' : 'bg-gradient-blue'"
                     >
                       <span class="fw-bold fs-5">{{ wh.code }}</span>
                     </div>
@@ -1239,7 +1239,8 @@
                         <span class="badge bg-light text-secondary border small">รหัส: {{ wh.code }}</span>
                         <span
                           v-if="warehouseModalMode === 'requisition'"
-                          class="badge bg-teal-subtle text-success border border-success-subtle rounded-pill"
+                          class="badge rounded-pill"
+                          style="background-color: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe;"
                         >
                           <i class="bi bi-cart-plus-fill me-1"></i> เปิดให้ขอเบิก
                         </span>
@@ -1271,7 +1272,8 @@
 
                   <div
                     class="pt-2 border-top d-flex align-items-center justify-content-between fw-semibold small"
-                    :class="warehouseModalMode === 'requisition' ? 'text-success' : 'text-primary'"
+                    :class="warehouseModalMode === 'requisition' ? '' : 'text-primary'"
+                    :style="warehouseModalMode === 'requisition' ? 'color: #6d28d9;' : ''"
                   >
                     <span>{{ warehouseModalMode === 'requisition' ? 'ขอเบิกวัสดุจากคลังนี้' : 'เข้าสู่คลังนี้' }}</span>
                     <i class="bi bi-arrow-right"></i>

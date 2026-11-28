@@ -200,26 +200,60 @@ try {
                     }
                 }
 
-                // Preserve caller's item_code if supplied; otherwise generate next sequential code
+                // Preserve caller's item_code if supplied; otherwise generate next sequential code by item_type first, then category
                 $newItemCode = $item_code_input;
                 if ($newItemCode === '') {
-                    $catPrefix = 'C';
-                    if ($category_id) {
-                        foreach ($whCategories as $cRow) {
-                            if ((int)$cRow['id'] === $category_id && preg_match('/^([A-Za-z]+)/', trim((string)$cRow['code']), $cm)) {
-                                $catPrefix = strtoupper($cm[1]);
+                    $prefix = '';
+                    $padLen = 3;
+                    $startNum = 1;
+
+                    if ($item_type_id) {
+                        foreach ($whItemTypes as $tRow) {
+                            if ((int)$tRow['id'] === $item_type_id) {
+                                $tCode = trim((string)($tRow['code'] ?? ''));
+                                if (preg_match('/^([A-Za-z]+?)(\d+)$/', $tCode, $tm)) {
+                                    $prefix = strtoupper($tm[1]);
+                                    $padLen = strlen($tm[2]);
+                                    $startNum = max(1, (int)$tm[2]);
+                                } elseif (preg_match('/^([A-Za-z]+)$/', $tCode, $tm)) {
+                                    $prefix = strtoupper($tm[1]);
+                                    $padLen = 4;
+                                }
                                 break;
                             }
                         }
                     }
-                    $maxCodeStmt = $pdo2->prepare("SELECT item_code FROM inv_items WHERE warehouse_id = ? AND item_code LIKE ? ORDER BY id DESC LIMIT 1");
-                    $maxCodeStmt->execute([$warehouse_id, $catPrefix . '%']);
-                    $lastCode = $maxCodeStmt->fetchColumn();
-                    $nextNum = 1;
-                    if ($lastCode && preg_match('/(\d+)$/', $lastCode, $mDigits)) {
-                        $nextNum = (int)$mDigits[1] + 1;
+
+                    if ($prefix === '' && $category_id) {
+                        foreach ($whCategories as $cRow) {
+                            if ((int)$cRow['id'] === $category_id && preg_match('/^([A-Za-z]+)/', trim((string)$cRow['code']), $cm)) {
+                                $prefix = strtoupper($cm[1]);
+                                break;
+                            }
+                        }
                     }
-                    $newItemCode = $catPrefix . str_pad((string)$nextNum, 3, '0', STR_PAD_LEFT);
+
+                    if ($prefix === '') {
+                        $prefix = 'C';
+                    }
+
+                    $maxCodeStmt = $pdo2->prepare("SELECT item_code FROM inv_items WHERE warehouse_id = ? AND item_code LIKE ?");
+                    $maxCodeStmt->execute([$warehouse_id, $prefix . '%']);
+                    $existingCodes = $maxCodeStmt->fetchAll(PDO::FETCH_COLUMN);
+                    $maxNum = 0;
+                    foreach ($existingCodes as $ec) {
+                        if (preg_match('/^' . preg_quote($prefix, '/') . '(\d+)$/i', trim((string)$ec), $mDigits)) {
+                            $numVal = (int)$mDigits[1];
+                            if ($numVal > $maxNum) {
+                                $maxNum = $numVal;
+                            }
+                            if (strlen($mDigits[1]) > $padLen) {
+                                $padLen = strlen($mDigits[1]);
+                            }
+                        }
+                    }
+                    $nextNum = $maxNum > 0 ? max($maxNum + 1, $startNum) : $startNum;
+                    $newItemCode = $prefix . str_pad((string)$nextNum, max($padLen, strlen((string)$nextNum)), '0', STR_PAD_LEFT);
                 }
 
                 $lotControlFlag = isset($item['lot_control']) ? (int)(bool)$item['lot_control'] : ($lot_number !== '' ? 1 : 0);

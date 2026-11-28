@@ -7,8 +7,10 @@ header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers
 require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../auth_utils.php';
 require_once __DIR__ . '/repair_auth_helper.php';
+require_once __DIR__ . '/sync_hosoffice_helper.php';
 
 try {
+    syncHosofficeRepairs($pdo2, $pdo3 ?? null);
     $userCtx = getGeneralRepairUserContext($pdo2, $pdo3);
     $canManage = $userCtx['can_manage'];
 

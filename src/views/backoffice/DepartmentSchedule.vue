@@ -67,85 +67,106 @@
         <!-- Filter & Controls Bar -->
         <div
           v-if="viewMode === 'schedule'"
-          class="row g-2 align-items-end mt-3 pt-3 border-top print-hide"
+          class="mt-3 pt-3 border-top print-hide"
         >
-          <div class="col-12 col-md-4">
-            <label class="form-label small fw-bold text-secondary mb-1">
-              กลุ่มงาน / ตารางเวร
-              <span v-if="groups.length > 0" class="text-primary fw-normal"
-                >({{ groups.length }} กลุ่มงาน)</span
-              >
-            </label>
-            <select v-model="selectedGroupId" class="form-select" @change="fetchSchedule">
-              <option value="" disabled>-- เลือกกลุ่มงาน --</option>
-              <option v-for="g in groups" :key="g.id" :value="g.id">
-                {{ g.title }} ({{ g.department_name }})
-              </option>
-            </select>
-          </div>
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-6 col-lg-5">
+              <label class="form-label small fw-bold text-secondary mb-1">
+                กลุ่มงาน / ตารางเวร
+                <span v-if="groups.length > 0" class="text-primary fw-normal"
+                  >({{ groups.length }} กลุ่มงาน)</span
+                >
+              </label>
+              <select v-model="selectedGroupId" class="form-select" @change="fetchSchedule">
+                <option value="" disabled>-- เลือกกลุ่มงาน --</option>
+                <option v-for="g in groups" :key="g.id" :value="g.id">
+                  {{ g.title }} ({{ g.department_name }})
+                </option>
+              </select>
+            </div>
 
-          <div class="col-6 col-md-2">
-            <label class="form-label small fw-bold text-secondary mb-1">เดือน</label>
-            <select v-model.number="selectedMonth" class="form-select" @change="fetchSchedule">
-              <option v-for="(m, idx) in months" :key="idx" :value="idx + 1">{{ m }}</option>
-            </select>
-          </div>
+            <div class="col-6 col-md-3 col-lg-2">
+              <label class="form-label small fw-bold text-secondary mb-1">เดือน</label>
+              <select v-model.number="selectedMonth" class="form-select" @change="fetchSchedule">
+                <option v-for="(m, idx) in months" :key="idx" :value="idx + 1">{{ m }}</option>
+              </select>
+            </div>
 
-          <div class="col-6 col-md-2">
-            <label class="form-label small fw-bold text-secondary mb-1">ปี พ.ศ.</label>
-            <select v-model.number="selectedYear" class="form-select" @change="fetchSchedule">
-              <option v-for="y in yearOptions" :key="y" :value="y">{{ y + 543 }}</option>
-            </select>
-          </div>
+            <div class="col-6 col-md-3 col-lg-2">
+              <label class="form-label small fw-bold text-secondary mb-1">ปี พ.ศ.</label>
+              <select v-model.number="selectedYear" class="form-select" @change="fetchSchedule">
+                <option v-for="y in yearOptions" :key="y" :value="y">{{ y + 543 }}</option>
+              </select>
+            </div>
 
-          <div class="col-12 col-md-4 d-flex flex-wrap justify-content-md-end gap-2">
-            <button
-              v-if="selectedGroup && canEditSchedule && !isLocked"
-              type="button"
-              class="btn btn-outline-primary btn-sm rounded-pill px-3"
-              @click="copyPrevMonth"
-              :disabled="loading"
-              title="คัดลอกรูปแบบเวรจากเดือนก่อนหน้า"
-            >
-              <i class="bi bi-copy me-1"></i> คัดลอกเดือนก่อน
-            </button>
-            <button
-              v-if="selectedGroup && members.length > 0"
-              type="button"
-              class="btn btn-success btn-sm rounded-pill px-3"
-              @click="exportExcel"
-            >
-              <i class="bi bi-file-earmark-excel me-1"></i> Excel
-            </button>
-            <button
-              v-if="selectedGroup && members.length > 0"
-              type="button"
-              class="btn btn-outline-primary btn-sm rounded-pill px-3"
-              @click="openDutyMemoModal"
-            >
-              <i class="bi bi-file-earmark-text me-1"></i> บันทึกข้อความขอขึ้นเวร
-            </button>
-            <button
-              v-if="selectedGroup && members.length > 0"
-              type="button"
-              class="btn btn-dark btn-sm rounded-pill px-3"
-              @click="openPrintModal"
-            >
-              <i class="bi bi-printer me-1"></i> พิมพ์ตารางเวร
-            </button>
-            <button
+            <div
               v-if="selectedGroup && canEditSchedule"
-              type="button"
-              class="btn btn-sm rounded-pill px-3 fw-semibold"
-              :class="isLocked ? 'btn-warning text-dark' : 'btn-outline-secondary'"
-              @click="toggleScheduleLock(!isLocked)"
-              :disabled="togglingLock"
-              :title="isLocked ? 'ปลดล็อกเพื่อแก้ไขตารางเวร' : 'ล็อกตารางเวรป้องกันการแก้ไขโดยไม่ตั้งใจ'"
+              class="col-12 col-lg-3 d-flex flex-wrap justify-content-lg-end align-items-center gap-2"
             >
-              <span v-if="togglingLock" class="spinner-border spinner-border-sm me-1"></span>
-              <i v-else class="bi me-1" :class="isLocked ? 'bi-unlock-fill' : 'bi-lock-fill'"></i>
-              {{ isLocked ? 'ปลดล็อกแก้ไข' : 'ล็อกตาราง' }}
-            </button>
+              <button
+                v-if="!isLocked"
+                type="button"
+                class="btn btn-outline-primary btn-sm rounded-pill px-3 text-nowrap"
+                @click="copyPrevMonth"
+                :disabled="loading"
+                title="คัดลอกรูปแบบเวรจากเดือนก่อนหน้า"
+              >
+                <i class="bi bi-copy me-1"></i> คัดลอกเดือนก่อน
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm rounded-pill px-3 fw-semibold text-nowrap"
+                :class="isLocked ? 'btn-warning text-dark' : 'btn-outline-secondary'"
+                @click="toggleScheduleLock(!isLocked)"
+                :disabled="togglingLock"
+                :title="isLocked ? 'ปลดล็อกเพื่อแก้ไขตารางเวร' : 'ล็อกตารางเวรป้องกันการแก้ไขโดยไม่ตั้งใจ'"
+              >
+                <span v-if="togglingLock" class="spinner-border spinner-border-sm me-1"></span>
+                <i v-else class="bi me-1" :class="isLocked ? 'bi-unlock-fill' : 'bi-lock-fill'"></i>
+                {{ isLocked ? 'ปลดล็อกแก้ไข' : 'ล็อกตาราง' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Document & Export Toolbar -->
+          <div
+            v-if="selectedGroup && members.length > 0"
+            class="mt-3 px-3 py-2 rounded-3 bg-light border d-flex flex-wrap align-items-center justify-content-between gap-2"
+          >
+            <div class="small fw-bold text-secondary d-flex align-items-center gap-1">
+              <i class="bi bi-file-earmark-check text-primary"></i>
+              <span>เอกสารและรายงาน</span>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <button
+                type="button"
+                class="btn btn-outline-primary btn-sm rounded-pill px-3 text-nowrap bg-white"
+                @click="openDutyMemoModal"
+              >
+                <i class="bi bi-file-earmark-text me-1"></i> บันทึกข้อความขอขึ้นเวร
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-success btn-sm rounded-pill px-3 fw-semibold text-nowrap bg-white"
+                @click="openOtReportModal"
+              >
+                <i class="bi bi-cash-coin me-1"></i> สรุป OT เพื่อเบิก
+              </button>
+              <button
+                type="button"
+                class="btn btn-success btn-sm rounded-pill px-3 text-nowrap"
+                @click="exportExcel"
+              >
+                <i class="bi bi-file-earmark-excel me-1"></i> Excel
+              </button>
+              <button
+                type="button"
+                class="btn btn-dark btn-sm rounded-pill px-3 text-nowrap"
+                @click="openPrintModal"
+              >
+                <i class="bi bi-printer me-1"></i> พิมพ์ตารางเวร
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -928,15 +949,15 @@
                 :key="idx"
                 class="row g-2 align-items-center mb-2"
               >
-                <div class="col-3">
+                <div class="col-2">
                   <input
                     type="text"
                     class="form-control form-control-sm"
                     v-model="st.code"
-                    placeholder="รหัส (เช่น ช)"
+                    placeholder="รหัส"
                   />
                 </div>
-                <div class="col-5">
+                <div class="col-4">
                   <input
                     type="text"
                     class="form-control form-control-sm"
@@ -951,7 +972,25 @@
                     v-model="st.color"
                   />
                 </div>
-                <div class="col-2 text-end">
+                <div class="col-3">
+                  <div class="form-check form-switch mb-0 d-flex align-items-center gap-1">
+                    <input
+                      class="form-check-input mt-0"
+                      type="checkbox"
+                      role="switch"
+                      :id="'shiftOtSwitch-' + idx"
+                      v-model="st.is_ot"
+                    />
+                    <label
+                      class="form-check-label small fw-semibold"
+                      :class="st.is_ot ? 'text-success' : 'text-muted'"
+                      :for="'shiftOtSwitch-' + idx"
+                    >
+                      {{ st.is_ot ? 'คิด OT' : 'ไม่คิด OT' }}
+                    </label>
+                  </div>
+                </div>
+                <div class="col-1 text-end">
                   <button
                     type="button"
                     class="btn btn-sm btn-outline-danger"
@@ -1525,6 +1564,204 @@
         </div>
       </div>
     </div>
+
+    <!-- OT Reimbursement Summary Modal (สรุป OT เพื่อเบิก) -->
+    <div
+      v-if="showOtReportModal"
+      class="modal fade show d-block ot-report-modal-root"
+      tabindex="-1"
+      style="background-color: rgba(15, 23, 42, 0.55); z-index: 1065"
+    >
+      <div class="modal-dialog modal-fullscreen-xl-down modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 96vw">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+          <div class="modal-header border-bottom px-4 py-3">
+            <h5 class="modal-title fw-bold text-success">
+              <i class="bi bi-cash-coin me-2"></i>สรุปหลักฐานการเบิกจ่ายค่าตอบแทนนอกเวลาราชการ (OT)
+            </h5>
+            <button type="button" class="btn-close" @click="showOtReportModal = false"></button>
+          </div>
+          <div class="modal-body p-3 p-md-4 bg-light">
+            <!-- Controls Bar (Hidden on Print) -->
+            <div class="card border-0 shadow-sm rounded-4 mb-3 ot-report-controls">
+              <div class="card-body p-3">
+                <div class="row g-3 align-items-end">
+                  <div class="col-md-4">
+                    <label class="form-label small fw-bold mb-1">เกณฑ์การนับเวรเบิก OT</label>
+                    <select class="form-select form-select-sm" v-model="otForm.countMode">
+                      <option value="holidays">เฉพาะวันหยุด (เสาร์-อาทิตย์ / นักขัตฤกษ์)</option>
+                      <option value="all">รวมทุกเวรในตาราง (วันธรรมดา + วันหยุด)</option>
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label small fw-bold mb-1">ตัวคูณพิเศษ</label>
+                    <div class="form-check mt-1">
+                      <input class="form-check-input" type="checkbox" id="otDoubleCheck" v-model="otForm.isDouble" />
+                      <label class="form-check-label small fw-semibold text-danger" for="otDoubleCheck">
+                        คิดอัตรา 2 เท่า
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold mb-1">หัวหน้าผู้ควบคุม</label>
+                    <input type="text" class="form-control form-control-sm" v-model="otForm.leaderName" placeholder="ชื่อหัวหน้า" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold mb-1">ตำแหน่งหัวหน้า</label>
+                    <input type="text" class="form-control form-control-sm" v-model="otForm.leaderPos" placeholder="ตำแหน่ง" />
+                  </div>
+                </div>
+
+                <!-- ตั้งค่าอัตราค่าตอบแทนรายบุคคล -->
+                <div class="mt-3 pt-2 border-top">
+                  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                    <label class="form-label small fw-bold mb-0">
+                      <i class="bi bi-person-badge me-1 text-success"></i>
+                      ตั้งค่าอัตราค่าตอบแทนรายบุคคล (บาท/เวร)
+                    </label>
+                    <span class="text-muted" style="font-size: 0.78rem">
+                      * กำหนดแยกเฉพาะแต่ละคนได้ (บันทึกอัตโนมัติ หรือแก้ในช่องตารางด้านล่างได้เช่นกัน)
+                    </span>
+                  </div>
+                  <div class="row g-2">
+                    <div v-for="row in otReportRows" :key="'ot-person-rate-' + row.member.id" class="col-12 col-sm-6 col-lg-4">
+                      <div class="d-flex align-items-center justify-content-between gap-2 px-2 py-1 rounded-3 bg-light border">
+                        <div class="text-truncate" style="min-width: 0">
+                          <div class="small fw-semibold text-truncate">{{ row.member.person_name }}</div>
+                          <div class="text-muted text-truncate" style="font-size: 0.72rem">{{ row.member.position_name || '-' }}</div>
+                        </div>
+                        <div class="input-group input-group-sm flex-shrink-0" style="width: 122px">
+                          <input
+                            type="number"
+                            min="0"
+                            step="10"
+                            class="form-control text-end fw-semibold"
+                            v-model.number="otRatesByMember[row.member.id]"
+                            @input="saveMemberOtRate(row.member.id)"
+                            @change="saveMemberOtRate(row.member.id)"
+                          />
+                          <span class="input-group-text">฿</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Printable A4 Landscape Paper -->
+            <div class="ot-report-paper bg-white shadow-sm rounded-3 mx-auto p-4">
+              <div class="text-center mb-2">
+                <div class="fw-bold" style="font-size: 16pt">
+                  หลักฐานการเบิกจ่ายเงินค่าตอบแทนนอกเวลาราชการ {{ selectedGroup?.department_name }} ({{ selectedGroup?.title }})
+                  <span v-if="otForm.isDouble">(2 เท่า)</span>
+                </div>
+                <div style="font-size: 15pt">
+                  ชื่อส่วนราชการ โรงพยาบาลชานุมาน จังหวัดอำนาจเจริญ ประจำเดือน {{ months[selectedMonth - 1] }} {{ selectedYear + 543 }}
+                </div>
+                <div class="d-flex justify-content-center gap-3 mt-1" style="font-size: 14.5pt">
+                  <span>ใบสำคัญที่............................................./.............................................</span>
+                  <span>ลงวันที่.............................................</span>
+                </div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-bordered border-dark table-sm align-middle text-center mb-2 ot-paper-table">
+                  <thead>
+                    <tr>
+                      <th rowspan="2" class="align-middle" style="width: 28px">ลำดับ</th>
+                      <th rowspan="2" class="align-middle text-nowrap" style="min-width: 135px">ชื่อ-สกุล</th>
+                      <th rowspan="2" class="align-middle text-nowrap" style="min-width: 105px">ตำแหน่ง</th>
+                      <th rowspan="2" class="align-middle" style="width: 58px; line-height: 1.05">อัตรา<br />ค่าตอบแทน</th>
+                      <th :colspan="daysInMonth.length" class="text-center">วันที่ปฏิบัติงานล่วงเวลา</th>
+                      <th rowspan="2" class="align-middle" style="width: 34px; line-height: 1.05">รวม<br />วัน</th>
+                      <th rowspan="2" class="align-middle" style="width: 66px; line-height: 1.05">จำนวน<br />เงิน</th>
+                      <th rowspan="2" class="align-middle text-nowrap" style="width: 72px; line-height: 1.05">ลายมือชื่อ<br />ผู้รับเงิน</th>
+                    </tr>
+                    <tr>
+                      <th
+                        v-for="d in daysInMonth"
+                        :key="'oth-' + d"
+                        style="width: 20px; padding: 1px 0"
+                        :class="{ 'ot-holiday-col': isHolidayOrWeekend(d) }"
+                      >
+                        {{ d }}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(row, idx) in otReportRows" :key="'otr-' + row.member.id">
+                      <td>{{ idx + 1 }}</td>
+                      <td class="text-start px-2 text-nowrap">{{ row.member.person_name }}</td>
+                      <td class="text-start px-2 text-nowrap">{{ row.member.position_name || '-' }}</td>
+                      <td class="text-end px-1">
+                        <input
+                          type="number"
+                          min="0"
+                          step="10"
+                          class="form-control form-control-sm text-end p-0 px-1 border border-primary-subtle bg-white ot-rate-input"
+                          v-model.number="otRatesByMember[row.member.id]"
+                          @input="saveMemberOtRate(row.member.id)"
+                          @change="saveMemberOtRate(row.member.id)"
+                        />
+                        <span class="ot-rate-print">{{ row.effectiveRate.toLocaleString() }}</span>
+                      </td>
+                      <td
+                        v-for="d in daysInMonth"
+                        :key="'otc-' + row.member.id + '-' + d"
+                        style="padding: 0"
+                        :class="{ 'ot-holiday-col': isHolidayOrWeekend(d) }"
+                      >
+                        {{ row.marks[d] || '' }}
+                      </td>
+                      <td class="fw-bold">{{ row.daysCount }}</td>
+                      <td class="text-end px-1 fw-bold">{{ row.totalAmount.toLocaleString() }}</td>
+                      <td></td>
+                    </tr>
+                    <tr class="fw-bold">
+                      <td colspan="4" class="text-center">รวม</td>
+                      <td :colspan="daysInMonth.length"></td>
+                      <td>{{ otTotalDaysAll }}</td>
+                      <td class="text-end px-1">{{ otTotalAmountAll.toLocaleString() }}</td>
+                      <td></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="d-flex ps-3 mt-1" style="font-size: 14.5pt">
+                <div style="width: 170px">จำนวนเงิน (ตัวอักษร)</div>
+                <div class="fw-bold">{{ thaiBahtText(otTotalAmountAll) }}</div>
+              </div>
+              <div class="ps-3 mb-2" style="font-size: 14.5pt">
+                ขอรับรองว่าผู้ที่ได้รับเงินค่าตอบแทนการปฏิบัติงานนอกเวลาดังกล่าวได้ปฏิบัติงานนอกเวลาจริง
+              </div>
+
+              <div class="row mt-3 pt-1" style="font-size: 14.5pt; line-height: 1.2">
+                <div class="col-6 text-center">
+                  <div class="mb-1">(ลงชื่อ)........................................................................หัวหน้าผู้ควบคุม</div>
+                  <div>({{ otForm.leaderName || '....................................................' }})</div>
+                  <div v-if="otForm.leaderPos">{{ otForm.leaderPos }}</div>
+                  <div>หัวหน้า{{ selectedGroup?.department_name }}</div>
+                </div>
+                <div class="col-6 text-center">
+                  <div class="mb-1">ลงชื่อ..........................................................ผู้จ่ายเงิน................/................/................</div>
+                  <div class="mb-1">(ลงชื่อ)........................................................................ผู้อนุมัติจ่ายเงิน</div>
+                  <div>(นายธนากร คนเพียร)</div>
+                  <div>นายแพทย์ชำนาญการ รักษาการในตำแหน่ง</div>
+                  <div>ผู้อำนวยการโรงพยาบาลชานุมาน</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer border-top px-4 py-3">
+            <button type="button" class="btn btn-light border rounded-pill px-4" @click="showOtReportModal = false">ปิด</button>
+            <button type="button" class="btn btn-success rounded-pill px-4 fw-semibold" @click="printOtReport">
+              <i class="bi bi-printer me-1"></i> สั่งพิมพ์หลักฐานเบิกจ่าย (A4 แนวนอน)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1612,6 +1849,15 @@ export default {
       showAllPermStaff: false,
       krutImg,
       showDutyMemoModal: false,
+      showOtReportModal: false,
+      otRatesByMember: {},
+      otForm: {
+        countMode: 'holidays',
+        defaultRate: 240,
+        isDouble: false,
+        leaderName: '',
+        leaderPos: ''
+      },
       dutyMemoForm: {
         agency: '',
         docNo: 'อจ.0033/',
@@ -1645,6 +1891,47 @@ export default {
     memoMembersList() {
       if (!this.dutyMemoForm.onlyScheduled) return this.members;
       return this.members.filter((m) => this.countMemberShifts(m) > 0);
+    },
+    otReportRows() {
+      const mult = this.otForm.isDouble ? 2 : 1;
+      const shiftOtMap = new Map(
+        (this.selectedGroup?.shift_types || []).map((st) => {
+          const code = String(st.code || '').trim();
+          const eligible = st.is_ot !== undefined ? Boolean(st.is_ot) : code !== 'X';
+          return [code, eligible];
+        })
+      );
+      return this.members
+        .map((m) => {
+          const baseRate = Number(this.otRatesByMember[m.id] ?? this.otForm.defaultRate) || 0;
+          const effectiveRate = baseRate * mult;
+          const marks = {};
+          let daysCount = 0;
+          for (const d of this.daysInMonth) {
+            const code = String(m.duties?.[String(d)] || '').trim();
+            if (!code) continue;
+            const isOtShift = shiftOtMap.has(code) ? shiftOtMap.get(code) : code !== 'X';
+            if (!isOtShift) continue;
+            const isHol = this.isHolidayOrWeekend(d);
+            if (this.otForm.countMode === 'holidays' && !isHol) continue;
+            marks[d] = isHol ? 'O' : code;
+            daysCount++;
+          }
+          return {
+            member: m,
+            marks,
+            daysCount,
+            effectiveRate,
+            totalAmount: daysCount * effectiveRate
+          };
+        })
+        .filter((r) => r.daysCount > 0);
+    },
+    otTotalDaysAll() {
+      return this.otReportRows.reduce((s, r) => s + r.daysCount, 0);
+    },
+    otTotalAmountAll() {
+      return this.otReportRows.reduce((s, r) => s + r.totalAmount, 0);
     },
     displaySchedulerName() {
       const saved = String(this.selectedGroup?.scheduler_name || '').trim();
@@ -1880,7 +2167,10 @@ export default {
           notify_time: group.notify_time || '08:00',
           scheduler_name: group.scheduler_name || '',
           scheduler_position: group.scheduler_position || '',
-          shift_types: JSON.parse(JSON.stringify(group.shift_types || []))
+          shift_types: JSON.parse(JSON.stringify(group.shift_types || [])).map((st) => ({
+            ...st,
+            is_ot: st.is_ot !== undefined ? Boolean(st.is_ot) : String(st.code || '').trim() !== 'X'
+          }))
         };
       } else {
         this.groupForm = {
@@ -1895,10 +2185,10 @@ export default {
           scheduler_name: '',
           scheduler_position: '',
           shift_types: [
-            { code: 'ช', label: 'เวรเช้า', color: '#0ea5e9' },
-            { code: 'บ', label: 'เวรบ่าย', color: '#f59e0b' },
-            { code: 'ด', label: 'เวรดึก', color: '#6366f1' },
-            { code: 'Call', label: 'On-Call', color: '#10b981' }
+            { code: 'ช', label: 'เวรเช้า', color: '#0ea5e9', is_ot: true },
+            { code: 'บ', label: 'เวรบ่าย', color: '#f59e0b', is_ot: true },
+            { code: 'ด', label: 'เวรดึก', color: '#6366f1', is_ot: true },
+            { code: 'Call', label: 'On-Call', color: '#10b981', is_ot: true }
           ]
         };
       }
@@ -1916,7 +2206,7 @@ export default {
       }
     },
     addShiftTypeRow() {
-      this.groupForm.shift_types.push({ code: '', label: '', color: '#64748b' });
+      this.groupForm.shift_types.push({ code: '', label: '', color: '#64748b', is_ot: true });
     },
     hasDepartmentSchedule(deptId) {
       if (!deptId) return false;
@@ -2450,6 +2740,94 @@ export default {
         window.print();
         setTimeout(cleanup, 1500);
       });
+    },
+    openOtReportModal() {
+      const g = this.selectedGroup;
+      if (!g) return;
+      const savedRateKey = `dept_ot_default_rate_${g.id}`;
+      const savedDefault = Number(localStorage.getItem(savedRateKey)) || 240;
+      let savedMap = {};
+      try {
+        savedMap = JSON.parse(localStorage.getItem(`dept_ot_rates_${g.id}`) || '{}') || {};
+      } catch {
+        savedMap = {};
+      }
+      const nextRates = {};
+      for (const m of this.members) {
+        nextRates[m.id] = savedMap[m.id] !== undefined ? Number(savedMap[m.id]) : savedDefault;
+      }
+      this.otRatesByMember = nextRates;
+      this.otForm = {
+        countMode: 'holidays',
+        defaultRate: savedDefault,
+        isDouble: false,
+        leaderName: g.leader_name || '',
+        leaderPos: g.leader_position || ''
+      };
+      this.showOtReportModal = true;
+    },
+    applyDefaultOtRate() {
+      const g = this.selectedGroup;
+      const rate = Math.max(0, Number(this.otForm.defaultRate) || 0);
+      if (g) {
+        localStorage.setItem(`dept_ot_default_rate_${g.id}`, String(rate));
+      }
+      const updated = {};
+      for (const m of this.members) {
+        updated[m.id] = rate;
+      }
+      this.otRatesByMember = updated;
+      if (g) {
+        localStorage.setItem(`dept_ot_rates_${g.id}`, JSON.stringify(updated));
+      }
+    },
+    saveMemberOtRate(memberId) {
+      const g = this.selectedGroup;
+      if (!g) return;
+      this.otRatesByMember[memberId] = Math.max(0, Number(this.otRatesByMember[memberId]) || 0);
+      localStorage.setItem(`dept_ot_rates_${g.id}`, JSON.stringify(this.otRatesByMember));
+    },
+    thaiBahtText(amount) {
+      const num = Number(amount) || 0;
+      if (num === 0) return 'ศูนย์บาทถ้วน';
+      const txtNumArr = ['ศูนย์', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า'];
+      const txtDigitArr = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน', 'ล้าน'];
+      const nStr = String(Math.floor(num));
+      let bahtText = '';
+      const len = nStr.length;
+      for (let i = 0; i < len; i++) {
+        const n = parseInt(nStr[i], 10);
+        const pos = len - i - 1;
+        if (n !== 0) {
+          if (pos % 6 === 1 && n === 1) {
+            bahtText += 'สิบ';
+          } else if (pos % 6 === 1 && n === 2) {
+            bahtText += 'ยี่สิบ';
+          } else if (pos % 6 === 0 && n === 1 && i > 0 && nStr[i - 1] !== '0') {
+            bahtText += 'เอ็ด';
+          } else {
+            bahtText += txtNumArr[n] + txtDigitArr[pos % 6];
+          }
+        }
+        if (pos > 0 && pos % 6 === 0) {
+          bahtText += 'ล้าน';
+        }
+      }
+      return bahtText + 'บาทถ้วน';
+    },
+    printOtReport() {
+      this.setPrintPageRule('@page { size: A4 landscape; margin: 10mm 12mm; }');
+      document.body.classList.add('printing-ot-report');
+      const cleanup = () => {
+        document.body.classList.remove('printing-ot-report');
+        this.setPrintPageRule('@page { size: A4 landscape; margin: 10mm 14mm; }');
+        window.removeEventListener('afterprint', cleanup);
+      };
+      window.addEventListener('afterprint', cleanup);
+      this.$nextTick(() => {
+        window.print();
+        setTimeout(cleanup, 1500);
+      });
     }
   }
 };
@@ -2570,6 +2948,39 @@ th.is-weekend-col {
 
 .modal-backdrop {
   background-color: rgba(0, 0, 0, 0.45);
+}
+
+.ot-report-paper {
+  font-family: 'TH Sarabun New', 'Sarabun', sans-serif;
+  color: #000;
+}
+
+.ot-paper-table {
+  font-size: 12pt;
+  border-color: #000 !important;
+}
+
+.ot-paper-table th,
+.ot-paper-table td {
+  border-color: #000 !important;
+  padding: 2px 3px !important;
+  color: #000 !important;
+}
+
+.ot-holiday-col {
+  background-color: #e2e8f0 !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.ot-rate-input {
+  width: 52px;
+  display: inline-block;
+  font-size: 11pt;
+}
+
+.ot-rate-print {
+  display: none;
 }
 
 @media print {
@@ -2716,6 +3127,70 @@ th.is-weekend-col {
     margin: 0 !important;
     box-shadow: none !important;
     border-radius: 0 !important;
+  }
+
+  body.printing-ot-report header,
+  body.printing-ot-report nav,
+  body.printing-ot-report .navbar,
+  body.printing-ot-report footer,
+  body.printing-ot-report .dept-schedule-page > *:not(.ot-report-modal-root),
+  body.printing-ot-report .modal-backdrop,
+  body.printing-ot-report .ot-report-controls,
+  body.printing-ot-report .modal-header,
+  body.printing-ot-report .modal-footer {
+    display: none !important;
+  }
+
+  body.printing-ot-report .dept-schedule-page {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  body.printing-ot-report .ot-report-modal-root {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  body.printing-ot-report .ot-report-modal-root .modal-dialog,
+  body.printing-ot-report .ot-report-modal-root .modal-content,
+  body.printing-ot-report .ot-report-modal-root .modal-body,
+  body.printing-ot-report .ot-report-modal-root .table-responsive {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    overflow: visible !important;
+  }
+
+  body.printing-ot-report .ot-report-paper {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 6mm 8mm !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  body.printing-ot-report .ot-rate-input {
+    display: none !important;
+  }
+
+  body.printing-ot-report .ot-rate-print {
+    display: inline !important;
   }
 }
 </style>
