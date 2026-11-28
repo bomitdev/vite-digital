@@ -539,7 +539,11 @@ export default {
 }
 
 .is-weekend-col {
-  background-color: #f8fafc !important;
+  background-color: #e2e8f0 !important;
+}
+
+.schedule-table thead th.is-weekend-col {
+  background-color: #fee2e2 !important;
 }
 
 .schedule-table thead th.is-weekend-col .day-num,
@@ -595,7 +599,8 @@ export default {
 }
 
 .bg-weekend {
-  background-color: #e2e8f0;
+  background-color: #cbd5e1;
+  border: 1px solid #94a3b8;
 }
 
 /* Contact Cards */
