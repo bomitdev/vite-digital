@@ -302,6 +302,17 @@
                   </select>
                 </div>
 
+                <!-- Item Type Selector for Official PDF Report -->
+                <div class="mb-3">
+                  <label class="form-label fw-bold small text-secondary">ประเภทพัสดุ</label>
+                  <select class="form-select" v-model="filters.item_type_id" @change="fetchOfficialReport">
+                    <option value="">ทั้งหมด (ทุกประเภท)</option>
+                    <option v-for="t in itemTypes" :key="t.id" :value="t.id">
+                      {{ t.code ? `[${t.code}] ` : '' }}{{ t.name }}
+                    </option>
+                  </select>
+                </div>
+
                 <!-- Document Number Prefix Setting -->
                 <div class="mb-4">
                   <label class="form-label fw-bold small text-secondary">เลขที่หนังสือ (ที่ ...)</label>
@@ -561,8 +572,8 @@
                           <th>จำนวน</th>
                           <th>มูลค่า</th>
                           <th v-if="officialReport.departments.length === 0">-</th>
-                          <th v-for="d in officialReport.departments" :key="d" style="min-width: 90px; font-size: 11px;">
-                            {{ d }}
+                          <th v-for="d in officialReport.departments" :key="d" class="dept-rotate-th" :title="d">
+                            <span class="dept-rotate-text">{{ d }}</span>
                           </th>
                           <th>จำนวน</th>
                           <th>มูลค่า</th>
@@ -1079,10 +1090,12 @@ export default {
       
       warehouses: [],
       categories: [],
+      itemTypes: [],
       
       filters: {
         warehouse_id: '',
         category_id: '',
+        item_type_id: '',
         start_date: moment().startOf('month').format('YYYY-MM-DD'),
         end_date: moment().format('YYYY-MM-DD'),
         search: '',
@@ -1184,8 +1197,9 @@ export default {
           this.filters.warehouse_id = target;
         }
 
-        const [_, sumRes] = await Promise.all([
+        const [_cat, _type, sumRes] = await Promise.all([
           this.fetchCategoriesByWarehouse(this.filters.warehouse_id),
+          this.fetchItemTypesByWarehouse(this.filters.warehouse_id),
           axios.get(`/api-digital/inventory/reports.php?type=summary${this.filters.warehouse_id ? '&warehouse_id=' + this.filters.warehouse_id : ''}`)
         ]);
 
@@ -1213,8 +1227,28 @@ export default {
         console.error('Failed to load categories by warehouse:', err);
       }
     },
+    async fetchItemTypesByWarehouse(warehouseId) {
+      try {
+        const url = warehouseId
+          ? `/api-digital/inventory/item_types.php?warehouse_id=${warehouseId}`
+          : '/api-digital/inventory/item_types.php';
+        const res = await axios.get(url);
+        if (res.data?.status === 'success') {
+          this.itemTypes = res.data.data || [];
+          const exists = this.itemTypes.some(t => String(t.id) === String(this.filters.item_type_id));
+          if (!exists) {
+            this.filters.item_type_id = '';
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load item types by warehouse:', err);
+      }
+    },
     async onWarehouseFilterChange(isOfficial = false) {
-      await this.fetchCategoriesByWarehouse(this.filters.warehouse_id);
+      await Promise.all([
+        this.fetchCategoriesByWarehouse(this.filters.warehouse_id),
+        this.fetchItemTypesByWarehouse(this.filters.warehouse_id)
+      ]);
       try {
         const sumRes = await axios.get(
           `/api-digital/inventory/reports.php?type=summary${this.filters.warehouse_id ? '&warehouse_id=' + this.filters.warehouse_id : ''}`
@@ -1271,6 +1305,7 @@ export default {
         const params = new URLSearchParams();
         params.append('warehouse_id', this.filters.warehouse_id || 1);
         if (this.filters.category_id) params.append('category_id', this.filters.category_id);
+        if (this.filters.item_type_id) params.append('item_type_id', this.filters.item_type_id);
         params.append('report_mode', this.currentReportTab === 'yearly_official' ? 'yearly' : 'monthly');
 
         if (this.currentReportTab === 'monthly_official') {
@@ -1609,7 +1644,11 @@ export default {
 
         const head2 = [];
         departments.forEach((d) => {
-          head2.push({ content: d, styles: { halign: 'center', fontSize: 6.5 } });
+          head2.push({
+            content: '',
+            _deptLabel: d,
+            styles: { halign: 'center', valign: 'bottom', minCellHeight: 46, fontSize: 6.5 }
+          });
         });
 
         const tableBody = [];
@@ -1711,6 +1750,36 @@ export default {
             [14 + departments.length]: { halign: 'right', cellWidth: 16 }
           },
           margin: { top: 30, left: 5, right: 5, bottom: 10 },
+          didParseCell: (data) => {
+            if (
+              data.section === 'head' &&
+              data.row.index === 1 &&
+              departments.length > 0 &&
+              data.column.index >= 10 &&
+              data.column.index < 10 + departments.length
+            ) {
+              data.cell._deptLabel = departments[data.column.index - 10];
+              data.cell.text = [''];
+              data.cell.styles.minCellHeight = 46;
+            }
+          },
+          didDrawCell: (data) => {
+            if (data.section === 'head' && data.row.index === 1 && data.cell._deptLabel) {
+              const label = String(data.cell._deptLabel);
+              const maxLen = Math.max(data.cell.height - 4, 10);
+              let fontSize = 6.8;
+              doc.setFont('Sarabun', 'bold');
+              doc.setFontSize(fontSize);
+              while (fontSize > 4.8 && doc.getTextWidth(label) > maxLen) {
+                fontSize -= 0.3;
+                doc.setFontSize(fontSize);
+              }
+              doc.setTextColor(0, 0, 0);
+              const textX = data.cell.x + data.cell.width / 2 + fontSize * 0.18;
+              const textY = data.cell.y + data.cell.height - 2;
+              doc.text(label, textX, textY, { angle: 90 });
+            }
+          },
           didDrawPage: () => {
             doc.setFontSize(16);
             doc.setFont('Sarabun', 'bold');
@@ -2070,6 +2139,23 @@ export default {
 
 .border-dotted {
   border-bottom-style: dotted !important;
+}
+
+.dept-rotate-th {
+  height: 155px;
+  vertical-align: bottom !important;
+  padding: 6px 3px !important;
+  min-width: 28px;
+  max-width: 36px;
+}
+
+.dept-rotate-text {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  display: inline-block;
+  font-size: 11px;
+  line-height: 1.15;
 }
 
 .print-only {

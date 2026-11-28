@@ -58,6 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $warehouse_id = isset($_GET['warehouse_id']) && $_GET['warehouse_id'] !== '' ? (int)$_GET['warehouse_id'] : 1;
 $report_mode = isset($_GET['report_mode']) ? trim($_GET['report_mode']) : 'monthly';
 $category_id = isset($_GET['category_id']) && $_GET['category_id'] !== '' ? (int)$_GET['category_id'] : null;
+$item_type_id = isset($_GET['item_type_id']) && $_GET['item_type_id'] !== '' ? (int)$_GET['item_type_id'] : null;
 
 // Date calculations
 if ($report_mode === 'yearly') {
@@ -155,6 +156,10 @@ try {
     if ($category_id) {
         $itemSql .= " AND i.category_id = ?";
         $itemParams[] = $category_id;
+    }
+    if ($item_type_id) {
+        $itemSql .= " AND i.item_type_id = ?";
+        $itemParams[] = $item_type_id;
     }
     $itemSql .= " ORDER BY i.item_code ASC, i.item_name ASC";
 
